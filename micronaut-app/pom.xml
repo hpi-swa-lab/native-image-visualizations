@@ -125,6 +125,15 @@
           </compilerArgs>
         </configuration>
       </plugin>
+      <plugin>
+        <groupId>org.graalvm.buildtools</groupId>
+        <artifactId>native-maven-plugin</artifactId>
+        <configuration>
+          <buildArgs combine.children="append">
+            <buildArg>-H:+PrintAnalysisCallTree</buildArg>
+          </buildArgs>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
 
