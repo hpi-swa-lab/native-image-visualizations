@@ -1,6 +1,8 @@
 import csv
 import subprocess
 import re
+import sys
+
 
 def method_names_from_calltree_csv(path):
     included_method_names = []
@@ -21,11 +23,21 @@ def method_names_from_calltree_csv(path):
 
     return included_method_names
 
-def run_nativeimage_with_purges(classPath, mainClass, purgeMethods):
+def run_nativeimage_with_purges(ni_args, purgeMethods):
     proc = subprocess.run(
-        f'mx -p "../graal/substratevm" native-image -cp {";".join(classPath)} {mainClass} -H:+PrintAnalysisCallTree -H:PrintAnalysisCallTreeType=CSV -H:+ExitAfterAnalysis -H:PurgeMethodsFile=/dev/stdin',
+        ["mx",
+         "-p",
+         "../graal/substratevm",
+         "native-image"]
+        +
+        ni_args
+        + # The following args are concatenated at the end in order to overwrite possibly conflicting options in ni_args
+        ["-H:+PrintAnalysisCallTree",
+         "-H:PrintAnalysisCallTreeType=CSV",
+         "-H:+ExitAfterAnalysis",
+         "-H:PurgeMethodsFile=/dev/stdin"],
         input='\n'.join(purgeMethods).encode(),
-        stdout=subprocess.PIPE, shell=True)
+        stdout=subprocess.PIPE, shell=False)
 
     if proc.returncode != 0:
         print(f'Native-Image exited with error code {proc.returncode}')
@@ -34,30 +46,32 @@ def run_nativeimage_with_purges(classPath, mainClass, purgeMethods):
     m = re.search(r"\n# Printing call tree csv file for methods to: (?P<file>.*)\n", proc.stdout.decode())
 
     if not m:
-        print("Native-Image didn't generate the expected file of used methods or changed it's output format.")
+        print("Native-Image didn't generate the expected file of used methods or changed it's output format. Raw output:")
+        print(proc.stdout.decode())
         exit(1)
 
     return method_names_from_calltree_csv(m['file'])
 
+# Some dynamically generated Lambda methods introduce noise into the comparison, since their automatically assigned numbers vary indeterministically.
+# Luckily, they all are methods whose name or the name of the defining class begins with '$'
 def strip_anonymous_methods(methods):
     return [m for m in methods if not re.search(r"^(|.*\.)(\$[^.]*\.[^.]+|[^.]+\.\$[^.]*)\(.*\)$", m)]
 
-mainClass = "VirtualHelloWorld"
-classPath = ["../../samples/virtual-helloworld/"]
+ni_args = sys.argv[1:]
+purgeMethods = [line for line in sys.stdin]
 
-all_methods = run_nativeimage_with_purges(classPath, mainClass, [])
-remaining_methods = run_nativeimage_with_purges(classPath, mainClass, ["VirtualHelloWorld.setInstance()"])
-
-
+all_methods = run_nativeimage_with_purges(ni_args, [])
+remaining_methods = run_nativeimage_with_purges(ni_args, purgeMethods)
 
 new = strip_anonymous_methods(set(remaining_methods) - set(all_methods))
 purged = strip_anonymous_methods(set(all_methods) - set(remaining_methods))
-print("Purged:\n " + "\n ".join(purged))
-print("New:\n " + "\n ".join(new))
+
+print("\n".join(purged), file=sys.stdout)
+
+if len(new) > 0:
+    print("Warning! Some methods appeared in the universum of the purged run:\n" + "\n".join(new), file=sys.stderr)
 
 # Interessante Erkenntnis:
 #  com.oracle.svm.core.posix.headers.Semaphore$NoTransitions.sem_init(com.oracle.svm.core.posix.headers.Semaphore$sem_t,org.graalvm.word.SignedWord,org.graalvm.word.UnsignedWord)
 #  com.oracle.svm.core.posix.linux.LinuxVMSemaphore.init()
 # Sind manchmal drin und manchmal nicht (unabhängig vom ersten/zweiten Lauf)
-
-# Purge funktioniert auch noch nicht perfekt: Poco.<init> lässt den Typ im AllInstantiatedTypeFlow liegen, Poco.toString tut gar nichts...
