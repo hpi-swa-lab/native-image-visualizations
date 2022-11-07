@@ -13,7 +13,7 @@ A clear and concise description of the wanted behavior
 
 ### Additional Questions to Answer / Consider
 
-
+Any open questions that need to be answered before/during working this issue
 
 ### Hints and Thoughts
 
