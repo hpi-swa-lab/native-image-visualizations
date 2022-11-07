@@ -7,21 +7,21 @@ assignees: ''
 
 ---
 
-**Beschreibung des gewünschten Verhaltens**
+### Description
 
-Eine klare und präzise Beschreibung des gewünschten Verhaltens.
+A clear and concise description of the wanted behavior
 
-**Weitere Fragen die beantwortet/berücksichtigt werden sollten**
+### Additional Questions to Answer / Consider
 
-Hier kommen Dinge hin, die wir zusätzlich zum eigentlichen Issue vorher noch klären oder währenddessen mit beachten müssen
 
-**Hinweise und Gedanken**
 
-Weitere Informationen, die beim Lösen helfen können. Z.B. Skizzen, Links, Informationen, ...
+### Hints and Thoughts
+
+Further information that could help solving this issue (e.g. skeches, links, ...)
 
 ---
 
-**Akzeptanzkriterien**
+### Acceptance Criteria
 
--[ ] Sollte <testbare Bedingung die erfüllt sein sollte>
--[ ] Sollte <testbare Bedingung die erfüllt sein sollte>
+- [ ] Should ‹testable condition that should be satisfied›
+- [ ] Should ‹testable condition that should be satisfied›
