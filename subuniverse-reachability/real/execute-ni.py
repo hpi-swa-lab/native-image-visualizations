@@ -27,7 +27,7 @@ def run_nativeimage_with_purges(ni_args, purgeMethods):
     proc = subprocess.run(
         ["mx",
          "-p",
-         "../graal/substratevm",
+         f'{sys.path[0]}/../graal/substratevm',
          "native-image"]
         +
         ni_args
