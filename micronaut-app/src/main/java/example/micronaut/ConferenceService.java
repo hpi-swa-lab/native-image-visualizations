@@ -4,7 +4,7 @@ import jakarta.inject.Singleton;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
-import log4j.Logger;
+import org.apache.log4j.Logger;
 
 @Singleton 
 public class ConferenceService {
@@ -23,7 +23,7 @@ public class ConferenceService {
     public Conference randomConf() {
         Conference result = CONFERENCES.get(new Random().nextInt(CONFERENCES.size()));
 
-        logger.info(result.getName())
+        logger.info(result.getName());
 
         return result;
     }
