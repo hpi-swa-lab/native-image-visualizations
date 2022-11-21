@@ -29,14 +29,17 @@ $success: #7952b3;
 
 @import 'bootstrap/scss/bootstrap';
 
+@import 'zoomable_causality_graph';
+
 //
 // Custom styles
 //
 
 
-html,
-body {
+html, body {
+    margin: 0;
     height: 100%;
+    width: 100%;
 }
 
 body {
