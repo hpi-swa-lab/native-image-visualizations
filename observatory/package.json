@@ -1,0 +1,47 @@
+{
+    "name": "observatory",
+    "version": "1.0.0",
+    "private": true,
+    "description": "A dashboard for visualizations based on data from GraalVM-Native-Image",
+    "config": {
+        "port": "3000",
+        "scss_src": "assets/css/src/main.scss",
+        "scss_output": "assets/css/dist/main.css"
+    },
+    "scripts": {
+        "build": "npm run css",
+        "css-compile": "sass --load-path=node_modules --style=compressed $npm_package_config_scss_src $npm_package_config_scss_output",
+        "css-compile:about": "echo 'Compile SCSS files from the src folder to the dist folder'",
+        "css-lint": "stylelint $npm_package_config_scss_src",
+        "css-prefix": "postcss --replace assets/css/dist/main.css --use autoprefixer --map",
+        "css": "npm-run-all css-compile css-prefix",
+        "eslint-check": "eslint --config .eslintrc.json .",
+        "eslint-autofix": "eslint --config .eslintrc.json --fix .",
+        "prettier-check": "prettier --check --config .prettierrc.json .",
+        "prettier-autofix": "prettier --write --config .prettierrc.json .",
+        "server": "serve --listen $npm_package_config_port",
+        "start": "npm-run-all --parallel watch server",
+        "watch": "nodemon -e html,scss -x \"npm run css\"",
+        "test": "npm run eslint-check && npm run prettier-check && npm run css-lint && npm run css"
+    },
+    "author": "",
+    "license": "MIT",
+    "devDependencies": {
+        "autoprefixer": "^10.4.13",
+        "bootstrap": "^5.2.2",
+        "eslint": "^8.28.0",
+        "eslint-config-airbnb-base": "^15.0.0",
+        "eslint-config-prettier": "^8.5.0",
+        "eslint-plugin-import": "^2.26.0",
+        "eslint-plugin-only-warn": "^1.0.3",
+        "nodemon": "^2.0.20",
+        "npm-run-all": "^4.1.5",
+        "postcss": "^8.4.19",
+        "postcss-cli": "^10.0.0",
+        "prettier": "^2.7.1",
+        "sass": "^1.56.1",
+        "serve": "^14.1.2",
+        "stylelint": "^14.15.0",
+        "stylelint-config-twbs-bootstrap": "^7.0.0"
+    }
+}
