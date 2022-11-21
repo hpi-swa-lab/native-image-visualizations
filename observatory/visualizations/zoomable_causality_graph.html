@@ -100,7 +100,7 @@
                     return
                 }
 
-                const graph = await csvParser.constructCausalityHierarchyGraph(
+                const graph = await constructCausalityHierarchyGraph(
                     entryPointsInput.files[0],
                     methodsInput.files[0],
                     directEdgesInput.files[0],
