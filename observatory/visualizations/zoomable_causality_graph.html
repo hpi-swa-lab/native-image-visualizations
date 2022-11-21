@@ -12,6 +12,8 @@
         <div class="control-container">
             <h1>Visualization of Message Graphs using a Force Simulation</h1>
 
+            <br />
+
             <table>
                 <tr>
                     <td><label for="input-file-entry-points">Entry points file:</label></td>
@@ -58,11 +60,14 @@
                     </td>
                 </tr>
             </table>
+
+            <br />
+
             <button id="buttonConfirm">Observe!</button>
         </div>
         <div id="container" class="svg-container"></div>
 
-        <script type="module">            
+        <script type="module">
             import { constructCausalityHierarchyGraph } from '../assets/js/zoomable_causality_graph.js'
 
             const entryPointsInput = document.getElementById('input-file-entry-points')
