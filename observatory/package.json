@@ -1,8 +1,8 @@
 {
   "name": "observatory",
   "version": "1.0.0",
+  "private": true,
   "description": "A dashboard for visualizations based on data from GraalVM-Native-Image",
-  "main": "index.js",
   "config": {
     "port": "3000",
     "scss_src": "assets/css/src"
