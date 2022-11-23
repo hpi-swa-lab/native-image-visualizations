@@ -13,14 +13,19 @@
 
             <br />
 
-            <button id="buttonConfirm">Observe!</button>
+            <label for="input-file-methods">Methods File:</label>
+            <input type="file" id="input-file-methods" accept=".txt" />
+
+            <br />
+
+            <button id="buttonConfirm">Parsen!</button>
         </div>
         <div id="container" class="svg-container"></div>
 
         <script type="module">
             import {
                 parse_to_package_hierarchy,
-                lead_csv_file
+                load_text_file
             } from '../assets/js/build_reports_parser.js'
             const methodsInput = document.getElementById('input-file-methods')
             const buttonConfirm = document.getElementById('buttonConfirm')
@@ -33,7 +38,7 @@
                     return
                 }
 
-                const csv_data = load_csv_file(methodsInput.files[0])
+                const csv_data = await load_text_file(methodsInput.files[0])
                 console.log(csv_data)
 
                 const graph = parse_to_package_hierarchy(csv_data)

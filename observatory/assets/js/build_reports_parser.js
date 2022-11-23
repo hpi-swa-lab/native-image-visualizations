@@ -1,14 +1,15 @@
-import * as Papa from 'papaparse'
+// import * as Papa from '../../external/papaparse.min.js'
 
 export function load_text_file(file) {
     return new Promise((resolve, reject) => {
-        reader = new FileReader()
+        const reader = new FileReader()
         reader.onload = (event) => resolve(event.target.result.toString())
         reader.onerror = (event) => reject(event)
-        reader.readAsText()
+        reader.readAsText(file)
     })
 }
 
+/*
 export function load_csv_file(file) {
     return new Promise((resolve, reject) => {
         Papa.parse(file, {
@@ -17,29 +18,33 @@ export function load_csv_file(file) {
         })
     })
 }
+*/
 
 export function parse_to_package_hierarchy(used_method_string) {
-    const rows = text.split('\n')
+    const rows = used_method_string.split('\n')
     const data = {
         name: 'root',
         children: []
     }
 
-    let current_children = data.children
     rows.forEach((row) => {
+        let current_children = data.children
+
         const fields = row.split('.')
 
         fields.forEach((field) => {
-            const child = current.find(child => child.name === field)
+            let child = current_children.find((child) => child.name === field)
 
             if (!child) {
-                current.push({
+                child = {
                     name: field,
                     children: []
-                })
+                }
+
+                current_children.push(child)
             }
 
-            current = child.children
+            current_children = child.children
         })
     })
 
