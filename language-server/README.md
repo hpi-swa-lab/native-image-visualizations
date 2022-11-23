@@ -22,6 +22,10 @@ Instead, we want to show data in the IDE in a few ways, such as hints on the rig
 Some of those features are possible with features usually used by language server extensions (such as [inlay hints, supported since LSP 3.17](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/)).
 But that doesn't mean we need to use LSP for the communication between our extension and analysis server.
 
+Also, some editors (such as VS Code) also have lower-level features that extensions can use, but which are not standardized in the LSP (yet).
+For example, we can show text right in the program using inline type hints, which were originally designed to only show type hints.
+VS Code offers the capability to directly show any text with custom formatting, so it makes more sense for us to use that.
+
 ## How to use
 
 1. Install npm. `sudo apt install npm`
