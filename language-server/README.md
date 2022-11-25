@@ -8,11 +8,10 @@ Note when researching: Although it's technically incorrect, the language server 
 
 ## Building Extensions for Editors
 
-While there are some [niche editors](https://lapce.dev/) that support the LSP directly, the two major ones, [VS Code](https://code.visualstudio.com/) and [IntelliJ](https://www.jetbrains.com/idea/), do *not* directly support LSP.
+While there are [some](https://neovim.io/) [editors](https://lapce.dev/) that support the LSP directly, the two major ones, [VS Code](https://code.visualstudio.com/) and [IntelliJ](https://www.jetbrains.com/idea/), do *not* directly support LSP.
 Instead, you're supposed to write a plugin/extension which then spawns and communicates with the language server over LSP and translates the results for the IDE.
-
+There are libraries for both VSCode and IntelliJ that take care of translating between LSP and IDE API, so there's usually only a small amount of code you have to write to adapt a language server to work with the IDE.
 For VS Code, [here's a guide](https://code.visualstudio.com/api/language-extensions/language-server-extension-guide) on how to write an extension talking to a lanuage server.
-
 For IntelliJ, [here's a similar guide](https://www.jetbrains.com/help/mps/building-intellij-idea-language-plugins.html).
 
 ## Does the LSP fit our use case?
@@ -28,6 +27,12 @@ VS Code offers the capability to directly show any text with custom formatting, 
 
 ## How to use
 
-1. Install npm. `sudo apt install npm`
-1. Install typescript `sudo npm i -g typescript`
-2. Run the extension from the debug panel on the left side in VS Code.
+1. Install npm: `sudo apt install npm`
+2. Install TypeScript: `sudo npm i -g typescript`
+3. Open the `MPWS2022RH1` folder in VSCode (<kbd>File</kbd> → <kbd>Open Folder…</kbd>).
+4. Open the debug panel in VSCode (triangle on the left side).
+5. Choose "Run Extension" in the dropdown and launch it by clicking the green triangle.
+6. When asked how to build the extension, choose the TypeScript compiler (`tsc build …`).
+7. A new VSCode window should open. In this window, you can use the extension.
+8. Open any Java file.
+9. In any line containing `void `, there should be a message on the right side.
