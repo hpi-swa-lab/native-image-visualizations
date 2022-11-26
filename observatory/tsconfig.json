@@ -1,0 +1,21 @@
+{
+    "compilerOptions": {
+        "noImplicitAny": true,
+        "target": "es5",
+        "lib":["es2020", "DOM"],
+        "sourceMap": true,
+        "declaration": true,
+        "module": "es2015",
+        "moduleResolution": "node",
+        "skipLibCheck": true,
+        "outDir": "assets/js/dist"
+    },
+    "include": [
+        "assets/js/src/*", "assets/js/src/**/*",
+    ],
+    "exclude": [
+        "node_modules",
+        "assets/js/dist",
+        "assets/js/include",
+    ]
+}
