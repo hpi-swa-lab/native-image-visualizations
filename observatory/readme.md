@@ -11,9 +11,9 @@ The observatory is a collection of tools designed to inspect GraalVM Native Imag
 
 There are some conveniance scripts for development. Use them to you advantage:
 
--   `npm run build` is a convenience command that runs `build-js` and `css`
+-   `npm run build` is a convenience command that runs `bundle` and `css`
 -   `npm run clean-build` runs `clean` before `build`
--   `npm run build-js` transpiles and bundles typescript files to [assets/js/dist/](./assets/css/dist/)
+-   `npm run bundle` transpiles and bundles typescript files to [assets/js/dist/observatory.umd.js](./assets/js/dist/observatory.umd.js)
 -   `npm run css` compiles the scss sources into a css file and writes it to [assets/css/dist/main.css](./assets/css/dist/main.css)
 -   `npm run clean` removes `assets/css/dist`, `assets/js/dist` and any containing files
 -   `npm run eslint-{check|autofix}` runs eslint (a js linter) on all source code files. Either the problems are marked or fixed directly
