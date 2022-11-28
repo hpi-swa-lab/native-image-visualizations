@@ -12,6 +12,7 @@ The observatory is a collection of tools designed to inspect GraalVM Native Imag
 There are some conveniance scripts for development. Use them to you advantage:
 
 -   `npm run build` is a convenience command that runs `build-js` and `css`
+-   `npm run clean-build` runs `clean` before `build`
 -   `npm run build-js` transpiles and bundles typescript files to [assets/js/dist/](./assets/css/dist/)
 -   `npm run css` compiles the scss sources into a css file and writes it to [assets/css/dist/main.css](./assets/css/dist/main.css)
 -   `npm run clean` removes `assets/css/dist`, `assets/js/dist` and any containing files
