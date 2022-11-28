@@ -2,5 +2,6 @@ node_modules/
 .idea/
 .vscode/
 assets/**/dist/
-!assets/**/dist/.gitkeep
+!assets/css/dist/.gitkeep
+!assets/js/dist/.gitkeep
 
