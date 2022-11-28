@@ -1,5 +1,3 @@
-// import * as Papa from '../../external/papaparse.min.js'
-
 export function load_text_file(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader()
@@ -9,35 +7,21 @@ export function load_text_file(file) {
     })
 }
 
-/*
-export function load_csv_file(file) {
-    return new Promise((resolve, reject) => {
-        Papa.parse(file, {
-            complete: (results) => resolve(results.data),
-            error: (err) => reject(err)
-        })
-    })
-}
-*/
-
-export function parse_to_package_hierarchy(used_method_string) {
-    const rows = used_method_string.split('\n')
+export function parse_to_package_hierarchy(used_methods_string) {
     const data = {
         name: 'root',
         children: []
     }
 
-    rows.forEach((row) => {
+    used_methods_string.split('\n').forEach((row) => {
         let current_children = data.children
 
-        const fields = row.split('.')
-
-        fields.forEach((field) => {
-            let child = current_children.find((child) => child.name === field)
+        row.split('.').forEach((pathSegment) => {
+            let child = current_children.find((child) => child.name === pathSegment)
 
             if (!child) {
                 child = {
-                    name: field,
+                    name: pathSegment,
                     children: []
                 }
 
