@@ -9,12 +9,10 @@
         "scss_output": "assets/css/dist/main.css"
     },
     "scripts": {
-        "build": "npm-run-all css build-js",
-        "build-js": "tsc && rollup -c",
+        "build": "npm-run-all css bundle",
+        "bundle": "rollup -c",
         "clean-build": "npm run clean && npm run build",
         "clean": "rimraf assets/css/dist assets/js/dist",
-        "tsc-w": "tsc -w",
-        "rollup-w": "rollup -c -w",
         "css-compile": "sass --load-path=node_modules --style=compressed $npm_package_config_scss_src $npm_package_config_scss_output",
         "css-compile:about": "echo 'Compile SCSS files from the src folder to the dist folder'",
         "css-lint": "stylelint $npm_package_config_scss_src",
@@ -27,7 +25,7 @@
         "server": "serve --listen $npm_package_config_port",
         "start": "npm-run-all --parallel watch server",
         "watch": "npm-run-all --parallel watch-ts watch-css",
-        "watch-ts": "npm-run-all --parallel tsc-w rollup-w",
+        "watch-ts": "rollup -c -w",
         "watch-css": "nodemon -w 'assets/**/src/*' -e html,scss -x \"npm run css\"",
         "test": "npm run eslint-check && npm run prettier-check && npm run css-lint && npm run css"
     },
