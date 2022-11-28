@@ -1,47 +1,52 @@
-import * as Papa from 'papaparse'
-
 export function load_text_file(file) {
     return new Promise((resolve, reject) => {
-        reader = new FileReader()
+        const reader = new FileReader()
         reader.onload = (event) => resolve(event.target.result.toString())
         reader.onerror = (event) => reject(event)
-        reader.readAsText()
+        reader.readAsText(file)
     })
 }
 
-export function load_csv_file(file) {
-    return new Promise((resolve, reject) => {
-        Papa.parse(file, {
-            complete: (results) => resolve(results.data),
-            error: (err) => reject(err)
-        })
-    })
-}
-
-export function parse_to_package_hierarchy(used_method_string) {
-    const rows = text.split('\n')
+export function parse_to_package_hierarchy(used_methods_string) {
     const data = {
         name: 'root',
         children: []
     }
 
-    let current_children = data.children
-    rows.forEach((row) => {
-        const fields = row.split('.')
+    used_methods_string.split('\n').forEach((row) => {
+        let current_children = data.children
 
-        fields.forEach((field) => {
-            const child = current.find(child => child.name === field)
+        row.split('.').forEach((pathSegment) => {
+            let child = current_children.find((child) => child.name === pathSegment)
 
             if (!child) {
-                current.push({
-                    name: field,
+                child = {
+                    name: pathSegment,
                     children: []
-                })
+                }
+
+                current_children.push(child)
             }
 
-            current = child.children
+            current_children = child.children
         })
     })
 
     return data
+}
+
+export function extract_classes(classes_report_string) {
+    const classes = []
+
+    classes_report_string.split('\n').forEach((row) => {
+        const split_row = row.split('.')
+        const class_name = split_row[split_row.length - 1]
+        
+        classes.push({
+            full_name: row,
+            class_name: class_name
+        })
+    })
+
+    return classes
 }

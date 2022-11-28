@@ -1,4 +1,4 @@
 interface Node {
-    name: string,
+    name: string
     children: Node[]
 }
