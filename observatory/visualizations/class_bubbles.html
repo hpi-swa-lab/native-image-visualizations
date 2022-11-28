@@ -23,19 +23,27 @@
                 extract_classes
             } from '../assets/js/build_reports_parser.js'
 
-            const input = document.getElementById('input-file')
+            import { constructClassBubbles } from '../assets/js/class_bubbles.js'
 
+            const input = document.getElementById('input-file')
             const buttonConfirm = document.getElementById('button-confirm')
+            const container = document.getElementById('container')
 
             buttonConfirm.addEventListener('click', async () => {
+                while(container.firstChild) {
+                    container.removeChild(container.lastChild)
+                }
+
                 if (input.files.length === 0) {
                     errorMessages.push("I'm missing the input file.")
                     return
                 }
+
                 const input_string = await load_text_file(input.files[0])
                 const classes = extract_classes(input_string)
-
-                console.log(classes)
+                const rendered_graph = await constructClassBubbles(classes)
+                
+                container.appendChild(rendered_graph)
             })
         </script>
     </body>

@@ -39,13 +39,18 @@ export function extract_classes(classes_report_string) {
     const classes = []
 
     classes_report_string.split('\n').forEach((row) => {
-        const split_row = row.split('.')
-        const class_name = split_row[split_row.length - 1]
+        if (!row.match(/[\$\.]\$/)) {
+            row = row.replaceAll('$', '.')
         
-        classes.push({
-            full_name: row,
-            class_name: class_name
-        })
+            const split_row = row.split('.')
+            const class_name = split_row[split_row.length - 1]
+
+            classes.push({
+                full_name: row,
+                class_name: class_name
+            })
+        }
+
     })
 
     return classes
