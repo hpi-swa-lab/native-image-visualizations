@@ -12,10 +12,5 @@
     },
     "include": [
         "assets/js/src/*", "assets/js/src/**/*",
-    ],
-    "exclude": [
-        "node_modules",
-        "assets/js/dist",
-        "assets/js/include",
     ]
 }
