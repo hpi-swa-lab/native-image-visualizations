@@ -56,7 +56,6 @@
         "typescript": "^4.9.3"
     },
     "dependencies": {
-        "@rollup/plugin-multi-entry": "^6.0.0",
         "@rollup/plugin-node-resolve": "^15.0.1",
         "@rollup/plugin-typescript": "^9.0.2",
         "d3": "^7.6.1",
