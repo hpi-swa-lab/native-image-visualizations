@@ -130,6 +130,7 @@
         <artifactId>native-maven-plugin</artifactId>
         <configuration>
           <buildArgs combine.children="append">
+            <buildArg>--debug-attach</buildArg>
             <buildArg>-H:+PrintAnalysisCallTree</buildArg>
           </buildArgs>
         </configuration>
