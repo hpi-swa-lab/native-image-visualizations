@@ -391,12 +391,6 @@ static bool is_redundant(Adjacency& adj, uint32_t typeflow)
 
 int main(int argc, const char** argv)
 {
-    if(argc < 1)
-    {
-        cerr << "Usage: " << argv[0] << ' ' << "[<purged_methods>...]" << endl;
-        return 1;
-    }
-
     vector<string> type_names;
     read_lines(type_names, "types.txt");
 
@@ -435,6 +429,22 @@ int main(int argc, const char** argv)
 
     vector<uint32_t> typeflow_methods(1);
     read_buffer(typeflow_methods, "typeflow_methods.bin");
+
+    vector<uint32_t> purged_mids;
+
+    string name;
+
+    while(true)
+    {
+        getline(cin, name);
+
+        if(name.length() == 0)
+            break;
+
+        uint32_t mid = resolve_method(method_ids_by_name, name);
+        purged_mids.push_back(mid);
+    }
+
 
     Adjacency adj(type_names.size(), method_names.size(), typeflow_names.size(), interflows, virtual_invokes, direct_invokes, typestates, std::move(typeflow_methods));
 
@@ -517,38 +527,26 @@ int main(int argc, const char** argv)
                 break;
         }
 
-        cout << "Redundant typeflows: " << redundant_typeflows.count() << "/" << (adj.n_typeflows() - 1) << "=" << ((float) redundant_typeflows.count() / (adj.n_typeflows() - 1)) << endl;
-/*
-        for(auto& adjList : adj.neighbour_flows)
-        {
-            erase_if(adj.neighbour_flows, [redundant_typeflows](auto& e) { return redundant_typeflows[e.dst]})
-        }*/
+        cerr << "Redundant typeflows: " << redundant_typeflows.count() << "/" << (adj.n_typeflows() - 1) << "=" << ((float) redundant_typeflows.count() / (adj.n_typeflows() - 1)) << endl;
     }
 
-
-    //cout << "Loaded" << endl;
-
+    cerr << "Running DFS on original graph...\n";
+    
     auto all_methods_reachable = bfs(adj);
 
-    for(size_t i = 1; i < argc; i++)
+    cerr << "Running DFS on purged graph...\n";
+
+    for(uint32_t mid : purged_mids)
     {
-        //cout << "Purge method \"" << argv[i] << '"' << endl;
-        uint32_t mid = resolve_method(method_ids_by_name, argv[i]);
         adj.purge_method(mid);
     }
 
-    for(size_t i = 0; i < 1; i++)
+    auto methods_reachable = bfs(adj);
+
+    for(size_t i = 1; i < methods_reachable.size(); i++)
     {
-        auto methods_reachable = bfs(adj);
-
-        //cout << "Methods reachable: " << (std::count(methods_reachable.begin(), methods_reachable.end(), true) - 1) << " / " << (std::count(all_methods_reachable.begin(), all_methods_reachable.end(), true) - 1) << endl;
-        //cout << "Cutted methods:" << endl;
-
-        for(size_t i = 1; i < methods_reachable.size(); i++)
-        {
-            if(all_methods_reachable[i] && !methods_reachable[i])
-                cout << method_names[i] << endl;
-        }
+        if(all_methods_reachable[i] && !methods_reachable[i])
+            cout << method_names[i] << endl;
     }
 
     return 0;
