@@ -26,6 +26,8 @@ static void JNICALL onClassPrepare(
         jthread thread,
         jclass klass);
 
+static void JNICALL onVMInit(jvmtiEnv *jvmti_env, JNIEnv* jni_env, jthread thread);
+
 static jvmtiEnv* jvmti_env;
 
 JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
@@ -48,11 +50,63 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
     jvmtiEventCallbacks callbacks{ nullptr };
     callbacks.FieldModification = onFieldModification;
     callbacks.ClassPrepare = onClassPrepare;
+    callbacks.VMInit = onVMInit;
     check(env->SetEventCallbacks(&callbacks, sizeof(callbacks)));
-
-    check(env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_PREPARE, nullptr));
+    check(env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_VM_INIT, nullptr));
 
     return 0;
+}
+
+static void processClass(jvmtiEnv* jvmti_env, jclass klass)
+{
+    char* class_signature;
+    char* class_generic;
+
+    check_void(jvmti_env->GetClassSignature(klass, &class_signature, &class_generic));
+
+    cerr << "New Class: " << class_signature << "\n";
+
+    jint field_count;
+    jfieldID* fields;
+
+    check_void(jvmti_env->GetClassFields(klass, &field_count, &fields));
+
+    for(jint i = 0; i < field_count; i++)
+    {
+        char* field_name;
+        char* field_signature;
+        char* field_generic;
+
+        check_void(jvmti_env->GetFieldName(klass, fields[i], &field_name, &field_signature, &field_generic));
+
+        if(field_signature[0] != 'L' && field_signature[0] != '[')
+            continue;
+
+        check_void(jvmti_env->SetFieldModificationWatch(klass, fields[i]));
+
+        cerr << "SetFieldModificationWatch: success: " << field_signature << "\n";
+    }
+}
+
+static void JNICALL onVMInit(jvmtiEnv *jvmti_env, JNIEnv* jni_env, jthread thread)
+{
+    check_void(jvmti_env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_PREPARE, nullptr));
+
+    jint num_classes;
+    jclass* classes_ptr;
+
+    check_void(jvmti_env->GetLoadedClasses(&num_classes, &classes_ptr));
+
+    span<jclass> classes(classes_ptr, num_classes);
+
+    for(jclass clazz : classes)
+    {
+        jint status;
+        check_void(jvmti_env->GetClassStatus(clazz, &status));
+
+        if(status & JVMTI_CLASS_STATUS_PREPARED)
+            processClass(jvmti_env, clazz);
+    }
 }
 
 static void get_class_name(jvmtiEnv *jvmti_env, jclass clazz, span<char> buffer)
@@ -69,32 +123,62 @@ static void get_class_name(jvmtiEnv *jvmti_env, jclass clazz, span<char> buffer)
         return;
     }
 
-    if(class_signature[0] == 'L')
+    size_t array_nesting = 0;
+    while(class_signature[array_nesting] == '[')
+        array_nesting++;
+
+    size_t pos;
+
+    if(class_signature[array_nesting] == 'L')
     {
-        size_t i;
-        for(i = 0; i < buffer.size() - 1; i++)
+        for(pos = 0; pos < buffer.size() - 1; pos++)
         {
-            char c = class_signature[i+1];
+            char c = class_signature[pos+array_nesting+1];
 
             if(c == 0 || c == ';')
             {
-                buffer[i] = 0;
                 break;
             }
 
             if(c == '/')
                 c = '.';
 
-            buffer[i] = c;
+            buffer[pos] = c;
         }
 
-        if(i >= buffer.size() - 1)
+        if(pos >= buffer.size() - 1)
             buffer[buffer.size() - 1] = 0;
     }
     else
     {
-        buffer[0] = 0;
+        const char* keyword;
+
+        switch(class_signature[array_nesting])
+        {
+            case 'B': keyword = "byte"; break;
+            case 'C': keyword = "char"; break;
+            case 'D': keyword = "double"; break;
+            case 'F': keyword = "float"; break;
+            case 'I': keyword = "int"; break;
+            case 'J': keyword = "long"; break;
+            case 'S': keyword = "short"; break;
+            case 'Z': keyword = "boolean"; break;
+            default:
+                buffer[0] = 0;
+                return;
+        }
+
+        for(pos = 0; keyword[pos]; pos++)
+            buffer[pos] = keyword[pos];
     }
+
+    for(size_t i = 0; i < array_nesting; i++)
+    {
+        buffer[pos++] = '[';
+        buffer[pos++] = ']';
+    }
+
+    buffer[pos] = 0;
 }
 
 static void onFieldModification(
@@ -133,33 +217,7 @@ static void JNICALL onClassPrepare(
         jthread thread,
         jclass klass)
 {
-    char* class_signature;
-    char* class_generic;
-
-    check_void(jvmti_env->GetClassSignature(klass, &class_signature, &class_generic));
-
-    cerr << "New Class: " << class_signature << "\n";
-
-    jint field_count;
-    jfieldID* fields;
-
-    check_void(jvmti_env->GetClassFields(klass, &field_count, &fields));
-
-    for(jint i = 0; i < field_count; i++)
-    {
-        char* field_name;
-        char* field_signature;
-        char* field_generic;
-
-        check_void(jvmti_env->GetFieldName(klass, fields[i], &field_name, &field_signature, &field_generic));
-
-        if(field_signature[0] != 'L' && field_signature[0] != '[')
-            continue;
-
-        check_void(jvmti_env->SetFieldModificationWatch(klass, fields[i]));
-
-        cerr << "SetFieldModificationWatch: success: " << field_signature << "\n";
-    }
+    processClass(jvmti_env, klass);
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_oracle_svm_hosted_classinitialization_ClassInitializationSupport_onInit(JNIEnv* env, jobject self, jobject clazz, jboolean start)
