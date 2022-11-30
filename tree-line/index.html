@@ -106,6 +106,10 @@
             tree.unionedSize = Object.values(tree.exclusiveSizes).reduce((a, b) => a + b, 0)
         }
 
+        function sortAlphabetically(tree) {
+            tree.children.sort((a, b) => a.name.localeCompare(b.name))
+        }
+
         async function loadUniverses() {
             const texts = await Promise.all([
                 d3.text('used-methods-helloworld.txt'),
@@ -117,10 +121,12 @@
                 console.log(universe)
                 return universe
             })
-            return mergeUniverses({
+            let merged = mergeUniverses({
                 'helloworld': parsed[0],
                 'micronaut': parsed[1],
             })
+            sortAlphabetically(merged)
+            return merged
         }
         const universes = await loadUniverses();
         console.debug("Universes:")
@@ -173,25 +179,20 @@
 
             const height = tree.unionedSize * pixelsPerByte
 
-            context.fillStyle = 'white'
-            context.fillRect(barPadding, offsetFromTop, barWidth, height)
 
             // If there's enough space available, show our children instead of
             // the package itself.
-            if (tree.unionedSize > 11000 && tree.children.length > 0) { // && tree.children.all(child => child.unionedSize * pixelsPerByte > 100)) {
+            if (height > 100 && tree.children.length > 0) { // && tree.children.all(child => child.unionedSize * pixelsPerByte > 100)) {
                 for (const child of tree.children) {
                     drawDiagram(child, offsetFromTop, pixelsPerByte, `${prefix}.${tree.name}`)
                     offsetFromTop += child.unionedSize * pixelsPerByte
                 }
             } else {
-                context.fillStyle = 'black'
-                context.fillRect(barPadding, offsetFromTop, barWidth, height)
-
                 let offsetFromLeft = barPadding
                 for (const [combination, size] of Object.entries(tree.exclusiveSizes)) {
                     let width = barWidth * size / tree.unionedSize
                     context.fillStyle = colors[combination]
-                    context.fillRect(offsetFromLeft, offsetFromTop, width, height)
+                    context.fillRect(offsetFromLeft, Math.floor(offsetFromTop), width, Math.ceil(height))
                     offsetFromLeft += width
                 }
 
@@ -207,13 +208,14 @@
             }
         }
 
-        let totalBarHeight = canvas.height - barPadding * 2
-        let pixelsPerByte = totalBarHeight / universes.unionedSize
+        let initialBarHeight = canvas.height - barPadding * 2
+        let initialPixelsPerByte = initialBarHeight / universes.unionedSize
+        let initialOffsetFromTop = barPadding
 
         function redraw() {
             const transform = d3.event?.transform ?? { x: 0, y: 0, k: 1 }
 
-            context.fillStyle = 'pink'
+            context.fillStyle = 'white'
             context.fillRect(0, 0, canvas.width, canvas.height)
 
             let visibleRect = {
@@ -223,21 +225,15 @@
                 height: canvas.height / transform.k,
             }
 
-            drawDiagram(universes, barPadding, pixelsPerByte)
+            let offsetFromTop = initialOffsetFromTop + transform.y
+            let pixelsPerByte = initialPixelsPerByte * transform.k
+
+            drawDiagram(universes, offsetFromTop, pixelsPerByte)
         }
         redraw()
 
-        function randomColor(seed) {
-            var makeColorCode = '0123456789ABCDEF';
-            var code = '#';
-            for (var count = 0; count < 6; count++) {
-                code = code + makeColorCode[Math.floor(Math.random() * makeColorCode.length)];
-            }
-            return code;
-        }
-
-        // d3.select(canvas)
-        //     .call(d3.zoom().scaleExtent([1, 8]).on("zoom", redraw))
+        d3.select(canvas)
+            .call(d3.zoom().scaleExtent([1, 10000]).on("zoom", redraw))
     </script>
 </body>
 </html>
