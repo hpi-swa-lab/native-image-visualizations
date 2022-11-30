@@ -5,6 +5,7 @@
         <title>Class Bubbles</title>
 
         <link rel="stylesheet" type="text/css" href="/assets/css/dist/main.css" />
+        <script src="../assets/js/dist/observatory.umd.js"></script>
     </head>
 
     <body>
@@ -18,12 +19,8 @@
         <div id="container" class="svg-container"></div>
 
         <script type="module">
-            import {
-                load_text_file,
-                extract_classes
-            } from '../assets/js/build_reports_parser.js'
-
-            import { constructClassBubbles } from '../assets/js/class_bubbles.js'
+            import { loadTextFile, extractLastHierarchyLevel } from "../assets/js/src/BuildReportsParser"
+            import ClassBubbles from '../assets/js/src/visualizations/ClassBubbles'
 
             const input = document.getElementById('input-file')
             const buttonConfirm = document.getElementById('button-confirm')
@@ -39,11 +36,10 @@
                     return
                 }
 
-                const input_string = await load_text_file(input.files[0])
-                const classes = extract_classes(input_string)
-                const rendered_graph = await constructClassBubbles(classes)
-                
-                container.appendChild(rendered_graph)
+                const input_string = await loadTextFile(input.files[0])
+                const classes = extractLastHierarchyLevel(input_string)
+
+                Observatory.generateClassBubbles(classes)
             })
         </script>
     </body>
