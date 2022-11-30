@@ -107,6 +107,7 @@
         }
 
         function sortAlphabetically(tree) {
+            tree.children.forEach(sortAlphabetically)
             tree.children.sort((a, b) => a.name.localeCompare(b.name))
         }
 
