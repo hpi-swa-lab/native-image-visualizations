@@ -175,10 +175,12 @@
         }
 
         function drawDiagram(tree, offsetFromTop, pixelsPerByte, prefix='') {
-            console.debug(`drawing diagram of ${tree.name}. Offset from top is ${offsetFromTop}`)
-
             const height = tree.unionedSize * pixelsPerByte
 
+            if (offsetFromTop > canvas.height || offsetFromTop + height < 0) {
+                // Outside of the visible area.
+                return
+            }
 
             // If there's enough space available, show our children instead of
             // the package itself.
