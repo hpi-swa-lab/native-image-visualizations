@@ -3,8 +3,8 @@
 #include <span>
 #include <cstring>
 
-#define check(result) if((result)) { cerr << (#result) << " [Error code " << result << "]" << endl; return 1; }
-#define check_void(result) if((result)) { cerr << (#result) << " [Error code " << result << "]" << endl; return; }
+#define check_code(retcode, result) if((result)) { cerr << (#result) << " [Error code " << result << "]" << endl; return retcode; }
+#define check(result) check_code(,result)
 
 using namespace std;
 
@@ -36,7 +36,7 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
     iostream::sync_with_stdio(false);
 
     jvmtiEnv* env;
-    check(vm->GetEnv(reinterpret_cast<void **>(&env), JVMTI_VERSION_1_2));
+    check_code(1, vm->GetEnv(reinterpret_cast<void **>(&env), JVMTI_VERSION_1_2));
 
     jvmti_env = env;
 
@@ -45,14 +45,14 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
     cap.can_generate_single_step_events = true;
     cap.can_tag_objects = true;
 
-    check(env->AddCapabilities(&cap));
+    check_code(1, env->AddCapabilities(&cap));
 
     jvmtiEventCallbacks callbacks{ nullptr };
     callbacks.FieldModification = onFieldModification;
     callbacks.ClassPrepare = onClassPrepare;
     callbacks.VMInit = onVMInit;
-    check(env->SetEventCallbacks(&callbacks, sizeof(callbacks)));
-    check(env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_VM_INIT, nullptr));
+    check_code(1, env->SetEventCallbacks(&callbacks, sizeof(callbacks)));
+    check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_VM_INIT, nullptr));
 
     return 0;
 }
@@ -62,14 +62,14 @@ static void processClass(jvmtiEnv* jvmti_env, jclass klass)
     char* class_signature;
     char* class_generic;
 
-    check_void(jvmti_env->GetClassSignature(klass, &class_signature, &class_generic));
+    check(jvmti_env->GetClassSignature(klass, &class_signature, &class_generic));
 
     cerr << "New Class: " << class_signature << "\n";
 
     jint field_count;
     jfieldID* fields;
 
-    check_void(jvmti_env->GetClassFields(klass, &field_count, &fields));
+    check(jvmti_env->GetClassFields(klass, &field_count, &fields));
 
     for(jint i = 0; i < field_count; i++)
     {
@@ -77,12 +77,12 @@ static void processClass(jvmtiEnv* jvmti_env, jclass klass)
         char* field_signature;
         char* field_generic;
 
-        check_void(jvmti_env->GetFieldName(klass, fields[i], &field_name, &field_signature, &field_generic));
+        check(jvmti_env->GetFieldName(klass, fields[i], &field_name, &field_signature, &field_generic));
 
         if(field_signature[0] != 'L' && field_signature[0] != '[')
             continue;
 
-        check_void(jvmti_env->SetFieldModificationWatch(klass, fields[i]));
+        check(jvmti_env->SetFieldModificationWatch(klass, fields[i]));
 
         cerr << "SetFieldModificationWatch: success: " << field_signature << "\n";
     }
@@ -90,19 +90,19 @@ static void processClass(jvmtiEnv* jvmti_env, jclass klass)
 
 static void JNICALL onVMInit(jvmtiEnv *jvmti_env, JNIEnv* jni_env, jthread thread)
 {
-    check_void(jvmti_env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_PREPARE, nullptr));
+    check(jvmti_env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_PREPARE, nullptr));
 
     jint num_classes;
     jclass* classes_ptr;
 
-    check_void(jvmti_env->GetLoadedClasses(&num_classes, &classes_ptr));
+    check(jvmti_env->GetLoadedClasses(&num_classes, &classes_ptr));
 
     span<jclass> classes(classes_ptr, num_classes);
 
     for(jclass clazz : classes)
     {
         jint status;
-        check_void(jvmti_env->GetClassStatus(clazz, &status));
+        check(jvmti_env->GetClassStatus(clazz, &status));
 
         if(status & JVMTI_CLASS_STATUS_PREPARED)
             processClass(jvmti_env, clazz);
@@ -196,7 +196,7 @@ static void onFieldModification(
     char* field_name;
     char* field_signature;
     char* field_generic;
-    check_void(jvmti_env->GetFieldName(field_klass, field, &field_name, &field_signature, &field_generic));
+    check(jvmti_env->GetFieldName(field_klass, field, &field_name, &field_signature, &field_generic));
 
     char class_name[1024];
     get_class_name(jvmti_env, field_klass, {class_name, class_name + 1024});
@@ -208,7 +208,14 @@ static void onFieldModification(
 
     char new_value_class_name[1024];
     get_class_name(jvmti_env, new_value_class, new_value_class_name);
-    cerr << class_name << "." << field_name << " = " << new_value_class_name << '\n';
+
+    jclass cause_class;
+    jvmti_env->GetThreadLocalStorage(thread, (void**)&cause_class);
+
+    char cause_class_name[1024];
+    get_class_name(jvmti_env, cause_class, cause_class_name);
+
+    cerr << cause_class_name << ": " << class_name << "." << field_name << " = " << new_value_class_name << '\n';
 }
 
 static void JNICALL onClassPrepare(
@@ -220,9 +227,27 @@ static void JNICALL onClassPrepare(
     processClass(jvmti_env, klass);
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_oracle_svm_hosted_classinitialization_ClassInitializationSupport_onInit(JNIEnv* env, jobject self, jobject clazz, jboolean start)
+extern "C" JNIEXPORT void JNICALL Java_com_oracle_svm_hosted_classinitialization_ClassInitializationSupport_onInit(JNIEnv* env, jobject self, jclass clazz, jboolean start)
 {
     jthread t;
-    check_void(jvmti_env->GetCurrentThread(&t));
-    check_void(jvmti_env->SetEventNotificationMode(start ? JVMTI_ENABLE : JVMTI_DISABLE, JVMTI_EVENT_FIELD_MODIFICATION, t));
+    check(jvmti_env->GetCurrentThread(&t));
+    check(jvmti_env->SetEventNotificationMode(start ? JVMTI_ENABLE : JVMTI_DISABLE, JVMTI_EVENT_FIELD_MODIFICATION, t));
+
+    char class_name[1024];
+    get_class_name(jvmti_env, clazz, class_name);
+
+    if(start)
+    {
+        jobject clazz_copy = env->NewGlobalRef(clazz);
+        check(jvmti_env->SetThreadLocalStorage(t, clazz_copy));
+    }
+    else
+    {
+        jclass tls;
+        check(jvmti_env->GetThreadLocalStorage(t, (void**)&tls));
+        env->DeleteGlobalRef(tls);
+        check(jvmti_env->SetThreadLocalStorage(t, nullptr));
+    }
+
+    //cerr << "Initializing " << class_name << '\n';
 }
