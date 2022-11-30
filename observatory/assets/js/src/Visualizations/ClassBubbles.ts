@@ -95,6 +95,21 @@ export default class ClassBubbles implements Visualization {
             .style('fill', (node: CircleNode) => node.color)
             .attr('cx', (node: CircleNode) => node.x)
             .attr('cy', (node: CircleNode) => node.y)
+            .on('mouseover', (event, node: CircleNode) => {
+                d3.selectAll('circle')
+                    .data(this.nodes)
+                    .join('circle')
+                    .style('fill', 'lightgrey')
+
+                d3.select(event.target)
+                    .style('fill', (nodeToColorIn: CircleNode) => nodeToColorIn.color)
+            })
+            .on('mouseout', (event, node: CircleNode) => {
+                d3.selectAll('circle')
+                    .data(this.nodes)
+                    .join('circle')
+                    .style('fill', (nodeToColorIn: CircleNode) => nodeToColorIn.color)
+            })
         
         d3.select("svg g")
             .selectAll('text')
