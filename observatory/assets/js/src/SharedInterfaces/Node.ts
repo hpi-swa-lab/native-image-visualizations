@@ -1,6 +1,6 @@
 export default interface Node {
-    x: Number
-    y: Number
+    x: number
+    y: number
     color: string
     label: string
 }

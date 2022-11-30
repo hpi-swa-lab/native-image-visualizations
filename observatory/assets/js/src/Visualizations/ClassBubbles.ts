@@ -1,6 +1,6 @@
 import * as d3 from "d3"
-import Visualization from "../interfaces/Visualization"
-import CircleNode from "./CircleNode"
+import Visualization from "./Visualization"
+import CircleNode from "../SharedInterfaces/CircleNode"
 import { randomColor } from "../utils"
 
 export default class ClassBubbles implements Visualization {
@@ -32,7 +32,7 @@ export default class ClassBubbles implements Visualization {
         return result;
     }
 
-    prepareSVG(): SVGElement {
+    prepareSVG(): any {
         let svg = d3.select('#container')
             .append("svg")
             .attr("width", "100%")
@@ -44,25 +44,25 @@ export default class ClassBubbles implements Visualization {
         return svg
     }
 
-    addNodesToSVG(nodes: CircleNode[], svg: SVGElement): void {
+    addNodesToSVG(nodes: CircleNode[], svg: any): void {
         d3.select(svg)
             .selectAll('circle')
             .data(nodes)
             .join('circle')
-            .attr('r', (d) => d.radius)
-            .style('fill', (d) => d.color)
-            .attr('cx', (d) => d.x)
-            .attr('cy', (d) => d.y)
+            .attr('r', (node: CircleNode) => node.radius)
+            .style('fill', (node: CircleNode) => node.color)
+            .attr('cx', (node: CircleNode) => node.x)
+            .attr('cy', (node: CircleNode) => node.y)
         
         d3.select(svg)
             .selectAll('text')
             .data(nodes)
             .join('text')
-            .text((d) => d.label)
-            .attr('font-size', (d) => d.radius / 2 + 'px')
+            .text((node: CircleNode) => node.label)
+            .attr('font-size', (node: CircleNode) => node.radius / 2 + 'px')
             .attr('text-anchor', 'middle')
             .attr('alignment-baseline', 'central')
-            .attr('x', (d) => d.x)
-            .attr('y', (d) => d.y)
+            .attr('x', (node: CircleNode) => node.x)
+            .attr('y', (node: CircleNode) => node.y)
     }
 }
