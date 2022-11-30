@@ -19,9 +19,6 @@
         <div id="container" class="svg-container"></div>
 
         <script type="module">
-            import { loadTextFile, extractLastHierarchyLevel } from "../assets/js/src/BuildReportsParser"
-            import ClassBubbles from '../assets/js/src/visualizations/ClassBubbles'
-
             const input = document.getElementById('input-file')
             const buttonConfirm = document.getElementById('button-confirm')
             const container = document.getElementById('container')
@@ -36,10 +33,7 @@
                     return
                 }
 
-                const input_string = await loadTextFile(input.files[0])
-                const classes = extractLastHierarchyLevel(input_string)
-
-                Observatory.generateClassBubbles(classes)
+                Observatory.generateClassBubbles(input.files[0])
             })
         </script>
     </body>

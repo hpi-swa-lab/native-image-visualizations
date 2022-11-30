@@ -1,15 +1,20 @@
 import ClassBubbles from "./Visualizations/ClassBubbles";
 import VennVisualization from './Visualizations/VennVisualization'
 import TreeVisualization from './Visualizations/TreeVisualization'
+import { loadTextFile } from "./BuildReportsParser";
+import { parseToPackageHierarchy } from "./BuildReportsParser";
 
-export function generateClassBubbles(classes: string[]) {
+export async function generateClassBubbles(file: File) {
+    const input_string = await loadTextFile(file)
+    const hierarchy = parseToPackageHierarchy(input_string)
+
     const visualization = new ClassBubbles()
-    visualization.classes = classes
+    visualization.hierarchy = hierarchy
     visualization.generate()
 }
 
 export function generateVenn() {
-    let venn = new TreeVisualization()
+    let venn = new VennVisualization()
     venn.generate()
 }
 
