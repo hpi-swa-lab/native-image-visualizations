@@ -148,33 +148,6 @@
             'helloworld,micronaut': '#e6f5c9',
         }
 
-        function drawNode(node) {
-            context.beginPath()
-            context.moveTo(node.y, node.x)
-            context.arc(node.y, node.x, 4, 0, 2 * Math.PI)
-            context.fillStyle = 'black'
-            context.fill()
-
-            context.beginPath()
-            context.fillStyle = '#000'
-            context.fillText(node.data.name, node.y - 4, node.x + 20)
-        }
-
-        function isPointInRect(point, rect) {
-            return point.x >= rect.x && point.x < rect.x + rect.width &&
-                point.y >= rect.y && point.y < rect.y + rect.height
-        }
-        function isNodeVisible(node, visibleRect) {
-            return isPointInRect(node, visibleRect)
-        }
-        function isLinkVisible(link, visibleRect) {
-            if (link.source.x < visibleRect.x && link.target.x < visibleRect.x) return false
-            if (link.source.y < visibleRect.y && link.target.y < visibleRect.y) return false
-            if (link.source.x > (visibleRect.x + visibleRect.width) && link.target.x > (visibleRect.x + visibleRect.width)) return false
-            if (link.source.y > (visibleRect.y + visibleRect.height) && link.target.y > (visibleRect.y + visibleRect.height)) return false
-            return true
-        }
-
         function drawDiagram(tree, offsetFromTop, pixelsPerByte, prefix='') {
             const height = tree.unionedSize * pixelsPerByte
 
@@ -220,13 +193,6 @@
 
             context.fillStyle = 'white'
             context.fillRect(0, 0, canvas.width, canvas.height)
-
-            let visibleRect = {
-                x: -transform.x / transform.k,
-                y: -transform.y / transform.k,
-                width: canvas.width / transform.k,
-                height: canvas.height / transform.k,
-            }
 
             let offsetFromTop = initialOffsetFromTop + transform.y
             let pixelsPerByte = initialPixelsPerByte * transform.k
