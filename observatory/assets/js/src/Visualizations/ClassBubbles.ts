@@ -1,6 +1,6 @@
 import * as d3 from "d3"
 import Visualization from "../interfaces/Visualization"
-import CircleNode from "../interfaces/CircleNode"
+import CircleNode from "./CircleNode"
 import { randomColor } from "../utils"
 
 export default class ClassBubbles implements Visualization {

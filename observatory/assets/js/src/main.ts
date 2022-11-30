@@ -1,4 +1,4 @@
-import ClassBubbles from "./visualizations/ClassBubbles";
+import ClassBubbles from "./Visualizations/ClassBubbles";
 import VennVisualization from './Visualizations/VennVisualization'
 import TreeVisualization from './Visualizations/TreeVisualization'
 
