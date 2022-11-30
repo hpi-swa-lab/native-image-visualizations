@@ -35,6 +35,12 @@ static void JNICALL onBreakpoint(
         jmethodID method,
         jlocation location);
 
+static void JNICALL onFramePop(
+        jvmtiEnv *jvmti_env,
+        JNIEnv* jni_env,
+        jthread thread,
+        jmethodID method,
+        jboolean was_popped_by_exception);
 
 
 static jvmtiEnv* jvmti_env;
@@ -54,6 +60,7 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
     cap.can_generate_single_step_events = true;
     cap.can_tag_objects = true;
     cap.can_generate_breakpoint_events = true;
+    cap.can_generate_frame_pop_events = true;
 
     check_code(1, env->AddCapabilities(&cap));
 
@@ -62,8 +69,10 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
     callbacks.ClassPrepare = onClassPrepare;
     callbacks.VMInit = onVMInit;
     callbacks.Breakpoint = onBreakpoint;
+    callbacks.FramePop = onFramePop;
     check_code(1, env->SetEventCallbacks(&callbacks, sizeof(callbacks)));
     check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_VM_INIT, nullptr));
+    check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_FRAME_POP, nullptr));
 
     return 0;
 }
@@ -146,19 +155,9 @@ static void processClass(jvmtiEnv* jvmti_env, jclass klass)
             cerr << "Error!!! Start location not zero\n";
         }
 
-        if(end == -1)
+        if(start == 0)
         {
-            cerr << "Error!!! End location unknown\n";
-        }
-        else if(end <= 0)
-        {
-            cerr << "Error!!! End location not positive\n";
-        }
-
-        if(start == 0 && end > 0)
-        {
-            check(jvmti_env->SetBreakpoint(constructor, start));
-            check(jvmti_env->SetBreakpoint(constructor, end));
+            check(jvmti_env->SetBreakpoint(constructor, 0));
         }
     }
 }
@@ -305,7 +304,33 @@ static void JNICALL onBreakpoint(
     jclass type;
     check(jvmti_env->GetMethodDeclaringClass(method, &type));
 
-    bool start = location == 0;
+    jclass tls;
+    check(jvmti_env->GetThreadLocalStorage(thread, (void**)&tls));
+
+    if(!tls)
+        return;
+
+    char outer_clinit_name[1024];
+    get_class_name(jvmti_env, tls, outer_clinit_name);
+
+    char inner_clinit_name[1024];
+    get_class_name(jvmti_env, type, inner_clinit_name);
+
+    cerr << outer_clinit_name << ": " << "CLINIT start: " << inner_clinit_name << '\n';
+
+    check(jvmti_env->ClearBreakpoint(method, location));
+    check(jvmti_env->NotifyFramePop(thread, 0));
+}
+
+static void JNICALL onFramePop(
+        jvmtiEnv *jvmti_env,
+        JNIEnv* jni_env,
+        jthread thread,
+        jmethodID method,
+        jboolean was_popped_by_exception)
+{
+    jclass type;
+    check(jvmti_env->GetMethodDeclaringClass(method, &type));
 
     jclass tls;
     check(jvmti_env->GetThreadLocalStorage(thread, (void**)&tls));
@@ -319,9 +344,7 @@ static void JNICALL onBreakpoint(
     char inner_clinit_name[1024];
     get_class_name(jvmti_env, type, inner_clinit_name);
 
-    cerr << outer_clinit_name << ": " << "CLINIT " << (start ? "start" : "end") << ": " << inner_clinit_name << '\n';
-
-    check(jvmti_env->ClearBreakpoint(method, location));
+    cerr << outer_clinit_name << ": " << "CLINIT end: " << inner_clinit_name << '\n';
 }
 
 static void JNICALL onClassPrepare(
@@ -340,9 +363,6 @@ extern "C" JNIEXPORT void JNICALL Java_com_oracle_svm_hosted_classinitialization
     check(jvmti_env->SetEventNotificationMode(start ? JVMTI_ENABLE : JVMTI_DISABLE, JVMTI_EVENT_FIELD_MODIFICATION, t));
     check(jvmti_env->SetEventNotificationMode(start ? JVMTI_ENABLE : JVMTI_DISABLE, JVMTI_EVENT_BREAKPOINT, t));
 
-    char class_name[1024];
-    get_class_name(jvmti_env, clazz, class_name);
-
     if(start)
     {
         jobject clazz_copy = env->NewGlobalRef(clazz);
@@ -355,6 +375,4 @@ extern "C" JNIEXPORT void JNICALL Java_com_oracle_svm_hosted_classinitialization
         env->DeleteGlobalRef(tls);
         check(jvmti_env->SetThreadLocalStorage(t, nullptr));
     }
-
-    //cerr << "Initializing " << class_name << '\n';
 }
