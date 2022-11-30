@@ -1,0 +1,205 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Tree Line</title>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3-hierarchy@3"></script>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="treeline"></canvas>
+    <script type="module">
+        /// Parses the content of a `used_methods_...` file into a tree. Ignores
+        /// generated classes and their children.
+        // TODO: Use the common function after Luc's PR is merged.
+        function parseUsedMethodsIntoTree(text) {
+            const tree = { name: 'root', children: [] }
+            for (const row of text.split('\n')) {
+                if (row == '' || row.includes('$$')) continue
+                let current = tree
+                for (const pathSegment of row.split('.')) {
+                    let child = current.children.find((child) => child.name === pathSegment)
+                    if (!child) {
+                        child = { name: pathSegment, children: [] }
+                        current.children.push(child)
+                    }
+                    current = child
+                }
+            }
+            return tree
+        }
+
+        /// Adds a `size` attribute in each node that corresponds to the total
+        /// size of that subtree including its children. For now, we just assume
+        /// that each method has a size of 1.
+        // TODO: Save the actual method size.
+        function saveSizesInTree(tree) {
+            if (tree.children.length == 0) {
+                tree.size = 1
+            } else {
+                tree.children.forEach(saveSizesInTree)
+                tree.size = tree.children.map(child => child.size).reduce((a, b) => a + b, 0)
+            }
+        }
+
+        /// Merges multiple universes containing sizes into a single tree
+        /// hierarchy where each node has a `sizes` attribute containing the
+        /// size in the respective tree.
+        function mergeUniverses(universes) {
+            function defaultSizes() {
+                const sizes = {}
+                for (const name of Object.keys(universes)) {
+                    sizes[name] = 0
+                }
+                return sizes
+            }
+
+            function mergeTreeIntoChildren(tree, mergedChildren, universeName) {
+                let mergedChild = mergedChildren.find((child) => child.name === tree.name)
+                if (!mergedChild) {
+                    mergedChild = { name: tree.name, sizes: defaultSizes(), children: [] }
+                    mergedChildren.push(mergedChild)
+                }
+                mergedChild.sizes[universeName] = tree.size
+                for (const child of tree.children) {
+                    mergeTreeIntoChildren(child, mergedChild.children, universeName)
+                }
+            }
+
+            const mergedChildren = []
+            for (const [name, universe] of Object.entries(universes)) {
+                mergeTreeIntoChildren(universe, mergedChildren, name)
+            }
+            const root = mergedChildren[0] // There's only a single child named "root".
+            saveExclusiveSizesInTree(root, Object.keys(universes))
+            return root
+        }
+
+        function saveExclusiveSizesInTree(tree, universeNames) {
+            if (tree.children.length == 0) {
+                const combination = []
+                for (const name of universeNames) {
+                    if (tree.sizes[name] > 0) {
+                        combination.push(name)
+                    }
+                }
+
+                tree.exclusiveSizes = {}
+                tree.exclusiveSizes[combination] = 1 // TODO: Method size hardcoded to 1.
+            } else {
+                tree.children.forEach(child => saveExclusiveSizesInTree(child, universeNames))
+
+                tree.exclusiveSizes = {}
+                for (const child of tree.children) {
+                    for (const combination of Object.keys(child.exclusiveSizes)) {
+                        if (!tree.exclusiveSizes[combination]) tree.exclusiveSizes[combination] = 0
+                        tree.exclusiveSizes[combination] += child.exclusiveSizes[combination]
+                    }
+                }
+            }
+        }
+
+        async function loadUniverses() {
+            const texts = await Promise.all([
+                d3.text('used-methods-helloworld.txt'),
+                d3.text('used-methods-micronaut.txt'),
+            ]);
+            const parsed = texts.map((text) => {
+                let universe = parseUsedMethodsIntoTree(text)
+                saveSizesInTree(universe)
+                console.log(universe)
+                return universe
+            })
+            return mergeUniverses({
+                'helloworld': parsed[0],
+                'micronaut': parsed[1],
+            })
+        }
+        const universes = await loadUniverses();
+        console.debug("Universes:")
+        console.debug(universes)
+        
+        const canvas = document.getElementById('treeline')
+        canvas.width = window.innerWidth
+        canvas.height = window.innerHeight - 5
+
+        const context = canvas.getContext('2d', { alpha: false })
+
+        const barWidth = 100;
+
+        function drawNode(node) {
+            context.beginPath()
+            context.moveTo(node.y, node.x)
+            context.arc(node.y, node.x, 4, 0, 2 * Math.PI)
+            context.fillStyle = 'black'
+            context.fill()
+
+            context.beginPath()
+            context.fillStyle = '#000'
+            context.fillText(node.data.name, node.y - 4, node.x + 20)
+        }
+
+        function isPointInRect(point, rect) {
+            return point.x >= rect.x && point.x < rect.x + rect.width &&
+                point.y >= rect.y && point.y < rect.y + rect.height
+        }
+        function isNodeVisible(node, visibleRect) {
+            return isPointInRect(node, visibleRect)
+        }
+        function isLinkVisible(link, visibleRect) {
+            if (link.source.x < visibleRect.x && link.target.x < visibleRect.x) return false
+            if (link.source.y < visibleRect.y && link.target.y < visibleRect.y) return false
+            if (link.source.x > (visibleRect.x + visibleRect.width) && link.target.x > (visibleRect.x + visibleRect.width)) return false
+            if (link.source.y > (visibleRect.y + visibleRect.height) && link.target.y > (visibleRect.y + visibleRect.height)) return false
+            return true
+        }
+
+        function drawDiagram(tree, offsetFromTop, pixelsPerByte) {
+            console.debug(`drawing diagram`)
+
+            const unionedSize = Object.values(tree.exclusiveSizes).reduce((a, b) => a + b, 0)
+            const height = unionedSize * pixelsPerByte
+
+            // If there's enough space available, show our children instead of
+            // the package itself.
+            if (height > 100 && tree.children.length > 0) {
+                for (const child of tree.children) {
+                    drawDiagram(child, offsetFromTop, pixelsPerByte)
+                    offsetFromTop += child.size * pixelsPerByte
+                }
+            } else {
+                context.fillStyle = 'black'
+                context.fillRect(0, offsetFromTop, barWidth, height)
+
+                // for ()
+            }
+        }
+
+        function redraw() {
+            const transform = d3.event?.transform ?? { x: 0, y: 0, k: 1 }
+
+            context.fillStyle = 'pink'
+            context.fillRect(0, 0, canvas.width, canvas.height)
+
+            let visibleRect = {
+                x: -transform.x / transform.k,
+                y: -transform.y / transform.k,
+                width: canvas.width / transform.k,
+                height: canvas.height / transform.k,
+            }
+
+            drawDiagram(universes, 0, 0.5)
+        }
+        redraw()
+
+        d3.select(canvas)
+            .call(d3.zoom().scaleExtent([1, 8]).on("zoom", redraw))
+    </script>
+</body>
+</html>
