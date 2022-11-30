@@ -28,6 +28,15 @@ static void JNICALL onClassPrepare(
 
 static void JNICALL onVMInit(jvmtiEnv *jvmti_env, JNIEnv* jni_env, jthread thread);
 
+static void JNICALL onBreakpoint(
+        jvmtiEnv *jvmti_env,
+        JNIEnv* jni_env,
+        jthread thread,
+        jmethodID method,
+        jlocation location);
+
+
+
 static jvmtiEnv* jvmti_env;
 
 JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
@@ -44,6 +53,7 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
     cap.can_generate_field_modification_events = true;
     cap.can_generate_single_step_events = true;
     cap.can_tag_objects = true;
+    cap.can_generate_breakpoint_events = true;
 
     check_code(1, env->AddCapabilities(&cap));
 
@@ -51,6 +61,7 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
     callbacks.FieldModification = onFieldModification;
     callbacks.ClassPrepare = onClassPrepare;
     callbacks.VMInit = onVMInit;
+    callbacks.Breakpoint = onBreakpoint;
     check_code(1, env->SetEventCallbacks(&callbacks, sizeof(callbacks)));
     check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_VM_INIT, nullptr));
 
@@ -66,6 +77,8 @@ static void processClass(jvmtiEnv* jvmti_env, jclass klass)
 
     cerr << "New Class: " << class_signature << "\n";
 
+    // Hook into field modification events
+
     jint field_count;
     jfieldID* fields;
 
@@ -79,12 +92,74 @@ static void processClass(jvmtiEnv* jvmti_env, jclass klass)
 
         check(jvmti_env->GetFieldName(klass, fields[i], &field_name, &field_signature, &field_generic));
 
+        // Don't care for primitive types
         if(field_signature[0] != 'L' && field_signature[0] != '[')
             continue;
 
         check(jvmti_env->SetFieldModificationWatch(klass, fields[i]));
 
         cerr << "SetFieldModificationWatch: success: " << field_signature << "\n";
+    }
+
+
+    // Hook into <clinit>
+
+    span<jmethodID> methods;
+    {
+        jint method_count;
+        jmethodID *methods_ptr;
+        check(jvmti_env->GetClassMethods(klass, &method_count, &methods_ptr));
+        methods = {methods_ptr, (size_t)method_count};
+    }
+
+    jmethodID constructor = nullptr;
+
+    for(jmethodID m : methods)
+    {
+        char* name;
+        char* signature;
+        char* generic;
+        check(jvmti_env->GetMethodName(m, &name, &signature, &generic));
+
+        if(std::strcmp(name, "<clinit>") == 0)
+        {
+            if(constructor)
+            {
+                cerr << "Error!!! found multiple <clinit>\n";
+            }
+
+            constructor = m;
+        }
+    }
+
+    if(constructor)
+    {
+        jlocation start, end;
+        check(jvmti_env->GetMethodLocation(constructor, &start, &end));
+
+        if(start == -1)
+        {
+            cerr << "Error!!! Start location unknown\n";
+        }
+        else if(start != 0)
+        {
+            cerr << "Error!!! Start location not zero\n";
+        }
+
+        if(end == -1)
+        {
+            cerr << "Error!!! End location unknown\n";
+        }
+        else if(end <= 0)
+        {
+            cerr << "Error!!! End location not positive\n";
+        }
+
+        if(start == 0 && end > 0)
+        {
+            check(jvmti_env->SetBreakpoint(constructor, start));
+            check(jvmti_env->SetBreakpoint(constructor, end));
+        }
     }
 }
 
@@ -218,6 +293,37 @@ static void onFieldModification(
     cerr << cause_class_name << ": " << class_name << "." << field_name << " = " << new_value_class_name << '\n';
 }
 
+static void JNICALL onBreakpoint(
+        jvmtiEnv *jvmti_env,
+        JNIEnv* jni_env,
+        jthread thread,
+        jmethodID method,
+        jlocation location)
+{
+    // Breakpoints means we are in a clinit
+
+    jclass type;
+    check(jvmti_env->GetMethodDeclaringClass(method, &type));
+
+    bool start = location == 0;
+
+    jclass tls;
+    check(jvmti_env->GetThreadLocalStorage(thread, (void**)&tls));
+
+    if(!tls)
+        return;
+
+    char outer_clinit_name[1024];
+    get_class_name(jvmti_env, tls, outer_clinit_name);
+
+    char inner_clinit_name[1024];
+    get_class_name(jvmti_env, type, inner_clinit_name);
+
+    cerr << outer_clinit_name << ": " << "CLINIT " << (start ? "start" : "end") << ": " << inner_clinit_name << '\n';
+
+    check(jvmti_env->ClearBreakpoint(method, location));
+}
+
 static void JNICALL onClassPrepare(
         jvmtiEnv *jvmti_env,
         JNIEnv* jni_env,
@@ -232,6 +338,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_oracle_svm_hosted_classinitialization
     jthread t;
     check(jvmti_env->GetCurrentThread(&t));
     check(jvmti_env->SetEventNotificationMode(start ? JVMTI_ENABLE : JVMTI_DISABLE, JVMTI_EVENT_FIELD_MODIFICATION, t));
+    check(jvmti_env->SetEventNotificationMode(start ? JVMTI_ENABLE : JVMTI_DISABLE, JVMTI_EVENT_BREAKPOINT, t));
 
     char class_name[1024];
     get_class_name(jvmti_env, clazz, class_name);
