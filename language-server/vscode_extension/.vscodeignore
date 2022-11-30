@@ -1,0 +1,10 @@
+*
+
+# Allowlist
+!src/*
+!.eslintrc.json
+!.gitignore
+!.vscodeignore
+!package.json
+!package-lock.json
+!tsconfig.json
