@@ -28,6 +28,41 @@ export function parseToPackageHierarchy(hierarchyString: string): HierarchyNode 
     }
 
     hierarchyString.split('\n').forEach((row: string) => {
+
+            let currentChildren: HierarchyNode[] = data.children
+            let parent = data
+
+            let splittedRow = row.split('.')
+            splittedRow.forEach((pathSegment: string, index: number) => {
+                let child = currentChildren.find((child: HierarchyNode) => child.name === pathSegment)
+
+                if (!child) {
+                    child = {
+                        parent: parent,
+                        name: pathSegment,
+                        fullPath: splittedRow.slice(0, index + 1).join('.'),
+                        children: []
+                    }
+                    currentChildren.push(child)
+                }
+
+                currentChildren = child.children
+                parent = child
+            })
+    })
+
+    return data
+}
+
+export function parseToCleanedPackageHierarchy(hierarchyString: string): HierarchyNode {
+    const data: HierarchyNode = {
+        parent: null,
+        name: 'root',
+        fullPath: '',
+        children: []
+    }
+
+    hierarchyString.split('\n').forEach((row: string) => {
         if (!row.match(/[\$\.]\$/)) {
             row = row.replaceAll('$', '.')
 
