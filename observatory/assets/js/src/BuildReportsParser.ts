@@ -1,4 +1,4 @@
-import HierarchyNode from "./interfaces/HierarchyNode"
+import HierarchyNode from "./SharedInterfaces/HierarchyNode"
 
 export function loadTextFile(file: File): Promise<string> {
     return new Promise((resolve, reject) => {

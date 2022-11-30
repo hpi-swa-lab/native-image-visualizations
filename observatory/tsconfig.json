@@ -2,7 +2,11 @@
 {
     "compilerOptions": {
         "target": "es5", // js version which the transpiler builds
-        "lib":["es2020", "DOM"], // feature support from
+        "lib":[
+            "es2020", 
+            "DOM",
+            "ES2021.String"
+        ], // feature support from
         "sourceMap": true, // generate source maps
         "module": "es2015", //sets the module system for the program
         "moduleResolution": "nodenext", // module resolution strategy for Node.js’ ECMAScript Module Support from TypeScript 4.7 onwards
