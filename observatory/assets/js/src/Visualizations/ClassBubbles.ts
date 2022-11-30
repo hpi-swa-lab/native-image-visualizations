@@ -22,14 +22,19 @@ export default class ClassBubbles implements Visualization {
         let leafs = this.getLeafNodes(this.hierarchy)
         let colorMapping: {[id: string]: string} = {}
 
-        leafs.forEach((leaf: HierarchyNode) => {
+        const columns = Math.floor(Math.sqrt(leafs.length))
+        const radius = 30
+        const diameter = radius * 2
+        const padding = 5
+
+        leafs.forEach((leaf: HierarchyNode, index: number) => {
             const colorIdentifyer: string = this.getColorIdentifyerForNode(leaf)
             let color: string = this.getUniqueColor(colorIdentifyer, colorMapping)
             colorMapping[colorIdentifyer] = color
 
             const newNode: CircleNode = {
-                x: randomInteger(0, 100),
-                y: randomInteger(0, 100),
+                x: (Math.floor(index % columns) * diameter) + ((Math.floor(index % columns) - 1) * padding),
+                y: (Math.floor(index / columns) * diameter) + ((Math.floor(index / columns) - 1) * padding),
                 color: color,
                 label: leaf.name,
                 radius: 30
