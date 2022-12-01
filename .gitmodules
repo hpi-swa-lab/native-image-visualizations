@@ -1,4 +1,4 @@
 [submodule "subuniverse-reachability/graal"]
 	path = subuniverse-reachability/graal
 	url = git@github.com:hpi-swa-lab/MPWS2022RH1-graalvm.git
-	branch = new-api/purge
+	branch = new-api/clinit-tracing
