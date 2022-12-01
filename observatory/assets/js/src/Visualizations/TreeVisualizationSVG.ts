@@ -27,6 +27,7 @@ export default class TreeVisualizationSVG extends TreeVisualization {
         const margin = {top: 0, right: 50, bottom: 0, left: 75};
         const innerWidth = width - margin.left - margin.right;
         const innerHeight = height - margin.top - margin.bottom;
+
         const defaultViewbox = [
             0,
             0,
@@ -36,13 +37,23 @@ export default class TreeVisualizationSVG extends TreeVisualization {
 
         let initialViewBox: string = null;
 
-        // const treeLayout = d3.tree().size([innerHeight, innerWidth]);
-
         const zoomG = svg
-            .attr('width', width)
-            .attr('height', height)
+            .attr('width', innerWidth)
+            .attr('height', innerHeight)
             .attr('viewBox', defaultViewbox)
-            .append('g');
+            .append('g')
+                .attr('id', 'zoomG')
+                .attr("width", innerWidth - margin.left)
+                .attr("height", innerHeight * 0.5)
+                .attr('transform', `translate(${margin.left}, ${innerHeight * 0.5})`)
+
+        // TODO clean up, the rect is only for test reasons
+        // zoomG.append("rect")
+        //     .attr("width", "100%")
+        //     .attr("height", innerHeight * 0.5)
+        //     .attr("fill", "orange");
+
+        console.log(svg.node(), '\n', zoomG.node())
 
         const g = zoomG.append('g')
             .attr('transform', `translate(${margin.left},${margin.top})`);
@@ -51,30 +62,19 @@ export default class TreeVisualizationSVG extends TreeVisualization {
             let data = this.getDataFromText(text);
 
             const root: HierarchyPointNode<MyNode> = d3.hierarchy(data) as HierarchyPointNode<MyNode>;
-            const dx = 10;
+            const dx = 20;
             const dy = innerWidth / 6;
+            root.descendants().forEach((d: any, i) => {
+                d.id = i;
+                d._children = d.children;
+                if (d.depth && d.data.name.length !== 7) d.children = null;
+            });
             const tree = d3.tree().nodeSize([dx, dy])
 
             let currentViewBox = defaultViewbox;
 
             svg.call(d3.zoom().on('zoom', (svgTransform) => {
-                // zoomG.attr('transform', svgTransform.transform)
-                // svg.attr('transform', svgTransform.transform)
-
-                let currentViewBoxArray = currentViewBox.split(' ').map(val => parseFloat(val))
-                let initialViewBoxArray = initialViewBox.split(' ').map(val => parseFloat(val))
-                let newViewBox = [
-                    // currentViewBoxArray[0] - (svgTransform.transform.x / svgTransform.transform.k),
-                    // currentViewBoxArray[0] - (svgTransform.transform.y / svgTransform.transform.k),
-                    -svgTransform.transform.x / svgTransform.transform.k,
-                    -svgTransform.transform.y / svgTransform.transform.k,
-                    initialViewBoxArray[2] / svgTransform.transform.k,
-                    initialViewBoxArray[3] / svgTransform.transform.k
-                ].join(" ");
-
-                console.debug('init vb:', initialViewBox, 'old vb: ',  currentViewBox, ', new vb: ', newViewBox, ', transform: ', svgTransform.transform)
-                currentViewBox = newViewBox
-
+                zoomG.attr('transform', svgTransform.transform)
                 update(null, root)
             }));
 
@@ -88,27 +88,22 @@ export default class TreeVisualizationSVG extends TreeVisualization {
                 .attr("cursor", "pointer")
                 .attr("pointer-events", "all");
 
-            function update(event: any | null, source: HierarchyPointNode<MyNode>) {
+            function update(event: any | null, source: any/*HierarchyPointNode<MyNode>*/) {
                 let duration = 0;
 
                 let viewBoxArray = svg.attr('viewBox').split(' ').map(val => parseFloat(val))
+
                 let viewBox: Rectangle = {x:viewBoxArray[0], y:viewBoxArray[1], width:viewBoxArray[2], height:viewBoxArray[3]}
 
                 if (event) {
                     duration = event && event.altKey ? 2500 : 250;
-
-                    // zoomG.append('div')
-                    //     .attr('width', viewBox.width)
-                    //     .attr('height', viewBox.height)
-                    //     .attr('transform', `translate(${viewBox.x},${viewBox.y})`)
-                    //     .attr('background-color', 'orange')
                 }
 
                 // Compute the new tree layout.
                 tree(root)
 
-                const nodes = root.descendants().filter(node => node.depth < 10 && isNodeVisible(flipNode(node), viewBox));
-                const links = root.links().filter(link => link.target.depth < 10 && isLinkVisible(flipLink(link), viewBox));
+                const nodes = root.descendants()/*.filter(node => node.depth < 3 /!*&& isNodeVisible(flipNode(node), viewBox)*!/)*/.reverse();
+                const links = root.links()/*.filter(link => link.target.depth < 3 /!*&& isLinkVisible(flipLink(link), viewBox)*!/)*/;
 
                 console.log(`${nodes.length} nodes, ${links.length} links visible`)
 
@@ -129,10 +124,9 @@ export default class TreeVisualizationSVG extends TreeVisualization {
                     initialViewBox = [-margin.left, left.x - margin.top, width, height].join(" ")
                 }
                 currentViewBox = currentViewBox == defaultViewbox ? initialViewBox : currentViewBox
-                const transition = svg.transition()
+                const transition = zoomG.transition()
                     .duration(duration)
-                    .attr("viewBox", currentViewBox)
-                    .tween("resize", window.ResizeObserver ? null : () => () => svg.dispatch("toggle"));
+                    .tween("resize", window.ResizeObserver ? null : () => () => zoomG.dispatch("toggle"))
                 console.log(svg.attr('viewBox'))
 
 
@@ -142,23 +136,24 @@ export default class TreeVisualizationSVG extends TreeVisualization {
 
                 // Enter any new nodes at the parent's previous position.
                 const nodeEnter = node.enter().append("g")
-                    .attr("transform", d => `translate(${source.y},${source.x})`)
+                    .attr("transform", d => `translate(${source.y0},${source.x0})`)
                     .attr("fill-opacity", 0)
                     .attr("stroke-opacity", 0)
-                    .on("click", (evt, d) => {
-                        d.children = d.children ? null : d.children;
+                    .on("click", (evt, d: any) => {
+                        d.children ? collapseChildrenRecursively(d) : d.children = d._children;
                         update(evt, d);
                     });
 
                 nodeEnter.append("circle")
-                    .attr("r", 2.5)
-                    .attr("fill", d => d.children ? "#555" : "#999")
+                    // .attr("r", 2.5)
+                    .attr("r", 10)
+                    .attr("fill", (d:any) => d._children ? "#555" : "#999")
                     .attr("stroke-width", 10);
 
                 nodeEnter.append("text")
                     .attr("dy", "0.31em")
-                    .attr("x", d => d.children ? -6 : 6)
-                    .attr("text-anchor", d => d.children ? "end" : "start")
+                    .attr("x", (d:any) => d._children ? -6 : 6)
+                    .attr("text-anchor", (d:any) => d._children ? "end" : "start")
                     .text(d => d.data.name)
                     .clone(true).lower()
                     .attr("stroke-linejoin", "round")
@@ -187,7 +182,7 @@ export default class TreeVisualizationSVG extends TreeVisualization {
                 // Enter any new links at the parent's previous position.
                 const linkEnter = link.enter().append("path")
                     .attr("d", d => {
-                        const o = {x: source.x, y: source.y};
+                        const o = {x: source.x0, y: source.y0};
                         return linkGenerator({source: o, target: o});
                     });
 
@@ -204,48 +199,18 @@ export default class TreeVisualizationSVG extends TreeVisualization {
 
                 // Stash the old positions for transition.
                 root.eachBefore((d: any) => {
-                    d.x = d.x;
-                    d.y = d.y;
+                    d.x0 = d.x;
+                    d.y0 = d.y;
                 });
             }
 
             update(null, root);
-
-            // const links = treeLayout(root).links();
-            // const linkGenerator = d3.linkHorizontal()
-            //     .x((d:any) => d.y)
-            //     .y((d:any) => d.x);
-            //
-            // g.selectAll('path').data(links)
-            //     .enter().append('path')
-            //     .attr('d', linkGenerator as any);
-            //
-            // g.selectAll('circle')
-            //     .data(root.descendants())
-            //     .enter().append('circle')
-            //     .attr("cx", (d:any) => d.y)
-            //     .attr("cy", (d:any) => d.x)
-            //     .attr("r", 5)
-            //     .attr("fill", "#56c2a3")
-            //     .on('mouseover', (d, i) => {
-            //     })
-            //     .on('mouseout', (d, i) => {
-            //         d3.select(this).transition()
-            //             .duration('50')
-            //             .attr('opacity', '1')
-            //     })
-            //
-            //
-            // g.selectAll('text').data(root.descendants())
-            //     .enter().append('text')
-            //     .attr('x', (d:any) => d.y)
-            //     .attr('y', (d:any) => d.x + 3)
-            //     .attr('dy', '0.32em')
-            //     .attr('text-anchor', d => d.children ? 'middle' : 'start')
-            //     .attr('font-size', d => 2 - d.depth *0.5 + 'em')
-            //     .text(d => d.data.name);
-
         });
+
+
+        // ##################################################################
+        // ### HELPER FUNCTIONS #############################################
+        // ##################################################################
 
         function isPointInRect(point: Point, viewbox: Rectangle): boolean {
             return point.x >= viewbox.x && point.x < viewbox.x + viewbox.width &&
@@ -277,6 +242,13 @@ export default class TreeVisualizationSVG extends TreeVisualization {
 
         function flipLink(link: HierarchyPointLink<any>): HierarchyPointLink<any> {
             return {source: flip(link.source) as any, target: flip(link.target) as any};
+        }
+
+        function collapseChildrenRecursively(d: any) {
+            if (!d.children) return;
+
+            d.children.forEach((child:any) => collapseChildrenRecursively(child))
+            d.children = null;
         }
     }
 }

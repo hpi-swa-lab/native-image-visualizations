@@ -8,7 +8,7 @@ export function generateVenn() {
 }
 
 export function generateTree() {
-    let tree = new TreeVisualizationOnCanvas()
-    // let tree = new TreeVisualizationSVG()
+    // let tree = new TreeVisualizationOnCanvas()
+    let tree = new TreeVisualizationSVG()
     tree.generate()
 }
