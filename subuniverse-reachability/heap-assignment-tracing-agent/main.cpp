@@ -457,7 +457,8 @@ static void JNICALL onClassFileLoad(
 }
 
 
-extern "C" JNIEXPORT void JNICALL Java_com_oracle_graal_pointsto_heap_ClassInitializationTracking_onClinitStart(JNIEnv* env, jobject self)
+extern "C" JNIEXPORT void JNICALL Java_ClassInitializationTracing_onClinitStart(JNIEnv* env, jobject self)
 {
     cerr << "Called!!!\n" << endl;
 }
+

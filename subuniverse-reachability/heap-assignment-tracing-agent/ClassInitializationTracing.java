@@ -13,8 +13,5 @@ public final class ClassInitializationTracing
     private static native void onArrStore(Object[] arr, int index, Object value);
     */
 
-    public static void onClinitStart()
-    {
-        //System.err.println("onClinitStart");
-    }
+    public static native void onClinitStart();
 }
