@@ -30,6 +30,12 @@ public:
     {
         return __builtin_bswap16(backing);
     }
+
+    template<typename T>
+    void operator+=(T other)
+    {
+        backing = __builtin_bswap16(__builtin_bswap16(backing) + other);
+    }
 };
 
 class BYTEWISE u4
@@ -47,6 +53,12 @@ public:
     operator uint32_t() const
     {
         return __builtin_bswap32(backing);
+    }
+
+    template<typename T>
+    void operator+=(T other)
+    {
+        backing = __builtin_bswap32(__builtin_bswap32(backing) + other);
     }
 };
 
@@ -681,17 +693,42 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len
 
                             if(smt->number_of_entries)
                             {
-                                if(smt->entries[0] >= 61)
+                                if(smt->entries[0] < 61 || smt->entries[0] >= 64 && smt->entries[0] < 125)
                                 {
-                                    std::cerr << "Bad class: " << std::string_view(class_name.data(), class_name.size()) << std::endl;
+                                    smt->entries[0] += 3;
+                                }
+                                else if(smt->entries[0] >= 247)
+                                {
+                                    *(u2*)&smt->entries[1] += 3;
+                                }
+                                else if(smt->entries[0] < 128)
+                                {
+                                    // We have to extend
+                                    size_t bci = smt->entries[0] & 63;
+                                    bci += 3;
+
+                                    if(smt->entries[0] & 64)
+                                    {
+                                        smt->entries[0] = 247;
+                                    }
+                                    else
+                                    {
+                                        smt->entries[0] = 251;
+                                    }
+
+                                    // Make little space
+                                    apply_offset(offset, &m_attr)->attribute_length += 2;
+                                    c_attr->attribute_length += 2;
+                                    dst = std::copy(&smt->entries[1], dst, &smt->entries[1] + 2);
+
+                                    *(u2*)&smt->entries[1] = bci;
+                                }
+                                else
+                                {
+                                    std::cerr << "Bad class: " << std::string_view(class_name.data(), class_name.size()) << " with tag " << (uint32_t) smt->entries[0] << std::endl;
                                     jvmti_env->Deallocate(dst_start);
                                     return;
                                 }
-
-                                //std::cerr << "StackMapTable[0]: " << smt->entries[0] << std::endl;
-                                assert(smt->entries[0] < 64);
-                                assert(smt->entries[0] < 61);
-                                smt->entries[0] += 3;
                             }
                         }
                         else if(std::equal(str.begin(), str.end(), "LineNumberTable"))
@@ -699,21 +736,21 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len
                             auto* lnt = (LineNumberTable_attribute*)&*c_attr;
 
                             for(auto& line : lnt->lines())
-                                line.start_pc = line.start_pc + 3;
+                                line.start_pc += 3;
                         }
                         else if(std::equal(str.begin(), str.end(), "LocalVariableTable"))
                         {
                             auto* lvt = (LocalVariableTable_attribute*)&*c_attr;
 
                             for(auto& e : lvt->local_variables())
-                                e.start_pc = e.start_pc + 3;
+                                e.start_pc += 3;
                         }
                         else if(std::equal(str.begin(), str.end(), "LocalVariableTypeTable"))
                         {
                             auto* lvtt = (LocalVariableTypeTable_attribute*)&*c_attr;
 
                             for(auto& e : lvtt->local_variable_types())
-                                e.start_pc = e.start_pc + 3;
+                                e.start_pc += 3;
                         }
                     }
 

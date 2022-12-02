@@ -15,6 +15,6 @@ public final class ClassInitializationTracing
 
     public static void onClinitStart()
     {
-        System.err.println("onClinitStart");
+        //System.err.println("onClinitStart");
     }
 }
