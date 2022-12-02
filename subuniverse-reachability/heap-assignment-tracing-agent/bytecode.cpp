@@ -370,6 +370,13 @@ struct BYTEWISE ClassFile4
 };
 
 
+enum OpCode
+{
+    invokestatic = 184
+};
+
+
+
 void add_clinit_hook(const unsigned char* src, jint src_len, unsigned char** dst, jint* dst_len)
 {
     auto file1 = (ClassFile1*)src;
@@ -415,6 +422,11 @@ void add_clinit_hook(const unsigned char* src, jint src_len, unsigned char** dst
 
             std::cerr.write(class_name.data(), class_name.size());
             std::cerr << '\n';
+
+            // TODO: Add to constant pool:
+            // Utf8: class_name
+            // Utf8: method_name
+            // Utf8: method_type
         }
     }
 }

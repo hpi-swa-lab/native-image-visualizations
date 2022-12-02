@@ -59,8 +59,16 @@ static void JNICALL onClassFileLoad(
 
 static jvmtiEnv* jvmti_env;
 
+
+#include <csignal>
+#include <sys/types.h>
+#include <unistd.h>
+
 JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
 {
+    std::cout << "PID: " << getpid() << std::endl;
+    raise(SIGSTOP);
+
     cerr << nounitbuf;
     iostream::sync_with_stdio(false);
 
