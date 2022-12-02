@@ -177,7 +177,7 @@ export default class TreeVisualizationSVG extends TreeVisualization {
 
                 // Update the links…
                 const link = gLink.selectAll("path")
-                    .data(links, (d:any) => d.target.name);
+                    .data(links, (d:any) => d.target.id);
 
                 // Enter any new links at the parent's previous position.
                 const linkEnter = link.enter().append("path")
