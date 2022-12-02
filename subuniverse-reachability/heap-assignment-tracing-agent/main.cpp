@@ -8,7 +8,7 @@
 
 using namespace std;
 
-void add_clinit_hook(const unsigned char* src, jint src_len, unsigned char** dst, jint* dst_len);
+void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len, unsigned char** dst_ptr, jint* dst_len_ptr);
 
 static void JNICALL onFieldModification(
         jvmtiEnv *jvmti_env,
@@ -63,11 +63,12 @@ static jvmtiEnv* jvmti_env;
 #include <csignal>
 #include <sys/types.h>
 #include <unistd.h>
+#include <fstream>
 
 JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
 {
-    std::cout << "PID: " << getpid() << std::endl;
-    raise(SIGSTOP);
+    //std::cout << "PID: " << getpid() << std::endl;
+    //raise(SIGSTOP);
 
     cerr << nounitbuf;
     iostream::sync_with_stdio(false);
@@ -414,5 +415,12 @@ static void JNICALL onClassFileLoad(
         jint* new_class_data_len,
         unsigned char** new_class_data)
 {
-    add_clinit_hook(class_data, class_data_len, new_class_data, new_class_data_len);
+    /*
+    {
+        ofstream classfile("StringConcatFactory.class");
+        classfile.write((const char *) class_data, class_data_len);
+    }*/
+
+    cerr << "ClassLoad: " << name << endl;
+    add_clinit_hook(jvmti_env, class_data, class_data_len, new_class_data, new_class_data_len);
 }

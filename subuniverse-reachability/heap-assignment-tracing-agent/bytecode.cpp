@@ -3,6 +3,8 @@
 #include <cassert>
 #include <iterator>
 #include <jni_md.h>
+#include <jvmti.h>
+#include <concepts>
 
 #define BYTEWISE __attribute__((aligned(1), packed))
 
@@ -13,6 +15,8 @@ class BYTEWISE u2
     uint16_t backing;
 
 public:
+    u2() = default;
+
     u2(uint16_t val)
     {
         backing = __builtin_bswap16(val);
@@ -29,6 +33,8 @@ class BYTEWISE u4
     uint32_t backing;
 
 public:
+    u4() = default;
+
     u4(uint32_t val)
     {
         backing = __builtin_bswap32(val);
@@ -58,127 +64,113 @@ enum cp_tag : uint8_t
     InvokeDynamic = 18
 };
 
-struct BYTEWISE Class_info
+struct BYTEWISE cp_info
 {
     cp_tag tag;
+
+    explicit cp_info(cp_tag tag) : tag(tag) {}
+
+    [[nodiscard]] size_t len() const;
+};
+
+struct BYTEWISE Class_info : public cp_info
+{
     u2 name_index;
+
+    explicit Class_info(size_t name_index) : cp_info(Class), name_index(name_index) {}
 };
 static_assert(sizeof(Class_info) == 3);
 
-struct BYTEWISE ref_info
+struct BYTEWISE ref_info : public cp_info
 {
-    cp_tag tag;
     u2 class_index;
     u2 name_and_type_index;
+
+    ref_info(cp_tag tag, size_t class_index, size_t name_and_type_index) : cp_info(tag), class_index(class_index), name_and_type_index(name_and_type_index)
+    {}
 };
 
-struct BYTEWISE String_info
+struct BYTEWISE String_info : public cp_info
 {
-    cp_tag tag;
     u2 string_index;
 };
 
-struct BYTEWISE Integer_info
+struct BYTEWISE Integer_info : public cp_info
 {
-    cp_tag tag;
     u4 bytes;
 };
 
-struct BYTEWISE Float_info
+struct BYTEWISE Float_info : public cp_info
 {
-    cp_tag tag;
     u4 bytes;
 };
 
-struct BYTEWISE Long_info
+struct BYTEWISE Long_info : public cp_info
 {
-    cp_tag tag;
     u4 high_bytes;
     u4 low_bytes;
 };
 
-struct BYTEWISE Double_info
+struct BYTEWISE Double_info : public cp_info
 {
-    cp_tag tag;
     u4 high_bytes;
     u4 low_bytes;
 };
 
-struct BYTEWISE NameAndType_info
+struct BYTEWISE NameAndType_info : public cp_info
 {
-    cp_tag tag;
     u2 name_index;
     u2 descriptor_index;
+
+    explicit NameAndType_info(size_t name_index, size_t descriptor_index) : cp_info(NameAndType), name_index(name_index), descriptor_index(descriptor_index)
+    { }
 };
 
-struct BYTEWISE Utf8_info
+struct BYTEWISE Utf8_info : public cp_info
 {
-    cp_tag tag;
     u2 length;
     u1 bytes[];
+
+    explicit Utf8_info(const char* str) : cp_info(Utf8)
+    {
+        write(str);
+    }
 
     [[nodiscard]] std::span<char> str() const
     {
         return {(char*)bytes, (size_t)length};
     }
+
+    void write(const char* str)
+    {
+        size_t i;
+        for(i = 0; str[i]; i++)
+            bytes[i] = str[i];
+        length = i;
+    }
+
+    size_t len()
+    {
+        return sizeof(Utf8_info) + length;
+    }
 };
 static_assert(sizeof(Utf8_info) == 3);
 
-struct BYTEWISE MethodHandle_info
+struct BYTEWISE MethodHandle_info : public cp_info
 {
-    cp_tag tag;
     u1 reference_kind;
     u2 reference_index;
 };
 
-struct BYTEWISE MethodType_info
+struct BYTEWISE MethodType_info : public cp_info
 {
-    cp_tag tag;
     u2 descriptor_index;
 };
 
-struct BYTEWISE InvokeDynamic_info
+struct BYTEWISE InvokeDynamic_info : public cp_info
 {
-    cp_tag tag;
     u2 bootstrap_method_attr_index;
     u2 name_and_type_index;
-};
-
-struct BYTEWISE cp_info
-{
-    cp_tag tag;
-    uint8_t info[0];
-
-    [[nodiscard]] size_t len() const
-    {
-        switch(tag)
-        {
-            case Class: return sizeof(Class_info);
-            case Fieldref:
-            case Methodref:
-            case InterfaceMethodref:
-                return sizeof(ref_info);
-            case String:
-                return sizeof(String_info);
-            case Integer: return sizeof(Integer_info);
-            case Float: return sizeof(Float_info);
-            case Long: return sizeof(Long_info);
-            case Double: return sizeof(Double_info);
-            case NameAndType: return sizeof(NameAndType_info);
-            case Utf8:
-            {
-                return ((Utf8_info*)this)->length + sizeof(Utf8_info);
-            }
-
-
-            case MethodHandle: return sizeof(MethodHandle_info);
-            case MethodType: return sizeof(MethodType_info);
-            case InvokeDynamic: return sizeof(InvokeDynamic_info);
-            default:
-                assert(false);
-                return 0;
-        }
-    }
 };
 
 struct BYTEWISE attribute_info
@@ -192,6 +184,36 @@ struct BYTEWISE attribute_info
         return sizeof(attribute_info) + attribute_length;
     }
 };
+
+size_t cp_info::len() const
+{
+    switch(tag)
+    {
+        case Class: return sizeof(Class_info);
+        case Fieldref:
+        case Methodref:
+        case InterfaceMethodref:
+            return sizeof(ref_info);
+        case String: return sizeof(String_info);
+        case Integer: return sizeof(Integer_info);
+        case Float: return sizeof(Float_info);
+        case Long: return sizeof(Long_info);
+        case Double: return sizeof(Double_info);
+        case NameAndType: return sizeof(NameAndType_info);
+        case Utf8: return ((Utf8_info*)this)->len();
+        case MethodHandle: return sizeof(MethodHandle_info);
+        case MethodType: return sizeof(MethodType_info);
+        case InvokeDynamic: return sizeof(InvokeDynamic_info);
+        default:
+            assert(false);
+    }
+}
+
+
+
+
+
+
 
 class table_iterator_end
 {
@@ -376,8 +398,32 @@ enum OpCode
 };
 
 
+template<class T, class U>
+concept Derived = std::is_base_of<U, T>::value;
 
-void add_clinit_hook(const unsigned char* src, jint src_len, unsigned char** dst, jint* dst_len)
+class ConstantPoolAppender
+{
+    size_t cp_index;
+    u1* ptr;
+
+public:
+    explicit ConstantPoolAppender(void* ptr, size_t cp_count) : cp_index(cp_count), ptr((u1*)ptr)
+    { }
+
+    template<Derived<cp_info> T, typename... Args>
+    size_t append(Args... args)
+    {
+        cp_info* cp = new (ptr) T(args...);
+        ptr += cp->len();
+        return cp_index++;
+    }
+
+    void* end() { return ptr; }
+
+    size_t cp_count() { return cp_index; }
+};
+
+void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len, unsigned char** dst_ptr, jint* dst_len_ptr)
 {
     auto file1 = (ClassFile1*)src;
 
@@ -424,9 +470,41 @@ void add_clinit_hook(const unsigned char* src, jint src_len, unsigned char** dst
             std::cerr << '\n';
 
             // TODO: Add to constant pool:
+            // Methodref: com.oracle.graal.pointsto.heap.ClassInitializationTracing.onClinitStart();
             // Utf8: class_name
             // Utf8: method_name
             // Utf8: method_type
+            //
+
+
+
+            unsigned char* dst;
+            jvmti_env->Allocate(src_len + 1000, &dst);
+            *dst_ptr = dst;
+
+            // Copy ClassFile1:
+            auto dst_file1 = (ClassFile1*)dst;
+
+            dst = std::copy(src, (const unsigned char*)file2, dst);
+
+            ConstantPoolAppender cpa(dst, file1->constant_pool_count);
+            size_t class_name_idx = cpa.append<Utf8_info>("com/oracle/graal/pointsto/heap/ClassInitializationTracing");
+            size_t method_name_idx = cpa.append<Utf8_info>("onClinitStart");
+            size_t method_descriptor_idx = cpa.append<Utf8_info>("()V");
+            size_t name_and_type_idx = cpa.append<NameAndType_info>(method_name_idx, method_descriptor_idx);
+            size_t class_idx = cpa.append<Class_info>(class_name_idx);
+            size_t methodref_idx = cpa.append<ref_info>(Methodref, class_idx, name_and_type_idx);
+            dst_file1->constant_pool_count = cpa.cp_count();
+
+            auto dst_file2 = (ClassFile2*)cpa.end();
+
+            size_t written = sizeof(ClassFile1);
+            size_t remaining = src_len - written;
+
+            dst = std::copy((const unsigned char*)file2, src + src_len, (unsigned char*)dst_file2);
+
+            *dst_len_ptr = dst - *dst_ptr;
+            return;
         }
     }
 }
