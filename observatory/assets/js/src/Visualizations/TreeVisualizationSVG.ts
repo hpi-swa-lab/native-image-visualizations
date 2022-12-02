@@ -67,7 +67,7 @@ export default class TreeVisualizationSVG extends TreeVisualization {
             root.descendants().forEach((d: any, i) => {
                 d.id = i;
                 d._children = d.children;
-                if (d.depth && d.data.name.length !== 7) d.children = null;
+                if (d.depth > 0) d.children = null;
             });
             const tree = d3.tree()
                 .nodeSize([dx, dy])
