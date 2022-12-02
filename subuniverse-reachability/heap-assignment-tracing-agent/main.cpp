@@ -3,6 +3,8 @@
 #include <span>
 #include <cstring>
 
+#define LOG 0
+
 #define check_code(retcode, result) if((result)) { cerr << (#result) << "Error!!! code " << result << ":" << endl; return retcode; }
 #define check(result) check_code(,result)
 
@@ -67,16 +69,17 @@ static jvmtiEnv* jvmti_env;
 
 JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
 {
-/*
-    std::cout << "PID: " << getpid() << std::endl;
-    raise(SIGSTOP);
-*/
+    //std::cout << "PID: " << getpid() << std::endl;
+    //raise(SIGSTOP);
 
-    cerr << nounitbuf;
+    //cerr << nounitbuf;
     iostream::sync_with_stdio(false);
 
     jvmtiEnv* env;
     check_code(1, vm->GetEnv(reinterpret_cast<void **>(&env), JVMTI_VERSION_1_2));
+
+    check_code(1, env->AddToBootstrapClassLoaderSearch("/home/christoph/MPWS2022RH1/subuniverse-reachability/heap-assignment-tracing-agent/build"));
+
 
     jvmti_env = env;
 
@@ -99,7 +102,6 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
     check_code(1, env->SetEventCallbacks(&callbacks, sizeof(callbacks)));
     check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_VM_INIT, nullptr));
     check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_FRAME_POP, nullptr));
-    check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_FILE_LOAD_HOOK, nullptr));
 
     return 0;
 }
@@ -111,7 +113,9 @@ static void processClass(jvmtiEnv* jvmti_env, jclass klass)
 
     check(jvmti_env->GetClassSignature(klass, &class_signature, &class_generic));
 
+#if LOG
     cerr << "New Class: " << class_signature << "\n";
+#endif
 
     // Hook into field modification events
 
@@ -134,7 +138,9 @@ static void processClass(jvmtiEnv* jvmti_env, jclass klass)
 
         check(jvmti_env->SetFieldModificationWatch(klass, fields[i]));
 
+#if LOG
         cerr << "SetFieldModificationWatch: success: " << field_signature << "\n";
+#endif
     }
 
 
@@ -192,6 +198,7 @@ static void processClass(jvmtiEnv* jvmti_env, jclass klass)
 static void JNICALL onVMInit(jvmtiEnv *jvmti_env, JNIEnv* jni_env, jthread thread)
 {
     check(jvmti_env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_PREPARE, nullptr));
+    check(jvmti_env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_FILE_LOAD_HOOK, nullptr));
 
     jint num_classes;
     jclass* classes_ptr;
@@ -316,7 +323,9 @@ static void onFieldModification(
     char cause_class_name[1024];
     get_class_name(jvmti_env, cause_class, cause_class_name);
 
+#if LOG
     cerr << cause_class_name << ": " << class_name << "." << field_name << " = " << new_value_class_name << '\n';
+#endif
 }
 
 static void JNICALL onBreakpoint(
@@ -343,7 +352,9 @@ static void JNICALL onBreakpoint(
     char inner_clinit_name[1024];
     get_class_name(jvmti_env, type, inner_clinit_name);
 
+#if LOG
     cerr << outer_clinit_name << ": " << "CLINIT start: " << inner_clinit_name << '\n';
+#endif
 
     check(jvmti_env->ClearBreakpoint(method, location));
     check(jvmti_env->NotifyFramePop(thread, 0));
@@ -371,7 +382,9 @@ static void JNICALL onFramePop(
     char inner_clinit_name[1024];
     get_class_name(jvmti_env, type, inner_clinit_name);
 
+#if LOG
     cerr << outer_clinit_name << ": " << "CLINIT end: " << inner_clinit_name << '\n';
+#endif
 }
 
 static void JNICALL onClassPrepare(
@@ -405,6 +418,8 @@ extern "C" JNIEXPORT void JNICALL Java_com_oracle_svm_hosted_classinitialization
 }
 
 
+static int num = 0;
+
 static void JNICALL onClassFileLoad(
         jvmtiEnv *jvmti_env,
         JNIEnv* jni_env,
@@ -423,6 +438,24 @@ static void JNICALL onClassFileLoad(
         classfile.write((const char *) class_data, class_data_len);
     }*/
 
+#if LOG
     cerr << "ClassLoad: " << name << endl;
+#endif
+/*
+    if(loader == 0)
+    {
+        cerr << "BOOTSTRAP LOADER DETECTED!" << endl;
+        return;
+    }*/
+
+    if(num++ < 10000)
+        return;
+
     add_clinit_hook(jvmti_env, class_data, class_data_len, new_class_data, new_class_data_len);
+}
+
+
+extern "C" JNIEXPORT void JNICALL Java_com_oracle_graal_pointsto_heap_ClassInitializationTracking_onClinitStart(JNIEnv* env, jobject self)
+{
+    cerr << "Called!!!\n" << endl;
 }

@@ -6,6 +6,7 @@
 #include <jvmti.h>
 #include <concepts>
 #include <limits>
+#include <fstream>
 
 #define BYTEWISE __attribute__((aligned(1), packed))
 
@@ -216,12 +217,52 @@ struct BYTEWISE attribute_info
     }
 };
 
+struct BYTEWISE Code_attribute_2;
+
 struct BYTEWISE Code_attribute_1 : public attribute_info
 {
     u2 max_stack;
     u2 max_locals;
     u4 code_length;
     u1 code[0 /*code_length*/];
+
+    Code_attribute_2* next()
+    {
+        return (Code_attribute_2*)&code[code_length];
+    }
+};
+
+struct BYTEWISE Code_exception_table
+{
+    u2 start_pc;
+    u2 end_pc;
+    u2 handler_pc;
+    u2 catch_type;
+};
+
+struct BYTEWISE Code_attribute_3;
+
+struct BYTEWISE Code_attribute_2
+{
+    u2 exception_table_length;
+    Code_exception_table exception_table[0 /*exception_table_length*/];
+
+    Code_attribute_3* next()
+    {
+        return (Code_attribute_3*)&exception_table[exception_table_length];
+    }
+};
+
+struct BYTEWISE Code_attribute_3
+{
+    u2 attributes_count;
+    attribute_info attributes[0 /*attributes_count*/];
+};
+
+struct BYTEWISE StackMapTable_attribute : public attribute_info
+{
+    u2 number_of_entries;
+    u1 entries[0];
 };
 
 
@@ -471,6 +512,8 @@ public:
     }
 };
 
+static uint32_t num = 0;
+
 void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len, unsigned char** dst_ptr, jint* dst_len_ptr)
 {
     auto file1 = (ClassFile1*)src;
@@ -497,11 +540,6 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len
             assert(cpentry->tag == Utf8);
             auto class_name = ((Utf8_info*)cpentry)->str();
 
-            std::cerr << "Found <clinit> of class ";
-
-            std::cerr.write(class_name.data(), class_name.size());
-            std::cerr << '\n';
-
             // TODO: Add to constant pool:
             // Methodref: com.oracle.graal.pointsto.heap.ClassInitializationTracing.onClinitStart();
             // Utf8: class_name
@@ -517,7 +555,7 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len
 
             // Add necessary constants
             ConstantPoolAppender cpa(dst, file1->constant_pool_count);
-            size_t class_name_idx = cpa.append<Utf8_info>("com/oracle/graal/pointsto/heap/ClassInitializationTracing");
+            size_t class_name_idx = cpa.append<Utf8_info>("ClassInitializationTracing");
             size_t method_name_idx = cpa.append<Utf8_info>("onClinitStart");
             size_t method_descriptor_idx = cpa.append<Utf8_info>("()V");
             size_t name_and_type_idx = cpa.append<NameAndType_info>(method_name_idx, method_descriptor_idx);
@@ -537,6 +575,7 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len
                 if(str.size() == 4 && std::equal(str.begin(), str.end(), "Code"))
                 {
                     Code_attribute_1* code1 = (Code_attribute_1*)&m_attr;
+                    Code_attribute_2* code2 = code1->next();
 
                     // Found the code
                     dst = std::copy((const unsigned char*)file2, (const unsigned char*)code1->code, (unsigned char*)dst_file2);
@@ -556,6 +595,72 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len
                     // TODO: Wir müssen die exceptiontable auch verschieben...
 
                     dst = std::copy((const unsigned char*)code1->code, src + src_len, dst);
+
+                    for(auto& exception_table_entry : std::span((Code_exception_table*)(dst - ((src + src_len) - (u1*)code2->exception_table)), code2->exception_table_length))
+                    {
+                        exception_table_entry.start_pc = exception_table_entry.start_pc + 3;
+                        exception_table_entry.end_pc = exception_table_entry.end_pc + 3;
+                        exception_table_entry.handler_pc = exception_table_entry.handler_pc + 3;
+                    }
+
+                    /*
+                    {
+                        char name[100];
+                        sprintf(name, "replaced%u.class", num);
+                        num++;
+                        std::ofstream classfile(name);
+                        classfile.write((const char*)dst_start, dst - dst_start);
+                    }
+                    */
+
+                    Code_attribute_3* code3 = code2->next();
+
+                    uintptr_t offset = dst - ((src + src_len));
+
+                    u4* dst_m_attr_count = (u4*)(offset + (u1*)&code3->attributes_count);
+                    assert(dst_m_attr_count == code3->attributes_count);
+
+                    for(auto c_attr = table_iterator<attribute_info>(code3->attributes, code3->attributes_count); c_attr != table_iterator_end{}; ++c_attr)
+                    {
+                        cpentry = cp[c_attr->attribute_name_index];
+                        assert(cpentry->tag == Utf8);
+                        str = ((Utf8_info*) cpentry)->str();
+
+                        if(str.size() == 13 && std::equal(str.begin(), str.end(), "StackMapTable"))
+                        {
+                            auto* smt = (StackMapTable_attribute*)&*c_attr;
+
+                            if(smt->number_of_entries)
+                            {
+                                if(smt->entries[0] >= 61)
+                                {
+                                    std::cerr << "Bad class: " << std::string_view(class_name.data(), class_name.size()) << std::endl;
+                                    jvmti_env->Deallocate(dst_start);
+                                    return;
+                                }
+
+                                //std::cerr << "StackMapTable[0]: " << smt->entries[0] << std::endl;
+                                assert(smt->entries[0] < 64);
+                                assert(smt->entries[0] < 61);
+                                u1* first_entry = dst - ((src + src_len) - &smt->entries[0]);
+                                assert(*first_entry == smt->entries[0]);
+                                *first_entry += 3;
+                            }
+                        }
+                        else if(std::equal(str.begin(), str.end(), "LineNumberTable") || std::equal(str.begin(), str.end(), "LocalVariableTable") || std::equal(str.begin(), str.end(), "LocalVariableTypeTable"))
+                        {
+                            u1* dst_m_attr_pos = ((u1*)&*c_attr + offset);
+
+                            dst = std::copy(dst_m_attr_pos + c_attr->len(), dst, dst_m_attr_pos);
+                            *dst_m_attr_count = *dst_m_attr_count - 1;
+                        }
+                    }
+
+                    std::cerr << "Found <clinit> of class ";
+
+                    std::cerr.write(class_name.data(), class_name.size());
+                    std::cerr << '\n';
+
                     *dst_ptr = dst_start;
                     *dst_len_ptr = dst - dst_start;
                     return;
