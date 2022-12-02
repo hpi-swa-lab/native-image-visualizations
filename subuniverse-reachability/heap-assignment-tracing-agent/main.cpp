@@ -3,10 +3,12 @@
 #include <span>
 #include <cstring>
 
-#define check_code(retcode, result) if((result)) { cerr << (#result) << " [Error code " << result << "]" << endl; return retcode; }
+#define check_code(retcode, result) if((result)) { cerr << (#result) << "Error!!! code " << result << ":" << endl; return retcode; }
 #define check(result) check_code(,result)
 
 using namespace std;
+
+void add_clinit_hook(const unsigned char* src, jint src_len, unsigned char** dst, jint* dst_len);
 
 static void JNICALL onFieldModification(
         jvmtiEnv *jvmti_env,
@@ -42,6 +44,18 @@ static void JNICALL onFramePop(
         jmethodID method,
         jboolean was_popped_by_exception);
 
+static void JNICALL onClassFileLoad(
+        jvmtiEnv *jvmti_env,
+        JNIEnv* jni_env,
+        jclass class_being_redefined,
+        jobject loader,
+        const char* name,
+        jobject protection_domain,
+        jint class_data_len,
+        const unsigned char* class_data,
+        jint* new_class_data_len,
+        unsigned char** new_class_data);
+
 
 static jvmtiEnv* jvmti_env;
 
@@ -58,7 +72,7 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
     jvmtiCapabilities cap{ 0 };
     cap.can_generate_field_modification_events = true;
     cap.can_generate_single_step_events = true;
-    cap.can_tag_objects = true;
+    //cap.can_tag_objects = true;
     cap.can_generate_breakpoint_events = true;
     cap.can_generate_frame_pop_events = true;
 
@@ -70,9 +84,11 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
     callbacks.VMInit = onVMInit;
     callbacks.Breakpoint = onBreakpoint;
     callbacks.FramePop = onFramePop;
+    callbacks.ClassFileLoadHook = onClassFileLoad;
     check_code(1, env->SetEventCallbacks(&callbacks, sizeof(callbacks)));
     check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_VM_INIT, nullptr));
     check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_FRAME_POP, nullptr));
+    check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_FILE_LOAD_HOOK, nullptr));
 
     return 0;
 }
@@ -157,7 +173,7 @@ static void processClass(jvmtiEnv* jvmti_env, jclass klass)
 
         if(start == 0)
         {
-            check(jvmti_env->SetBreakpoint(constructor, 0));
+            //check(jvmti_env->SetBreakpoint(constructor, 0));
         }
     }
 }
@@ -361,7 +377,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_oracle_svm_hosted_classinitialization
     jthread t;
     check(jvmti_env->GetCurrentThread(&t));
     check(jvmti_env->SetEventNotificationMode(start ? JVMTI_ENABLE : JVMTI_DISABLE, JVMTI_EVENT_FIELD_MODIFICATION, t));
-    check(jvmti_env->SetEventNotificationMode(start ? JVMTI_ENABLE : JVMTI_DISABLE, JVMTI_EVENT_BREAKPOINT, t));
+    //check(jvmti_env->SetEventNotificationMode(start ? JVMTI_ENABLE : JVMTI_DISABLE, JVMTI_EVENT_BREAKPOINT, t));
 
     if(start)
     {
@@ -375,4 +391,20 @@ extern "C" JNIEXPORT void JNICALL Java_com_oracle_svm_hosted_classinitialization
         env->DeleteGlobalRef(tls);
         check(jvmti_env->SetThreadLocalStorage(t, nullptr));
     }
+}
+
+
+static void JNICALL onClassFileLoad(
+        jvmtiEnv *jvmti_env,
+        JNIEnv* jni_env,
+        jclass class_being_redefined,
+        jobject loader,
+        const char* name,
+        jobject protection_domain,
+        jint class_data_len,
+        const unsigned char* class_data,
+        jint* new_class_data_len,
+        unsigned char** new_class_data)
+{
+    add_clinit_hook(class_data, class_data_len, new_class_data, new_class_data_len);
 }
