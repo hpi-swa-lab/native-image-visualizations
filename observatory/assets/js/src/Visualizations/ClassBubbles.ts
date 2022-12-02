@@ -99,7 +99,7 @@ export default class ClassBubbles implements Visualization {
                 d3.selectAll('circle')
                     .data(this.nodes)
                     .join('circle')
-                    .style('fill', 'lightgrey')
+                    .style('fill', (nodeToColorOut: CircleNode) => nodeToColorOut.color + '22')
 
                 d3.select(event.target)
                     .style('fill', (nodeToColorIn: CircleNode) => nodeToColorIn.color)
