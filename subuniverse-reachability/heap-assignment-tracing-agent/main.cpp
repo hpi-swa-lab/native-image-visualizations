@@ -69,8 +69,10 @@ static jvmtiEnv* jvmti_env;
 
 JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
 {
-    //std::cout << "PID: " << getpid() << std::endl;
-    //raise(SIGSTOP);
+    /*
+    std::cout << "PID: " << getpid() << std::endl;
+    raise(SIGSTOP);
+     */
 
     //cerr << nounitbuf;
     iostream::sync_with_stdio(false);

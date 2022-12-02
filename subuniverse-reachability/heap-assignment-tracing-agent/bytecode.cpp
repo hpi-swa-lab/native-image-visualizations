@@ -8,6 +8,8 @@
 #include <limits>
 #include <fstream>
 
+using namespace std;
+
 #define BYTEWISE __attribute__((aligned(1), packed))
 
 using u1 = uint8_t;
@@ -232,20 +234,25 @@ struct BYTEWISE Code_attribute_1 : public attribute_info
     }
 };
 
-struct BYTEWISE Code_exception_table
-{
-    u2 start_pc;
-    u2 end_pc;
-    u2 handler_pc;
-    u2 catch_type;
-};
+
 
 struct BYTEWISE Code_attribute_3;
 
 struct BYTEWISE Code_attribute_2
 {
     u2 exception_table_length;
-    Code_exception_table exception_table[0 /*exception_table_length*/];
+    struct BYTEWISE entry
+    {
+        u2 start_pc;
+        u2 end_pc;
+        u2 handler_pc;
+        u2 catch_type;
+    } exception_table[0 /*exception_table_length*/];
+
+    span<entry> exceptions()
+    {
+        return {exception_table, exception_table_length};
+    }
 
     Code_attribute_3* next()
     {
@@ -265,9 +272,56 @@ struct BYTEWISE StackMapTable_attribute : public attribute_info
     u1 entries[0];
 };
 
+struct BYTEWISE LineNumberTable_attribute : public attribute_info
+{
+    u2 line_number_table_length;
+    struct BYTEWISE entry
+    {
+        u2 start_pc;
+        u2 line_number;
+    } line_number_table[0 /*line_number_table_length*/];
 
+    span<entry> lines()
+    {
+        return {line_number_table, line_number_table_length};
+    }
+};
 
+struct BYTEWISE LocalVariableTable_attribute : public attribute_info
+{
+    u2 local_variable_type_table_length;
+    struct BYTEWISE entry
+    {
+        u2 start_pc;
+        u2 length;
+        u2 name_index;
+        u2 descriptor_index;
+        u2 index;
+    } local_variable_type_table[0 /*local_variable_type_table_length*/];
 
+    span<entry> local_variables()
+    {
+        return {local_variable_type_table, local_variable_type_table_length};
+    }
+};
+
+struct BYTEWISE LocalVariableTypeTable_attribute : public attribute_info
+{
+    u2 local_variable_type_table_length;
+    struct BYTEWISE entry
+    {
+        u2 start_pc;
+        u2 length;
+        u2 name_index;
+        u2 descriptor_index;
+        u2 index;
+    } local_variable_type_table[0 /*local_variable_type_table_length*/];
+
+    span<entry> local_variable_types()
+    {
+        return {local_variable_type_table, local_variable_type_table_length};
+    }
+};
 
 
 
@@ -514,6 +568,12 @@ public:
 
 static uint32_t num = 0;
 
+template<typename T>
+T* apply_offset(intptr_t offset, T* ptr)
+{
+    return (T*)((u1*)ptr + offset);
+}
+
 void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len, unsigned char** dst_ptr, jint* dst_len_ptr)
 {
     auto file1 = (ClassFile1*)src;
@@ -580,11 +640,11 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len
                     // Found the code
                     dst = std::copy((const unsigned char*)file2, (const unsigned char*)code1->code, (unsigned char*)dst_file2);
                     {
-                        u4 *dst_code_attr_len = (u4 *) (dst - ((const unsigned char *) code1->code - (const unsigned char *) &m_attr.attribute_length));
+                        u4 *dst_code_attr_len = apply_offset(dst - (const unsigned char *)code1->code, &m_attr.attribute_length);
                         *dst_code_attr_len = m_attr.attribute_length + 3;
                     }
                     {
-                        u4 *dst_code_len = (u4 *) (dst - ((const unsigned char *)code1->code - (const unsigned char *)&code1->code_length));
+                        u4 *dst_code_len = apply_offset(dst - (const unsigned char *)code1->code, &code1->code_length);
                         *dst_code_len = code1->code_length + 3;
                     }
 
@@ -592,35 +652,24 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len
                     *(u2*)dst = methodref_idx;
                     dst += sizeof(u2);
 
-                    // TODO: Wir müssen die exceptiontable auch verschieben...
-
                     dst = std::copy((const unsigned char*)code1->code, src + src_len, dst);
 
-                    for(auto& exception_table_entry : std::span((Code_exception_table*)(dst - ((src + src_len) - (u1*)code2->exception_table)), code2->exception_table_length))
-                    {
-                        exception_table_entry.start_pc = exception_table_entry.start_pc + 3;
-                        exception_table_entry.end_pc = exception_table_entry.end_pc + 3;
-                        exception_table_entry.handler_pc = exception_table_entry.handler_pc + 3;
-                    }
+                    intptr_t offset = dst - ((src + src_len));
 
-                    /*
+                    for(auto& e : apply_offset(offset, code2)->exceptions())
                     {
-                        char name[100];
-                        sprintf(name, "replaced%u.class", num);
-                        num++;
-                        std::ofstream classfile(name);
-                        classfile.write((const char*)dst_start, dst - dst_start);
+                        e.start_pc = e.start_pc + 3;
+                        e.end_pc = e.end_pc + 3;
+                        e.handler_pc = e.handler_pc + 3;
                     }
-                    */
 
                     Code_attribute_3* code3 = code2->next();
 
-                    uintptr_t offset = dst - ((src + src_len));
+                    u4* dst_c_length = apply_offset(offset, &code1->attribute_length);
+                    u2* dst_c_attr_count = apply_offset(offset, &code3->attributes_count);
+                    assert(*dst_c_attr_count == code3->attributes_count);
 
-                    u4* dst_m_attr_count = (u4*)(offset + (u1*)&code3->attributes_count);
-                    assert(dst_m_attr_count == code3->attributes_count);
-
-                    for(auto c_attr = table_iterator<attribute_info>(code3->attributes, code3->attributes_count); c_attr != table_iterator_end{}; ++c_attr)
+                    for(auto c_attr = table_iterator<attribute_info>(apply_offset(offset, code3)->attributes, code3->attributes_count); c_attr != table_iterator_end{}; ++c_attr)
                     {
                         cpentry = cp[c_attr->attribute_name_index];
                         assert(cpentry->tag == Utf8);
@@ -642,17 +691,29 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len
                                 //std::cerr << "StackMapTable[0]: " << smt->entries[0] << std::endl;
                                 assert(smt->entries[0] < 64);
                                 assert(smt->entries[0] < 61);
-                                u1* first_entry = dst - ((src + src_len) - &smt->entries[0]);
-                                assert(*first_entry == smt->entries[0]);
-                                *first_entry += 3;
+                                smt->entries[0] += 3;
                             }
                         }
-                        else if(std::equal(str.begin(), str.end(), "LineNumberTable") || std::equal(str.begin(), str.end(), "LocalVariableTable") || std::equal(str.begin(), str.end(), "LocalVariableTypeTable"))
+                        else if(std::equal(str.begin(), str.end(), "LineNumberTable"))
                         {
-                            u1* dst_m_attr_pos = ((u1*)&*c_attr + offset);
+                            auto* lnt = (LineNumberTable_attribute*)&*c_attr;
 
-                            dst = std::copy(dst_m_attr_pos + c_attr->len(), dst, dst_m_attr_pos);
-                            *dst_m_attr_count = *dst_m_attr_count - 1;
+                            for(auto& line : lnt->lines())
+                                line.start_pc = line.start_pc + 3;
+                        }
+                        else if(std::equal(str.begin(), str.end(), "LocalVariableTable"))
+                        {
+                            auto* lvt = (LocalVariableTable_attribute*)&*c_attr;
+
+                            for(auto& e : lvt->local_variables())
+                                e.start_pc = e.start_pc + 3;
+                        }
+                        else if(std::equal(str.begin(), str.end(), "LocalVariableTypeTable"))
+                        {
+                            auto* lvtt = (LocalVariableTypeTable_attribute*)&*c_attr;
+
+                            for(auto& e : lvtt->local_variable_types())
+                                e.start_pc = e.start_pc + 3;
                         }
                     }
 
@@ -660,6 +721,11 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len
 
                     std::cerr.write(class_name.data(), class_name.size());
                     std::cerr << '\n';
+
+                    {
+                        std::ofstream classfile("replaced.class");
+                        classfile.write((const char*)dst_start, dst - dst_start);
+                    }
 
                     *dst_ptr = dst_start;
                     *dst_len_ptr = dst - dst_start;
