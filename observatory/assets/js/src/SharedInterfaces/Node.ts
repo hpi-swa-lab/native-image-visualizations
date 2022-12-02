@@ -3,4 +3,5 @@ export default interface Node {
     y: number
     color: string
     label: string
+    tooltip: string
 }

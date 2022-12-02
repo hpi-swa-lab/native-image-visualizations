@@ -2,11 +2,7 @@
 {
     "compilerOptions": {
         "target": "es5", // js version which the transpiler builds
-        "lib":[
-            "es2020", 
-            "DOM",
-            "ES2021.String"
-        ], // feature support from
+        "lib": ["es2020", "DOM", "ES2021.String"], // feature support from
         "sourceMap": true, // generate source maps
         "module": "es2015", //sets the module system for the program
         "moduleResolution": "nodenext", // module resolution strategy for Node.js’ ECMAScript Module Support from TypeScript 4.7 onwards
@@ -15,9 +11,11 @@
         "noImplicitAny": true, // In some cases where no type annotations are present, TypeScript won't fall back to a type of any for a variable when it cannot infer the type
         "declaration": true, // enabling declaration (.d.ts) emit
         "declarationDir": "assets/js/dist/dts", //in general it's a good practice to decouple declaration files from your actual transpiled JavaScript files
-        "declarationMap": true, // will allow editors such as VS Code to go to the original .ts file when using features like Go to Definition
+        "declarationMap": true // will allow editors such as VS Code to go to the original .ts file when using features like Go to Definition
     },
-    "include": [ // where to look for ts files
-        "assets/js/src/*", "assets/js/src/**/*",
+    "include": [
+        // where to look for ts files
+        "assets/js/src/*",
+        "assets/js/src/**/*"
     ]
 }

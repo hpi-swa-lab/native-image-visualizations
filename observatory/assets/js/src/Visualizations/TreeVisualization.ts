@@ -1,4 +1,4 @@
-import Visualization from "./Visualization"
+import Visualization from './Visualization'
 import * as d3 from 'd3'
 
 export default class TreeVisualization implements Visualization {

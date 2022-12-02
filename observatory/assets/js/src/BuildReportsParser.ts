@@ -1,4 +1,4 @@
-import HierarchyNode from "./SharedInterfaces/HierarchyNode"
+import HierarchyNode from './SharedInterfaces/HierarchyNode'
 
 export function loadTextFile(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -14,7 +14,7 @@ export function loadTextFile(file: File): Promise<string> {
             }
         }
         reader.onerror = (event) => reject(event)
-        
+
         reader.readAsText(file)
     })
 }
@@ -28,27 +28,26 @@ export function parseToPackageHierarchy(hierarchyString: string): HierarchyNode 
     }
 
     hierarchyString.split('\n').forEach((row: string) => {
+        let currentChildren: HierarchyNode[] = data.children
+        let parent = data
 
-            let currentChildren: HierarchyNode[] = data.children
-            let parent = data
+        let splittedRow = row.split('.')
+        splittedRow.forEach((pathSegment: string, index: number) => {
+            let child = currentChildren.find((child: HierarchyNode) => child.name === pathSegment)
 
-            let splittedRow = row.split('.')
-            splittedRow.forEach((pathSegment: string, index: number) => {
-                let child = currentChildren.find((child: HierarchyNode) => child.name === pathSegment)
-
-                if (!child) {
-                    child = {
-                        parent: parent,
-                        name: pathSegment,
-                        fullPath: splittedRow.slice(0, index + 1).join('.'),
-                        children: []
-                    }
-                    currentChildren.push(child)
+            if (!child) {
+                child = {
+                    parent: parent,
+                    name: pathSegment,
+                    fullPath: splittedRow.slice(0, index + 1).join('.'),
+                    children: []
                 }
+                currentChildren.push(child)
+            }
 
-                currentChildren = child.children
-                parent = child
-            })
+            currentChildren = child.children
+            parent = child
+        })
     })
 
     return data
@@ -71,7 +70,9 @@ export function parseToCleanedPackageHierarchy(hierarchyString: string): Hierarc
 
             let splittedRow = row.split('.')
             splittedRow.forEach((pathSegment: string, index: number) => {
-                let child = currentChildren.find((child: HierarchyNode) => child.name === pathSegment)
+                let child = currentChildren.find(
+                    (child: HierarchyNode) => child.name === pathSegment
+                )
 
                 if (!child) {
                     child = {
@@ -98,13 +99,12 @@ export function extractLastHierarchyLevel(hierarchyString: string): string[] {
     hierarchyString.split('\n').forEach((row: string) => {
         if (!row.match(/[\$\.]\$/)) {
             row = row.replaceAll('$', '.')
-        
+
             const splitRow: string[] = row.split('.')
             const lastLevel: string = splitRow[splitRow.length - 1]
 
             lastLevels.push(lastLevel)
         }
-
     })
 
     return lastLevels
