@@ -5,6 +5,7 @@
 #include <jni_md.h>
 #include <jvmti.h>
 #include <concepts>
+#include <limits>
 
 #define BYTEWISE __attribute__((aligned(1), packed))
 
@@ -173,18 +174,6 @@ struct BYTEWISE InvokeDynamic_info : public cp_info
     u2 name_and_type_index;
 };
 
-struct BYTEWISE attribute_info
-{
-    u2 attribute_name_index;
-    u4 attribute_length;
-    u1 info[/* attribute_length */];
-
-    size_t len() const
-    {
-        return sizeof(attribute_info) + attribute_length;
-    }
-};
-
 size_t cp_info::len() const
 {
     switch(tag)
@@ -208,6 +197,34 @@ size_t cp_info::len() const
             assert(false);
     }
 }
+
+
+
+
+
+
+// --- Attributes ---
+
+struct BYTEWISE attribute_info
+{
+    u2 attribute_name_index;
+    u4 attribute_length;
+
+    size_t len() const
+    {
+        return sizeof(attribute_info) + attribute_length;
+    }
+};
+
+struct BYTEWISE Code_attribute_1 : public attribute_info
+{
+    u2 max_stack;
+    u2 max_locals;
+    u4 code_length;
+    u1 code[0 /*code_length*/];
+};
+
+
 
 
 
@@ -318,6 +335,16 @@ struct BYTEWISE method_or_field_info
         attribute_info* ptr = iterate_to_end(attributes, attributes_count);
         return (uint8_t*)ptr - (uint8_t*)this;
     }
+
+    table_iterator<attribute_info> begin()
+    {
+        return {attributes, attributes_count};
+    }
+
+    table_iterator_end end()
+    {
+        return {};
+    }
 };
 
 struct BYTEWISE ClassFile2;
@@ -423,46 +450,52 @@ public:
     size_t cp_count() { return cp_index; }
 };
 
+class ConstantPoolOffsets
+{
+    const void* start;
+    uint32_t offsets[1 << 16];
+
+public:
+    explicit ConstantPoolOffsets(ClassFile1* file1) : start(&file1->constant_pool)
+    {
+        offsets[0] = std::numeric_limits<uint32_t>::max(); // should trigger a SIGSEGV
+        size_t i = 1;
+        for(cp_info& c : *file1)
+            offsets[i++] = (u1*)&c - (u1*)start;
+    }
+
+    const cp_info* operator[](size_t i) const
+    {
+        assert(i);
+        return (cp_info*)((u1*)start + offsets[i]);
+    }
+};
+
 void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len, unsigned char** dst_ptr, jint* dst_len_ptr)
 {
     auto file1 = (ClassFile1*)src;
-
-    //std::cerr << "Constant count: " << file1->constant_pool_count << std::endl;
-
+    ConstantPoolOffsets cp(file1);
     auto file2 = file1->continuation();
     auto file3 = file2->continuation();
     auto file4 = file3->continuation();
 
     for(auto& m : *file4)
     {
-        auto cpentry = file1->begin();
-
-        for(size_t i = 0; i < m.name_index - 1; i++)
-            ++cpentry;
-
+        auto cpentry = cp[m.name_index];
         assert(cpentry->tag == Utf8);
-
-        auto name = ((Utf8_info&)*cpentry).str();
+        auto name = ((Utf8_info*)cpentry)->str();
 
         if(std::equal(name.begin(), name.end(), "<clinit>"))
         {
             // Found class initializer!
 
-            cpentry = file1->begin();
-            for(size_t i = 0; i < file2->this_class - 1; i++)
-                ++cpentry;
-
+            cpentry = cp[file2->this_class];
             assert(cpentry->tag == Class);
+            size_t class_name_index = ((Class_info*)cpentry)->name_index;
 
-            auto class_name_index = ((Class_info&)*cpentry).name_index;
-
-            cpentry = file1->begin();
-            for(size_t i = 0; i < class_name_index - 1; i++)
-                ++cpentry;
-
+            cpentry = cp[class_name_index];
             assert(cpentry->tag == Utf8);
-
-            auto class_name = ((Utf8_info&)*cpentry).str();
+            auto class_name = ((Utf8_info*)cpentry)->str();
 
             std::cerr << "Found <clinit> of class ";
 
@@ -473,20 +506,16 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len
             // Methodref: com.oracle.graal.pointsto.heap.ClassInitializationTracing.onClinitStart();
             // Utf8: class_name
             // Utf8: method_name
-            // Utf8: method_type
-            //
-
-
 
             unsigned char* dst;
             jvmti_env->Allocate(src_len + 1000, &dst);
-            *dst_ptr = dst;
+            unsigned char* dst_start = dst;
 
             // Copy ClassFile1:
             auto dst_file1 = (ClassFile1*)dst;
-
             dst = std::copy(src, (const unsigned char*)file2, dst);
 
+            // Add necessary constants
             ConstantPoolAppender cpa(dst, file1->constant_pool_count);
             size_t class_name_idx = cpa.append<Utf8_info>("com/oracle/graal/pointsto/heap/ClassInitializationTracing");
             size_t method_name_idx = cpa.append<Utf8_info>("onClinitStart");
@@ -496,14 +525,44 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len
             size_t methodref_idx = cpa.append<ref_info>(Methodref, class_idx, name_and_type_idx);
             dst_file1->constant_pool_count = cpa.cp_count();
 
+            // Copy ClassFile 2,3,4 until "<clinit>"-method
             auto dst_file2 = (ClassFile2*)cpa.end();
 
-            size_t written = sizeof(ClassFile1);
-            size_t remaining = src_len - written;
+            for(attribute_info& m_attr : m)
+            {
+                cpentry = cp[m_attr.attribute_name_index];
+                assert(cpentry->tag == Utf8);
+                auto str = ((Utf8_info*) cpentry)->str();
 
-            dst = std::copy((const unsigned char*)file2, src + src_len, (unsigned char*)dst_file2);
+                if(str.size() == 4 && std::equal(str.begin(), str.end(), "Code"))
+                {
+                    Code_attribute_1* code1 = (Code_attribute_1*)&m_attr;
 
-            *dst_len_ptr = dst - *dst_ptr;
+                    // Found the code
+                    dst = std::copy((const unsigned char*)file2, (const unsigned char*)code1->code, (unsigned char*)dst_file2);
+                    {
+                        u4 *dst_code_attr_len = (u4 *) (dst - ((const unsigned char *) code1->code - (const unsigned char *) &m_attr.attribute_length));
+                        *dst_code_attr_len = m_attr.attribute_length + 3;
+                    }
+                    {
+                        u4 *dst_code_len = (u4 *) (dst - ((const unsigned char *)code1->code - (const unsigned char *)&code1->code_length));
+                        *dst_code_len = code1->code_length + 3;
+                    }
+
+                    *dst++ = OpCode::invokestatic;
+                    *(u2*)dst = methodref_idx;
+                    dst += sizeof(u2);
+
+                    // TODO: Wir müssen die exceptiontable auch verschieben...
+
+                    dst = std::copy((const unsigned char*)code1->code, src + src_len, dst);
+                    *dst_ptr = dst_start;
+                    *dst_len_ptr = dst - dst_start;
+                    return;
+                }
+            }
+
+            jvmti_env->Deallocate(dst_start);
             return;
         }
     }
