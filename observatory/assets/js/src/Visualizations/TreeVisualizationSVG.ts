@@ -69,7 +69,12 @@ export default class TreeVisualizationSVG extends TreeVisualization {
                 d._children = d.children;
                 if (d.depth && d.data.name.length !== 7) d.children = null;
             });
-            const tree = d3.tree().nodeSize([dx, dy])
+            const tree = d3.tree()
+                .nodeSize([dx, dy])
+                .separation(function(a, b) {
+                    let totalWidth = countPrivateLeaves(a) / 2 + countPrivateLeaves(b) / 2;
+                    return (totalWidth / dx) + 1;
+                })
 
             let currentViewBox = defaultViewbox;
 
@@ -132,7 +137,7 @@ export default class TreeVisualizationSVG extends TreeVisualization {
 
                 // Update the nodes…
                 const node = gNode.selectAll("g")
-                    .data(nodes, (d: any) => d.id);
+                    .data(nodes, (d: any) => d.id)
 
                 // Enter any new nodes at the parent's previous position.
                 const nodeEnter = node.enter().append("g")
@@ -140,13 +145,12 @@ export default class TreeVisualizationSVG extends TreeVisualization {
                     .attr("fill-opacity", 0)
                     .attr("stroke-opacity", 0)
                     .on("click", (evt, d: any) => {
-                        d.children ? collapseChildrenRecursively(d) : d.children = d._children;
+                        d.children ? collapseChildren(d) : d.children = d._children;
                         update(evt, d);
                     });
 
                 nodeEnter.append("circle")
-                    // .attr("r", 2.5)
-                    .attr("r", 10)
+                    .attr("r", (d:any) => d._children && d.id !== 0 ? 5 + (countPrivateLeaves(d)/2) : 5)
                     .attr("fill", (d:any) => d._children ? "#555" : "#999")
                     .attr("stroke-width", 10);
 
@@ -244,11 +248,18 @@ export default class TreeVisualizationSVG extends TreeVisualization {
             return {source: flip(link.source) as any, target: flip(link.target) as any};
         }
 
-        function collapseChildrenRecursively(d: any) {
+        function collapseChildren(d: any) {
             if (!d.children) return;
 
-            d.children.forEach((child:any) => collapseChildrenRecursively(child))
+            d.children.forEach((child:any) => collapseChildren(child))
             d.children = null;
+        }
+
+        function countPrivateLeaves(node: any): number {
+            if (!node._children) {
+                return 1
+            }
+            return node._children.reduce((sum: number, child:any) => sum + countPrivateLeaves(child), 0)
         }
     }
 }
