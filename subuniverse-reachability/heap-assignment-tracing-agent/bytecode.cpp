@@ -13,6 +13,11 @@
 
 using namespace std;
 
+
+#define LOG 0
+
+
+
 #define BYTEWISE __attribute__((aligned(1), packed))
 
 using u1 = uint8_t;
@@ -1035,10 +1040,11 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len
                         }
                     }
 
+#if LOG
                     std::cerr << "Found <clinit> of class ";
-
                     std::cerr.write(class_name.data(), class_name.size());
                     std::cerr << '\n';
+#endif
 
                     if(std::equal(class_name.begin(), class_name.end(), "com/oracle/svm/hosted/phases/IntrinsifyMethodHandlesInvocationPlugin"))
                     {

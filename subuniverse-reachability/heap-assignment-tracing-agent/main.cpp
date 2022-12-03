@@ -4,6 +4,10 @@
 #include <cstring>
 
 #define LOG 0
+#define REWRITE_ENABLE 1
+
+// THis option is relevant in order to be able to debug the Java process with the rewriting functionality
+#define BREAKPOINTS_ENABLE 0
 
 #define check_code(retcode, result) if((result)) { cerr << (#result) << "Error!!! code " << result << ":" << endl; return retcode; }
 #define check(result) check_code(,result)
@@ -74,7 +78,7 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
     raise(SIGSTOP);
      */
 
-    //cerr << nounitbuf;
+    cerr << nounitbuf;
     iostream::sync_with_stdio(false);
 
     jvmtiEnv* env;
@@ -86,11 +90,11 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
     jvmti_env = env;
 
     jvmtiCapabilities cap{ 0 };
-    cap.can_generate_field_modification_events = true;
-    cap.can_generate_single_step_events = true;
-    //cap.can_tag_objects = true;
-    cap.can_generate_breakpoint_events = true;
     cap.can_generate_frame_pop_events = true;
+#if BREAKPOINTS_ENABLE
+    cap.can_generate_breakpoint_events = true;
+    cap.can_generate_field_modification_events = true;
+#endif
 
     check_code(1, env->AddCapabilities(&cap));
 
@@ -164,7 +168,7 @@ static void processClass(jvmtiEnv* jvmti_env, jclass klass)
             char* generic;
             check(jvmti_env->GetMethodName(m, &name, &signature, &generic));
 
-            if(std::strcmp(name, "onClinitStart") == 0)
+            if(std::strcmp(name, "Dummy") == 0)
             {
                 jvmti_env->SetBreakpoint(m, 0);
             }
@@ -174,8 +178,11 @@ static void processClass(jvmtiEnv* jvmti_env, jclass klass)
 
 static void JNICALL onVMInit(jvmtiEnv *jvmti_env, JNIEnv* jni_env, jthread thread)
 {
-    check(jvmti_env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_PREPARE, nullptr));
+#if REWRITE_ENABLE
     check(jvmti_env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_FILE_LOAD_HOOK, nullptr));
+#endif
+#if BREAKPOINTS_ENABLE
+    check(jvmti_env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_PREPARE, nullptr));
 
     jint num_classes;
     jclass* classes_ptr;
@@ -192,6 +199,7 @@ static void JNICALL onVMInit(jvmtiEnv *jvmti_env, JNIEnv* jni_env, jthread threa
         if(status & JVMTI_CLASS_STATUS_PREPARED)
             processClass(jvmti_env, clazz);
     }
+#endif // BREAKPOINTS_ENABLE
 }
 
 static void get_class_name(jvmtiEnv *jvmti_env, jclass clazz, span<char> buffer)
@@ -329,7 +337,7 @@ static void JNICALL onBreakpoint(
     char inner_clinit_name[1024];
     get_class_name(jvmti_env, type, inner_clinit_name);
 
-#if LOG
+#if LOG || 1
     cerr << outer_clinit_name << ": " << "CLINIT start: " << inner_clinit_name << '\n';
 #endif
 
@@ -358,9 +366,9 @@ static void JNICALL onFramePop(
     char inner_clinit_name[1024];
     get_class_name(jvmti_env, type, inner_clinit_name);
 
-//#if LOG
+#if LOG
     cerr << outer_clinit_name << ": " << "CLINIT end: " << inner_clinit_name << '\n';
-//#endif
+#endif
 }
 
 static void JNICALL onClassPrepare(
@@ -376,8 +384,11 @@ extern "C" JNIEXPORT void JNICALL Java_com_oracle_svm_hosted_classinitialization
 {
     jthread t;
     check(jvmti_env->GetCurrentThread(&t));
+
+#if BREAKPOINTS_ENABLE
     check(jvmti_env->SetEventNotificationMode(start ? JVMTI_ENABLE : JVMTI_DISABLE, JVMTI_EVENT_FIELD_MODIFICATION, t));
     check(jvmti_env->SetEventNotificationMode(start ? JVMTI_ENABLE : JVMTI_DISABLE, JVMTI_EVENT_BREAKPOINT, t));
+#endif
 
     if(start)
     {
@@ -407,29 +418,15 @@ static void JNICALL onClassFileLoad(
         const unsigned char* class_data,
         jint* new_class_data_len,
         unsigned char** new_class_data)
-{/*
-    if(strcmp(name, "com/oracle/svm/core/SubstrateOptions") == 0)
-    {
-        std::cout << "PID: " << getpid() << std::endl;
-        raise(SIGSTOP);
-    }*/
-
+{
 #if LOG
     cerr << "ClassLoad: " << name << endl;
 #endif
-/*
-    if(loader == 0)
-    {
-        cerr << "BOOTSTRAP LOADER DETECTED!" << endl;
-        return;
-    }*/
 
     add_clinit_hook(jvmti_env, class_data, class_data_len, new_class_data, new_class_data_len);
 }
 
-
-/*
-extern "C" JNIEXPORT void JNICALL Java_ClassInitializationTracing_onClinitStart(JNIEnv* env, jobject self)
+extern "C" JNIEXPORT void JNICALL Java_ClassInitializationTracing_Dummy(JNIEnv* env, jobject self)
 {
     jthread thread;
     check(jvmti_env->GetCurrentThread(&thread));
@@ -459,5 +456,4 @@ extern "C" JNIEXPORT void JNICALL Java_ClassInitializationTracing_onClinitStart(
 
     check(jvmti_env->NotifyFramePop(thread, 1));
 }
- */
 

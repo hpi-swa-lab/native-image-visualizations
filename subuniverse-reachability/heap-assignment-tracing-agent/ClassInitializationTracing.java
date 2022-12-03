@@ -13,7 +13,11 @@ public final class ClassInitializationTracing
     private static native void onArrStore(Object[] arr, int index, Object value);
     */
 
+    public static native void Dummy();
+
+
     public static void onClinitStart()
     {
+        Dummy();
     }
 }
