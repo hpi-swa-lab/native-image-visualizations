@@ -145,54 +145,29 @@ static void processClass(jvmtiEnv* jvmti_env, jclass klass)
 #endif
     }
 
-
-    // Hook into <clinit>
-
-    span<jmethodID> methods;
+    if(strcmp(class_signature, "LClassInitializationTracing;") == 0)
     {
-        jint method_count;
-        jmethodID *methods_ptr;
-        check(jvmti_env->GetClassMethods(klass, &method_count, &methods_ptr));
-        methods = {methods_ptr, (size_t)method_count};
-    }
-
-    jmethodID constructor = nullptr;
-
-    for(jmethodID m : methods)
-    {
-        char* name;
-        char* signature;
-        char* generic;
-        check(jvmti_env->GetMethodName(m, &name, &signature, &generic));
-
-        if(std::strcmp(name, "<clinit>") == 0)
+        span<jmethodID> methods;
         {
-            if(constructor)
+            jint method_count;
+            jmethodID *methods_ptr;
+            check(jvmti_env->GetClassMethods(klass, &method_count, &methods_ptr));
+            methods = {methods_ptr, (size_t)method_count};
+        }
+
+        jmethodID constructor = nullptr;
+
+        for(jmethodID m : methods)
+        {
+            char* name;
+            char* signature;
+            char* generic;
+            check(jvmti_env->GetMethodName(m, &name, &signature, &generic));
+
+            if(std::strcmp(name, "onClinitStart") == 0)
             {
-                cerr << "Error!!! found multiple <clinit>\n";
+                jvmti_env->SetBreakpoint(m, 0);
             }
-
-            constructor = m;
-        }
-    }
-
-    if(constructor)
-    {
-        jlocation start, end;
-        check(jvmti_env->GetMethodLocation(constructor, &start, &end));
-
-        if(start == -1)
-        {
-            cerr << "Error!!! Start location unknown\n";
-        }
-        else if(start != 0)
-        {
-            cerr << "Error!!! Start location not zero\n";
-        }
-
-        if(start == 0)
-        {
-            //check(jvmti_env->SetBreakpoint(constructor, 0));
         }
     }
 }
@@ -337,7 +312,7 @@ static void JNICALL onBreakpoint(
         jmethodID method,
         jlocation location)
 {
-    // Breakpoints means we are in a clinit
+    check(jvmti_env->GetFrameLocation(thread, 1, &method, &location));
 
     jclass type;
     check(jvmti_env->GetMethodDeclaringClass(method, &type));
@@ -358,8 +333,7 @@ static void JNICALL onBreakpoint(
     cerr << outer_clinit_name << ": " << "CLINIT start: " << inner_clinit_name << '\n';
 #endif
 
-    check(jvmti_env->ClearBreakpoint(method, location));
-    check(jvmti_env->NotifyFramePop(thread, 0));
+    check(jvmti_env->NotifyFramePop(thread, 1));
 }
 
 static void JNICALL onFramePop(
@@ -384,9 +358,9 @@ static void JNICALL onFramePop(
     char inner_clinit_name[1024];
     get_class_name(jvmti_env, type, inner_clinit_name);
 
-#if LOG
+//#if LOG
     cerr << outer_clinit_name << ": " << "CLINIT end: " << inner_clinit_name << '\n';
-#endif
+//#endif
 }
 
 static void JNICALL onClassPrepare(
@@ -403,7 +377,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_oracle_svm_hosted_classinitialization
     jthread t;
     check(jvmti_env->GetCurrentThread(&t));
     check(jvmti_env->SetEventNotificationMode(start ? JVMTI_ENABLE : JVMTI_DISABLE, JVMTI_EVENT_FIELD_MODIFICATION, t));
-    //check(jvmti_env->SetEventNotificationMode(start ? JVMTI_ENABLE : JVMTI_DISABLE, JVMTI_EVENT_BREAKPOINT, t));
+    check(jvmti_env->SetEventNotificationMode(start ? JVMTI_ENABLE : JVMTI_DISABLE, JVMTI_EVENT_BREAKPOINT, t));
 
     if(start)
     {
@@ -433,11 +407,11 @@ static void JNICALL onClassFileLoad(
         const unsigned char* class_data,
         jint* new_class_data_len,
         unsigned char** new_class_data)
-{
-    /*
+{/*
+    if(strcmp(name, "com/oracle/svm/core/SubstrateOptions") == 0)
     {
-        ofstream classfile("StringConcatFactory.class");
-        classfile.write((const char *) class_data, class_data_len);
+        std::cout << "PID: " << getpid() << std::endl;
+        raise(SIGSTOP);
     }*/
 
 #if LOG
@@ -450,15 +424,40 @@ static void JNICALL onClassFileLoad(
         return;
     }*/
 
-    if(num++ < 10000)
-        return;
-
     add_clinit_hook(jvmti_env, class_data, class_data_len, new_class_data, new_class_data_len);
 }
 
 
+/*
 extern "C" JNIEXPORT void JNICALL Java_ClassInitializationTracing_onClinitStart(JNIEnv* env, jobject self)
 {
-    cerr << "Called!!!\n" << endl;
+    jthread thread;
+    check(jvmti_env->GetCurrentThread(&thread));
+
+    jclass tls;
+    check(jvmti_env->GetThreadLocalStorage(thread, (void**)&tls));
+
+    if(!tls)
+        return;
+
+    jmethodID method;
+    jlocation location;
+    check(jvmti_env->GetFrameLocation(thread, 1, &method, &location));
+
+    jclass type;
+    check(jvmti_env->GetMethodDeclaringClass(method, &type));
+
+    char outer_clinit_name[1024];
+    get_class_name(jvmti_env, tls, outer_clinit_name);
+
+    char inner_clinit_name[1024];
+    get_class_name(jvmti_env, type, inner_clinit_name);
+
+//#if LOG
+    cerr << outer_clinit_name << ": " << "CLINIT start: " << inner_clinit_name << '\n';
+//#endif
+
+    check(jvmti_env->NotifyFramePop(thread, 1));
 }
+ */
 

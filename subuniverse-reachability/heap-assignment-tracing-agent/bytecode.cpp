@@ -7,6 +7,9 @@
 #include <concepts>
 #include <limits>
 #include <fstream>
+#include <csignal>
+#include <sys/types.h>
+#include <unistd.h>
 
 using namespace std;
 
@@ -62,6 +65,52 @@ public:
     }
 };
 
+class table_iterator_end
+{
+
+};
+
+template<typename T>
+class table_iterator
+{
+    T* ptr;
+    size_t count;
+
+public:
+    table_iterator(T* ptr, size_t count) : ptr(ptr), count(count) {}
+
+    table_iterator& operator++()
+    {
+        ptr = (T*)((u1*)ptr + ptr->len());
+        count--;
+        return *this;
+    }
+
+    bool operator!=(table_iterator_end e) const
+    {
+        return count != 0;
+    }
+
+    T& operator*()
+    {
+        return *ptr;
+    }
+
+    T* operator->() { return ptr; }
+};
+
+template<typename T>
+static T* iterate_to_end(T* begin, size_t count)
+{
+    table_iterator<T> it{begin, count};
+    table_iterator_end e;
+
+    while(it != e)
+        ++it;
+
+    return &*it;
+}
+
 enum cp_tag : uint8_t
 {
     Class = 7,
@@ -87,6 +136,50 @@ struct BYTEWISE cp_info
     explicit cp_info(cp_tag tag) : tag(tag) {}
 
     [[nodiscard]] size_t len() const;
+};
+
+template<>
+class table_iterator<cp_info>
+{
+    cp_info* ptr;
+    size_t count;
+    bool at_long = false;
+
+public:
+    table_iterator(cp_info* ptr, size_t count) : ptr(ptr), count(count) {}
+
+    table_iterator& operator++()
+    {
+        switch(ptr->tag)
+        {
+            case Long:
+            case Double:
+            {
+                bool was_at_long = at_long;
+                at_long = !at_long;
+                if(!was_at_long)
+                    break;
+            }
+            default:
+                ptr = (cp_info*)((u1*)ptr + ptr->len());
+                break;
+        }
+
+        count--;
+        return *this;
+    }
+
+    bool operator!=(table_iterator_end e) const
+    {
+        return count != 0;
+    }
+
+    cp_info& operator*()
+    {
+        return *ptr;
+    }
+
+    cp_info* operator->() { return ptr; }
 };
 
 struct BYTEWISE Class_info : public cp_info
@@ -278,10 +371,257 @@ struct BYTEWISE Code_attribute_3
     attribute_info attributes[0 /*attributes_count*/];
 };
 
+
+
+
+
+
+
+
+// Frames
+
+struct BYTEWISE verification_type_info
+{
+    enum class tag : u1
+    {
+        Top = 0,
+        Integer = 1,
+        Float = 2,
+        Double = 3,
+        Long = 4,
+        Null = 5,
+        UninitializedThis = 6,
+        Object = 7,
+        Uninitialized = 8,
+    } tag;
+
+    size_t len() const;
+
+    void adjust_offset(size_t a);
+};
+
+struct BYTEWISE Object_variable_info : public verification_type_info
+{
+    u2 cpool_index;
+};
+
+struct BYTEWISE Uninitialized_variable_info : public verification_type_info
+{
+    u2 offset;
+};
+
+size_t verification_type_info::len() const
+{
+    switch(tag)
+    {
+        case tag::Object: return sizeof(Object_variable_info);
+        case tag::Uninitialized: return sizeof(Uninitialized_variable_info);
+        default: return sizeof(verification_type_info);
+    }
+}
+
+void verification_type_info::adjust_offset(size_t a)
+{
+    if(tag == tag::Uninitialized)
+    {
+        ((Uninitialized_variable_info*)this)->offset += a;
+    }
+}
+
+struct BYTEWISE stack_map_frame
+{
+    u1 frame_type;
+
+    size_t len() const;
+
+    void adjust_offset(size_t a);
+};
+
+struct BYTEWISE same_frame : public stack_map_frame
+{
+    size_t len() const { return sizeof(*this); }
+    void adjust_offset(size_t a) { }
+};
+
+struct BYTEWISE same_locals_1_stack_item_frame : public stack_map_frame
+{
+    verification_type_info stack[0];
+
+    size_t len() const
+    {
+        return sizeof(*this) + stack[0].len();
+    }
+
+    void adjust_offset(size_t a)
+    {
+        stack[0].adjust_offset(a);
+    }
+};
+
+struct BYTEWISE same_locals_1_stack_item_frame_extended : public stack_map_frame
+{
+    u2 offset_delta;
+    verification_type_info stack[0];
+
+    size_t len() const
+    {
+        return sizeof(*this) + stack[0].len();
+    }
+
+    void adjust_offset(size_t a)
+    {
+        stack[0].adjust_offset(a);
+    }
+};
+
+struct BYTEWISE chop_frame : public stack_map_frame
+{
+    u2 offset_delta;
+
+    size_t len() const
+    {
+        return sizeof(*this);
+    }
+
+    void adjust_offset(size_t a) {}
+};
+
+struct BYTEWISE same_frame_extended : public stack_map_frame
+{
+    u2 offset_delta;
+
+    size_t len() const
+    {
+        return sizeof(*this);
+    }
+
+    void adjust_offset(size_t a) {}
+};
+
+struct BYTEWISE append_frame : public stack_map_frame
+{
+    u2 offset_delta;
+    verification_type_info locals[0 /*frame_type - 251*/];
+
+    table_iterator<verification_type_info> begin() { return {locals, (size_t)(frame_type - 251)}; }
+    table_iterator_end end() { return {}; }
+
+    size_t len() const
+    {
+        return (u1*)iterate_to_end(locals, (size_t)(frame_type - 251)) - (u1*)this;
+    }
+
+    void adjust_offset(size_t a)
+    {
+        for(auto& local : *this)
+            local.adjust_offset(a);
+    }
+};
+
+struct BYTEWISE full_frame2
+{
+    u2 number_of_stack_items;
+    verification_type_info stack[0 /*number_of_stack_items*/];
+
+    table_iterator<verification_type_info> begin() { return {stack, number_of_stack_items}; }
+    table_iterator_end end() { return {}; }
+
+    size_t len() const
+    {
+        return (u1*)iterate_to_end(stack, number_of_stack_items) - (u1*)this;
+    }
+
+    void adjust_offset(size_t a)
+    {
+        for(auto& i : *this)
+            i.adjust_offset(a);
+    }
+};
+
+struct BYTEWISE full_frame : public stack_map_frame
+{
+    u2 offset_delta;
+    u2 number_of_locals;
+    verification_type_info locals[0 /*number_of_locals*/];
+
+    table_iterator<verification_type_info> begin() { return {locals, number_of_locals}; }
+    table_iterator_end end() { return {}; }
+
+    full_frame2* next()
+    {
+        return (full_frame2*)iterate_to_end(locals, number_of_locals);
+    }
+
+    size_t len() const
+    {
+        full_frame2* n = const_cast<full_frame*>(this)->next();
+        return n->len() + ((u1*)n - (u1*)this);
+    }
+
+    void adjust_offset(size_t a)
+    {
+        for(auto& i : *this)
+            i.adjust_offset(a);
+
+        next()->adjust_offset(a);
+    }
+};
+
+size_t stack_map_frame::len() const
+{
+    if(frame_type < 64)
+        return ((same_frame*)this)->len();
+    else if(frame_type < 128)
+        return ((same_locals_1_stack_item_frame*)this)->len();
+    else if(frame_type < 247)
+        assert(false);
+    else if(frame_type == 247)
+        return ((same_locals_1_stack_item_frame_extended*)this)->len();
+    else if(frame_type <= 250)
+        return ((chop_frame*)this)->len();
+    else if(frame_type == 251)
+        return ((same_frame_extended*)this)->len();
+    else if(frame_type <= 254)
+        return ((append_frame*)this)->len();
+    else if(frame_type == 255)
+        return ((full_frame*)this)->len();
+    else
+        assert(false);
+}
+
+void stack_map_frame::adjust_offset(size_t a)
+{
+    if(frame_type < 64)
+        ((same_frame*)this)->adjust_offset(a);
+    else if(frame_type < 128)
+        ((same_locals_1_stack_item_frame*)this)->adjust_offset(a);
+    else if(frame_type < 247)
+        assert(false);
+    else if(frame_type == 247)
+        ((same_locals_1_stack_item_frame_extended*)this)->adjust_offset(a);
+    else if(frame_type <= 250)
+        ((chop_frame*)this)->adjust_offset(a);
+    else if(frame_type == 251)
+        ((same_frame_extended*)this)->adjust_offset(a);
+    else if(frame_type <= 254)
+        ((append_frame*)this)->adjust_offset(a);
+    else if(frame_type == 255)
+        ((full_frame*)this)->adjust_offset(a);
+    else
+        assert(false);
+}
+
 struct BYTEWISE StackMapTable_attribute : public attribute_info
 {
     u2 number_of_entries;
-    u1 entries[0];
+    stack_map_frame entries[0];
+
+    table_iterator<stack_map_frame> begin()
+    {
+        return {entries, number_of_entries};
+    }
+
+    table_iterator_end end() { return {}; }
 };
 
 struct BYTEWISE LineNumberTable_attribute : public attribute_info
@@ -335,100 +675,6 @@ struct BYTEWISE LocalVariableTypeTable_attribute : public attribute_info
     }
 };
 
-
-
-
-
-class table_iterator_end
-{
-
-};
-
-template<typename T>
-class table_iterator
-{
-    T* ptr;
-    size_t count;
-
-public:
-    table_iterator(T* ptr, size_t count) : ptr(ptr), count(count) {}
-
-    table_iterator& operator++()
-    {
-        ptr = (T*)((u1*)ptr + ptr->len());
-        count--;
-        return *this;
-    }
-
-    bool operator!=(table_iterator_end e) const
-    {
-        return count != 0;
-    }
-
-    T& operator*()
-    {
-        return *ptr;
-    }
-
-    T* operator->() { return ptr; }
-};
-
-template<>
-class table_iterator<cp_info>
-{
-    cp_info* ptr;
-    size_t count;
-    bool at_long = false;
-
-public:
-    table_iterator(cp_info* ptr, size_t count) : ptr(ptr), count(count) {}
-
-    table_iterator& operator++()
-    {
-        switch(ptr->tag)
-        {
-            case Long:
-            case Double:
-            {
-                bool was_at_long = at_long;
-                at_long = !at_long;
-                if(!was_at_long)
-                    break;
-            }
-            default:
-                ptr = (cp_info*)((u1*)ptr + ptr->len());
-                break;
-        }
-
-        count--;
-        return *this;
-    }
-
-    bool operator!=(table_iterator_end e) const
-    {
-        return count != 0;
-    }
-
-    cp_info& operator*()
-    {
-        return *ptr;
-    }
-
-    cp_info* operator->() { return ptr; }
-};
-
-template<typename T>
-static T* iterate_to_end(T* begin, size_t count)
-{
-    table_iterator<T> it{begin, count};
-    table_iterator_end e;
-
-    while(it != e)
-        ++it;
-
-    return &*it;
-}
-
 struct BYTEWISE method_or_field_info
 {
     u2             access_flags;
@@ -453,6 +699,27 @@ struct BYTEWISE method_or_field_info
         return {};
     }
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 struct BYTEWISE ClassFile2;
 
@@ -612,11 +879,6 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len
             assert(cpentry->tag == Utf8);
             auto class_name = ((Utf8_info*)cpentry)->str();
 
-            // TODO: Add to constant pool:
-            // Methodref: com.oracle.graal.pointsto.heap.ClassInitializationTracing.onClinitStart();
-            // Utf8: class_name
-            // Utf8: method_name
-
             unsigned char* dst;
             jvmti_env->Allocate(src_len + 1000, &dst);
             unsigned char* dst_start = dst;
@@ -646,6 +908,8 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len
 
                 if(str.size() == 4 && std::equal(str.begin(), str.end(), "Code"))
                 {
+#define ADDED_INSTRUCTIONS 4
+
                     Code_attribute_1* code1 = (Code_attribute_1*)&m_attr;
                     Code_attribute_2* code2 = code1->next();
 
@@ -653,16 +917,17 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len
                     dst = std::copy((const unsigned char*)file2, (const unsigned char*)code1->code, (unsigned char*)dst_file2);
                     {
                         u4 *dst_code_attr_len = apply_offset(dst - (const unsigned char *)code1->code, &m_attr.attribute_length);
-                        *dst_code_attr_len = m_attr.attribute_length + 3;
+                        *dst_code_attr_len = m_attr.attribute_length + ADDED_INSTRUCTIONS;
                     }
                     {
                         u4 *dst_code_len = apply_offset(dst - (const unsigned char *)code1->code, &code1->code_length);
-                        *dst_code_len = code1->code_length + 3;
+                        *dst_code_len = code1->code_length + ADDED_INSTRUCTIONS;
                     }
 
                     *dst++ = OpCode::invokestatic;
                     *(u2*)dst = methodref_idx;
                     dst += sizeof(u2);
+                    *dst++ = 0; // Insert NOP to keep same 4-byte alignment
 
                     dst = std::copy((const unsigned char*)code1->code, src + src_len, dst);
 
@@ -670,9 +935,9 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len
 
                     for(auto& e : apply_offset(offset, code2)->exceptions())
                     {
-                        e.start_pc = e.start_pc + 3;
-                        e.end_pc = e.end_pc + 3;
-                        e.handler_pc = e.handler_pc + 3;
+                        e.start_pc += ADDED_INSTRUCTIONS;
+                        e.end_pc += ADDED_INSTRUCTIONS;
+                        e.handler_pc += ADDED_INSTRUCTIONS;
                     }
 
                     Code_attribute_3* code3 = code2->next();
@@ -691,41 +956,57 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len
                         {
                             auto* smt = (StackMapTable_attribute*)&*c_attr;
 
+                            {
+                                auto it = smt->begin();
+
+                                while(it != smt->end())
+                                {
+                                    ++it;
+                                }
+
+                                assert((u1*)&*it - (u1*)smt == smt->len());
+                            }
+
+                            for(auto& frame : *smt)
+                                frame.adjust_offset(ADDED_INSTRUCTIONS);
+
                             if(smt->number_of_entries)
                             {
-                                if(smt->entries[0] < 61 || smt->entries[0] >= 64 && smt->entries[0] < 125)
+                                u1& frame_type = smt->entries[0].frame_type;
+
+                                if(frame_type < 64 - ADDED_INSTRUCTIONS || frame_type >= 64 && frame_type < 128 - ADDED_INSTRUCTIONS)
                                 {
-                                    smt->entries[0] += 3;
+                                    frame_type += ADDED_INSTRUCTIONS;
                                 }
-                                else if(smt->entries[0] >= 247)
+                                else if(frame_type >= 247)
                                 {
-                                    *(u2*)&smt->entries[1] += 3;
+                                    *(u2*)(((u1*)&smt->entries) + 1) += ADDED_INSTRUCTIONS;
                                 }
-                                else if(smt->entries[0] < 128)
+                                else if(frame_type < 128)
                                 {
                                     // We have to extend
-                                    size_t bci = smt->entries[0] & 63;
-                                    bci += 3;
+                                    size_t bci = frame_type & 63;
+                                    bci += ADDED_INSTRUCTIONS;
 
-                                    if(smt->entries[0] & 64)
+                                    if(frame_type & 64)
                                     {
-                                        smt->entries[0] = 247;
+                                        frame_type = 247;
                                     }
                                     else
                                     {
-                                        smt->entries[0] = 251;
+                                        frame_type = 251;
                                     }
 
                                     // Make little space
                                     apply_offset(offset, &m_attr)->attribute_length += 2;
                                     c_attr->attribute_length += 2;
-                                    dst = std::copy(&smt->entries[1], dst, &smt->entries[1] + 2);
+                                    dst = std::copy(((u1*)&smt->entries) + 1, dst, ((u1*)&smt->entries) + 3);
 
-                                    *(u2*)&smt->entries[1] = bci;
+                                    *(u2*)(((u1*)&smt->entries) + 1) = bci;
                                 }
                                 else
                                 {
-                                    std::cerr << "Bad class: " << std::string_view(class_name.data(), class_name.size()) << " with tag " << (uint32_t) smt->entries[0] << std::endl;
+                                    std::cerr << "Bad class: " << std::string_view(class_name.data(), class_name.size()) << " with tag " << (uint32_t)frame_type << std::endl;
                                     jvmti_env->Deallocate(dst_start);
                                     return;
                                 }
@@ -736,21 +1017,21 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len
                             auto* lnt = (LineNumberTable_attribute*)&*c_attr;
 
                             for(auto& line : lnt->lines())
-                                line.start_pc += 3;
+                                line.start_pc += ADDED_INSTRUCTIONS;
                         }
                         else if(std::equal(str.begin(), str.end(), "LocalVariableTable"))
                         {
                             auto* lvt = (LocalVariableTable_attribute*)&*c_attr;
 
                             for(auto& e : lvt->local_variables())
-                                e.start_pc += 3;
+                                e.start_pc += ADDED_INSTRUCTIONS;
                         }
                         else if(std::equal(str.begin(), str.end(), "LocalVariableTypeTable"))
                         {
                             auto* lvtt = (LocalVariableTypeTable_attribute*)&*c_attr;
 
                             for(auto& e : lvtt->local_variable_types())
-                                e.start_pc += 3;
+                                e.start_pc += ADDED_INSTRUCTIONS;
                         }
                     }
 
@@ -759,9 +1040,19 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len
                     std::cerr.write(class_name.data(), class_name.size());
                     std::cerr << '\n';
 
+                    if(std::equal(class_name.begin(), class_name.end(), "com/oracle/svm/hosted/phases/IntrinsifyMethodHandlesInvocationPlugin"))
                     {
-                        std::ofstream classfile("replaced.class");
-                        classfile.write((const char*)dst_start, dst - dst_start);
+                        jvmti_env->Deallocate(dst_start);
+                        return;
+
+                        {
+                            std::ofstream classfile("original.class");
+                            classfile.write((const char *)src, src_len);
+                        }
+                        {
+                            std::ofstream classfile("replaced.class");
+                            classfile.write((const char *) dst_start, dst - dst_start);
+                        }
                     }
 
                     *dst_ptr = dst_start;
