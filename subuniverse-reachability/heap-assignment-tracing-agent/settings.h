@@ -1,8 +1,8 @@
 #ifndef HEAP_ASSIGNMENT_TRACING_AGENT_SETTINGS_H
 #define HEAP_ASSIGNMENT_TRACING_AGENT_SETTINGS_H
 
-#define LOG 0
-#define DEBUG_ON_ASSERT_FAIL 0
+#define LOG 1
+#define DEBUG_ON_ASSERT_FAIL 1
 
 
 #define REWRITE_ENABLE 1
@@ -14,6 +14,14 @@
 
 
 
+#include <csignal>
+#include <sys/types.h>
+
+static void start_debugging()
+{
+    std::cout << "PID: " << getpid() << std::endl;
+    raise(SIGSTOP);
+}
 
 #ifdef DEBUG_ON_ASSERT_FAIL
 #undef assert
@@ -21,14 +29,10 @@
 #define assert(ignore) ((void)0)
 #else
 
-#include <csignal>
-#include <sys/types.h>
-
 __attribute__((noreturn))
 static void __gripe(const char *_Expr, const char *_File, int _Line, const char *_Func) noexcept
 {
-    std::cout << "PID: " << getpid() << std::endl;
-    raise(SIGSTOP);
+    start_debugging();
     exit(1);
 }
 #define assert(expr) \

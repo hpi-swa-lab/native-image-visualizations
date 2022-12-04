@@ -8,6 +8,8 @@
 #include <fstream>
 #include <unistd.h>
 #include "settings.h"
+#include <algorithm>
+#include <numeric>
 
 using namespace std;
 
@@ -413,21 +415,33 @@ struct BYTEWISE Code_attribute_3
 
 
 
+struct Insertion
+{
+    span<uint8_t> data;
+    size_t pos;
+};
+
 class BciShift
 {
-    uint16_t insert_at_pos;
-    uint16_t insertion_size;
+    span<const Insertion> insertions;
 public:
-    BciShift(uint16_t pos, uint16_t offset) : insert_at_pos(pos), insertion_size(offset) {}
+    explicit BciShift(span<const Insertion> insertions) : insertions(insertions) {}
 
     void apply(u2& bci)
     {
         uint16_t val = bci;
-        if(val >= insert_at_pos)
+        size_t offset = 0;
+
+        for(const auto& insertion : insertions)
         {
-            assert((uint32_t)val + (uint32_t)insertion_size <= numeric_limits<uint16_t>::max() && "bci overflow!");
-            bci = val + insertion_size;
+            if(insertion.pos > val)
+                break;
+
+            offset += insertion.data.size();
         }
+
+        assert((size_t)val + offset <= numeric_limits<uint16_t>::max() && "bci overflow!");
+        bci = val + offset;
     }
 };
 
@@ -887,9 +901,9 @@ T* apply_offset(intptr_t offset, const T* ptr)
 
 // Returns number of written bytes
 // This is 0 if the method does not have any code and therefore no replacement happened
-static size_t copy_method_with_insertion(const ConstantPoolOffsets& cp, const method_or_field_info* src_method, method_or_field_info* dst_method, const span<uint8_t> insertion, size_t insert_at_pos)
+static size_t copy_method_with_insertions(const ConstantPoolOffsets& cp, const method_or_field_info* src_method, method_or_field_info* dst_method, const span<const Insertion> insertions)
 {
-    assert((insertion.size() % 4) == 0 && "Switch Jumps may need to be 4-byte-aligned, so only the insertion of multiples of 4 is safe");
+    size_t insertions_size = std::accumulate(insertions.begin(), insertions.end(), 0, [](size_t sum, const auto& insertion) { return insertion.data.size(); });
 
     intptr_t offset = (uint8_t*)dst_method - (uint8_t*)src_method;
 
@@ -904,19 +918,29 @@ static size_t copy_method_with_insertion(const ConstantPoolOffsets& cp, const me
             Code_attribute_1* code1 = (Code_attribute_1*)&m_attr;
             Code_attribute_2* code2 = code1->next();
 
-            // Found the code
-            auto dst = std::copy((const unsigned char*)src_method, (const unsigned char*)code1->code + insert_at_pos, (unsigned char*)dst_method);
+            const uint8_t* src = (const uint8_t*)src_method;
+            uint8_t* dst = (uint8_t*)dst_method;
 
             u4 *dst_code_attr_len = apply_offset(offset, &m_attr.attribute_length);
             u4 *dst_code_len = apply_offset(offset, &code1->code_length);
-            *dst_code_attr_len = m_attr.attribute_length + insertion.size();
-            *dst_code_len = code1->code_length + insertion.size();
 
-            dst = std::copy(insertion.begin(), insertion.end(), dst);
-            offset += insertion.size();
-            dst = std::copy((const uint8_t*)code1->code + insert_at_pos, src_method_end, dst);
+            for(const auto& insertion : insertions)
+            {
+                dst = std::copy(src, (const unsigned char*)code1->code + insertion.pos, dst);
+                src = (const unsigned char*)code1->code + insertion.pos;
 
-            BciShift bci_shift(insert_at_pos, insertion.size());
+                assert((insertion.data.size() % 4) == 0 && "Switch Jumps may need to be 4-byte-aligned, so only the insertion of multiples of 4 is safe");
+                dst = std::copy(insertion.data.begin(), insertion.data.end(), dst);
+                offset += insertion.data.size();
+                assert(offset == dst - src);
+            }
+
+            dst = std::copy(src, src_method_end, dst);
+
+            *dst_code_attr_len += insertions_size;
+            *dst_code_len += insertions_size;
+
+            BciShift bci_shift(insertions);
 
             for(auto& e : apply_offset(offset, code2)->exceptions())
             {
@@ -952,33 +976,37 @@ static size_t copy_method_with_insertion(const ConstantPoolOffsets& cp, const me
                         frame.adjust_offset(bci_shift);
 
                     {
+                        auto insertion = insertions.begin();
                         int bci_index = -1;
 
                         for(auto &frame: *smt)
                         {
                             bci_index += 1 + frame.offset_delta();
 
-                            if(bci_index >= insert_at_pos)
+                            if(insertion == insertions.end())
+                                break;
+
+                            if(bci_index >= insertion->pos)
                             {
                                 u1& frame_type = frame.frame_type;
 
-                                assert(insertion.size() <= 64 && "TODO");
+                                assert(insertion->data.size() <= 64 && "TODO");
 
-                                if(frame_type < 64 - insertion.size() || frame_type >= 64 && frame_type < 128 - insertion.size())
+                                if(frame_type < 64 - insertion->data.size() || frame_type >= 64 && frame_type < 128 - insertion->data.size())
                                 {
-                                    frame_type += insertion.size();
+                                    frame_type += insertion->data.size();
                                 }
                                 else if(frame_type >= 247)
                                 {
                                     // All have the same layout as same_frame_extended
                                     auto typed_frame = (same_frame_extended*)&frame;
-                                    typed_frame->_offset_delta += insertion.size();
+                                    typed_frame->_offset_delta += insertion->data.size();
                                 }
                                 else if(frame_type < 128)
                                 {
                                     // We have to extend
                                     size_t bci = frame_type & 63;
-                                    bci += insertion.size();
+                                    bci += insertion->data.size();
 
                                     if(frame_type & 64)
                                     {
@@ -1002,7 +1030,7 @@ static size_t copy_method_with_insertion(const ConstantPoolOffsets& cp, const me
                                     assert(false && "Bad frame type");
                                 }
 
-                                break;
+                                insertion++;
                             }
                         }
                     }
@@ -1086,21 +1114,30 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len
             if(class_name == "com/oracle/svm/hosted/phases/IntrinsifyMethodHandlesInvocationPlugin")
                 return;
 
+#if LOG
+            cerr << "Found <clinit> of " << class_name << '\n';
+#endif
+
             // Copy ClassFile 2,3,4 until "<clinit>"-method
             auto dst_file2 = (ClassFile2*)cpa.end();
 
             dst = (uint8_t*)dst_file2;
             ptrdiff_t offset = (uint8_t*)dst_file2 - (uint8_t*)file2;
 
-            uint8_t insertion[4];
-            insertion[0] = OpCode::invokestatic;
-            *(u2*)&insertion[1] = onClinitStart_methodref_index.index;
-            insertion[3] = 0; // Pading
-
             dst = std::copy((const uint8_t*)file2, (const uint8_t*)&m, dst);
 
+
+
+
+            uint8_t insertion_data[4];
+            insertion_data[0] = OpCode::invokestatic;
+            *(u2*)&insertion_data[1] = onClinitStart_methodref_index.index;
+            insertion_data[3] = 0; // Pading
+
+            Insertion insertion {.data = insertion_data, .pos = 0};
+
             assert(dst == (uint8_t*)apply_offset(offset, &m));
-            size_t bytes_copied = copy_method_with_insertion(cp, &m, apply_offset(offset, &m), insertion, 0);
+            size_t bytes_copied = copy_method_with_insertions(cp, &m, apply_offset(offset, &m), {&insertion, 1});
 
             if(bytes_copied == 0)
             { // No code attribute
