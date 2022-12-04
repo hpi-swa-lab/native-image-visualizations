@@ -15,3 +15,9 @@ export function randomInteger(min: number, max: number): number {
 
     return Math.floor(Math.random() * (max - min) + min)
 }
+
+export function removeChildren(widget: HTMLElement) {
+    while(widget.firstChild) {
+        widget.removeChild(widget.lastChild)
+    }
+}

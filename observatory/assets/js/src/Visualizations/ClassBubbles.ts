@@ -3,6 +3,7 @@ import Visualization from './Visualization'
 import CircleNode from '../SharedInterfaces/CircleNode'
 import HierarchyNode from '../SharedInterfaces/HierarchyNode'
 import { randomColor, randomInteger } from '../utils'
+import Tooltip from '../Components/Tooltip'
 
 export default class ClassBubbles implements Visualization {
     hierarchy: HierarchyNode
@@ -94,24 +95,8 @@ export default class ClassBubbles implements Visualization {
     }
 
     addNodesToSVG(): void {
-        const tooltip = d3
-            .select('body')
-            .append('div')
-            .style('position', 'absolute')
-            .style('width', 'fit-content')
-            .style('z-index', '999')
-            .style('visibility', 'hidden')
-            .style('background', '#ffffff')
-            .style('border-style', 'solid')
-            .style('border-width', '1px')
-            .style('border-color', 'black')
-            .style('border-radius', '5px')
-            .style('padding', '10px')
-            .style(
-                'box-shadow', 
-                '0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19)'
-            )
-            .text('a simple tooltip')
+        const tooltip = new Tooltip()
+        document.body.appendChild(tooltip.widget)
 
         d3.select('svg g')
             .selectAll('circle')
@@ -132,10 +117,18 @@ export default class ClassBubbles implements Visualization {
                     (nodeToColorIn: CircleNode) => nodeToColorIn.color
                 )
 
-                tooltip.text(node.tooltip).style('visibility', 'visible')
+                tooltip.title = node.label
+                tooltip.datapoints = {
+                    'full package name': node.tooltip
+                }
+                tooltip.buildContents()
+                tooltip.setVisible()
             })
             .on('mousemove', (event) => {
-                tooltip.style('top', event.pageY - 10 + 'px').style('left', event.pageX + 10 + 'px')
+                tooltip.moveToCoordinates(
+                    event.pageY - 10,
+                    event.pageX + 10
+                )
             })
             .on('mouseout', (event, node: CircleNode) => {
                 d3.selectAll('circle')
@@ -143,7 +136,7 @@ export default class ClassBubbles implements Visualization {
                     .join('circle')
                     .style('fill', (nodeToColorIn: CircleNode) => nodeToColorIn.color)
 
-                tooltip.style('visibility', 'hidden')
+                tooltip.setInvisible()
             })
 
         d3.select('svg g')
