@@ -125,6 +125,7 @@ enum cp_tag : uint8_t
     Utf8 = 1,
     MethodHandle = 15,
     MethodType = 16,
+    Dynamic = 17,
     InvokeDynamic = 18
 };
 
@@ -141,15 +142,12 @@ template<class T, class U>
 concept Derived = std::is_base_of<U, T>::value;
 
 template<Derived<cp_info> T_info, typename T = size_t>
-struct ConstantPoolIndex
+struct BYTEWISE ConstantPoolIndex
 {
     T index;
-    explicit ConstantPoolIndex(T index) : index(index) {}
+    ConstantPoolIndex() = default;
 
-    operator ConstantPoolIndex<T_info, size_t>() const
-    {
-        return {index};
-    }
+    explicit ConstantPoolIndex(T index) : index(index) {}
 };
 
 template<cp_tag t>
@@ -202,11 +200,6 @@ public:
     }
 
     cp_info* operator->() { return ptr; }
-};
-
-struct BYTEWISE String_info : public cp_info_tagged<String>
-{
-    u2 string_index;
 };
 
 struct BYTEWISE Integer_info : public cp_info_tagged<Integer>
@@ -262,10 +255,15 @@ struct BYTEWISE Utf8_info : public cp_info_tagged<Utf8>
 };
 static_assert(sizeof(Utf8_info) == 3);
 
+struct BYTEWISE String_info : public cp_info_tagged<String>
+{
+    ConstantPoolIndex<Utf8_info, u2> string_index;
+};
+
 struct BYTEWISE NameAndType_info : public cp_info_tagged<NameAndType>
 {
-    u2 name_index;
-    u2 descriptor_index;
+    ConstantPoolIndex<Utf8_info, u2> name_index;
+    ConstantPoolIndex<Utf8_info, u2> descriptor_index;
 
     explicit NameAndType_info(ConstantPoolIndex<Utf8_info> name, ConstantPoolIndex<Utf8_info> descriptor) : name_index(name.index), descriptor_index(descriptor.index)
     { }
@@ -273,7 +271,7 @@ struct BYTEWISE NameAndType_info : public cp_info_tagged<NameAndType>
 
 struct BYTEWISE Class_info : public cp_info_tagged<Class>
 {
-    u2 name_index;
+    ConstantPoolIndex<Utf8_info, u2> name_index;
 
     explicit Class_info(ConstantPoolIndex<Utf8_info> name) : name_index(name.index) {}
 };
@@ -281,8 +279,8 @@ static_assert(sizeof(Class_info) == 3);
 
 struct BYTEWISE ref_info : public cp_info
 {
-    u2 class_index;
-    u2 name_and_type_index;
+    ConstantPoolIndex<Class_info, u2> class_index;
+    ConstantPoolIndex<NameAndType_info, u2> name_and_type_index;
 
     ref_info(cp_tag tag, ConstantPoolIndex<Class_info> clazz, ConstantPoolIndex<NameAndType_info> name_and_type)
         : cp_info(tag), class_index(clazz.index), name_and_type_index(name_and_type.index)
@@ -294,18 +292,24 @@ struct BYTEWISE ref_info : public cp_info
 struct BYTEWISE MethodHandle_info : public cp_info_tagged<MethodHandle>
 {
     u1 reference_kind;
-    u2 reference_index;
+    ConstantPoolIndex<ref_info, u2> reference_index;
 };
 
 struct BYTEWISE MethodType_info : public cp_info_tagged<MethodType>
 {
-    u2 descriptor_index;
+    ConstantPoolIndex<Utf8_info, u2> descriptor_index;
+};
+
+struct BYTEWISE Dynamic_info : public cp_info_tagged<Dynamic>
+{
+    u2 bootstrap_method_attr_index;
+    ConstantPoolIndex<NameAndType_info, u2> name_and_type_index;
 };
 
 struct BYTEWISE InvokeDynamic_info : public cp_info_tagged<InvokeDynamic>
 {
     u2 bootstrap_method_attr_index;
-    u2 name_and_type_index;
+    ConstantPoolIndex<NameAndType_info, u2> name_and_type_index;
 };
 
 size_t cp_info::len() const
@@ -326,6 +330,7 @@ size_t cp_info::len() const
         case Utf8: return ((Utf8_info*)this)->len();
         case MethodHandle: return sizeof(MethodHandle_info);
         case MethodType: return sizeof(MethodType_info);
+        case Dynamic: return sizeof(Dynamic_info);
         case InvokeDynamic: return sizeof(InvokeDynamic_info);
         default:
             assert(false);
@@ -341,7 +346,7 @@ size_t cp_info::len() const
 
 struct BYTEWISE attribute_info
 {
-    u2 attribute_name_index;
+    ConstantPoolIndex<Utf8_info, u2> attribute_name_index;
     u4 attribute_length;
 
     size_t len() const
@@ -862,11 +867,11 @@ public:
             offsets[i++] = (u1*)&c - (u1*)start;
     }
 
-    template<Derived<cp_info> T>
-    const T* operator[](ConstantPoolIndex<T> i) const
+    template<Derived<cp_info> T_info, typename T>
+    const T_info* operator[](ConstantPoolIndex<T_info, T> i) const
     {
         assert(i.index);
-        T* cp_entry = (T*)((u1*)start + offsets[i.index]);
+        T_info* cp_entry = (T_info*)((u1*)start + offsets[i.index]);
         cp_entry->check_tag();
         return cp_entry;
     }
@@ -892,7 +897,7 @@ static size_t copy_method_with_insertion(const ConstantPoolOffsets& cp, const me
 
     for(const attribute_info& m_attr : *(method_or_field_info*)src_method)
     {
-        auto str = cp[ConstantPoolIndex<Utf8_info>(m_attr.attribute_name_index)]->str();
+        auto str = cp[m_attr.attribute_name_index]->str();
 
         if(str == "Code")
         {
@@ -926,7 +931,7 @@ static size_t copy_method_with_insertion(const ConstantPoolOffsets& cp, const me
 
             for(attribute_info& c_attr : *apply_offset(offset, code3))
             {
-                str = cp[ConstantPoolIndex<Utf8_info>(c_attr.attribute_name_index)]->str();
+                str = cp[c_attr.attribute_name_index]->str();
 
                 if(str == "StackMapTable")
                 {
@@ -1075,8 +1080,8 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len
         {
             // Found class initializer!
 
-            size_t class_name_index = cp[ConstantPoolIndex<Class_info>(file2->this_class)]->name_index;
-            auto class_name = cp[ConstantPoolIndex<Utf8_info>(class_name_index)]->str();
+            auto class_name_index = cp[ConstantPoolIndex<Class_info>(file2->this_class)]->name_index;
+            auto class_name = cp[class_name_index]->str();
 
             if(class_name == "com/oracle/svm/hosted/phases/IntrinsifyMethodHandlesInvocationPlugin")
                 return;
