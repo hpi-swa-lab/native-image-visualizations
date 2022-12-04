@@ -114,6 +114,52 @@ public:
     }
 };
 
+struct Insertion
+{
+    span<uint8_t> data;
+    size_t pos;
+};
+
+class BciShift
+{
+    span<const Insertion> insertions;
+public:
+    explicit BciShift(span<const Insertion> insertions) : insertions(insertions) {}
+
+    template<typename T>
+    void relocate_relative(T& bci_offset, size_t ref_bci)
+    {
+        int64_t offset = bci_offset;
+        size_t bci = ref_bci + offset;
+
+        for(const auto& insertion : insertions)
+        {
+            if(insertion.pos >= ref_bci)
+                break;
+
+            offset -= insertion.data.size();
+        }
+
+        for(const auto& insertion : insertions)
+        {
+            if(insertion.pos > bci)
+                break;
+
+            offset += insertion.data.size();
+        }
+
+        assert((int64_t)(T)offset == offset && "bci overflow!");
+
+        bci_offset = offset;
+    }
+
+    void relocate_absolute(u2& bci)
+    {
+        relocate_relative(bci, 0);
+    }
+};
+
+
 class table_iterator_end
 {
 
@@ -159,6 +205,447 @@ static T* iterate_to_end(T* begin, size_t count)
 
     return &*it;
 }
+
+
+
+
+
+
+
+enum class OpCode : u1
+{
+    nop = 0,
+    aconst_null = 1,
+    iconst_m1 = 2,
+    iconst_0 = 3,
+    iconst_1 = 4,
+    iconst_2 = 5,
+    iconst_3 = 6,
+    iconst_4 = 7,
+    iconst_5 = 8,
+    lconst_0 = 9,
+    lconst_1 = 10,
+    fconst_0 = 11,
+    fconst_1 = 12,
+    fconst_2 = 13,
+    dconst_0 = 14,
+    dconst_1 = 15,
+    bipush = 16,
+    sipush = 17,
+    ldc = 18,
+    ldc_w = 19,
+    ldc2_w = 20,
+    iload = 21,
+    lload = 22,
+    fload = 23,
+    dload = 24,
+    aload,
+    iload_0,
+    iload_1,
+    iload_2,
+    iload_3,
+    lload_0,
+    lload_1,
+    lload_2,
+    lload_3,
+    fload_0,
+    fload_1,
+    fload_2,
+    fload_3,
+    dload_0,
+    dload_1,
+    dload_2,
+    dload_3,
+    aload_0,
+    aload_1,
+    aload_2,
+    aload_3,
+    iaload,
+    laload,
+    faload,
+    daload,
+    aaload,
+    baload,
+    caload,
+    saload,
+    istore,
+    lstore,
+    fstore,
+    dstore,
+    astore,
+    istore_0,
+    istore_1,
+    istore_2,
+    istore_3,
+    lstore_0,
+    lstore_1,
+    lstore_2,
+    lstore_3,
+    fstore_0,
+    fstore_1,
+    fstore_2,
+    fstore_3,
+    dstore_0,
+    dstore_1,
+    dstore_2,
+    dstore_3,
+    astore_0,
+    astore_1,
+    astore_2,
+    astore_3,
+    iastore,
+    lastore,
+    fastore,
+    dastore,
+    aastore,
+    bastore,
+    castore,
+    sastore,
+
+    pop,
+    pop2,
+    dup,
+    dup_x1,
+    dup_x2,
+    dup2,
+    dup2_x1,
+    dup2_x2,
+    swap,
+    iadd,
+    ladd,
+    fadd,
+    dadd,
+    isub,
+    lsub,
+    fsub,
+    dsub,
+    imul,
+    lmul,
+    fmul,
+    dmul,
+    idiv,
+    ldiv,
+    fdiv,
+    ddiv,
+    irem,
+    lrem,
+    frem,
+    drem,
+    ineg,
+    lneg,
+    fneg,
+    dneg,
+    ishl,
+    lshl,
+    ishr,
+    lshr,
+    iushr,
+    lushr,
+    iand,
+    land,
+    ior,
+    lor,
+    ixor,
+    lxor,
+    iinc,
+    i2l,
+    i2f,
+    i2d,
+    l2i,
+    l2f,
+    l2d,
+    f2i,
+    f2l,
+    f2d,
+    d2i,
+    d2l,
+    d2f,
+    i2b,
+    i2c,
+    i2s,
+
+    lcmp,
+    fcmpl,
+    fcmpg,
+    dcmpl,
+    dcmpg,
+    ifeq,
+    ifne,
+    iflt,
+    ifge,
+    ifgt,
+    ifle,
+    if_icmpeq,
+    if_icmpne,
+    if_icmplt,
+    ic_icmpge,
+    if_icmpgt,
+    if_icmple,
+    if_acmpeq,
+    if_acmpne,
+
+    goto_,
+    jsr,
+    ret,
+    tableswitch,
+    lookupswitch,
+    ireturn,
+    lreturn,
+    freturn,
+    dreturn,
+    areturn,
+    return_,
+
+    getstatic,
+    putstatic,
+    getfield,
+    putfield,
+    invokevirtual,
+    invokespecial,
+    invokestatic,
+    invokeinterface,
+    invokedynamic,
+    new_,
+    newarray,
+    anewarray,
+    arraylength,
+    athrow,
+    checkcast,
+    instanceof,
+    monitorenter,
+    monitorexit,
+
+    wide,
+    multianewarray,
+    ifnull,
+    ifnonnull,
+    goto_w,
+    jsr_w,
+
+    breakpoint,
+    impdep1 = 254,
+    impdep2 = 255,
+};
+
+struct Instruction;
+
+struct BYTEWISE TableSwitchBody
+{
+    i4 default_address;
+    i4 low;
+    i4 high;
+    i4 addresses[0 /*high-low+1*/];
+
+    static TableSwitchBody* from_instruction_address(const Instruction* instruction, size_t bci)
+    {
+        return (TableSwitchBody*)((uint8_t*)instruction + 1 + ((4 - (bci + 1)) & 3));
+    }
+
+    size_t len() const
+    {
+        return sizeof(*this) + sizeof(i4) * (high - low + 1);
+    }
+
+    void relocate_relative(BciShift a, size_t bci)
+    {
+        a.relocate_relative(default_address, bci);
+
+        size_t n = ((int64_t)high - (int64_t)low) + 1;
+        for(i4& addr : span(addresses, n))
+        {
+            a.relocate_relative(addr, bci);
+        }
+    }
+};
+
+struct BYTEWISE LookupSwitchBody
+{
+    struct BYTEWISE Pair
+    {
+        i4 match;
+        i4 offset;
+    };
+
+    i4 default_address;
+    u4 npairs;
+    Pair pairs[0 /*npairs*/];
+
+    static LookupSwitchBody* from_instruction_address(const Instruction* instruction, size_t bci)
+    {
+        return (LookupSwitchBody*)((uint8_t*)instruction + 1 + ((4 - (bci + 1)) & 3));
+    }
+
+    size_t len() const
+    {
+        return sizeof(*this) + sizeof(Pair) * npairs;
+    }
+
+    void relocate_relative(BciShift a, size_t bci)
+    {
+        a.relocate_relative(default_address, bci);
+
+        for(Pair& p : span<Pair>(pairs, npairs))
+        {
+            a.relocate_relative(p.offset, bci);
+        }
+    }
+};
+
+struct Instruction
+{
+    OpCode op;
+
+    size_t len(size_t bci) const
+    {
+        //cerr << hex << (uint32_t)op << endl;
+
+        if(op >= OpCode::nop && op < OpCode::bipush)
+            return 1;
+        if(op == OpCode::bipush)
+            return 2;
+        if(op == OpCode::sipush)
+            return 3;
+        if(op == OpCode::ldc)
+            return 2;
+        if(op >= OpCode::ldc_w && op <= OpCode::ldc2_w)
+            return 3;
+        if(op >= OpCode::iload && op <= OpCode::aload)
+            return 2;
+        if(op >= OpCode::iload_0 && op <= OpCode::saload)
+            return 1;
+        if(op >= OpCode::istore && op <= OpCode::astore)
+            return 2;
+        if(op >= OpCode::istore_0 && op <= OpCode::sastore)
+            return 1;
+        if(op >= OpCode::pop && op <= OpCode::swap)
+            return 1;
+        if(op >= OpCode::iadd && op <= OpCode::lxor)
+            return 1;
+        if(op == OpCode::iinc)
+            return 3;
+        if(op >= OpCode::i2l && op <= OpCode::i2s)
+            return 1;
+        if(op >= OpCode::lcmp && op <= OpCode::dcmpg)
+            return 1;
+        if(op >= OpCode::ifeq && op <= OpCode::if_acmpne)
+            return 3;
+        if(op >= OpCode::goto_ && op <= OpCode::jsr)
+            return 3;
+        if(op == OpCode::ret)
+            return 2;
+        if(op == OpCode::tableswitch)
+        {
+            TableSwitchBody* body = TableSwitchBody::from_instruction_address(this, bci);
+            return ((uint8_t*)body - (uint8_t*)this) + body->len();
+        }
+        if(op == OpCode::lookupswitch)
+        {
+            LookupSwitchBody* body = LookupSwitchBody::from_instruction_address(this, bci);
+            size_t len = ((uint8_t*)body - (uint8_t*)this) + body->len();
+            //cerr << dec << "LookupSwitch: address: " << hex << uintptr_t(this) << dec << " bci: " << bci << " npairs: " << body->npairs << " len: " << len << endl;
+            return len;
+        }
+        if(op >= OpCode::ireturn && op <= OpCode::return_)
+            return 1;
+        if(op >= OpCode::getstatic && op <= OpCode::invokestatic)
+            return 3;
+        if(op >= OpCode::invokeinterface && op <= OpCode::invokedynamic)
+            return 5;
+        if(op == OpCode::new_)
+            return 3;
+        if(op == OpCode::newarray)
+            return 2;
+        if(op == OpCode::anewarray)
+            return 3;
+        if(op >= OpCode::arraylength && op <= OpCode::athrow)
+            return 1;
+        if(op >= OpCode::checkcast && op <= OpCode::instanceof)
+            return 3;
+        if(op >= OpCode::monitorenter && op <= OpCode::monitorexit)
+            return 1;
+        if(op == OpCode::wide)
+        {
+            const Instruction* next = this + 1;
+
+            if(next->op == OpCode::iinc)
+                return 6;
+            else
+                return 4;
+        }
+        if(op == OpCode::multianewarray)
+            return 4;
+        if(op >= OpCode::ifnull && op <= OpCode::ifnonnull)
+            return 3;
+        if(op >= OpCode::goto_w && op <= OpCode::jsr_w)
+            return 5;
+        if(op == OpCode::breakpoint)
+            return 1;
+        if(op >= OpCode::impdep1 && op <= OpCode::impdep2)
+            return 1;
+
+        assert(false && "Unknown OpCode!");
+    }
+
+    void relocate_relative(BciShift a, size_t bci)
+    {
+        bool needs_relocation = false;
+
+        if(op >= OpCode::ifeq && op <= OpCode::if_acmpne
+           || op >= OpCode::goto_ && op <= OpCode::jsr
+           || op >= OpCode::ifnull && op <= OpCode::ifnonnull)
+        {
+            a.relocate_relative(*(u2*)((uint8_t*)this + 1), bci);
+        }
+        else if(op >= OpCode::goto_w && op <= OpCode::jsr_w)
+        {
+            a.relocate_relative(*(u4*)((uint8_t*)this + 1), bci);
+        }
+
+        needs_relocation = true;
+        if(op >= OpCode::goto_ && op <= OpCode::jsr)
+            needs_relocation = true;
+        if(op == OpCode::tableswitch)
+            needs_relocation = true;
+        if(op == OpCode::lookupswitch)
+            needs_relocation = true;
+        if(op >= OpCode::ifnull && op <= OpCode::ifnonnull)
+            needs_relocation = true;
+        if(op >= OpCode::goto_w && op <= OpCode::jsr_w)
+            needs_relocation = true;
+    }
+};
+
+template<>
+class table_iterator<Instruction>
+{
+    Instruction* ptr;
+    size_t bci;
+
+public:
+    table_iterator(Instruction* ptr, size_t bci) : ptr(ptr), bci(bci) {}
+
+    table_iterator& operator++()
+    {
+        size_t len = ptr->len(bci);
+        ptr += len;
+        bci += len;
+        return *this;
+    }
+
+    bool operator!=(table_iterator<Instruction> other) const
+    {
+        assert(ptr <= other.ptr);
+        return ptr < other.ptr;
+    }
+
+    Instruction& operator*()
+    {
+        return *ptr;
+    }
+
+    Instruction* operator->() { return ptr; }
+};
+
 
 enum cp_tag : uint8_t
 {
@@ -412,12 +899,16 @@ struct BYTEWISE Code_attribute_1 : public attribute_info
     u2 max_stack;
     u2 max_locals;
     u4 code_length;
-    u1 code[0 /*code_length*/];
+    Instruction code[0 /*code_length*/];
 
     Code_attribute_2* next()
     {
         return (Code_attribute_2*)&code[code_length];
     }
+
+    table_iterator<Instruction> begin() {
+        /*cerr << "Begin of instruction iteration!" << endl;*/ return {code, 0}; }
+    table_iterator<Instruction> end() { return {code + code_length, code_length }; }
 };
 
 
@@ -456,57 +947,6 @@ struct BYTEWISE Code_attribute_3
     table_iterator_end end() { return {}; }
 };
 
-
-
-
-
-
-
-
-struct Insertion
-{
-    span<uint8_t> data;
-    size_t pos;
-};
-
-class BciShift
-{
-    span<const Insertion> insertions;
-public:
-    explicit BciShift(span<const Insertion> insertions) : insertions(insertions) {}
-
-    template<typename T>
-    void relocate_relative(T& bci_offset, size_t ref_bci)
-    {
-        int64_t offset = bci_offset;
-        size_t bci = ref_bci + offset;
-
-        for(const auto& insertion : insertions)
-        {
-            if(insertion.pos >= ref_bci)
-                break;
-
-            offset -= insertion.data.size();
-        }
-
-        for(const auto& insertion : insertions)
-        {
-            if(insertion.pos > bci)
-                break;
-
-            offset += insertion.data.size();
-        }
-
-        assert((int64_t)(T)offset == offset && "bci overflow!");
-
-        bci_offset = offset;
-    }
-
-    void relocate_absolute(u2& bci)
-    {
-        relocate_relative(bci, 0);
-    }
-};
 
 // --- Frames ---
 
@@ -903,404 +1343,6 @@ struct BYTEWISE ClassFile4
 };
 
 
-enum class OpCode : u1
-{
-    nop = 0,
-    aconst_null = 1,
-    iconst_m1 = 2,
-    iconst_0 = 3,
-    iconst_1 = 4,
-    iconst_2 = 5,
-    iconst_3 = 6,
-    iconst_4 = 7,
-    iconst_5 = 8,
-    lconst_0 = 9,
-    lconst_1 = 10,
-    fconst_0 = 11,
-    fconst_1 = 12,
-    fconst_2 = 13,
-    dconst_0 = 14,
-    dconst_1 = 15,
-    bipush = 16,
-    sipush = 17,
-    ldc = 18,
-    ldc_w = 19,
-    ldc2_w = 20,
-    iload = 21,
-    lload = 22,
-    fload = 23,
-    dload = 24,
-    aload,
-    iload_0,
-    iload_1,
-    iload_2,
-    iload_3,
-    lload_0,
-    lload_1,
-    lload_2,
-    lload_3,
-    fload_0,
-    fload_1,
-    fload_2,
-    fload_3,
-    dload_0,
-    dload_1,
-    dload_2,
-    dload_3,
-    aload_0,
-    aload_1,
-    aload_2,
-    aload_3,
-    iaload,
-    laload,
-    faload,
-    daload,
-    aaload,
-    baload,
-    caload,
-    saload,
-    istore,
-    lstore,
-    fstore,
-    dstore,
-    astore,
-    istore_0,
-    istore_1,
-    istore_2,
-    istore_3,
-    lstore_0,
-    lstore_1,
-    lstore_2,
-    lstore_3,
-    fstore_0,
-    fstore_1,
-    fstore_2,
-    fstore_3,
-    dstore_0,
-    dstore_1,
-    dstore_2,
-    dstore_3,
-    astore_0,
-    astore_1,
-    astore_2,
-    astore_3,
-    iastore,
-    lastore,
-    fastore,
-    dastore,
-    aastore,
-    bastore,
-    castore,
-    sastore,
-
-    pop,
-    pop2,
-    dup,
-    dup_x1,
-    dup_x2,
-    dup2,
-    dup2_x1,
-    dup2_x2,
-    swap,
-    iadd,
-    ladd,
-    fadd,
-    dadd,
-    isub,
-    lsub,
-    fsub,
-    dsub,
-    imul,
-    lmul,
-    fmul,
-    dmul,
-    idiv,
-    ldiv,
-    fdiv,
-    ddiv,
-    irem,
-    lrem,
-    frem,
-    drem,
-    ineg,
-    lneg,
-    fneg,
-    dneg,
-    ishl,
-    lshl,
-    ishr,
-    lshr,
-    iushr,
-    lushr,
-    iand,
-    land,
-    ior,
-    lor,
-    ixor,
-    lxor,
-    iinc,
-    i2l,
-    i2f,
-    i2d,
-    l2i,
-    l2f,
-    l2d,
-    f2i,
-    f2l,
-    f2d,
-    d2i,
-    d2l,
-    d2f,
-    i2b,
-    i2c,
-    i2s,
-
-    lcmp,
-    fcmpl,
-    fcmpg,
-    dcmpl,
-    dcmpg,
-    ifeq,
-    ifne,
-    iflt,
-    ifge,
-    ifgt,
-    ifle,
-    if_icmpeq,
-    if_icmpne,
-    if_icmplt,
-    ic_icmpge,
-    if_icmpgt,
-    if_icmple,
-    if_acmpeq,
-    if_acmpne,
-
-    goto_,
-    jsr,
-    ret,
-    tableswitch,
-    lookupswitch,
-    ireturn,
-    lreturn,
-    freturn,
-    dreturn,
-    areturn,
-    return_,
-
-    getstatic,
-    putstatic,
-    getfield,
-    putfield,
-    invokevirtual,
-    invokespecial,
-    invokestatic,
-    invokeinterface,
-    invokedynamic,
-    new_,
-    newarray,
-    anewarray,
-    arraylength,
-    athrow,
-    checkcast,
-    instanceof,
-    monitorenter,
-    monitorexit,
-
-    wide,
-    multianewarray,
-    ifnull,
-    ifnonnull,
-    goto_w,
-    jsr_w,
-
-    breakpoint,
-    impdep1 = 254,
-    impdep2 = 255,
-};
-
-struct Instruction;
-
-struct BYTEWISE TableSwitchBody
-{
-    i4 default_address;
-    i4 low;
-    i4 high;
-    i4 addresses[0 /*high-low+1*/];
-
-    static TableSwitchBody* from_instruction_address(const Instruction* instruction, size_t bci)
-    {
-        return (TableSwitchBody*)((uint8_t*)instruction + ((bci + 4) & 3));
-    }
-
-    size_t len() const
-    {
-        return sizeof(*this) + sizeof(i4) * (high - low + 1);
-    }
-
-    void relocate_relative(BciShift a, size_t bci)
-    {
-        a.relocate_relative(default_address, bci);
-
-        size_t n = ((int64_t)high - (int64_t)low) + 1;
-        for(i4& addr : span(addresses, n))
-        {
-            a.relocate_relative(addr, bci);
-        }
-    }
-};
-
-struct BYTEWISE LookupSwitchBody
-{
-    struct BYTEWISE Pair
-    {
-        i4 match;
-        i4 offset;
-    };
-
-    i4 default_address;
-    u4 npairs;
-    Pair pairs[0 /*npairs*/];
-
-    static LookupSwitchBody* from_instruction_address(const Instruction* instruction, size_t bci)
-    {
-        return (LookupSwitchBody*)((uint8_t*)instruction + ((bci + 4) & 3));
-    }
-
-    size_t len() const
-    {
-        return sizeof(*this) + sizeof(Pair) * npairs;
-    }
-
-    void relocate_relative(BciShift a, size_t bci)
-    {
-        a.relocate_relative(default_address, bci);
-
-        for(Pair& p : span<Pair>(pairs, npairs))
-        {
-            a.relocate_relative(p.offset, bci);
-        }
-    }
-};
-
-struct Instruction
-{
-    OpCode op;
-
-    size_t len(size_t bci) const
-    {
-        if(op >= OpCode::nop && op < OpCode::bipush)
-            return 1;
-        if(op == OpCode::bipush)
-            return 2;
-        if(op == OpCode::sipush)
-            return 3;
-        if(op == OpCode::ldc)
-            return 2;
-        if(op >= OpCode::ldc_w && op <= OpCode::ldc2_w)
-            return 3;
-        if(op >= OpCode::iload && op <= OpCode::aload)
-            return 2;
-        if(op >= OpCode::iload_0 && op <= OpCode::saload)
-            return 1;
-        if(op >= OpCode::istore && op <= OpCode::astore)
-            return 2;
-        if(op >= OpCode::istore_0 && op <= OpCode::sastore)
-            return 1;
-        if(op >= OpCode::pop && op <= OpCode::swap)
-            return 1;
-        if(op >= OpCode::iadd && op <= OpCode::lxor)
-            return 1;
-        if(op == OpCode::iinc)
-            return 3;
-        if(op >= OpCode::i2l && op <= OpCode::i2s)
-            return 1;
-        if(op >= OpCode::lcmp && op <= OpCode::dcmpg)
-            return 1;
-        if(op >= OpCode::ifeq && op <= OpCode::if_acmpne)
-            return 3;
-        if(op >= OpCode::goto_ && op <= OpCode::jsr)
-            return 3;
-        if(op == OpCode::ret)
-            return 2;
-        if(op == OpCode::tableswitch)
-        {
-            TableSwitchBody* body = TableSwitchBody::from_instruction_address(this, bci);
-            return ((uint8_t*)body - (uint8_t*)this) + body->len();
-        }
-        if(op == OpCode::lookupswitch)
-        {
-            LookupSwitchBody* body = LookupSwitchBody::from_instruction_address(this, bci);
-            return ((uint8_t*)body - (uint8_t*)this) + body->len();
-        }
-        if(op >= OpCode::ireturn && op <= OpCode::return_)
-            return 1;
-        if(op >= OpCode::getstatic && op <= OpCode::invokestatic)
-            return 3;
-        if(op >= OpCode::invokeinterface && op <= OpCode::invokedynamic)
-            return 5;
-        if(op == OpCode::new_)
-            return 3;
-        if(op == OpCode::newarray)
-            return 2;
-        if(op == OpCode::anewarray)
-            return 3;
-        if(op >= OpCode::arraylength && op <= OpCode::athrow)
-            return 1;
-        if(op >= OpCode::checkcast && op <= OpCode::instanceof)
-            return 3;
-        if(op >= OpCode::monitorenter && op <= OpCode::monitorexit)
-            return 1;
-        if(op == OpCode::wide)
-        {
-            const Instruction* next = this + 1;
-
-            if(next->op == OpCode::iinc)
-                return 6;
-            else
-                return 4;
-        }
-        if(op == OpCode::multianewarray)
-            return 4;
-        if(op >= OpCode::ifnull && op <= OpCode::ifnonnull)
-            return 3;
-        if(op >= OpCode::goto_w && op <= OpCode::jsr_w)
-            return 5;
-        if(op == OpCode::breakpoint)
-            return 1;
-        if(op >= OpCode::impdep1 && op <= OpCode::impdep2)
-            return 1;
-
-        assert(false && "Unknown OpCode!");
-    }
-
-    void relocate_relative(BciShift a, size_t bci)
-    {
-        bool needs_relocation = false;
-
-        if(op >= OpCode::ifeq && op <= OpCode::if_acmpne
-        || op >= OpCode::goto_ && op <= OpCode::jsr
-        || op >= OpCode::ifnull && op <= OpCode::ifnonnull)
-        {
-            a.relocate_relative(*(u2*)((uint8_t*)this + 1), bci);
-        }
-        else if(op >= OpCode::goto_w && op <= OpCode::jsr_w)
-        {
-            a.relocate_relative(*(u4*)((uint8_t*)this + 1), bci);
-        }
-
-            needs_relocation = true;
-        if(op >= OpCode::goto_ && op <= OpCode::jsr)
-            needs_relocation = true;
-        if(op == OpCode::tableswitch)
-            needs_relocation = true;
-        if(op == OpCode::lookupswitch)
-            needs_relocation = true;
-        if(op >= OpCode::ifnull && op <= OpCode::ifnonnull)
-            needs_relocation = true;
-        if(op >= OpCode::goto_w && op <= OpCode::jsr_w)
-            needs_relocation = true;
-    }
-};
 
 class ConstantPoolAppender
 {
@@ -1360,173 +1402,180 @@ T* apply_offset(intptr_t offset, const T* ptr)
 // This is 0 if the method does not have any code and therefore no replacement happened
 static size_t copy_method_with_insertions(const ConstantPoolOffsets& cp, const method_or_field_info* src_method, method_or_field_info* dst_method, const span<const Insertion> insertions)
 {
-    size_t insertions_size = std::accumulate(insertions.begin(), insertions.end(), 0, [](size_t sum, const auto& insertion) { return insertion.data.size(); });
-
-    intptr_t offset = (uint8_t*)dst_method - (uint8_t*)src_method;
+    size_t insertions_size = std::accumulate(insertions.begin(), insertions.end(), 0, [](size_t sum, const auto& insertion) { return sum + insertion.data.size(); });
 
     const uint8_t* src_method_end = (const uint8_t*)src_method + ((method_or_field_info*)src_method)->len();
 
+    Code_attribute_1* code1 = nullptr;
+
     for(const attribute_info& m_attr : *(method_or_field_info*)src_method)
     {
-        auto str = cp[m_attr.attribute_name_index]->str();
-
-        if(str == "Code")
+        if(cp[m_attr.attribute_name_index]->str() == "Code")
         {
-            Code_attribute_1* code1 = (Code_attribute_1*)&m_attr;
-            Code_attribute_2* code2 = code1->next();
-
-            const uint8_t* src = (const uint8_t*)src_method;
-            uint8_t* dst = (uint8_t*)dst_method;
-
-            u4 *dst_code_attr_len = apply_offset(offset, &m_attr.attribute_length);
-            u4 *dst_code_len = apply_offset(offset, &code1->code_length);
-
-            for(const auto& insertion : insertions)
-            {
-                dst = std::copy(src, (const unsigned char*)code1->code + insertion.pos, dst);
-                src = (const unsigned char*)code1->code + insertion.pos;
-
-                assert((insertion.data.size() % 4) == 0 && "Switch Jumps may need to be 4-byte-aligned, so only the insertion of multiples of 4 is safe");
-                dst = std::copy(insertion.data.begin(), insertion.data.end(), dst);
-                offset += insertion.data.size();
-                assert(offset == dst - src);
-            }
-
-            dst = std::copy(src, src_method_end, dst);
-
-            *dst_code_attr_len += insertions_size;
-            *dst_code_len += insertions_size;
-
-            BciShift bci_shift(insertions);
-
-            for(auto& e : apply_offset(offset, code2)->exceptions())
-            {
-                bci_shift.relocate_absolute(e.start_pc);
-                bci_shift.relocate_absolute(e.end_pc);
-                bci_shift.relocate_absolute(e.handler_pc);
-            }
-
-            Code_attribute_3* code3 = code2->next();
-
-            u4* dst_c_length = apply_offset(offset, &code1->attribute_length);
-
-            for(attribute_info& c_attr : *apply_offset(offset, code3))
-            {
-                str = cp[c_attr.attribute_name_index]->str();
-
-                if(str == "StackMapTable")
-                {
-                    auto* smt = (StackMapTable_attribute*)&c_attr;
-
-                    {
-                        auto it = smt->begin();
-
-                        while(it != smt->end())
-                        {
-                            ++it;
-                        }
-
-                        assert((u1*)&*it - (u1*)smt == smt->len());
-                    }
-
-                    for(auto& frame : *smt)
-                        frame.adjust_offset(bci_shift);
-
-                    {
-                        auto insertion = insertions.begin();
-                        int bci_index = -1;
-
-                        for(auto &frame: *smt)
-                        {
-                            bci_index += 1 + frame.offset_delta();
-
-                            if(insertion == insertions.end())
-                                break;
-
-                            if(bci_index >= insertion->pos)
-                            {
-                                u1& frame_type = frame.frame_type;
-
-                                assert(insertion->data.size() <= 64 && "TODO");
-
-                                if(frame_type < 64 - insertion->data.size() || frame_type >= 64 && frame_type < 128 - insertion->data.size())
-                                {
-                                    frame_type += insertion->data.size();
-                                }
-                                else if(frame_type >= 247)
-                                {
-                                    // All have the same layout as same_frame_extended
-                                    auto typed_frame = (same_frame_extended*)&frame;
-                                    typed_frame->_offset_delta += insertion->data.size();
-                                }
-                                else if(frame_type < 128)
-                                {
-                                    // We have to extend
-                                    size_t bci = frame_type & 63;
-                                    bci += insertion->data.size();
-
-                                    if(frame_type & 64)
-                                    {
-                                        frame_type = 247;
-                                    }
-                                    else
-                                    {
-                                        frame_type = 251;
-                                    }
-
-                                    // Make little space
-                                    *dst_code_attr_len += 2;
-                                    c_attr.attribute_length += 2;
-                                    dst = std::copy(((u1*)&frame) + 1, dst, ((u1*)&frame) + 3);
-
-                                    auto typed_frame = (same_frame_extended*)&frame;
-                                    typed_frame->_offset_delta = bci;
-                                }
-                                else
-                                {
-                                    assert(false && "Bad frame type");
-                                }
-
-                                insertion++;
-                            }
-                        }
-                    }
-                }
-                else if(str == "LineNumberTable")
-                {
-                    auto* lnt = (LineNumberTable_attribute*)&c_attr;
-
-                    for(auto& line : lnt->lines())
-                        bci_shift.relocate_absolute(line.start_pc);
-                }
-                else if(str == "LocalVariableTable")
-                {
-                    auto* lvt = (LocalVariableTable_attribute*)&c_attr;
-
-                    for(auto& e : lvt->local_variables())
-                        bci_shift.relocate_absolute(e.start_pc);
-                }
-                else if(str == "LocalVariableTypeTable")
-                {
-                    auto* lvtt = (LocalVariableTypeTable_attribute*)&c_attr;
-
-                    for(auto& e : lvtt->local_variable_types())
-                        bci_shift.relocate_absolute(e.start_pc);
-                }
-            }
-
-            return dst - (uint8_t*)dst_method;
+            code1 = (Code_attribute_1*)&m_attr;
+            break;
         }
     }
 
-    return 0;
+    if(!code1)
+        return 0;
+
+    Code_attribute_2* code2 = code1->next();
+
+    const uint8_t* src = (const uint8_t*)src_method;
+    uint8_t* dst = (uint8_t*)dst_method;
+
+    Code_attribute_1* dst_code1 = apply_offset(dst - src, code1);
+
+    for(const auto& insertion : insertions)
+    {
+        dst = std::copy(src, (const unsigned char*)code1->code + insertion.pos, dst);
+        src = (const unsigned char*)code1->code + insertion.pos;
+
+        assert((insertion.data.size() % 4) == 0 && "Switch Jumps may need to be 4-byte-aligned, so only the insertion of multiples of 4 is safe");
+        dst = std::copy(insertion.data.begin(), insertion.data.end(), dst);
+    }
+
+    dst = std::copy(src, src_method_end, dst);
+    src = src_method_end;
+
+    assert(dst_code1->attribute_length == code1->attribute_length);
+    assert(dst_code1->code_length == code1->code_length);
+    dst_code1->attribute_length += insertions_size;
+    dst_code1->code_length += insertions_size;
+
+    BciShift bci_shift(insertions);
+
+    for(Instruction& i : *dst_code1)
+    {
+        i.relocate_relative(bci_shift, &i - dst_code1->code);
+    }
+
+
+    for(auto& e : apply_offset(dst - src, code2)->exceptions())
+    {
+        bci_shift.relocate_absolute(e.start_pc);
+        bci_shift.relocate_absolute(e.end_pc);
+        bci_shift.relocate_absolute(e.handler_pc);
+    }
+
+    Code_attribute_3* code3 = code2->next();
+
+    u4* dst_c_length = apply_offset(dst - src, &code1->attribute_length);
+
+    for(attribute_info& c_attr : *apply_offset(dst - src, code3))
+    {
+        auto str = cp[c_attr.attribute_name_index]->str();
+
+        if(str == "StackMapTable")
+        {
+            auto* smt = (StackMapTable_attribute*)&c_attr;
+
+            {
+                auto it = smt->begin();
+
+                while(it != smt->end())
+                {
+                    ++it;
+                }
+
+                assert((u1*)&*it - (u1*)smt == smt->len());
+            }
+
+            for(auto& frame : *smt)
+                frame.adjust_offset(bci_shift);
+
+            {
+                auto insertion = insertions.begin();
+                int bci_index = -1;
+
+                for(auto &frame: *smt)
+                {
+                    bci_index += 1 + frame.offset_delta();
+
+                    if(insertion == insertions.end())
+                        break;
+
+                    if(bci_index >= insertion->pos)
+                    {
+                        u1& frame_type = frame.frame_type;
+
+                        assert(insertion->data.size() <= 64 && "TODO");
+
+                        if(frame_type < 64 - insertion->data.size() || frame_type >= 64 && frame_type < 128 - insertion->data.size())
+                        {
+                            frame_type += insertion->data.size();
+                        }
+                        else if(frame_type >= 247)
+                        {
+                            // All have the same layout as same_frame_extended
+                            auto typed_frame = (same_frame_extended*)&frame;
+                            typed_frame->_offset_delta += insertion->data.size();
+                        }
+                        else if(frame_type < 128)
+                        {
+                            // We have to extend
+                            size_t bci = frame_type & 63;
+                            bci += insertion->data.size();
+
+                            if(frame_type & 64)
+                            {
+                                frame_type = 247;
+                            }
+                            else
+                            {
+                                frame_type = 251;
+                            }
+
+                            // Make little space
+                            dst_code1->attribute_length += 2;
+                            c_attr.attribute_length += 2;
+                            dst = std::copy(((u1*)&frame) + 1, dst, ((u1*)&frame) + 3);
+
+                            auto typed_frame = (same_frame_extended*)&frame;
+                            typed_frame->_offset_delta = bci;
+                        }
+                        else
+                        {
+                            assert(false && "Bad frame type");
+                        }
+
+                        insertion++;
+                    }
+                }
+            }
+        }
+        else if(str == "LineNumberTable")
+        {
+            auto* lnt = (LineNumberTable_attribute*)&c_attr;
+
+            for(auto& line : lnt->lines())
+                bci_shift.relocate_absolute(line.start_pc);
+        }
+        else if(str == "LocalVariableTable")
+        {
+            auto* lvt = (LocalVariableTable_attribute*)&c_attr;
+
+            for(auto& e : lvt->local_variables())
+                bci_shift.relocate_absolute(e.start_pc);
+        }
+        else if(str == "LocalVariableTypeTable")
+        {
+            auto* lvtt = (LocalVariableTypeTable_attribute*)&c_attr;
+
+            for(auto& e : lvtt->local_variable_types())
+                bci_shift.relocate_absolute(e.start_pc);
+        }
+    }
+
+    return dst - (uint8_t*)dst_method;
 }
 
 
 
-void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len, unsigned char** dst_ptr, jint* dst_len_ptr)
+void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint src_len, unsigned char** dst_ptr, jint* dst_len_ptr)
 {
-    auto file1 = (ClassFile1*)src;
+    auto file1 = (ClassFile1*)src_start;
     ConstantPoolOffsets cp(file1);
     auto file2 = file1->continuation();
     auto file3 = file2->continuation();
@@ -1539,7 +1588,7 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len
 
     // Copy ClassFile1:
     auto dst_file1 = (ClassFile1*)dst;
-    dst = std::copy(src, (const unsigned char*)file2, dst);
+    dst = std::copy((const unsigned char*)file1, (const unsigned char*)file2, dst);
 
     // Add necessary constants
     ConstantPoolAppender cpa(dst, file1->constant_pool_count);
@@ -1559,58 +1608,138 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len
 
     dst_file1->constant_pool_count = cpa.cp_count();
 
+    // Copy ClassFile 2,3,4 until "<clinit>"-method
+    auto dst_file2 = (ClassFile2*)cpa.end();
+
+    dst = (uint8_t*)dst_file2;
+
+
+    uint8_t call_onArrayWrite_code[4];
+    call_onArrayWrite_code[0] = (uint8_t)OpCode::invokestatic;
+    *(u2*)&call_onArrayWrite_code[1] = onArrayWrite_methodref.index;
+    call_onArrayWrite_code[3] = (uint8_t)OpCode::nop; // Padding
+
+    uint8_t call_onClinitStart_code[4];
+    call_onClinitStart_code[0] = static_cast<uint8_t>(OpCode::invokestatic);
+    *(u2*)&call_onClinitStart_code[1] = onClinitStart_methodref.index;
+    call_onClinitStart_code[3] = static_cast<uint8_t>(OpCode::nop); // Padding
+
+
+    auto src = (const uint8_t*)file2;
+    bool modified = false;
+
     for(auto& m : *file4)
     {
+        dst = std::copy(src, (const uint8_t*)&m, dst);
+        src = (const uint8_t*)&m;
+
         auto name = cp[ConstantPoolIndex<Utf8_info>(m.name_index)]->str();
 
-        if(name == "<clinit>")
-        {
-            // Found class initializer!
+        Code_attribute_1* code1 = nullptr;
 
+        for(const attribute_info& m_attr : *(method_or_field_info*)&m)
+        {
+            if(cp[m_attr.attribute_name_index]->str() == "Code")
+            {
+                code1 = (Code_attribute_1*)&m_attr;
+                break;
+            }
+        }
+
+        if(!code1)
+        {
+            continue;
+        }
+
+        bool insert_clinit_callback = name == "<clinit>";
+
+        if(insert_clinit_callback)
+        {
             auto class_name_index = cp[ConstantPoolIndex<Class_info>(file2->this_class)]->name_index;
             auto class_name = cp[class_name_index]->str();
 
             if(class_name == "com/oracle/svm/hosted/phases/IntrinsifyMethodHandlesInvocationPlugin")
-                return;
-
+                insert_clinit_callback = false;
+            else
+            {
 #if LOG
-            cerr << "Found <clinit> of " << class_name << '\n';
+                cerr << "Found <clinit> of " << class_name << '\n';
 #endif
+            }
+        }
 
-            // Copy ClassFile 2,3,4 until "<clinit>"-method
-            auto dst_file2 = (ClassFile2*)cpa.end();
+        size_t insertion_count = insert_clinit_callback;
+        size_t insertion_index = 0;
 
-            dst = (uint8_t*)dst_file2;
-            ptrdiff_t offset = (uint8_t*)dst_file2 - (uint8_t*)file2;
+        //cerr << "First run: " << dec << code1->code_length << endl;
 
-            dst = std::copy((const uint8_t*)file2, (const uint8_t*)&m, dst);
+        for(Instruction& i : *code1)
+        {
+            if(i.op == OpCode::aastore)
+                insertion_count++;
+        }
 
+        if(insertion_count == 0)
+            continue;
 
+        Insertion insertions[insertion_count];
 
+        if(insert_clinit_callback)
+        {
+            insertions[insertion_index++] = { .data = call_onClinitStart_code, .pos = 0 };
+        }
 
-            uint8_t insertion_data[4];
-            insertion_data[0] = static_cast<uint8_t>(OpCode::invokestatic);
-            *(u2*)&insertion_data[1] = onClinitStart_methodref.index;
-            insertion_data[3] = static_cast<uint8_t>(OpCode::nop); // Pading
+        //cerr << "Second run: " << dec << code1->code_length << endl;
 
-            Insertion insertion {.data = insertion_data, .pos = 0};
+        for(Instruction& i : *code1)
+        {
+            if(i.op == OpCode::aastore)
+            {
+                insertions[insertion_index++] = { .data = call_onArrayWrite_code, .pos = (size_t)(&i + 1 - code1->code) };
+            }
+        }
 
-            assert(dst == (uint8_t*)apply_offset(offset, &m));
-            size_t bytes_copied = copy_method_with_insertions(cp, &m, apply_offset(offset, &m), {&insertion, 1});
+        size_t bytes_copied = copy_method_with_insertions(cp, (const method_or_field_info*)src, (method_or_field_info*)dst, {&insertions[0], insertion_count});
+        assert(bytes_copied);
+        modified = true;
 
-            if(bytes_copied == 0)
-            { // No code attribute
-                jvmti_env->Deallocate(dst_start);
-                return;
+        {
+            // Replace aastore in target code
+            Code_attribute_1* dst_code1 = nullptr;
+
+            for(attribute_info& m_attr : *(method_or_field_info*)dst)
+            {
+                if(cp[m_attr.attribute_name_index]->str() == "Code")
+                {
+                    dst_code1 = (Code_attribute_1*)&m_attr;
+                    break;
+                }
             }
 
-            dst += bytes_copied;
+            assert(dst_code1);
 
-            dst = std::copy((const uint8_t*)&m + m.len(), src + src_len, dst);
+            //cerr << "Third run: " << dec << dst_code1->code_length << endl;
 
-            *dst_ptr = dst_start;
-            *dst_len_ptr = dst - dst_start;
-            return;
+            for(Instruction& i : *dst_code1)
+            {
+                if(i.op == OpCode::aastore)
+                    i.op == OpCode::nop;
+            }
         }
+
+        dst += bytes_copied;
+        src = (const uint8_t*)&m + m.len();
+    }
+
+    if(!modified)
+    {
+        auto res = jvmti_env->Deallocate(dst_start);
+        assert(res == JVMTI_ERROR_NONE);
+    }
+    else
+    {
+        dst = std::copy(src, src_start + src_len, dst);
+        *dst_ptr = dst_start;
+        *dst_len_ptr = dst - dst_start;
     }
 }

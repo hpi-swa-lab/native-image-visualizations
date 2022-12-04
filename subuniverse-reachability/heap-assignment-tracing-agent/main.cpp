@@ -119,8 +119,8 @@ struct ObjectContext
 
 JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
 {
-    /*
     std::cout << "PID: " << getpid() << std::endl;
+    /*
     raise(SIGSTOP);
      */
 
@@ -465,6 +465,9 @@ static void JNICALL onClassFileLoad(
 #if LOG
     cerr << "ClassLoad: " << name << endl;
 #endif
+
+    if(strcmp(name, "ClassInitializationTracing") == 0)
+        return;
 
     add_clinit_hook(jvmti_env, class_data, class_data_len, new_class_data, new_class_data_len);
 }

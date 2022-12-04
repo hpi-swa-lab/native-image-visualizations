@@ -2,7 +2,7 @@
 #define HEAP_ASSIGNMENT_TRACING_AGENT_SETTINGS_H
 
 #define LOG 1
-#define DEBUG_ON_ASSERT_FAIL 1
+#define DEBUG_ON_ASSERT_FAIL 0
 
 
 #define REWRITE_ENABLE 1
@@ -23,7 +23,7 @@ static void start_debugging()
     raise(SIGSTOP);
 }
 
-#ifdef DEBUG_ON_ASSERT_FAIL
+#if DEBUG_ON_ASSERT_FAIL
 #undef assert
 #ifdef NDEBUG
 #define assert(ignore) ((void)0)
@@ -39,6 +39,9 @@ static void __gripe(const char *_Expr, const char *_File, int _Line, const char 
     ((expr) ? (void)0 :\
      __gripe(#expr, __FILE__,__LINE__,__func__))
 #endif
-#endif // DEBUG_ON_ASSERT_FAIL
+#else // DEBUG_ON_ASSERT_FAIL
+#include <cassert>
+#endif
+
 
 #endif //HEAP_ASSIGNMENT_TRACING_AGENT_SETTINGS_H
