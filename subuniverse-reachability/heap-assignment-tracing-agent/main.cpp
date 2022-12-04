@@ -2,8 +2,10 @@
 #include <iostream>
 #include <span>
 #include <cstring>
+#include <cassert>
+#include <vector>
 
-#define LOG 0
+#define LOG 1
 #define REWRITE_ENABLE 1
 
 // THis option is relevant in order to be able to debug the Java process with the rewriting functionality
@@ -36,13 +38,6 @@ static void JNICALL onClassPrepare(
 
 static void JNICALL onVMInit(jvmtiEnv *jvmti_env, JNIEnv* jni_env, jthread thread);
 
-static void JNICALL onBreakpoint(
-        jvmtiEnv *jvmti_env,
-        JNIEnv* jni_env,
-        jthread thread,
-        jmethodID method,
-        jlocation location);
-
 static void JNICALL onFramePop(
         jvmtiEnv *jvmti_env,
         JNIEnv* jni_env,
@@ -62,14 +57,39 @@ static void JNICALL onClassFileLoad(
         jint* new_class_data_len,
         unsigned char** new_class_data);
 
+static void JNICALL onThreadStart(
+        jvmtiEnv *jvmti_env,
+        JNIEnv* jni_env,
+        jthread thread);
 
-static jvmtiEnv* jvmti_env;
+static void JNICALL onThreadEnd(
+        jvmtiEnv *jvmti_env,
+        JNIEnv* jni_env,
+        jthread thread);
 
 
-#include <csignal>
-#include <sys/types.h>
-#include <unistd.h>
-#include <fstream>
+
+static jvmtiEnv* _jvmti_env;
+
+
+
+
+struct AgentThreadContext
+{
+    vector<jclass> runningClassInitializations;
+
+    static AgentThreadContext* from_thread(jvmtiEnv* jvmti_env, jthread t)
+    {
+        AgentThreadContext* tc;
+        auto res = jvmti_env->GetThreadLocalStorage(t, (void**)&tc);
+        assert(res == 0);
+        assert(tc);
+        return tc;
+    }
+};
+
+
+
 
 JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
 {
@@ -87,7 +107,7 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
     check_code(1, env->AddToBootstrapClassLoaderSearch("/home/christoph/MPWS2022RH1/subuniverse-reachability/heap-assignment-tracing-agent/build"));
 
 
-    jvmti_env = env;
+    _jvmti_env = env;
 
     jvmtiCapabilities cap{ 0 };
     cap.can_generate_frame_pop_events = true;
@@ -102,12 +122,15 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
     callbacks.FieldModification = onFieldModification;
     callbacks.ClassPrepare = onClassPrepare;
     callbacks.VMInit = onVMInit;
-    callbacks.Breakpoint = onBreakpoint;
     callbacks.FramePop = onFramePop;
     callbacks.ClassFileLoadHook = onClassFileLoad;
+    callbacks.ThreadStart = onThreadStart;
+    callbacks.ThreadEnd = onThreadEnd;
     check_code(1, env->SetEventCallbacks(&callbacks, sizeof(callbacks)));
     check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_VM_INIT, nullptr));
     check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_FRAME_POP, nullptr));
+    check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_THREAD_START, nullptr));
+    check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_THREAD_END, nullptr));
 
     return 0;
 }
@@ -302,46 +325,26 @@ static void onFieldModification(
     char new_value_class_name[1024];
     get_class_name(jvmti_env, new_value_class, new_value_class_name);
 
-    jclass cause_class;
-    jvmti_env->GetThreadLocalStorage(thread, (void**)&cause_class);
+    AgentThreadContext* tc = AgentThreadContext::from_thread(jvmti_env, thread);
 
     char cause_class_name[1024];
-    get_class_name(jvmti_env, cause_class, cause_class_name);
+
+    assert(!tc->runningClassInitializations.empty());
+
+    if(tc->runningClassInitializations.empty())
+    {
+        cause_class_name[0] = 0;
+    }
+    else
+    {
+        get_class_name(jvmti_env, tc->runningClassInitializations.back(), cause_class_name);
+    }
+
+
 
 #if LOG || 1
     cerr << cause_class_name << ": " << class_name << "." << field_name << " = " << new_value_class_name << '\n';
 #endif
-}
-
-static void JNICALL onBreakpoint(
-        jvmtiEnv *jvmti_env,
-        JNIEnv* jni_env,
-        jthread thread,
-        jmethodID method,
-        jlocation location)
-{
-    check(jvmti_env->GetFrameLocation(thread, 1, &method, &location));
-
-    jclass type;
-    check(jvmti_env->GetMethodDeclaringClass(method, &type));
-
-    jclass tls;
-    check(jvmti_env->GetThreadLocalStorage(thread, (void**)&tls));
-
-    if(!tls)
-        return;
-
-    char outer_clinit_name[1024];
-    get_class_name(jvmti_env, tls, outer_clinit_name);
-
-    char inner_clinit_name[1024];
-    get_class_name(jvmti_env, type, inner_clinit_name);
-
-#if LOG
-    cerr << outer_clinit_name << ": " << "CLINIT start: " << inner_clinit_name << '\n';
-#endif
-
-    check(jvmti_env->NotifyFramePop(thread, 1));
 }
 
 static void JNICALL onFramePop(
@@ -354,20 +357,18 @@ static void JNICALL onFramePop(
     jclass type;
     check(jvmti_env->GetMethodDeclaringClass(method, &type));
 
-    jclass tls;
-    check(jvmti_env->GetThreadLocalStorage(thread, (void**)&tls));
+    AgentThreadContext* tc = AgentThreadContext::from_thread(jvmti_env, thread);
 
-    if(!tls)
-        return;
+    assert(!tc->runningClassInitializations.empty());
 
-    char outer_clinit_name[1024];
-    get_class_name(jvmti_env, tls, outer_clinit_name);
+    jni_env->DeleteGlobalRef(tc->runningClassInitializations.back());
+    tc->runningClassInitializations.pop_back();
 
     char inner_clinit_name[1024];
     get_class_name(jvmti_env, type, inner_clinit_name);
 
 #if LOG
-    cerr << outer_clinit_name << ": " << "CLINIT end: " << inner_clinit_name << '\n';
+    cerr << "CLINIT end: " << inner_clinit_name << '\n';
 #endif
 }
 
@@ -383,29 +384,28 @@ static void JNICALL onClassPrepare(
 extern "C" JNIEXPORT void JNICALL Java_com_oracle_svm_hosted_classinitialization_ClassInitializationSupport_onInit(JNIEnv* env, jobject self, jclass clazz, jboolean start)
 {
     jthread t;
-    check(jvmti_env->GetCurrentThread(&t));
+    check(_jvmti_env->GetCurrentThread(&t));
 
 #if BREAKPOINTS_ENABLE
-    check(jvmti_env->SetEventNotificationMode(start ? JVMTI_ENABLE : JVMTI_DISABLE, JVMTI_EVENT_FIELD_MODIFICATION, t));
-    //check(jvmti_env->SetEventNotificationMode(start ? JVMTI_ENABLE : JVMTI_DISABLE, JVMTI_EVENT_BREAKPOINT, t));
+    check(_jvmti_env->SetEventNotificationMode(start ? JVMTI_ENABLE : JVMTI_DISABLE, JVMTI_EVENT_FIELD_MODIFICATION, t));
+    //check(_jvmti_env->SetEventNotificationMode(start ? JVMTI_ENABLE : JVMTI_DISABLE, JVMTI_EVENT_BREAKPOINT, t));
 #endif
+
+    AgentThreadContext* tc = AgentThreadContext::from_thread(_jvmti_env, t);
 
     if(start)
     {
-        jobject clazz_copy = env->NewGlobalRef(clazz);
-        check(jvmti_env->SetThreadLocalStorage(t, clazz_copy));
+        assert(tc->runningClassInitializations.empty());
+        tc->runningClassInitializations.push_back((jclass)env->NewGlobalRef(clazz));
     }
     else
     {
-        jclass tls;
-        check(jvmti_env->GetThreadLocalStorage(t, (void**)&tls));
-        env->DeleteGlobalRef(tls);
-        check(jvmti_env->SetThreadLocalStorage(t, nullptr));
+        assert(tc->runningClassInitializations.size() == 1);
+        env->DeleteGlobalRef(tc->runningClassInitializations.back());
+        tc->runningClassInitializations.pop_back();
     }
 }
 
-
-static int num = 0;
 
 static void JNICALL onClassFileLoad(
         jvmtiEnv *jvmti_env,
@@ -429,31 +429,47 @@ static void JNICALL onClassFileLoad(
 extern "C" JNIEXPORT void JNICALL Java_ClassInitializationTracing_onClinitStart(JNIEnv* env, jobject self)
 {
     jthread thread;
-    check(jvmti_env->GetCurrentThread(&thread));
+    check(_jvmti_env->GetCurrentThread(&thread));
 
-    jclass tls;
-    check(jvmti_env->GetThreadLocalStorage(thread, (void**)&tls));
-
-    if(!tls)
-        return;
+    AgentThreadContext* tc = AgentThreadContext::from_thread(_jvmti_env, thread);
 
     jmethodID method;
     jlocation location;
-    check(jvmti_env->GetFrameLocation(thread, 1, &method, &location));
+    check(_jvmti_env->GetFrameLocation(thread, 1, &method, &location));
 
     jclass type;
-    check(jvmti_env->GetMethodDeclaringClass(method, &type));
-
-    char outer_clinit_name[1024];
-    get_class_name(jvmti_env, tls, outer_clinit_name);
+    check(_jvmti_env->GetMethodDeclaringClass(method, &type));
 
     char inner_clinit_name[1024];
-    get_class_name(jvmti_env, type, inner_clinit_name);
+    get_class_name(_jvmti_env, type, inner_clinit_name);
+
+    // Revise this in the future! Currently, Tracing only happens when explicitly wished.
+    // Therefore we may miss JDK classes that are shared between image building and image itself...
+    if(tc->runningClassInitializations.empty())
+    {
+        cerr << "Skipping CLINIT: " << inner_clinit_name << '\n';
+        return;
+    }
+
+    char outer_clinit_name[1024];
+    get_class_name(_jvmti_env, tc->runningClassInitializations.back(), outer_clinit_name);
 
 #if LOG
     cerr << outer_clinit_name << ": " << "CLINIT start: " << inner_clinit_name << '\n';
 #endif
 
-    check(jvmti_env->NotifyFramePop(thread, 1));
+    tc->runningClassInitializations.push_back((jclass)env->NewGlobalRef(type));
+    check(_jvmti_env->NotifyFramePop(thread, 1));
 }
 
+static void JNICALL onThreadStart(jvmtiEnv *jvmti_env, JNIEnv* jni_env, jthread thread)
+{
+    auto* tc = new AgentThreadContext();
+    check(jvmti_env->SetThreadLocalStorage(thread, tc));
+}
+
+static void JNICALL onThreadEnd(jvmtiEnv *jvmti_env, JNIEnv* jni_env, jthread thread)
+{
+    AgentThreadContext* tc = AgentThreadContext::from_thread(jvmti_env, thread);
+    delete tc;
+}
