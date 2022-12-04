@@ -406,7 +406,25 @@ struct BYTEWISE Code_attribute_3
 
 
 
-// Frames
+class BciShift
+{
+    uint16_t insert_at_pos;
+    uint16_t insertion_size;
+public:
+    BciShift(uint16_t pos, uint16_t offset) : insert_at_pos(pos), insertion_size(offset) {}
+
+    void apply(u2& bci)
+    {
+        uint16_t val = bci;
+        if(val >= insert_at_pos)
+        {
+            assert((uint32_t)val + (uint32_t)insertion_size <= numeric_limits<uint16_t>::max() && "bci overflow!");
+            bci = val + insertion_size;
+        }
+    }
+};
+
+// --- Frames ---
 
 struct BYTEWISE verification_type_info
 {
@@ -425,7 +443,7 @@ struct BYTEWISE verification_type_info
 
     size_t len() const;
 
-    void adjust_offset(size_t a);
+    void adjust_offset(BciShift a);
 };
 
 struct BYTEWISE Object_variable_info : public verification_type_info
@@ -448,11 +466,11 @@ size_t verification_type_info::len() const
     }
 }
 
-void verification_type_info::adjust_offset(size_t a)
+void verification_type_info::adjust_offset(BciShift a)
 {
     if(tag == tag::Uninitialized)
     {
-        ((Uninitialized_variable_info*)this)->offset += a;
+        a.apply(((Uninitialized_variable_info*)this)->offset);
     }
 }
 
@@ -462,13 +480,13 @@ struct BYTEWISE stack_map_frame
 
     size_t len() const;
 
-    void adjust_offset(size_t a);
+    void adjust_offset(BciShift a);
 };
 
 struct BYTEWISE same_frame : public stack_map_frame
 {
     size_t len() const { return sizeof(*this); }
-    void adjust_offset(size_t a) { }
+    void adjust_offset(BciShift a) { }
 };
 
 struct BYTEWISE same_locals_1_stack_item_frame : public stack_map_frame
@@ -480,7 +498,7 @@ struct BYTEWISE same_locals_1_stack_item_frame : public stack_map_frame
         return sizeof(*this) + stack[0].len();
     }
 
-    void adjust_offset(size_t a)
+    void adjust_offset(BciShift a)
     {
         stack[0].adjust_offset(a);
     }
@@ -496,7 +514,7 @@ struct BYTEWISE same_locals_1_stack_item_frame_extended : public stack_map_frame
         return sizeof(*this) + stack[0].len();
     }
 
-    void adjust_offset(size_t a)
+    void adjust_offset(BciShift a)
     {
         stack[0].adjust_offset(a);
     }
@@ -511,7 +529,7 @@ struct BYTEWISE chop_frame : public stack_map_frame
         return sizeof(*this);
     }
 
-    void adjust_offset(size_t a) {}
+    void adjust_offset(BciShift a) {}
 };
 
 struct BYTEWISE same_frame_extended : public stack_map_frame
@@ -523,7 +541,7 @@ struct BYTEWISE same_frame_extended : public stack_map_frame
         return sizeof(*this);
     }
 
-    void adjust_offset(size_t a) {}
+    void adjust_offset(BciShift a) {}
 };
 
 struct BYTEWISE append_frame : public stack_map_frame
@@ -539,7 +557,7 @@ struct BYTEWISE append_frame : public stack_map_frame
         return (u1*)iterate_to_end(locals, (size_t)(frame_type - 251)) - (u1*)this;
     }
 
-    void adjust_offset(size_t a)
+    void adjust_offset(BciShift a)
     {
         for(auto& local : *this)
             local.adjust_offset(a);
@@ -559,7 +577,7 @@ struct BYTEWISE full_frame2
         return (u1*)iterate_to_end(stack, number_of_stack_items) - (u1*)this;
     }
 
-    void adjust_offset(size_t a)
+    void adjust_offset(BciShift a)
     {
         for(auto& i : *this)
             i.adjust_offset(a);
@@ -586,7 +604,7 @@ struct BYTEWISE full_frame : public stack_map_frame
         return n->len() + ((u1*)n - (u1*)this);
     }
 
-    void adjust_offset(size_t a)
+    void adjust_offset(BciShift a)
     {
         for(auto& i : *this)
             i.adjust_offset(a);
@@ -617,7 +635,7 @@ size_t stack_map_frame::len() const
         assert(false);
 }
 
-void stack_map_frame::adjust_offset(size_t a)
+void stack_map_frame::adjust_offset(BciShift a)
 {
     if(frame_type < 64)
         ((same_frame*)this)->adjust_offset(a);
@@ -881,16 +899,6 @@ T* apply_offset(intptr_t offset, const T* ptr)
     return (T*)((u1*)ptr + offset);
 }
 
-static void apply_bytecode_offset(size_t insert_at_pos, size_t insertion_size, u2& bci)
-{
-    uint16_t val = bci;
-    if(val >= insert_at_pos)
-    {
-        assert((uint32_t)val + (uint32_t)insertion_size <= numeric_limits<uint16_t>::max() && "bci overflow!");
-        bci = val + insertion_size;
-    }
-}
-
 // Returns number of written bytes
 // This is 0 if the method does not have any code and therefore no replacement happened
 static size_t copy_method_with_insertion(const ConstantPoolOffsets& cp, const method_or_field_info* src_method, method_or_field_info* dst_method, const span<uint8_t> insertion, size_t insert_at_pos)
@@ -924,11 +932,13 @@ static size_t copy_method_with_insertion(const ConstantPoolOffsets& cp, const me
             offset += insertion.size();
             dst = std::copy((const uint8_t*)code1->code + insert_at_pos, src_method_end, dst);
 
+            BciShift bci_shift(insert_at_pos, insertion.size());
+
             for(auto& e : apply_offset(offset, code2)->exceptions())
             {
-                apply_bytecode_offset(insert_at_pos, insertion.size(), e.start_pc);
-                apply_bytecode_offset(insert_at_pos, insertion.size(), e.end_pc);
-                apply_bytecode_offset(insert_at_pos, insertion.size(), e.handler_pc);
+                bci_shift.apply(e.start_pc);
+                bci_shift.apply(e.end_pc);
+                bci_shift.apply(e.handler_pc);
             }
 
             Code_attribute_3* code3 = code2->next();
@@ -956,11 +966,11 @@ static size_t copy_method_with_insertion(const ConstantPoolOffsets& cp, const me
                         assert((u1*)&*it - (u1*)smt == smt->len());
                     }
 
+                    for(auto& frame : *smt)
+                        frame.adjust_offset(bci_shift);
+
                     // --- TODO: For the whole following section: ---
                     // We only want to shift bcis after "insertion_at_pos"
-
-                    for(auto& frame : *smt)
-                        frame.adjust_offset(insertion.size());
 
                     if(smt->number_of_entries)
                     {
@@ -1009,21 +1019,21 @@ static size_t copy_method_with_insertion(const ConstantPoolOffsets& cp, const me
                     auto* lnt = (LineNumberTable_attribute*)&c_attr;
 
                     for(auto& line : lnt->lines())
-                        apply_bytecode_offset(insert_at_pos, insertion.size(), line.start_pc);
+                        bci_shift.apply(line.start_pc);
                 }
                 else if(str == "LocalVariableTable")
                 {
                     auto* lvt = (LocalVariableTable_attribute*)&c_attr;
 
                     for(auto& e : lvt->local_variables())
-                        apply_bytecode_offset(insert_at_pos, insertion.size(), e.start_pc);
+                        bci_shift.apply(e.start_pc);
                 }
                 else if(str == "LocalVariableTypeTable")
                 {
                     auto* lvtt = (LocalVariableTypeTable_attribute*)&c_attr;
 
                     for(auto& e : lvtt->local_variable_types())
-                        apply_bytecode_offset(insert_at_pos, insertion.size(), e.start_pc);
+                        bci_shift.apply(e.start_pc);
                 }
             }
 
