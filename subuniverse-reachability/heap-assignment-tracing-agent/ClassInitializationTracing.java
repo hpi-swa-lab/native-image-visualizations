@@ -15,8 +15,12 @@ public final class ClassInitializationTracing
 
     public static native void onClinitStart();
 
+    private static native void notifyArrayWrite(Object[] arr, int index, Object val);
+
     public static void onArrayWrite(Object[] arr, int index, Object val)
     {
-        System.err.println("onArrayWrite CALLED!");
+        notifyArrayWrite(arr, index, val);
+        arr[index] = val;
+        //System.err.println("onArrayWrite CALLED!");
     }
 }

@@ -534,3 +534,56 @@ void onObjectFree(jvmtiEnv *jvmti_env, jlong tag)
     auto* oc = (ObjectContext*)tag;
     delete oc;
 }
+
+extern "C" JNIEXPORT void JNICALL Java_ClassInitializationTracing_notifyArrayWrite(JNIEnv* env, jobject self, jarray arr, jint index, jobject val)
+{
+    //cerr << "notifyArrayWrite: Trying to write " << hex << (uintptr_t)val << dec << " into arr with length " << env->GetArrayLength(arr) << " at index " << index << endl;
+
+    jclass arr_class = env->GetObjectClass(self);
+
+    char class_name[1024];
+    get_class_name(_jvmti_env, arr_class, {class_name, class_name + 1024});
+
+    char new_value_class_name[1024];
+    if(!val)
+    {
+        strcpy(new_value_class_name, "null");
+    }
+    else
+    {
+        jclass new_value_class = env->GetObjectClass(val);
+        get_class_name(_jvmti_env, new_value_class, new_value_class_name);
+    }
+
+    jthread thread;
+    check(_jvmti_env->GetCurrentThread(&thread));
+
+    AgentThreadContext* tc = AgentThreadContext::from_thread(_jvmti_env, thread);
+
+    char cause_class_name[1024];
+
+    assert(!tc->clinit_empty());
+
+    if(tc->clinit_empty())
+    {
+        cause_class_name[0] = 0;
+    }
+    else
+    {
+        get_class_name(_jvmti_env, tc->clinit_top(), cause_class_name);
+
+        jlong tag;
+        check(_jvmti_env->GetTag(val, &tag));
+
+        if(!tag)
+        {
+            auto* oc = new ObjectContext{ tc->clinit_top() };
+            _jvmti_env->SetTag(val, (jlong)oc);
+        }
+    }
+
+
+#if LOG || 1
+    cerr << cause_class_name << ": " << class_name << '[' << index << ']' << " = " << new_value_class_name << '\n';
+#endif
+}

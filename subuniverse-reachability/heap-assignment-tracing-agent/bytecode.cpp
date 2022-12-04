@@ -1723,7 +1723,11 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
             for(Instruction& i : *dst_code1)
             {
                 if(i.op == OpCode::aastore)
-                    i.op == OpCode::nop;
+                {
+                    assert((&i)[1].op == OpCode::invokestatic);
+                    std::copy(&i + 1, &i + 5, &i);
+                    //i.op == OpCode::nop;
+                }
             }
         }
 
