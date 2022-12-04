@@ -74,10 +74,11 @@ static jvmtiEnv* _jvmti_env;
 
 
 
-struct AgentThreadContext
+class AgentThreadContext
 {
     vector<jclass> runningClassInitializations;
 
+public:
     static AgentThreadContext* from_thread(jvmtiEnv* jvmti_env, jthread t)
     {
         AgentThreadContext* tc;
@@ -86,8 +87,34 @@ struct AgentThreadContext
         assert(tc);
         return tc;
     }
+
+    void clinit_push(JNIEnv* env, jclass clazz)
+    {
+        runningClassInitializations.push_back((jclass)env->NewGlobalRef(clazz));
+    }
+
+    void clinit_pop(JNIEnv* env)
+    {
+        assert(!runningClassInitializations.empty());
+        runningClassInitializations.pop_back();
+        // Leaking jclass global objects since they serve in ObjectContext...
+    }
+
+    [[nodiscard]] jclass clinit_top() const
+    {
+        return runningClassInitializations.back();
+    }
+
+    [[nodiscard]] bool clinit_empty() const
+    {
+        return runningClassInitializations.empty();
+    }
 };
 
+struct ObjectContext
+{
+    jclass allocReason;
+};
 
 
 
@@ -111,6 +138,7 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
 
     jvmtiCapabilities cap{ 0 };
     cap.can_generate_frame_pop_events = true;
+    cap.can_tag_objects = true;
 #if BREAKPOINTS_ENABLE
     cap.can_generate_breakpoint_events = true;
     cap.can_generate_field_modification_events = true;
@@ -329,17 +357,25 @@ static void onFieldModification(
 
     char cause_class_name[1024];
 
-    assert(!tc->runningClassInitializations.empty());
+    assert(!tc->clinit_empty());
 
-    if(tc->runningClassInitializations.empty())
+    if(tc->clinit_empty())
     {
         cause_class_name[0] = 0;
     }
     else
     {
-        get_class_name(jvmti_env, tc->runningClassInitializations.back(), cause_class_name);
-    }
+        get_class_name(jvmti_env, tc->clinit_top(), cause_class_name);
 
+        jlong tag;
+        check(jvmti_env->GetTag(new_value.l, &tag));
+
+        if(!tag)
+        {
+            auto* oc = new ObjectContext{ tc->clinit_top() };
+            jvmti_env->SetTag(new_value.l, (jlong)oc);
+        }
+    }
 
 
 #if LOG || 1
@@ -359,12 +395,9 @@ static void JNICALL onFramePop(
 
     AgentThreadContext* tc = AgentThreadContext::from_thread(jvmti_env, thread);
 
-    assert(!tc->runningClassInitializations.empty());
+    tc->clinit_pop(jni_env);
 
-    jni_env->DeleteGlobalRef(tc->runningClassInitializations.back());
-    tc->runningClassInitializations.pop_back();
-
-    if(tc->runningClassInitializations.empty())
+    if(tc->clinit_empty())
     {
 #if BREAKPOINTS_ENABLE
         check(jvmti_env->SetEventNotificationMode(JVMTI_DISABLE, JVMTI_EVENT_FIELD_MODIFICATION, thread));
@@ -390,6 +423,7 @@ static void JNICALL onClassPrepare(
 
 extern "C" JNIEXPORT void JNICALL Java_com_oracle_svm_hosted_classinitialization_ClassInitializationSupport_onInit(JNIEnv* env, jobject self, jclass clazz, jboolean start)
 {
+    //return;
     // Currently not needed bc Clinit-Detection happens automatically via instrumentation!
 
     jthread t;
@@ -403,14 +437,13 @@ extern "C" JNIEXPORT void JNICALL Java_com_oracle_svm_hosted_classinitialization
 
     if(start)
     {
-        assert(tc->runningClassInitializations.empty());
-        tc->runningClassInitializations.push_back((jclass)env->NewGlobalRef(clazz));
+        assert(tc->clinit_empty());
+        tc->clinit_push(env, clazz);
     }
     else
     {
-        assert(tc->runningClassInitializations.size() == 1);
-        env->DeleteGlobalRef(tc->runningClassInitializations.back());
-        tc->runningClassInitializations.pop_back();
+        tc->clinit_pop(env);
+        assert(tc->clinit_empty());
     }
 }
 
@@ -436,6 +469,9 @@ static void JNICALL onClassFileLoad(
 
 extern "C" JNIEXPORT void JNICALL Java_ClassInitializationTracing_onClinitStart(JNIEnv* env, jobject self)
 {
+    // Could possibly be removed entirely...
+    // Yet for some reason a few field writes are missing then.
+
     jthread thread;
     check(_jvmti_env->GetCurrentThread(&thread));
 
@@ -452,7 +488,7 @@ extern "C" JNIEXPORT void JNICALL Java_ClassInitializationTracing_onClinitStart(
     get_class_name(_jvmti_env, type, inner_clinit_name);
 
     char outer_clinit_name[1024];
-    if(tc->runningClassInitializations.empty())
+    if(tc->clinit_empty())
     {
 #if BREAKPOINTS_ENABLE
         check(_jvmti_env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_FIELD_MODIFICATION, thread));
@@ -462,14 +498,14 @@ extern "C" JNIEXPORT void JNICALL Java_ClassInitializationTracing_onClinitStart(
     }
     else
     {
-        get_class_name(_jvmti_env, tc->runningClassInitializations.back(), outer_clinit_name);
+        get_class_name(_jvmti_env, tc->clinit_top(), outer_clinit_name);
     }
 
 #if LOG
     cerr << outer_clinit_name << ": " << "CLINIT start: " << inner_clinit_name << '\n';
 #endif
 
-    tc->runningClassInitializations.push_back((jclass)env->NewGlobalRef(type));
+    tc->clinit_push(env, type);
     check(_jvmti_env->NotifyFramePop(thread, 1));
 }
 
