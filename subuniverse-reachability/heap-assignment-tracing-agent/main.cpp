@@ -4,12 +4,7 @@
 #include <cstring>
 #include <cassert>
 #include <vector>
-
-#define LOG 1
-#define REWRITE_ENABLE 1
-
-// THis option is relevant in order to be able to debug the Java process with the rewriting functionality
-#define BREAKPOINTS_ENABLE 1
+#include "settings.h"
 
 #define check_code(retcode, result) if((result)) { cerr << (#result) << "Error!!! code " << result << ":" << endl; return retcode; }
 #define check(result) check_code(,result)
@@ -385,7 +380,7 @@ static void onFieldModification(
     }
 
 
-#if LOG || 1
+#if LOG
     cerr << cause_class_name << ": " << class_name << "." << field_name << " = " << new_value_class_name << '\n';
 #endif
 }
@@ -530,7 +525,9 @@ static void JNICALL onThreadEnd(jvmtiEnv *jvmti_env, JNIEnv* jni_env, jthread th
 
 void onObjectFree(jvmtiEnv *jvmti_env, jlong tag)
 {
+#if LOG
     cerr << "Object freed!\n";
+#endif
     auto* oc = (ObjectContext*)tag;
     delete oc;
 }

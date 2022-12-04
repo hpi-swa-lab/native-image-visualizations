@@ -8,4 +8,4 @@ include_directories(${JNI_INCLUDE_DIRS})
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_library(heap_assignment_tracing_agent SHARED main.cpp bytecode.cpp)
+add_library(heap_assignment_tracing_agent SHARED main.cpp bytecode.cpp settings.h)

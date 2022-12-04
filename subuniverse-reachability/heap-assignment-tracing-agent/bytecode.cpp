@@ -6,35 +6,10 @@
 #include <concepts>
 #include <limits>
 #include <fstream>
-#include <csignal>
-#include <sys/types.h>
 #include <unistd.h>
+#include "settings.h"
 
 using namespace std;
-
-
-#define LOG 0
-
-#define DEBUG_ON_ASSERT_FAIL 0
-
-#ifdef DEBUG_ON_ASSERT_FAIL
-#undef assert
-#ifdef NDEBUG
-#define assert(ignore) ((void)0)
-#else
-__attribute__((noreturn))
-static void __gripe(const char *_Expr, const char *_File, int _Line, const char *_Func) noexcept
-{
-    std::cout << "PID: " << getpid() << std::endl;
-    raise(SIGSTOP);
-    exit(1);
-}
-#define assert(expr) \
-    ((expr) ? (void)0 :\
-     __gripe(#expr, __FILE__,__LINE__,__func__))
-#endif
-#endif // DEBUG_ON_ASSERT_FAIL
-
 
 
 #define BYTEWISE __attribute__((aligned(1), packed))
@@ -479,74 +454,57 @@ struct BYTEWISE stack_map_frame
     u1 frame_type;
 
     size_t len() const;
-
     void adjust_offset(BciShift a);
+    size_t offset_delta() const;
 };
 
 struct BYTEWISE same_frame : public stack_map_frame
 {
     size_t len() const { return sizeof(*this); }
     void adjust_offset(BciShift a) { }
+    size_t offset_delta() const { return frame_type; }
 };
 
 struct BYTEWISE same_locals_1_stack_item_frame : public stack_map_frame
 {
     verification_type_info stack[0];
 
-    size_t len() const
-    {
-        return sizeof(*this) + stack[0].len();
-    }
-
-    void adjust_offset(BciShift a)
-    {
-        stack[0].adjust_offset(a);
-    }
+    size_t len() const { return sizeof(*this) + stack[0].len(); }
+    void adjust_offset(BciShift a) { stack[0].adjust_offset(a); }
+    size_t offset_delta() const { return frame_type - 64; }
 };
 
 struct BYTEWISE same_locals_1_stack_item_frame_extended : public stack_map_frame
 {
-    u2 offset_delta;
+    u2 _offset_delta;
     verification_type_info stack[0];
 
-    size_t len() const
-    {
-        return sizeof(*this) + stack[0].len();
-    }
-
-    void adjust_offset(BciShift a)
-    {
-        stack[0].adjust_offset(a);
-    }
+    size_t len() const { return sizeof(*this) + stack[0].len(); }
+    void adjust_offset(BciShift a) { stack[0].adjust_offset(a); }
+    size_t offset_delta() const { return _offset_delta; }
 };
 
 struct BYTEWISE chop_frame : public stack_map_frame
 {
-    u2 offset_delta;
+    u2 _offset_delta;
 
-    size_t len() const
-    {
-        return sizeof(*this);
-    }
-
+    size_t len() const { return sizeof(*this); }
     void adjust_offset(BciShift a) {}
+    size_t offset_delta() const { return _offset_delta; }
 };
 
 struct BYTEWISE same_frame_extended : public stack_map_frame
 {
-    u2 offset_delta;
+    u2 _offset_delta;
 
-    size_t len() const
-    {
-        return sizeof(*this);
-    }
-
+    size_t len() const { return sizeof(*this); }
     void adjust_offset(BciShift a) {}
+    size_t offset_delta() const { return _offset_delta; }
 };
 
 struct BYTEWISE append_frame : public stack_map_frame
 {
-    u2 offset_delta;
+    u2 _offset_delta;
     verification_type_info locals[0 /*frame_type - 251*/];
 
     table_iterator<verification_type_info> begin() { return {locals, (size_t)(frame_type - 251)}; }
@@ -562,6 +520,8 @@ struct BYTEWISE append_frame : public stack_map_frame
         for(auto& local : *this)
             local.adjust_offset(a);
     }
+
+    size_t offset_delta() const { return _offset_delta; }
 };
 
 struct BYTEWISE full_frame2
@@ -586,7 +546,7 @@ struct BYTEWISE full_frame2
 
 struct BYTEWISE full_frame : public stack_map_frame
 {
-    u2 offset_delta;
+    u2 _offset_delta;
     u2 number_of_locals;
     verification_type_info locals[0 /*number_of_locals*/];
 
@@ -611,50 +571,45 @@ struct BYTEWISE full_frame : public stack_map_frame
 
         next()->adjust_offset(a);
     }
+
+    size_t offset_delta() const { return _offset_delta; }
 };
+
+// I'd come up with a much nicer solution in DLang, but i don't know how to get a custom field-based virtual dispatch into C++...
+// Therefore this ugliness:
+#define SWITCH_DISPATCH(tag, fun, return) \
+if(frame_type < 64) \
+    return ((same_frame*)this)->fun; \
+else if(frame_type < 128) \
+    return ((same_locals_1_stack_item_frame*)this)->fun; \
+else if(frame_type < 247) \
+    assert(false); \
+else if(frame_type == 247) \
+    return ((same_locals_1_stack_item_frame_extended*)this)->fun; \
+else if(frame_type <= 250) \
+    return ((chop_frame*)this)->fun; \
+else if(frame_type == 251) \
+    return ((same_frame_extended*)this)->fun; \
+else if(frame_type <= 254) \
+    return ((append_frame*)this)->fun; \
+else if(frame_type == 255) \
+    return ((full_frame*)this)->fun; \
+else \
+    assert(false);
 
 size_t stack_map_frame::len() const
 {
-    if(frame_type < 64)
-        return ((same_frame*)this)->len();
-    else if(frame_type < 128)
-        return ((same_locals_1_stack_item_frame*)this)->len();
-    else if(frame_type < 247)
-        assert(false);
-    else if(frame_type == 247)
-        return ((same_locals_1_stack_item_frame_extended*)this)->len();
-    else if(frame_type <= 250)
-        return ((chop_frame*)this)->len();
-    else if(frame_type == 251)
-        return ((same_frame_extended*)this)->len();
-    else if(frame_type <= 254)
-        return ((append_frame*)this)->len();
-    else if(frame_type == 255)
-        return ((full_frame*)this)->len();
-    else
-        assert(false);
+    SWITCH_DISPATCH(frame_type, len(), return);
 }
 
 void stack_map_frame::adjust_offset(BciShift a)
 {
-    if(frame_type < 64)
-        ((same_frame*)this)->adjust_offset(a);
-    else if(frame_type < 128)
-        ((same_locals_1_stack_item_frame*)this)->adjust_offset(a);
-    else if(frame_type < 247)
-        assert(false);
-    else if(frame_type == 247)
-        ((same_locals_1_stack_item_frame_extended*)this)->adjust_offset(a);
-    else if(frame_type <= 250)
-        ((chop_frame*)this)->adjust_offset(a);
-    else if(frame_type == 251)
-        ((same_frame_extended*)this)->adjust_offset(a);
-    else if(frame_type <= 254)
-        ((append_frame*)this)->adjust_offset(a);
-    else if(frame_type == 255)
-        ((full_frame*)this)->adjust_offset(a);
-    else
-        assert(false);
+    SWITCH_DISPATCH(frame_type, adjust_offset(a),);
+}
+
+size_t stack_map_frame::offset_delta() const
+{
+    SWITCH_DISPATCH(frame_type, offset_delta(), return);
 }
 
 struct BYTEWISE StackMapTable_attribute : public attribute_info
@@ -969,48 +924,59 @@ static size_t copy_method_with_insertion(const ConstantPoolOffsets& cp, const me
                     for(auto& frame : *smt)
                         frame.adjust_offset(bci_shift);
 
-                    // --- TODO: For the whole following section: ---
-                    // We only want to shift bcis after "insertion_at_pos"
-
-                    if(smt->number_of_entries)
                     {
-                        u1& frame_type = smt->entries[0].frame_type;
+                        int bci_index = -1;
 
-                        assert(insertion.size() <= 64 && "TODO");
+                        for(auto &frame: *smt)
+                        {
+                            bci_index += 1 + frame.offset_delta();
 
-                        if(frame_type < 64 - insertion.size() || frame_type >= 64 && frame_type < 128 - insertion.size())
-                        {
-                            frame_type += insertion.size();
-                        }
-                        else if(frame_type >= 247)
-                        {
-                            *(u2*)(((u1*)&smt->entries) + 1) += insertion.size();
-                        }
-                        else if(frame_type < 128)
-                        {
-                            // We have to extend
-                            size_t bci = frame_type & 63;
-                            bci += insertion.size();
-
-                            if(frame_type & 64)
+                            if(bci_index >= insert_at_pos)
                             {
-                                frame_type = 247;
-                            }
-                            else
-                            {
-                                frame_type = 251;
-                            }
+                                u1& frame_type = frame.frame_type;
 
-                            // Make little space
-                            *dst_code_attr_len += 2;
-                            c_attr.attribute_length += 2;
-                            dst = std::copy(((u1*)&smt->entries) + 1, dst, ((u1*)&smt->entries) + 3);
+                                assert(insertion.size() <= 64 && "TODO");
 
-                            *(u2*)(((u1*)&smt->entries) + 1) = bci;
-                        }
-                        else
-                        {
-                            assert(false && "Bad frame type");
+                                if(frame_type < 64 - insertion.size() || frame_type >= 64 && frame_type < 128 - insertion.size())
+                                {
+                                    frame_type += insertion.size();
+                                }
+                                else if(frame_type >= 247)
+                                {
+                                    // All have the same layout as same_frame_extended
+                                    auto typed_frame = (same_frame_extended*)&frame;
+                                    typed_frame->_offset_delta += insertion.size();
+                                }
+                                else if(frame_type < 128)
+                                {
+                                    // We have to extend
+                                    size_t bci = frame_type & 63;
+                                    bci += insertion.size();
+
+                                    if(frame_type & 64)
+                                    {
+                                        frame_type = 247;
+                                    }
+                                    else
+                                    {
+                                        frame_type = 251;
+                                    }
+
+                                    // Make little space
+                                    *dst_code_attr_len += 2;
+                                    c_attr.attribute_length += 2;
+                                    dst = std::copy(((u1*)&frame) + 1, dst, ((u1*)&frame) + 3);
+
+                                    auto typed_frame = (same_frame_extended*)&frame;
+                                    typed_frame->_offset_delta = bci;
+                                }
+                                else
+                                {
+                                    assert(false && "Bad frame type");
+                                }
+
+                                break;
+                            }
                         }
                     }
                 }
