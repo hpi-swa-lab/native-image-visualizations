@@ -1,6 +1,5 @@
 #include <iostream>
 #include <span>
-#include <cassert>
 #include <iterator>
 #include <jni_md.h>
 #include <jvmti.h>
@@ -15,6 +14,26 @@ using namespace std;
 
 
 #define LOG 0
+
+#define DEBUG_ON_ASSERT_FAIL 0
+
+#ifdef DEBUG_ON_ASSERT_FAIL
+#undef assert
+#ifdef NDEBUG
+#define assert(ignore) ((void)0)
+#else
+__attribute__((noreturn))
+static void __gripe(const char *_Expr, const char *_File, int _Line, const char *_Func) noexcept
+{
+    std::cout << "PID: " << getpid() << std::endl;
+    raise(SIGSTOP);
+    exit(1);
+}
+#define assert(expr) \
+    ((expr) ? (void)0 :\
+     __gripe(#expr, __FILE__,__LINE__,__func__))
+#endif
+#endif // DEBUG_ON_ASSERT_FAIL
 
 
 
@@ -250,7 +269,7 @@ struct BYTEWISE Utf8_info : public cp_info
         write(str);
     }
 
-    [[nodiscard]] std::span<char> str() const
+    [[nodiscard]] std::string_view str() const
     {
         return {(char*)bytes, (size_t)length};
     }
@@ -374,6 +393,10 @@ struct BYTEWISE Code_attribute_3
 {
     u2 attributes_count;
     attribute_info attributes[0 /*attributes_count*/];
+
+    table_iterator<attribute_info> begin() { return {attributes, attributes_count}; }
+
+    table_iterator_end end() { return {}; }
 };
 
 
@@ -853,10 +876,165 @@ public:
 static uint32_t num = 0;
 
 template<typename T>
-T* apply_offset(intptr_t offset, T* ptr)
+T* apply_offset(intptr_t offset, const T* ptr)
 {
     return (T*)((u1*)ptr + offset);
 }
+
+static void apply_bytecode_offset(size_t insert_at_pos, size_t insertion_size, u2& bci)
+{
+    uint16_t val = bci;
+    if(val >= insert_at_pos)
+    {
+        assert((uint32_t)val + (uint32_t)insertion_size <= numeric_limits<uint16_t>::max() && "bci overflow!");
+        bci = val + insertion_size;
+    }
+}
+
+// Returns number of written bytes
+// This is 0 if the method does not have any code and therefore no replacement happened
+static size_t copy_method_with_insertion(const ConstantPoolOffsets& cp, const method_or_field_info* src_method, method_or_field_info* dst_method, const span<uint8_t> insertion, size_t insert_at_pos)
+{
+    assert((insertion.size() % 4) == 0 && "Switch Jumps may need to be 4-byte-aligned, so only the insertion of multiples of 4 is safe");
+
+    intptr_t offset = (uint8_t*)dst_method - (uint8_t*)src_method;
+
+    const uint8_t* src_method_end = (const uint8_t*)src_method + ((method_or_field_info*)src_method)->len();
+
+    for(const attribute_info& m_attr : *(method_or_field_info*)src_method)
+    {
+        auto cpentry = cp[m_attr.attribute_name_index];
+        assert(cpentry->tag == Utf8);
+        auto str = ((Utf8_info*) cpentry)->str();
+
+        if(str == "Code")
+        {
+            Code_attribute_1* code1 = (Code_attribute_1*)&m_attr;
+            Code_attribute_2* code2 = code1->next();
+
+            // Found the code
+            auto dst = std::copy((const unsigned char*)src_method, (const unsigned char*)code1->code + insert_at_pos, (unsigned char*)dst_method);
+
+            u4 *dst_code_attr_len = apply_offset(offset, &m_attr.attribute_length);
+            u4 *dst_code_len = apply_offset(offset, &code1->code_length);
+            *dst_code_attr_len = m_attr.attribute_length + insertion.size();
+            *dst_code_len = code1->code_length + insertion.size();
+
+            dst = std::copy(insertion.begin(), insertion.end(), dst);
+            offset += insertion.size();
+            dst = std::copy((const uint8_t*)code1->code + insert_at_pos, src_method_end, dst);
+
+            for(auto& e : apply_offset(offset, code2)->exceptions())
+            {
+                apply_bytecode_offset(insert_at_pos, insertion.size(), e.start_pc);
+                apply_bytecode_offset(insert_at_pos, insertion.size(), e.end_pc);
+                apply_bytecode_offset(insert_at_pos, insertion.size(), e.handler_pc);
+            }
+
+            Code_attribute_3* code3 = code2->next();
+
+            u4* dst_c_length = apply_offset(offset, &code1->attribute_length);
+
+            for(attribute_info& c_attr : *apply_offset(offset, code3))
+            {
+                cpentry = cp[c_attr.attribute_name_index];
+                assert(cpentry->tag == Utf8);
+                str = ((Utf8_info*) cpentry)->str();
+
+                if(str == "StackMapTable")
+                {
+                    auto* smt = (StackMapTable_attribute*)&c_attr;
+
+                    {
+                        auto it = smt->begin();
+
+                        while(it != smt->end())
+                        {
+                            ++it;
+                        }
+
+                        assert((u1*)&*it - (u1*)smt == smt->len());
+                    }
+
+                    // --- TODO: For the whole following section: ---
+                    // We only want to shift bcis after "insertion_at_pos"
+
+                    for(auto& frame : *smt)
+                        frame.adjust_offset(insertion.size());
+
+                    if(smt->number_of_entries)
+                    {
+                        u1& frame_type = smt->entries[0].frame_type;
+
+                        assert(insertion.size() <= 64 && "TODO");
+
+                        if(frame_type < 64 - insertion.size() || frame_type >= 64 && frame_type < 128 - insertion.size())
+                        {
+                            frame_type += insertion.size();
+                        }
+                        else if(frame_type >= 247)
+                        {
+                            *(u2*)(((u1*)&smt->entries) + 1) += insertion.size();
+                        }
+                        else if(frame_type < 128)
+                        {
+                            // We have to extend
+                            size_t bci = frame_type & 63;
+                            bci += insertion.size();
+
+                            if(frame_type & 64)
+                            {
+                                frame_type = 247;
+                            }
+                            else
+                            {
+                                frame_type = 251;
+                            }
+
+                            // Make little space
+                            *dst_code_attr_len += 2;
+                            c_attr.attribute_length += 2;
+                            dst = std::copy(((u1*)&smt->entries) + 1, dst, ((u1*)&smt->entries) + 3);
+
+                            *(u2*)(((u1*)&smt->entries) + 1) = bci;
+                        }
+                        else
+                        {
+                            assert(false && "Bad frame type");
+                        }
+                    }
+                }
+                else if(str == "LineNumberTable")
+                {
+                    auto* lnt = (LineNumberTable_attribute*)&c_attr;
+
+                    for(auto& line : lnt->lines())
+                        apply_bytecode_offset(insert_at_pos, insertion.size(), line.start_pc);
+                }
+                else if(str == "LocalVariableTable")
+                {
+                    auto* lvt = (LocalVariableTable_attribute*)&c_attr;
+
+                    for(auto& e : lvt->local_variables())
+                        apply_bytecode_offset(insert_at_pos, insertion.size(), e.start_pc);
+                }
+                else if(str == "LocalVariableTypeTable")
+                {
+                    auto* lvtt = (LocalVariableTypeTable_attribute*)&c_attr;
+
+                    for(auto& e : lvtt->local_variable_types())
+                        apply_bytecode_offset(insert_at_pos, insertion.size(), e.start_pc);
+                }
+            }
+
+            return dst - (uint8_t*)dst_method;
+        }
+    }
+
+    return 0;
+}
+
+
 
 void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len, unsigned char** dst_ptr, jint* dst_len_ptr)
 {
@@ -884,6 +1062,9 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len
             assert(cpentry->tag == Utf8);
             auto class_name = ((Utf8_info*)cpentry)->str();
 
+            if(class_name == "com/oracle/svm/hosted/phases/IntrinsifyMethodHandlesInvocationPlugin")
+                return;
+
             unsigned char* dst;
             jvmti_env->Allocate(src_len + 1000, &dst);
             unsigned char* dst_start = dst;
@@ -905,169 +1086,31 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len
             // Copy ClassFile 2,3,4 until "<clinit>"-method
             auto dst_file2 = (ClassFile2*)cpa.end();
 
-            for(attribute_info& m_attr : m)
-            {
-                cpentry = cp[m_attr.attribute_name_index];
-                assert(cpentry->tag == Utf8);
-                auto str = ((Utf8_info*) cpentry)->str();
+            dst = (uint8_t*)dst_file2;
+            ptrdiff_t offset = (uint8_t*)dst_file2 - (uint8_t*)file2;
 
-                if(str.size() == 4 && std::equal(str.begin(), str.end(), "Code"))
-                {
-#define ADDED_INSTRUCTIONS 4
+            uint8_t insertion[4];
+            insertion[0] = OpCode::invokestatic;
+            *(u2*)&insertion[1] = methodref_idx;
+            insertion[3] = 0; // Pading
 
-                    Code_attribute_1* code1 = (Code_attribute_1*)&m_attr;
-                    Code_attribute_2* code2 = code1->next();
+            dst = std::copy((const uint8_t*)file2, (const uint8_t*)&m, dst);
 
-                    // Found the code
-                    dst = std::copy((const unsigned char*)file2, (const unsigned char*)code1->code, (unsigned char*)dst_file2);
-                    {
-                        u4 *dst_code_attr_len = apply_offset(dst - (const unsigned char *)code1->code, &m_attr.attribute_length);
-                        *dst_code_attr_len = m_attr.attribute_length + ADDED_INSTRUCTIONS;
-                    }
-                    {
-                        u4 *dst_code_len = apply_offset(dst - (const unsigned char *)code1->code, &code1->code_length);
-                        *dst_code_len = code1->code_length + ADDED_INSTRUCTIONS;
-                    }
+            assert(dst == (uint8_t*)apply_offset(offset, &m));
+            size_t bytes_copied = copy_method_with_insertion(cp, &m, apply_offset(offset, &m), insertion, 0);
 
-                    *dst++ = OpCode::invokestatic;
-                    *(u2*)dst = methodref_idx;
-                    dst += sizeof(u2);
-                    *dst++ = 0; // Insert NOP to keep same 4-byte alignment
-
-                    dst = std::copy((const unsigned char*)code1->code, src + src_len, dst);
-
-                    intptr_t offset = dst - ((src + src_len));
-
-                    for(auto& e : apply_offset(offset, code2)->exceptions())
-                    {
-                        e.start_pc += ADDED_INSTRUCTIONS;
-                        e.end_pc += ADDED_INSTRUCTIONS;
-                        e.handler_pc += ADDED_INSTRUCTIONS;
-                    }
-
-                    Code_attribute_3* code3 = code2->next();
-
-                    u4* dst_c_length = apply_offset(offset, &code1->attribute_length);
-                    u2* dst_c_attr_count = apply_offset(offset, &code3->attributes_count);
-                    assert(*dst_c_attr_count == code3->attributes_count);
-
-                    for(auto c_attr = table_iterator<attribute_info>(apply_offset(offset, code3)->attributes, code3->attributes_count); c_attr != table_iterator_end{}; ++c_attr)
-                    {
-                        cpentry = cp[c_attr->attribute_name_index];
-                        assert(cpentry->tag == Utf8);
-                        str = ((Utf8_info*) cpentry)->str();
-
-                        if(str.size() == 13 && std::equal(str.begin(), str.end(), "StackMapTable"))
-                        {
-                            auto* smt = (StackMapTable_attribute*)&*c_attr;
-
-                            {
-                                auto it = smt->begin();
-
-                                while(it != smt->end())
-                                {
-                                    ++it;
-                                }
-
-                                assert((u1*)&*it - (u1*)smt == smt->len());
-                            }
-
-                            for(auto& frame : *smt)
-                                frame.adjust_offset(ADDED_INSTRUCTIONS);
-
-                            if(smt->number_of_entries)
-                            {
-                                u1& frame_type = smt->entries[0].frame_type;
-
-                                if(frame_type < 64 - ADDED_INSTRUCTIONS || frame_type >= 64 && frame_type < 128 - ADDED_INSTRUCTIONS)
-                                {
-                                    frame_type += ADDED_INSTRUCTIONS;
-                                }
-                                else if(frame_type >= 247)
-                                {
-                                    *(u2*)(((u1*)&smt->entries) + 1) += ADDED_INSTRUCTIONS;
-                                }
-                                else if(frame_type < 128)
-                                {
-                                    // We have to extend
-                                    size_t bci = frame_type & 63;
-                                    bci += ADDED_INSTRUCTIONS;
-
-                                    if(frame_type & 64)
-                                    {
-                                        frame_type = 247;
-                                    }
-                                    else
-                                    {
-                                        frame_type = 251;
-                                    }
-
-                                    // Make little space
-                                    apply_offset(offset, &m_attr)->attribute_length += 2;
-                                    c_attr->attribute_length += 2;
-                                    dst = std::copy(((u1*)&smt->entries) + 1, dst, ((u1*)&smt->entries) + 3);
-
-                                    *(u2*)(((u1*)&smt->entries) + 1) = bci;
-                                }
-                                else
-                                {
-                                    std::cerr << "Bad class: " << std::string_view(class_name.data(), class_name.size()) << " with tag " << (uint32_t)frame_type << std::endl;
-                                    jvmti_env->Deallocate(dst_start);
-                                    return;
-                                }
-                            }
-                        }
-                        else if(std::equal(str.begin(), str.end(), "LineNumberTable"))
-                        {
-                            auto* lnt = (LineNumberTable_attribute*)&*c_attr;
-
-                            for(auto& line : lnt->lines())
-                                line.start_pc += ADDED_INSTRUCTIONS;
-                        }
-                        else if(std::equal(str.begin(), str.end(), "LocalVariableTable"))
-                        {
-                            auto* lvt = (LocalVariableTable_attribute*)&*c_attr;
-
-                            for(auto& e : lvt->local_variables())
-                                e.start_pc += ADDED_INSTRUCTIONS;
-                        }
-                        else if(std::equal(str.begin(), str.end(), "LocalVariableTypeTable"))
-                        {
-                            auto* lvtt = (LocalVariableTypeTable_attribute*)&*c_attr;
-
-                            for(auto& e : lvtt->local_variable_types())
-                                e.start_pc += ADDED_INSTRUCTIONS;
-                        }
-                    }
-
-#if LOG
-                    std::cerr << "Found <clinit> of class ";
-                    std::cerr.write(class_name.data(), class_name.size());
-                    std::cerr << '\n';
-#endif
-
-                    if(std::equal(class_name.begin(), class_name.end(), "com/oracle/svm/hosted/phases/IntrinsifyMethodHandlesInvocationPlugin"))
-                    {
-                        jvmti_env->Deallocate(dst_start);
-                        return;
-
-                        {
-                            std::ofstream classfile("original.class");
-                            classfile.write((const char *)src, src_len);
-                        }
-                        {
-                            std::ofstream classfile("replaced.class");
-                            classfile.write((const char *) dst_start, dst - dst_start);
-                        }
-                    }
-
-                    *dst_ptr = dst_start;
-                    *dst_len_ptr = dst - dst_start;
-                    return;
-                }
+            if(bytes_copied == 0)
+            { // No code attribute
+                jvmti_env->Deallocate(dst_start);
+                return;
             }
 
-            jvmti_env->Deallocate(dst_start);
+            dst += bytes_copied;
+
+            dst = std::copy((const uint8_t*)&m + m.len(), src + src_len, dst);
+
+            *dst_ptr = dst_start;
+            *dst_len_ptr = dst - dst_start;
             return;
         }
     }
