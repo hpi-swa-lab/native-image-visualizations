@@ -7,7 +7,7 @@
 #define REWRITE_ENABLE 1
 
 // THis option is relevant in order to be able to debug the Java process with the rewriting functionality
-#define BREAKPOINTS_ENABLE 0
+#define BREAKPOINTS_ENABLE 1
 
 #define check_code(retcode, result) if((result)) { cerr << (#result) << "Error!!! code " << result << ":" << endl; return retcode; }
 #define check(result) check_code(,result)
@@ -170,7 +170,7 @@ static void processClass(jvmtiEnv* jvmti_env, jclass klass)
 
             if(std::strcmp(name, "Dummy") == 0)
             {
-                jvmti_env->SetBreakpoint(m, 0);
+                check(jvmti_env->SetBreakpoint(m, 0));
             }
         }
     }
@@ -308,7 +308,7 @@ static void onFieldModification(
     char cause_class_name[1024];
     get_class_name(jvmti_env, cause_class, cause_class_name);
 
-#if LOG
+#if LOG || 1
     cerr << cause_class_name << ": " << class_name << "." << field_name << " = " << new_value_class_name << '\n';
 #endif
 }
@@ -337,7 +337,7 @@ static void JNICALL onBreakpoint(
     char inner_clinit_name[1024];
     get_class_name(jvmti_env, type, inner_clinit_name);
 
-#if LOG || 1
+#if LOG
     cerr << outer_clinit_name << ": " << "CLINIT start: " << inner_clinit_name << '\n';
 #endif
 
@@ -387,7 +387,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_oracle_svm_hosted_classinitialization
 
 #if BREAKPOINTS_ENABLE
     check(jvmti_env->SetEventNotificationMode(start ? JVMTI_ENABLE : JVMTI_DISABLE, JVMTI_EVENT_FIELD_MODIFICATION, t));
-    check(jvmti_env->SetEventNotificationMode(start ? JVMTI_ENABLE : JVMTI_DISABLE, JVMTI_EVENT_BREAKPOINT, t));
+    //check(jvmti_env->SetEventNotificationMode(start ? JVMTI_ENABLE : JVMTI_DISABLE, JVMTI_EVENT_BREAKPOINT, t));
 #endif
 
     if(start)
@@ -426,7 +426,7 @@ static void JNICALL onClassFileLoad(
     add_clinit_hook(jvmti_env, class_data, class_data_len, new_class_data, new_class_data_len);
 }
 
-extern "C" JNIEXPORT void JNICALL Java_ClassInitializationTracing_Dummy(JNIEnv* env, jobject self)
+extern "C" JNIEXPORT void JNICALL Java_ClassInitializationTracing_onClinitStart(JNIEnv* env, jobject self)
 {
     jthread thread;
     check(jvmti_env->GetCurrentThread(&thread));
@@ -450,9 +450,9 @@ extern "C" JNIEXPORT void JNICALL Java_ClassInitializationTracing_Dummy(JNIEnv* 
     char inner_clinit_name[1024];
     get_class_name(jvmti_env, type, inner_clinit_name);
 
-//#if LOG
+#if LOG
     cerr << outer_clinit_name << ": " << "CLINIT start: " << inner_clinit_name << '\n';
-//#endif
+#endif
 
     check(jvmti_env->NotifyFramePop(thread, 1));
 }
