@@ -42,6 +42,30 @@ public:
     }
 };
 
+class BYTEWISE i2
+{
+    int16_t backing;
+
+public:
+    i2() = default;
+
+    i2(int16_t val)
+    {
+        backing = __builtin_bswap16(val);
+    }
+
+    operator int16_t() const
+    {
+        return __builtin_bswap16(backing);
+    }
+
+    template<typename T>
+    void operator+=(T other)
+    {
+        backing = __builtin_bswap16(__builtin_bswap16(backing) + other);
+    }
+};
+
 class BYTEWISE u4
 {
     uint32_t backing;
@@ -55,6 +79,30 @@ public:
     }
 
     operator uint32_t() const
+    {
+        return __builtin_bswap32(backing);
+    }
+
+    template<typename T>
+    void operator+=(T other)
+    {
+        backing = __builtin_bswap32(__builtin_bswap32(backing) + other);
+    }
+};
+
+class BYTEWISE i4
+{
+    int32_t backing;
+
+public:
+    i4() = default;
+
+    i4(int32_t val)
+    {
+        backing = __builtin_bswap32(val);
+    }
+
+    operator int32_t() const
     {
         return __builtin_bswap32(backing);
     }
@@ -427,21 +475,36 @@ class BciShift
 public:
     explicit BciShift(span<const Insertion> insertions) : insertions(insertions) {}
 
-    void apply(u2& bci)
+    template<typename T>
+    void relocate_relative(T& bci_offset, size_t ref_bci)
     {
-        uint16_t val = bci;
-        size_t offset = 0;
+        int64_t offset = bci_offset;
+        size_t bci = ref_bci + offset;
 
         for(const auto& insertion : insertions)
         {
-            if(insertion.pos > val)
+            if(insertion.pos >= ref_bci)
+                break;
+
+            offset -= insertion.data.size();
+        }
+
+        for(const auto& insertion : insertions)
+        {
+            if(insertion.pos > bci)
                 break;
 
             offset += insertion.data.size();
         }
 
-        assert((size_t)val + offset <= numeric_limits<uint16_t>::max() && "bci overflow!");
-        bci = val + offset;
+        assert((int64_t)(T)offset == offset && "bci overflow!");
+
+        bci_offset = offset;
+    }
+
+    void relocate_absolute(u2& bci)
+    {
+        relocate_relative(bci, 0);
     }
 };
 
@@ -491,7 +554,7 @@ void verification_type_info::adjust_offset(BciShift a)
 {
     if(tag == tag::Uninitialized)
     {
-        a.apply(((Uninitialized_variable_info*)this)->offset);
+        a.relocate_absolute(((Uninitialized_variable_info *) this)->offset);
     }
 }
 
@@ -840,9 +903,403 @@ struct BYTEWISE ClassFile4
 };
 
 
-enum OpCode
+enum class OpCode : u1
 {
-    invokestatic = 184
+    nop = 0,
+    aconst_null = 1,
+    iconst_m1 = 2,
+    iconst_0 = 3,
+    iconst_1 = 4,
+    iconst_2 = 5,
+    iconst_3 = 6,
+    iconst_4 = 7,
+    iconst_5 = 8,
+    lconst_0 = 9,
+    lconst_1 = 10,
+    fconst_0 = 11,
+    fconst_1 = 12,
+    fconst_2 = 13,
+    dconst_0 = 14,
+    dconst_1 = 15,
+    bipush = 16,
+    sipush = 17,
+    ldc = 18,
+    ldc_w = 19,
+    ldc2_w = 20,
+    iload = 21,
+    lload = 22,
+    fload = 23,
+    dload = 24,
+    aload,
+    iload_0,
+    iload_1,
+    iload_2,
+    iload_3,
+    lload_0,
+    lload_1,
+    lload_2,
+    lload_3,
+    fload_0,
+    fload_1,
+    fload_2,
+    fload_3,
+    dload_0,
+    dload_1,
+    dload_2,
+    dload_3,
+    aload_0,
+    aload_1,
+    aload_2,
+    aload_3,
+    iaload,
+    laload,
+    faload,
+    daload,
+    aaload,
+    baload,
+    caload,
+    saload,
+    istore,
+    lstore,
+    fstore,
+    dstore,
+    astore,
+    istore_0,
+    istore_1,
+    istore_2,
+    istore_3,
+    lstore_0,
+    lstore_1,
+    lstore_2,
+    lstore_3,
+    fstore_0,
+    fstore_1,
+    fstore_2,
+    fstore_3,
+    dstore_0,
+    dstore_1,
+    dstore_2,
+    dstore_3,
+    astore_0,
+    astore_1,
+    astore_2,
+    astore_3,
+    iastore,
+    lastore,
+    fastore,
+    dastore,
+    aastore,
+    bastore,
+    castore,
+    sastore,
+
+    pop,
+    pop2,
+    dup,
+    dup_x1,
+    dup_x2,
+    dup2,
+    dup2_x1,
+    dup2_x2,
+    swap,
+    iadd,
+    ladd,
+    fadd,
+    dadd,
+    isub,
+    lsub,
+    fsub,
+    dsub,
+    imul,
+    lmul,
+    fmul,
+    dmul,
+    idiv,
+    ldiv,
+    fdiv,
+    ddiv,
+    irem,
+    lrem,
+    frem,
+    drem,
+    ineg,
+    lneg,
+    fneg,
+    dneg,
+    ishl,
+    lshl,
+    ishr,
+    lshr,
+    iushr,
+    lushr,
+    iand,
+    land,
+    ior,
+    lor,
+    ixor,
+    lxor,
+    iinc,
+    i2l,
+    i2f,
+    i2d,
+    l2i,
+    l2f,
+    l2d,
+    f2i,
+    f2l,
+    f2d,
+    d2i,
+    d2l,
+    d2f,
+    i2b,
+    i2c,
+    i2s,
+
+    lcmp,
+    fcmpl,
+    fcmpg,
+    dcmpl,
+    dcmpg,
+    ifeq,
+    ifne,
+    iflt,
+    ifge,
+    ifgt,
+    ifle,
+    if_icmpeq,
+    if_icmpne,
+    if_icmplt,
+    ic_icmpge,
+    if_icmpgt,
+    if_icmple,
+    if_acmpeq,
+    if_acmpne,
+
+    goto_,
+    jsr,
+    ret,
+    tableswitch,
+    lookupswitch,
+    ireturn,
+    lreturn,
+    freturn,
+    dreturn,
+    areturn,
+    return_,
+
+    getstatic,
+    putstatic,
+    getfield,
+    putfield,
+    invokevirtual,
+    invokespecial,
+    invokestatic,
+    invokeinterface,
+    invokedynamic,
+    new_,
+    newarray,
+    anewarray,
+    arraylength,
+    athrow,
+    checkcast,
+    instanceof,
+    monitorenter,
+    monitorexit,
+
+    wide,
+    multianewarray,
+    ifnull,
+    ifnonnull,
+    goto_w,
+    jsr_w,
+
+    breakpoint,
+    impdep1 = 254,
+    impdep2 = 255,
+};
+
+struct Instruction;
+
+struct BYTEWISE TableSwitchBody
+{
+    i4 default_address;
+    i4 low;
+    i4 high;
+    i4 addresses[0 /*high-low+1*/];
+
+    static TableSwitchBody* from_instruction_address(const Instruction* instruction, size_t bci)
+    {
+        return (TableSwitchBody*)((uint8_t*)instruction + ((bci + 4) & 3));
+    }
+
+    size_t len() const
+    {
+        return sizeof(*this) + sizeof(i4) * (high - low + 1);
+    }
+
+    void relocate_relative(BciShift a, size_t bci)
+    {
+        a.relocate_relative(default_address, bci);
+
+        size_t n = ((int64_t)high - (int64_t)low) + 1;
+        for(i4& addr : span(addresses, n))
+        {
+            a.relocate_relative(addr, bci);
+        }
+    }
+};
+
+struct BYTEWISE LookupSwitchBody
+{
+    struct BYTEWISE Pair
+    {
+        i4 match;
+        i4 offset;
+    };
+
+    i4 default_address;
+    u4 npairs;
+    Pair pairs[0 /*npairs*/];
+
+    static LookupSwitchBody* from_instruction_address(const Instruction* instruction, size_t bci)
+    {
+        return (LookupSwitchBody*)((uint8_t*)instruction + ((bci + 4) & 3));
+    }
+
+    size_t len() const
+    {
+        return sizeof(*this) + sizeof(Pair) * npairs;
+    }
+
+    void relocate_relative(BciShift a, size_t bci)
+    {
+        a.relocate_relative(default_address, bci);
+
+        for(Pair& p : span<Pair>(pairs, npairs))
+        {
+            a.relocate_relative(p.offset, bci);
+        }
+    }
+};
+
+struct Instruction
+{
+    OpCode op;
+
+    size_t len(size_t bci) const
+    {
+        if(op >= OpCode::nop && op < OpCode::bipush)
+            return 1;
+        if(op == OpCode::bipush)
+            return 2;
+        if(op == OpCode::sipush)
+            return 3;
+        if(op == OpCode::ldc)
+            return 2;
+        if(op >= OpCode::ldc_w && op <= OpCode::ldc2_w)
+            return 3;
+        if(op >= OpCode::iload && op <= OpCode::aload)
+            return 2;
+        if(op >= OpCode::iload_0 && op <= OpCode::saload)
+            return 1;
+        if(op >= OpCode::istore && op <= OpCode::astore)
+            return 2;
+        if(op >= OpCode::istore_0 && op <= OpCode::sastore)
+            return 1;
+        if(op >= OpCode::pop && op <= OpCode::swap)
+            return 1;
+        if(op >= OpCode::iadd && op <= OpCode::lxor)
+            return 1;
+        if(op == OpCode::iinc)
+            return 3;
+        if(op >= OpCode::i2l && op <= OpCode::i2s)
+            return 1;
+        if(op >= OpCode::lcmp && op <= OpCode::dcmpg)
+            return 1;
+        if(op >= OpCode::ifeq && op <= OpCode::if_acmpne)
+            return 3;
+        if(op >= OpCode::goto_ && op <= OpCode::jsr)
+            return 3;
+        if(op == OpCode::ret)
+            return 2;
+        if(op == OpCode::tableswitch)
+        {
+            TableSwitchBody* body = TableSwitchBody::from_instruction_address(this, bci);
+            return ((uint8_t*)body - (uint8_t*)this) + body->len();
+        }
+        if(op == OpCode::lookupswitch)
+        {
+            LookupSwitchBody* body = LookupSwitchBody::from_instruction_address(this, bci);
+            return ((uint8_t*)body - (uint8_t*)this) + body->len();
+        }
+        if(op >= OpCode::ireturn && op <= OpCode::return_)
+            return 1;
+        if(op >= OpCode::getstatic && op <= OpCode::invokestatic)
+            return 3;
+        if(op >= OpCode::invokeinterface && op <= OpCode::invokedynamic)
+            return 5;
+        if(op == OpCode::new_)
+            return 3;
+        if(op == OpCode::newarray)
+            return 2;
+        if(op == OpCode::anewarray)
+            return 3;
+        if(op >= OpCode::arraylength && op <= OpCode::athrow)
+            return 1;
+        if(op >= OpCode::checkcast && op <= OpCode::instanceof)
+            return 3;
+        if(op >= OpCode::monitorenter && op <= OpCode::monitorexit)
+            return 1;
+        if(op == OpCode::wide)
+        {
+            const Instruction* next = this + 1;
+
+            if(next->op == OpCode::iinc)
+                return 6;
+            else
+                return 4;
+        }
+        if(op == OpCode::multianewarray)
+            return 4;
+        if(op >= OpCode::ifnull && op <= OpCode::ifnonnull)
+            return 3;
+        if(op >= OpCode::goto_w && op <= OpCode::jsr_w)
+            return 5;
+        if(op == OpCode::breakpoint)
+            return 1;
+        if(op >= OpCode::impdep1 && op <= OpCode::impdep2)
+            return 1;
+
+        assert(false && "Unknown OpCode!");
+    }
+
+    void relocate_relative(BciShift a, size_t bci)
+    {
+        bool needs_relocation = false;
+
+        if(op >= OpCode::ifeq && op <= OpCode::if_acmpne
+        || op >= OpCode::goto_ && op <= OpCode::jsr
+        || op >= OpCode::ifnull && op <= OpCode::ifnonnull)
+        {
+            a.relocate_relative(*(u2*)((uint8_t*)this + 1), bci);
+        }
+        else if(op >= OpCode::goto_w && op <= OpCode::jsr_w)
+        {
+            a.relocate_relative(*(u4*)((uint8_t*)this + 1), bci);
+        }
+
+            needs_relocation = true;
+        if(op >= OpCode::goto_ && op <= OpCode::jsr)
+            needs_relocation = true;
+        if(op == OpCode::tableswitch)
+            needs_relocation = true;
+        if(op == OpCode::lookupswitch)
+            needs_relocation = true;
+        if(op >= OpCode::ifnull && op <= OpCode::ifnonnull)
+            needs_relocation = true;
+        if(op >= OpCode::goto_w && op <= OpCode::jsr_w)
+            needs_relocation = true;
+    }
 };
 
 class ConstantPoolAppender
@@ -944,9 +1401,9 @@ static size_t copy_method_with_insertions(const ConstantPoolOffsets& cp, const m
 
             for(auto& e : apply_offset(offset, code2)->exceptions())
             {
-                bci_shift.apply(e.start_pc);
-                bci_shift.apply(e.end_pc);
-                bci_shift.apply(e.handler_pc);
+                bci_shift.relocate_absolute(e.start_pc);
+                bci_shift.relocate_absolute(e.end_pc);
+                bci_shift.relocate_absolute(e.handler_pc);
             }
 
             Code_attribute_3* code3 = code2->next();
@@ -1040,21 +1497,21 @@ static size_t copy_method_with_insertions(const ConstantPoolOffsets& cp, const m
                     auto* lnt = (LineNumberTable_attribute*)&c_attr;
 
                     for(auto& line : lnt->lines())
-                        bci_shift.apply(line.start_pc);
+                        bci_shift.relocate_absolute(line.start_pc);
                 }
                 else if(str == "LocalVariableTable")
                 {
                     auto* lvt = (LocalVariableTable_attribute*)&c_attr;
 
                     for(auto& e : lvt->local_variables())
-                        bci_shift.apply(e.start_pc);
+                        bci_shift.relocate_absolute(e.start_pc);
                 }
                 else if(str == "LocalVariableTypeTable")
                 {
                     auto* lvtt = (LocalVariableTypeTable_attribute*)&c_attr;
 
                     for(auto& e : lvtt->local_variable_types())
-                        bci_shift.apply(e.start_pc);
+                        bci_shift.relocate_absolute(e.start_pc);
                 }
             }
 
@@ -1087,18 +1544,20 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len
     // Add necessary constants
     ConstantPoolAppender cpa(dst, file1->constant_pool_count);
 
-    auto instrumentation_class_name_index = cpa.append<Utf8_info>("ClassInitializationTracing");
-    auto onClinitStart_name_index = cpa.append<Utf8_info>("onClinitStart");
-    auto onClinitStart_descriptor_index = cpa.append<Utf8_info>("()V");
-    auto name_and_type_idx = cpa.append<NameAndType_info>(onClinitStart_name_index, onClinitStart_descriptor_index);
-    auto instrumentation_class_index = cpa.append<Class_info>(instrumentation_class_name_index);
-    auto onClinitStart_methodref_index = cpa.append<ref_info>(Methodref, instrumentation_class_index, name_and_type_idx);
+    auto instrumentation_class_name = cpa.append<Utf8_info>("ClassInitializationTracing");
+    auto instrumentation_class = cpa.append<Class_info>(instrumentation_class_name);
 
-    //auto onArrayWrite_name_index = cpa.append<Utf8_info>("onArrayWrite");
+    auto onClinitStart_name = cpa.append<Utf8_info>("onClinitStart");
+    auto onClinitStart_descriptor = cpa.append<Utf8_info>("()V");
+    auto onClinitStart_name_and_type = cpa.append<NameAndType_info>(onClinitStart_name, onClinitStart_descriptor);
+    auto onClinitStart_methodref = cpa.append<ref_info>(Methodref, instrumentation_class, onClinitStart_name_and_type);
+
+    auto onArrayWrite_name = cpa.append<Utf8_info>("onArrayWrite");
+    auto onArrayWrite_descriptor = cpa.append<Utf8_info>("([Ljava/lang/Object;ILjava/lang/Object;)V");
+    auto onArrayWrite_name_and_type = cpa.append<NameAndType_info>(onArrayWrite_name, onArrayWrite_descriptor);
+    auto onArrayWrite_methodref = cpa.append<ref_info>(Methodref, instrumentation_class, onArrayWrite_name_and_type);
 
     dst_file1->constant_pool_count = cpa.cp_count();
-
-
 
     for(auto& m : *file4)
     {
@@ -1130,9 +1589,9 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len
 
 
             uint8_t insertion_data[4];
-            insertion_data[0] = OpCode::invokestatic;
-            *(u2*)&insertion_data[1] = onClinitStart_methodref_index.index;
-            insertion_data[3] = 0; // Pading
+            insertion_data[0] = static_cast<uint8_t>(OpCode::invokestatic);
+            *(u2*)&insertion_data[1] = onClinitStart_methodref.index;
+            insertion_data[3] = static_cast<uint8_t>(OpCode::nop); // Pading
 
             Insertion insertion {.data = insertion_data, .pos = 0};
 
