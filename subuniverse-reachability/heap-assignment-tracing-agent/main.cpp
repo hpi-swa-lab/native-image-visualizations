@@ -67,6 +67,10 @@ static void JNICALL onThreadEnd(
         JNIEnv* jni_env,
         jthread thread);
 
+static void JNICALL onObjectFree(
+        jvmtiEnv *jvmti_env,
+        jlong tag);
+
 
 
 static jvmtiEnv* _jvmti_env;
@@ -139,6 +143,7 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
     jvmtiCapabilities cap{ 0 };
     cap.can_generate_frame_pop_events = true;
     cap.can_tag_objects = true;
+    cap.can_generate_object_free_events = true;
 #if BREAKPOINTS_ENABLE
     cap.can_generate_breakpoint_events = true;
     cap.can_generate_field_modification_events = true;
@@ -154,11 +159,13 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
     callbacks.ClassFileLoadHook = onClassFileLoad;
     callbacks.ThreadStart = onThreadStart;
     callbacks.ThreadEnd = onThreadEnd;
+    callbacks.ObjectFree = onObjectFree;
     check_code(1, env->SetEventCallbacks(&callbacks, sizeof(callbacks)));
     check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_VM_INIT, nullptr));
     check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_FRAME_POP, nullptr));
     check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_THREAD_START, nullptr));
     check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_THREAD_END, nullptr));
+    check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_OBJECT_FREE, nullptr));
 
     return 0;
 }
@@ -519,4 +526,11 @@ static void JNICALL onThreadEnd(jvmtiEnv *jvmti_env, JNIEnv* jni_env, jthread th
 {
     AgentThreadContext* tc = AgentThreadContext::from_thread(jvmti_env, thread);
     delete tc;
+}
+
+void onObjectFree(jvmtiEnv *jvmti_env, jlong tag)
+{
+    cerr << "Object freed!\n";
+    auto* oc = (ObjectContext*)tag;
+    delete oc;
 }
