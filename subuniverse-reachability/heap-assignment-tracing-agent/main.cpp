@@ -4,6 +4,7 @@
 #include <cstring>
 #include <cassert>
 #include <vector>
+#include <fstream>
 #include "settings.h"
 
 #define check_code(retcode, result) if((result)) { cerr << (#result) << "Error!!! code " << result << ":" << endl; return retcode; }
@@ -11,7 +12,7 @@
 
 using namespace std;
 
-void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len, unsigned char** dst_ptr, jint* dst_len_ptr);
+bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src, jint src_len, unsigned char** dst_ptr, jint* dst_len_ptr);
 
 static void JNICALL onFieldModification(
         jvmtiEnv *jvmti_env,
@@ -469,7 +470,19 @@ static void JNICALL onClassFileLoad(
     if(strcmp(name, "ClassInitializationTracing") == 0)
         return;
 
-    add_clinit_hook(jvmti_env, class_data, class_data_len, new_class_data, new_class_data_len);
+    bool instrumented = add_clinit_hook(jvmti_env, class_data, class_data_len, new_class_data, new_class_data_len);
+
+    if(instrumented && string_view(name) == "java/util/LinkedList")
+    {
+        {
+            ofstream original("original.class");
+            original.write((char*)class_data, class_data_len);
+        }
+        {
+            ofstream instrumented("instrumented.class");
+            instrumented.write((char*)*new_class_data, *new_class_data_len);
+        }
+    }
 }
 
 extern "C" JNIEXPORT void JNICALL Java_ClassInitializationTracing_onClinitStart(JNIEnv* env, jobject self)
@@ -538,6 +551,15 @@ void onObjectFree(jvmtiEnv *jvmti_env, jlong tag)
 extern "C" JNIEXPORT void JNICALL Java_ClassInitializationTracing_notifyArrayWrite(JNIEnv* env, jobject self, jarray arr, jint index, jobject val)
 {
     //cerr << "notifyArrayWrite: Trying to write " << hex << (uintptr_t)val << dec << " into arr with length " << env->GetArrayLength(arr) << " at index " << index << endl;
+    
+    jthread thread;
+    check(_jvmti_env->GetCurrentThread(&thread));
+
+    AgentThreadContext* tc = AgentThreadContext::from_thread(_jvmti_env, thread);
+
+    if(tc->clinit_empty())
+        return;
+
 
     jclass arr_class = env->GetObjectClass(self);
 
@@ -555,14 +577,7 @@ extern "C" JNIEXPORT void JNICALL Java_ClassInitializationTracing_notifyArrayWri
         get_class_name(_jvmti_env, new_value_class, new_value_class_name);
     }
 
-    jthread thread;
-    check(_jvmti_env->GetCurrentThread(&thread));
-
-    AgentThreadContext* tc = AgentThreadContext::from_thread(_jvmti_env, thread);
-
     char cause_class_name[1024];
-
-    assert(!tc->clinit_empty());
 
     if(tc->clinit_empty())
     {

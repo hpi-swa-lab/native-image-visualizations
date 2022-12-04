@@ -5,7 +5,6 @@
 #include <jvmti.h>
 #include <concepts>
 #include <limits>
-#include <fstream>
 #include <unistd.h>
 #include "settings.h"
 #include <algorithm>
@@ -594,24 +593,22 @@ struct Instruction
            || op >= OpCode::goto_ && op <= OpCode::jsr
            || op >= OpCode::ifnull && op <= OpCode::ifnonnull)
         {
-            a.relocate_relative(*(u2*)((uint8_t*)this + 1), bci);
+            a.relocate_relative(*(i2*)((uint8_t*)this + 1), bci);
         }
         else if(op >= OpCode::goto_w && op <= OpCode::jsr_w)
         {
-            a.relocate_relative(*(u4*)((uint8_t*)this + 1), bci);
+            a.relocate_relative(*(i4*)((uint8_t*)this + 1), bci);
         }
-
-        needs_relocation = true;
-        if(op >= OpCode::goto_ && op <= OpCode::jsr)
-            needs_relocation = true;
-        if(op == OpCode::tableswitch)
-            needs_relocation = true;
-        if(op == OpCode::lookupswitch)
-            needs_relocation = true;
-        if(op >= OpCode::ifnull && op <= OpCode::ifnonnull)
-            needs_relocation = true;
-        if(op >= OpCode::goto_w && op <= OpCode::jsr_w)
-            needs_relocation = true;
+        else if(op == OpCode::tableswitch)
+        {
+            auto body = TableSwitchBody::from_instruction_address(this, bci);
+            body->relocate_relative(a, bci);
+        }
+        else if(op == OpCode::lookupswitch)
+        {
+            auto body = LookupSwitchBody::from_instruction_address(this, bci);
+            body->relocate_relative(a, bci);
+        }
     }
 };
 
@@ -1228,8 +1225,8 @@ struct BYTEWISE LocalVariableTypeTable_attribute : public attribute_info
 struct BYTEWISE method_or_field_info
 {
     u2             access_flags;
-    u2             name_index;
-    u2             descriptor_index;
+    ConstantPoolIndex<Utf8_info, u2> name_index;
+    ConstantPoolIndex<Utf8_info, u2> descriptor_index;
     u2             attributes_count;
     attribute_info attributes[/* attributes_count */];
 
@@ -1498,25 +1495,36 @@ static size_t copy_method_with_insertions(const ConstantPoolOffsets& cp, const m
 
                     if(bci_index >= insertion->pos)
                     {
+                        size_t offset = 0;
+
+                        do
+                        {
+                            offset += insertion->data.size();
+                            insertion++;
+                        }
+                        while(insertion != insertions.end() && bci_index >= insertion->pos);
+
                         u1& frame_type = frame.frame_type;
 
-                        assert(insertion->data.size() <= 64 && "TODO");
+                        assert(offset <= 64 && "TODO");
 
-                        if(frame_type < 64 - insertion->data.size() || frame_type >= 64 && frame_type < 128 - insertion->data.size())
+                        if(frame_type < 64 - offset || frame_type >= 64 && frame_type < 128 - offset)
                         {
-                            frame_type += insertion->data.size();
+                            frame_type += offset;
                         }
                         else if(frame_type >= 247)
                         {
                             // All have the same layout as same_frame_extended
                             auto typed_frame = (same_frame_extended*)&frame;
-                            typed_frame->_offset_delta += insertion->data.size();
+                            typed_frame->_offset_delta += offset;
                         }
                         else if(frame_type < 128)
                         {
+                            cerr << "StackMapTable: Problematic entry. Trying to fix..." << endl;
+
                             // We have to extend
                             size_t bci = frame_type & 63;
-                            bci += insertion->data.size();
+                            bci += offset;
 
                             if(frame_type & 64)
                             {
@@ -1539,8 +1547,6 @@ static size_t copy_method_with_insertions(const ConstantPoolOffsets& cp, const m
                         {
                             assert(false && "Bad frame type");
                         }
-
-                        insertion++;
                     }
                 }
             }
@@ -1573,7 +1579,7 @@ static size_t copy_method_with_insertions(const ConstantPoolOffsets& cp, const m
 
 
 
-void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint src_len, unsigned char** dst_ptr, jint* dst_len_ptr)
+bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint src_len, unsigned char** dst_ptr, jint* dst_len_ptr)
 {
     auto file1 = (ClassFile1*)src_start;
     ConstantPoolOffsets cp(file1);
@@ -1633,7 +1639,10 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
         dst = std::copy(src, (const uint8_t*)&m, dst);
         src = (const uint8_t*)&m;
 
-        auto name = cp[ConstantPoolIndex<Utf8_info>(m.name_index)]->str();
+        auto name = cp[m.name_index]->str();
+
+        if(name != "toArray" || cp[m.descriptor_index]->str() != "()[Ljava/lang/Object;")
+            continue;
 
         Code_attribute_1* code1 = nullptr;
 
@@ -1746,4 +1755,6 @@ void add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
         *dst_ptr = dst_start;
         *dst_len_ptr = dst - dst_start;
     }
+
+    return modified;
 }
