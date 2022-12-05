@@ -152,6 +152,7 @@
         const textStickyGap = 8
         const hierarchyGaps = 2 // used between boxes of the hierarchy
         const explosionThreshold = 100 // at this height, entities explode into children
+        const combinations = ['helloworld', 'helloworld,micronaut', 'micronaut'];
         const colors = {
             'helloworld': '#f28e2c',
             'micronaut': '#1b9e77',
@@ -189,8 +190,9 @@
                 // vertically proportional to how much code is used in each
                 // universe.
                 let offsetFromLeft = linePadding
-                for (const [combination, size] of Object.entries(tree.exclusiveSizes)) {
-                    let width = lineWidth * size / tree.unionedSize
+                for (const combination of combinations) {
+                    const size = tree.exclusiveSizes[combination] ?? 0
+                    const width = lineWidth * size / tree.unionedSize
                     context.fillStyle = colors[combination]
                     // Note: Floating point calculations are never accurate, so
                     // `floor` and `ceil` are used to avoid the background
