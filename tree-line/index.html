@@ -141,9 +141,6 @@
         console.debug(universes)
         
         const canvas = document.getElementById('treeline')
-        canvas.width = window.innerWidth
-        canvas.height = window.innerHeight - 5
-
         const context = canvas.getContext('2d', { alpha: false })
 
         // Constants that determine how the visualization looks.
@@ -233,11 +230,19 @@
             return boxWidth
         }
 
+        function fitCanvasToScreen() {
+            canvas.width = window.innerWidth
+            canvas.height = window.innerHeight - 5
+        }
+        fitCanvasToScreen()
+
         let initialBarHeight = canvas.height - barPadding * 2
         let initialPixelsPerByte = initialBarHeight / universes.unionedSize
         let initialOffsetFromTop = barPadding
 
         function redraw() {
+            fitCanvasToScreen()
+
             const transform = d3.event?.transform ?? { x: 0, y: 0, k: 1 }
 
             context.fillStyle = 'white'
@@ -252,8 +257,8 @@
         }
         redraw()
 
-        d3.select(canvas)
-            .call(d3.zoom().scaleExtent([1, 10000]).on("zoom", redraw))
+        d3.select(canvas).call(d3.zoom().scaleExtent([1, 10000]).on("zoom", redraw))
+        window.addEventListener("resize", redraw)
     </script>
 </body>
 </html>
