@@ -171,7 +171,17 @@
             if (path.length == 0) {
                 leftOfSubHierarchy = leftOfHierarchy
             } else {
-                const widthOfBox = drawHierarchyBox(leftOfHierarchy, top, height, path[path.length - 1])
+                let containingCombinations = Object.entries(tree.exclusiveSizes)
+                    .filter(combinationAndSize => combinationAndSize[1] > 0)
+                    .map(combinationAndSize => combinationAndSize[0])
+
+                const widthOfBox = drawHierarchyBox(
+                    leftOfHierarchy,
+                    top,
+                    height,
+                    path[path.length - 1],
+                    containingCombinations,
+                )
                 leftOfSubHierarchy = leftOfHierarchy + widthOfBox + hierarchyGaps
             }
 
@@ -202,13 +212,18 @@
                 }
             }
         }
-        function drawHierarchyBox(left, top, height, text) {
+        function drawHierarchyBox(left, top, height, text, containingCombinations) {
             context.font = `${fontSize}px sans-serif`
 
             const textWidth = context.measureText(text).width
             const boxWidth = textWidth + 2 * textHorizontalPadding
 
-            context.fillStyle = '#cccccc'
+            console.debug(containingCombinations)
+            if (containingCombinations.length == 1) {
+                context.fillStyle = colors[containingCombinations[0]]
+            } else {
+                context.fillStyle = '#cccccc'
+            }
             context.fillRect(left, top, boxWidth, height - hierarchyGaps)
 
             const visibleStart = top.clamp(0, canvas.height)
