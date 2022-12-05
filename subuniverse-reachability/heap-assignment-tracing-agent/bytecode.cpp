@@ -9,6 +9,7 @@
 #include "settings.h"
 #include <algorithm>
 #include <numeric>
+#include <ranges>
 
 using namespace std;
 
@@ -133,7 +134,7 @@ public:
 
         for(const auto& insertion : insertions)
         {
-            if(insertion.pos >= ref_bci)
+            if(insertion.pos > ref_bci)
                 break;
 
             offset -= insertion.data.size();
@@ -152,9 +153,21 @@ public:
         bci_offset = offset;
     }
 
-    void relocate_absolute(u2& bci)
+    template<typename T>
+    void relocate_absolute(T& bci)
     {
-        relocate_relative(bci, 0);
+        uint64_t address = bci;
+
+        for(const auto& insertion : insertions)
+        {
+            if(insertion.pos > bci)
+                break;
+
+            address += insertion.data.size();
+        }
+
+        assert((int64_t)(T)address == address && "bci overflow!");
+        bci = address;
     }
 };
 
@@ -885,7 +898,7 @@ struct BYTEWISE attribute_info
 
     size_t len() const
     {
-        return sizeof(attribute_info) + attribute_length;
+        return sizeof(attribute_info) + (size_t)attribute_length;
     }
 };
 
@@ -964,7 +977,7 @@ struct BYTEWISE verification_type_info
 
     size_t len() const;
 
-    void adjust_offset(BciShift a);
+    void adjust_offset(BciShift a, size_t bci);
 };
 
 struct BYTEWISE Object_variable_info : public verification_type_info
@@ -987,7 +1000,7 @@ size_t verification_type_info::len() const
     }
 }
 
-void verification_type_info::adjust_offset(BciShift a)
+void verification_type_info::adjust_offset(BciShift a, size_t bci)
 {
     if(tag == tag::Uninitialized)
     {
@@ -1000,14 +1013,14 @@ struct BYTEWISE stack_map_frame
     u1 frame_type;
 
     size_t len() const;
-    void adjust_offset(BciShift a);
+    void adjust_offset(BciShift a, size_t bci);
     size_t offset_delta() const;
 };
 
 struct BYTEWISE same_frame : public stack_map_frame
 {
     size_t len() const { return sizeof(*this); }
-    void adjust_offset(BciShift a) { }
+    void adjust_offset(BciShift a, size_t bci) { }
     size_t offset_delta() const { return frame_type; }
 };
 
@@ -1016,7 +1029,7 @@ struct BYTEWISE same_locals_1_stack_item_frame : public stack_map_frame
     verification_type_info stack[0];
 
     size_t len() const { return sizeof(*this) + stack[0].len(); }
-    void adjust_offset(BciShift a) { stack[0].adjust_offset(a); }
+    void adjust_offset(BciShift a, size_t bci) { stack[0].adjust_offset(a, bci); }
     size_t offset_delta() const { return frame_type - 64; }
 };
 
@@ -1026,7 +1039,7 @@ struct BYTEWISE same_locals_1_stack_item_frame_extended : public stack_map_frame
     verification_type_info stack[0];
 
     size_t len() const { return sizeof(*this) + stack[0].len(); }
-    void adjust_offset(BciShift a) { stack[0].adjust_offset(a); }
+    void adjust_offset(BciShift a, size_t bci) { stack[0].adjust_offset(a, bci); }
     size_t offset_delta() const { return _offset_delta; }
 };
 
@@ -1035,7 +1048,7 @@ struct BYTEWISE chop_frame : public stack_map_frame
     u2 _offset_delta;
 
     size_t len() const { return sizeof(*this); }
-    void adjust_offset(BciShift a) {}
+    void adjust_offset(BciShift a, size_t bci) { }
     size_t offset_delta() const { return _offset_delta; }
 };
 
@@ -1044,7 +1057,7 @@ struct BYTEWISE same_frame_extended : public stack_map_frame
     u2 _offset_delta;
 
     size_t len() const { return sizeof(*this); }
-    void adjust_offset(BciShift a) {}
+    void adjust_offset(BciShift a, size_t bci) { }
     size_t offset_delta() const { return _offset_delta; }
 };
 
@@ -1061,10 +1074,10 @@ struct BYTEWISE append_frame : public stack_map_frame
         return (u1*)iterate_to_end(locals, (size_t)(frame_type - 251)) - (u1*)this;
     }
 
-    void adjust_offset(BciShift a)
+    void adjust_offset(BciShift a, size_t bci)
     {
         for(auto& local : *this)
-            local.adjust_offset(a);
+            local.adjust_offset(a, bci);
     }
 
     size_t offset_delta() const { return _offset_delta; }
@@ -1083,10 +1096,10 @@ struct BYTEWISE full_frame2
         return (u1*)iterate_to_end(stack, number_of_stack_items) - (u1*)this;
     }
 
-    void adjust_offset(BciShift a)
+    void adjust_offset(BciShift a, size_t bci)
     {
         for(auto& i : *this)
-            i.adjust_offset(a);
+            i.adjust_offset(a, bci);
     }
 };
 
@@ -1110,12 +1123,12 @@ struct BYTEWISE full_frame : public stack_map_frame
         return n->len() + ((u1*)n - (u1*)this);
     }
 
-    void adjust_offset(BciShift a)
+    void adjust_offset(BciShift a, size_t bci)
     {
         for(auto& i : *this)
-            i.adjust_offset(a);
+            i.adjust_offset(a, bci);
 
-        next()->adjust_offset(a);
+        next()->adjust_offset(a, bci);
     }
 
     size_t offset_delta() const { return _offset_delta; }
@@ -1148,9 +1161,9 @@ size_t stack_map_frame::len() const
     SWITCH_DISPATCH(frame_type, len(), return);
 }
 
-void stack_map_frame::adjust_offset(BciShift a)
+void stack_map_frame::adjust_offset(BciShift a, size_t bci)
 {
-    SWITCH_DISPATCH(frame_type, adjust_offset(a),);
+    SWITCH_DISPATCH(frame_type, adjust_offset(a, bci),);
 }
 
 size_t stack_map_frame::offset_delta() const
@@ -1457,10 +1470,11 @@ static size_t copy_method_with_insertions(const ConstantPoolOffsets& cp, const m
     }
 
     Code_attribute_3* code3 = code2->next();
+    Code_attribute_3* dst_code3 = apply_offset(dst - src, code3);
 
-    u4* dst_c_length = apply_offset(dst - src, &code1->attribute_length);
+    vector<span<uint8_t>> to_remove;
 
-    for(attribute_info& c_attr : *apply_offset(dst - src, code3))
+    for(attribute_info& c_attr : *dst_code3)
     {
         auto str = cp[c_attr.attribute_name_index]->str();
 
@@ -1469,89 +1483,72 @@ static size_t copy_method_with_insertions(const ConstantPoolOffsets& cp, const m
             auto* smt = (StackMapTable_attribute*)&c_attr;
 
             {
-                auto it = smt->begin();
-
-                while(it != smt->end())
-                {
-                    ++it;
-                }
-
-                assert((u1*)&*it - (u1*)smt == smt->len());
-            }
-
-            for(auto& frame : *smt)
-                frame.adjust_offset(bci_shift);
-
-            {
                 auto insertion = insertions.begin();
                 int bci_index = -1;
 
                 for(auto &frame: *smt)
                 {
                     bci_index += 1 + frame.offset_delta();
+                    frame.adjust_offset(bci_shift, bci_index);
 
-                    if(insertion == insertions.end())
-                        break;
-
-                    if(bci_index >= insertion->pos)
+                    size_t offset = 0;
+                    while(insertion != insertions.end() && bci_index >= insertion->pos)
                     {
-                        size_t offset = 0;
+                        offset += insertion->data.size();
+                        insertion++;
+                    }
 
-                        do
+                    if(offset == 0) // No shift necessary
+                        continue;
+
+                    u1& frame_type = frame.frame_type;
+
+                    assert(offset <= 64 && "TODO");
+
+                    if(frame_type < 64 - offset || frame_type >= 64 && frame_type < 128 - offset)
+                    {
+                        frame_type += offset;
+                    }
+                    else if(frame_type >= 247)
+                    {
+                        // All have the same layout as same_frame_extended
+                        auto typed_frame = (same_frame_extended*)&frame;
+                        typed_frame->_offset_delta += offset;
+                    }
+                    else if(frame_type < 128)
+                    {
+                        return false;
+                        cerr << "StackMapTable: Problematic entry. Trying to fix..." << endl;
+
+                        // We have to extend
+                        size_t bci = frame_type & 63;
+                        bci += offset;
+
+                        if(frame_type & 64)
                         {
-                            offset += insertion->data.size();
-                            insertion++;
-                        }
-                        while(insertion != insertions.end() && bci_index >= insertion->pos);
-
-                        u1& frame_type = frame.frame_type;
-
-                        assert(offset <= 64 && "TODO");
-
-                        if(frame_type < 64 - offset || frame_type >= 64 && frame_type < 128 - offset)
-                        {
-                            frame_type += offset;
-                        }
-                        else if(frame_type >= 247)
-                        {
-                            // All have the same layout as same_frame_extended
-                            auto typed_frame = (same_frame_extended*)&frame;
-                            typed_frame->_offset_delta += offset;
-                        }
-                        else if(frame_type < 128)
-                        {
-                            return false;
-                            cerr << "StackMapTable: Problematic entry. Trying to fix..." << endl;
-
-                            // We have to extend
-                            size_t bci = frame_type & 63;
-                            bci += offset;
-
-                            if(frame_type & 64)
-                            {
-                                frame_type = 247;
-                            }
-                            else
-                            {
-                                frame_type = 251;
-                            }
-
-                            // Make little space
-                            dst_code1->attribute_length += 2;
-                            c_attr.attribute_length += 2;
-                            dst = std::copy(((u1*)&frame) + 1, dst, ((u1*)&frame) + 3);
-
-                            auto typed_frame = (same_frame_extended*)&frame;
-                            typed_frame->_offset_delta = bci;
+                            frame_type = 247;
                         }
                         else
                         {
-                            assert(false && "Bad frame type");
+                            frame_type = 251;
                         }
+
+                        // Make little space
+                        dst_code1->attribute_length += 2;
+                        c_attr.attribute_length += 2;
+                        dst = std::copy(((u1*)&frame) + 1, dst, ((u1*)&frame) + 3);
+
+                        auto typed_frame = (same_frame_extended*)&frame;
+                        typed_frame->_offset_delta = bci;
+                    }
+                    else
+                    {
+                        assert(false && "Bad frame type");
                     }
                 }
             }
         }
+#if 0
         else if(str == "LineNumberTable")
         {
             auto* lnt = (LineNumberTable_attribute*)&c_attr;
@@ -1559,6 +1556,8 @@ static size_t copy_method_with_insertions(const ConstantPoolOffsets& cp, const m
             for(auto& line : lnt->lines())
                 bci_shift.relocate_absolute(line.start_pc);
         }
+#endif
+#if 0
         else if(str == "LocalVariableTable")
         {
             auto* lvt = (LocalVariableTable_attribute*)&c_attr;
@@ -1566,6 +1565,8 @@ static size_t copy_method_with_insertions(const ConstantPoolOffsets& cp, const m
             for(auto& e : lvt->local_variables())
                 bci_shift.relocate_absolute(e.start_pc);
         }
+#endif
+#if 0
         else if(str == "LocalVariableTypeTable")
         {
             auto* lvtt = (LocalVariableTypeTable_attribute*)&c_attr;
@@ -1573,12 +1574,26 @@ static size_t copy_method_with_insertions(const ConstantPoolOffsets& cp, const m
             for(auto& e : lvtt->local_variable_types())
                 bci_shift.relocate_absolute(e.start_pc);
         }
+#endif
+        else
+        {
+            to_remove.emplace_back((uint8_t*)&c_attr, c_attr.len());
+        }
     }
+
+    assert(((u1*)iterate_to_end(code3->attributes, code3->attributes_count)) == ((u1*)code1 + code1->len()));
+
+    for(auto remove_span : views::reverse(to_remove))
+    {
+        dst = std::copy(&*remove_span.end(), dst, &*remove_span.begin());
+        dst_code1->attribute_length = dst_code1->attribute_length - remove_span.size();
+    }
+
+    assert(dst_code3->attributes_count == code3->attributes_count);
+    dst_code3->attributes_count = dst_code3->attributes_count - to_remove.size();
 
     return dst - (uint8_t*)dst_method;
 }
-
-
 
 bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint src_len, unsigned char** dst_ptr, jint* dst_len_ptr)
 {
@@ -1621,10 +1636,7 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
     dst = (uint8_t*)dst_file2;
 
 
-    uint8_t call_onArrayWrite_code[4];
-    call_onArrayWrite_code[0] = (uint8_t)OpCode::invokestatic;
-    *(u2*)&call_onArrayWrite_code[1] = onArrayWrite_methodref.index;
-    call_onArrayWrite_code[3] = (uint8_t)OpCode::nop; // Padding
+    uint8_t call_onArrayWrite_code[4] = { 0 };
 
     uint8_t call_onClinitStart_code[4];
     call_onClinitStart_code[0] = static_cast<uint8_t>(OpCode::invokestatic);
@@ -1634,6 +1646,8 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
 
     auto src = (const uint8_t*)file2;
     bool modified = false;
+
+    size_t allowed_replacements = 0;
 
     for(auto& m : *file4)
     {
@@ -1683,7 +1697,11 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
         for(Instruction& i : *code1)
         {
             if(i.op == OpCode::aastore)
-                insertion_count++;
+                if(allowed_replacements > 0)
+                {
+                    allowed_replacements--;
+                    insertion_count++;
+                }
         }
 
         if(insertion_count == 0)
@@ -1702,7 +1720,8 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
         {
             if(i.op == OpCode::aastore)
             {
-                insertions[insertion_index++] = { .data = call_onArrayWrite_code, .pos = (size_t)(&i + 1 - code1->code) };
+                if(insertion_index < insertion_count)
+                    insertions[insertion_index++] = { .data = call_onArrayWrite_code, .pos = (size_t)(&i + 1 - code1->code) };
             }
         }
 
@@ -1730,13 +1749,14 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
 
             //cerr << "Third run: " << dec << dst_code1->code_length << endl;
 
+            size_t remaining = insertion_count - (insert_clinit_callback ? 1 : 0);
             for(Instruction& i : *dst_code1)
             {
-                if(i.op == OpCode::aastore)
+                if(i.op == OpCode::aastore && remaining)
                 {
-                    assert((&i)[1].op == OpCode::invokestatic);
-                    std::copy(&i + 1, &i + 5, &i);
-                    //i.op == OpCode::nop;
+                    remaining--;
+                    i.op = OpCode::invokestatic;
+                    *(u2*)(&i + 1) = onArrayWrite_methodref.index;
                 }
             }
         }

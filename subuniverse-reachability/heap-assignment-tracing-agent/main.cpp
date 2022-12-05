@@ -116,15 +116,10 @@ struct ObjectContext
     jclass allocReason;
 };
 
-
+#include <unistd.h>
 
 JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
 {
-    std::cout << "PID: " << getpid() << std::endl;
-    /*
-    raise(SIGSTOP);
-     */
-
     cerr << nounitbuf;
     iostream::sync_with_stdio(false);
 
@@ -467,18 +462,18 @@ static void JNICALL onClassFileLoad(
     cerr << "ClassLoad: " << name << endl;
 #endif
 
-    if(strcmp(name, "ClassInitializationTracing") == 0)
+    if(string_view(name) == "ClassInitializationTracing"
+    || string_view(name) == "com/oracle/svm/core/SubstrateOptions")
         return;
 
-    if(string_view(name) == "java/util/ListResourceBundle")
+    /*
+    if(string_view(name) != "com/oracle/svm/hosted/NativeImageGeneratorRunner")
         return;
-
-    if(string_view(name) == "sun/launcher/resources/launcher")
-        return;
+        */
 
     bool instrumented = add_clinit_hook(jvmti_env, class_data, class_data_len, new_class_data, new_class_data_len);
 
-    if(instrumented && string_view(name) == "java/util/LinkedList")
+    if(instrumented && string_view(name) == "com/oracle/svm/hosted/NativeImageGeneratorRunner")
     {
         {
             ofstream original("original.class");

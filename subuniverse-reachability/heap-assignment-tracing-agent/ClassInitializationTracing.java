@@ -23,4 +23,8 @@ public final class ClassInitializationTracing
         arr[index] = val;
         //System.err.println("onArrayWrite CALLED!");
     }
+
+    public static void Dummy()
+    {
+    }
 }
