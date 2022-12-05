@@ -26,10 +26,12 @@
             let visualization = undefined
 
             buttonConfirm.addEventListener('click', async () => {
-                buttonConfirm.disabled = true;
+                buttonConfirm.disabled = true
 
                 if (visualization) {
-                    visualization.continueSimulation(() => {buttonConfirm.disabled = false})
+                    visualization.continueSimulation(() => {
+                        buttonConfirm.disabled = false
+                    })
                 } else {
                     while (container.firstChild) {
                         container.removeChild(container.lastChild)
@@ -41,7 +43,9 @@
                     }
 
                     visualization = await Observatory.generateHierarchyBubbles(input.files[0])
-                    visualization.continueSimulation(() => {buttonConfirm.disabled = false})
+                    visualization.continueSimulation(() => {
+                        buttonConfirm.disabled = false
+                    })
 
                     buttonConfirm.innerHTML = 'Continue Simulation'
                 }

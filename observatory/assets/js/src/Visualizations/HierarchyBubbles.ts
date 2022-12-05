@@ -25,7 +25,6 @@ export default class HierarchyBubbles implements Visualization {
     generate(): void {
         this.tooltip = new Tooltip()
         document.body.appendChild(this.tooltip.widget)
-
         ;[this.nodes, this.nodesById] = this._constructNodes(this.hierarchy)
         this.edges = this._constructEdges(this.hierarchy)
 
@@ -42,10 +41,7 @@ export default class HierarchyBubbles implements Visualization {
         this.simulation.stop()
     }
 
-    continueSimulation(
-        callback: () => void = () => {},
-        milliseconds: number = 5000
-    ) {
+    continueSimulation(callback: () => void = () => {}, milliseconds: number = 5000) {
         this.simulation.restart()
         setTimeout(() => {
             this.simulation.stop()
@@ -106,7 +102,7 @@ export default class HierarchyBubbles implements Visualization {
                     weight: 1
                 })
             }
-            
+
             result = result.concat(this._constructEdges(child))
         })
 
