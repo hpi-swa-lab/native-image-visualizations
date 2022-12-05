@@ -4,4 +4,5 @@ export default interface HierarchyNode {
     fullPath: string
     name: string
     children: HierarchyNode[]
+    subTreeSize: number
 }

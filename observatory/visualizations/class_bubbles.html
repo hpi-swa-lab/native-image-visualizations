@@ -23,7 +23,7 @@
             const buttonConfirm = document.getElementById('button-confirm')
             const container = document.getElementById('container')
 
-            let visualization = undefined;
+            let visualization = undefined
 
             buttonConfirm.addEventListener('click', async () => {
                 if (visualization) {
@@ -39,7 +39,7 @@
                     }
 
                     visualization = await Observatory.generateClassBubbles(input.files[0])
-                    buttonConfirm.innerHTML = "Continue Simulation"
+                    buttonConfirm.innerHTML = 'Continue Simulation'
                 }
             })
         </script>

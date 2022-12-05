@@ -25,7 +25,8 @@ export function parseToPackageHierarchy(hierarchyString: string): HierarchyNode 
         parent: null,
         name: 'root',
         fullPath: '',
-        children: []
+        children: [],
+        subTreeSize: 0
     }
 
     let counter: number = 1
@@ -44,7 +45,8 @@ export function parseToPackageHierarchy(hierarchyString: string): HierarchyNode 
                     parent: parent,
                     name: pathSegment,
                     fullPath: splittedRow.slice(0, index + 1).join('.'),
-                    children: []
+                    children: [],
+                    subTreeSize: 0
                 }
                 currentChildren.push(child)
                 counter++
@@ -55,6 +57,8 @@ export function parseToPackageHierarchy(hierarchyString: string): HierarchyNode 
         })
     })
 
+    _addSubTreeSizes(data)
+
     return data
 }
 
@@ -64,7 +68,8 @@ export function parseToCleanedPackageHierarchy(hierarchyString: string): Hierarc
         parent: null,
         name: 'root',
         fullPath: '',
-        children: []
+        children: [],
+        subTreeSize: 0
     }
 
     let counter: number = 1
@@ -88,7 +93,8 @@ export function parseToCleanedPackageHierarchy(hierarchyString: string): Hierarc
                         parent: parent,
                         name: pathSegment,
                         fullPath: splittedRow.slice(0, index + 1).join('.'),
-                        children: []
+                        children: [],
+                        subTreeSize: 0
                     }
                     currentChildren.push(child)
                     counter++
@@ -100,7 +106,25 @@ export function parseToCleanedPackageHierarchy(hierarchyString: string): Hierarc
         }
     })
 
+    _addSubTreeSizes(data)
+    console.log(data)
+
     return data
+}
+
+function _addSubTreeSizes(startingPoint: HierarchyNode): void {
+    if (startingPoint.children.length === 0) {
+        startingPoint.subTreeSize = 0
+    } else {
+        startingPoint.children.forEach((child) => {
+            _addSubTreeSizes(child)
+        })
+
+        startingPoint.subTreeSize = startingPoint.children.reduce(
+            (sum: number, child: HierarchyNode) => sum + child.subTreeSize,
+            1
+        )
+    }
 }
 
 export function extractLastHierarchyLevel(hierarchyString: string): string[] {

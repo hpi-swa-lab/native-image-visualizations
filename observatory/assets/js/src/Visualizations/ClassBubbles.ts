@@ -23,19 +23,22 @@ export default class ClassBubbles implements Visualization {
     }
 
     generate(): void {
-        this.tooltip = new Tooltip();
-        document.body.appendChild(this.tooltip.widget);
+        this.tooltip = new Tooltip()
+        document.body.appendChild(this.tooltip.widget)
 
-        [this.nodes, this.nodesById] = this._constructNodes(this.hierarchy);
-        this.edges = this._constructEdges(this.hierarchy);
+        ;[this.nodes, this.nodesById] = this._constructNodes(this.hierarchy)
+        this.edges = this._constructEdges(this.hierarchy)
 
         this._prepareSVG()
 
         this.simulation = forceSimulation(this.nodes)
             .force('link', forceLink(this.edges))
-            .force('collision', forceCollide().radius((node: CircleNode) => node.radius * 1.1))
+            .force(
+                'collision',
+                forceCollide().radius((node: CircleNode) => node.radius * 1.1)
+            )
             .on('tick', () => this._tick())
-        
+
         this.simulation.stop()
         this.continueSimulation()
     }
@@ -78,7 +81,7 @@ export default class ClassBubbles implements Visualization {
                     (Math.floor(index / columns) - 1) * padding,
                 color: color,
                 label: node.name,
-                radius: 30,
+                radius: node.subTreeSize + 5,
                 tooltip: node.fullPath
             }
 
@@ -107,12 +110,10 @@ export default class ClassBubbles implements Visualization {
 
     _getColorIdentifyerForNode(node: HierarchyNode): string {
         if (node.parent === null) {
-            return node.fullPath
+            return null
         }
         return node.parent.fullPath
     }
-
-    
 
     _getNodes(startingPoint: HierarchyNode): HierarchyNode[] {
         let result: HierarchyNode[] = []
@@ -170,10 +171,7 @@ export default class ClassBubbles implements Visualization {
                 this.tooltip.setVisible()
             })
             .on('mousemove', (event) => {
-                this.tooltip.moveToCoordinates(
-                    event.pageY - 10,
-                    event.pageX + 10
-                )
+                this.tooltip.moveToCoordinates(event.pageY - 10, event.pageX + 10)
             })
             .on('mouseout', (event, node: CircleNode) => {
                 d3.selectAll('circle')

@@ -1,16 +1,20 @@
-import { removeChildren } from "../utils"
+import { removeChildren } from '../utils'
 
 export default class Tooltip {
-    _title: string = ""
+    _title: string = ''
     _datapoints: Record<string, any>
 
     _container: HTMLDivElement
     _titleElement: HTMLElement
     _dataElement: HTMLElement
 
-    constructor(title: string = "", datapoints: Record<string, any> = {}, visible: boolean = false) {
+    constructor(
+        title: string = '',
+        datapoints: Record<string, any> = {},
+        visible: boolean = false
+    ) {
         this._build()
-        
+
         this.title = title
         this.datapoints = datapoints
 
@@ -56,7 +60,6 @@ export default class Tooltip {
         this.widget.style.left = left + 'px'
     }
 
-
     _build() {
         this._container = this._buildContainer()
 
@@ -68,7 +71,7 @@ export default class Tooltip {
     }
 
     _buildContainer(): HTMLDivElement {
-        const result = document.createElement("div")
+        const result = document.createElement('div')
 
         result.style.position = 'absolute'
         result.style.width = 'fit-content'
@@ -85,13 +88,13 @@ export default class Tooltip {
     }
 
     _buildTitle(): HTMLHeadingElement {
-        return document.createElement("h4")
+        return document.createElement('h4')
     }
 
     _buildDataContainer(): HTMLDivElement {
-        const result = document.createElement("div")
+        const result = document.createElement('div')
 
-        result.classList.add("d-flex", "flex-column")
+        result.classList.add('d-flex', 'flex-column')
 
         return result
     }
@@ -103,12 +106,12 @@ export default class Tooltip {
     _buildDataContainerContent() {
         removeChildren(this._dataElement)
         Object.keys(this.datapoints).forEach((name: string) => {
-            const element = document.createElement("div")
+            const element = document.createElement('div')
 
-            const title = document.createElement("p")
+            const title = document.createElement('p')
             title.innerHTML = name + ': '
 
-            const data = document.createElement("p")
+            const data = document.createElement('p')
             data.innerHTML = this.datapoints[name]
 
             element.appendChild(title)

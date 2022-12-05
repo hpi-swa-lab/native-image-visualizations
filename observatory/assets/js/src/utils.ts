@@ -1,4 +1,4 @@
-import { Color } from "d3"
+import { Color } from 'd3'
 
 export function randomColor(): string {
     let color = '#'
@@ -13,7 +13,7 @@ export function randomColor(): string {
 
 export function uniqueColor(existingColors: string[]): string {
     let generatedColor = randomColor()
-    
+
     while (existingColors.includes(generatedColor)) {
         generatedColor = randomColor()
     }
@@ -29,7 +29,7 @@ export function randomInteger(min: number, max: number): number {
 }
 
 export function removeChildren(widget: HTMLElement) {
-    while(widget.firstChild) {
+    while (widget.firstChild) {
         widget.removeChild(widget.lastChild)
     }
 }
