@@ -200,7 +200,6 @@
                     context.fillRect(offsetFromLeft, Math.floor(top), width, Math.ceil(height))
                     offsetFromLeft += width
                 }
-
             }
         }
         function drawHierarchyBox(left, top, height, text) {
@@ -217,11 +216,10 @@
 
             if (height >= fontSize + 2 * textVerticalPadding) {
                 const textRadius = fontSize / 2
-                const textCenterY = ((visibleStart + visibleEnd) / 2)
-                    .clamp(
-                        top + textRadius + textVerticalPadding,
-                        top + height - textRadius - textVerticalPadding,
-                    )
+                const textCenterY = ((visibleStart + visibleEnd) / 2).clamp(
+                    top + textRadius + textVerticalPadding,
+                    top + height - textRadius - textVerticalPadding,
+                )
 
                 context.fillStyle = 'black'
                 context.textBaseline = 'middle'
