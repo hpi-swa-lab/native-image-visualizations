@@ -15,6 +15,13 @@
 <body>
     <canvas id="treeline"></canvas>
     <script type="module">
+        // A function that makes sure a value is within a range. For example,
+        // `2.clamp(0, 5)` returns 2 because 2 is between 0 and 5, but
+        // `3.clamp(4, 6)` returns 4.
+        Number.prototype.clamp = function (min, max) {
+            return Math.min(Math.max(this, min), max);
+        }
+        
         /// Parses the content of a `used_methods_...` file into a tree. Ignores
         /// generated classes and their children.
         // TODO: Use the common function after Luc's PR is merged.
@@ -23,7 +30,7 @@
             for (const row of text.split('\n')) {
                 if (row == '' || row.includes('$$')) continue
                 let current = tree
-                for (const pathSegment of row.split('.')) {
+                for (const pathSegment of row.split(/[.$]/)) {
                     let child = current.children.find((child) => child.name === pathSegment)
                     if (!child) {
                         child = { name: pathSegment, children: [] }
@@ -140,10 +147,12 @@
         const context = canvas.getContext('2d', { alpha: false })
 
         // Constants that determine how the visualization looks.
-        const barWidth = 200
-        const barPadding = 10 // used on all sides of the bar
+        const barWidth = 256
+        const barPadding = 16 // used on the left and right of the bar
         const fontSize = 16
-        const textPadding = 10 // used left and right of the text
+        const textHorizontalPadding = 8
+        const textVerticalPadding = 2
+        const textStickyGap = 8
         const hierarchyGaps = 2 // used between boxes of the hierarchy
         const explosionThreshold = 100 // at this height, entities explode into children
         const colors = {
@@ -164,8 +173,8 @@
             if (path.length == 0) {
                 leftOfSubHierarchy = leftOfHierarchy
             } else {
-                const width = drawHierarchyBox(leftOfHierarchy, offsetFromTop, height, path[path.length - 1])
-                leftOfSubHierarchy = leftOfHierarchy + width + hierarchyGaps
+                const widthOfBox = drawHierarchyBox(leftOfHierarchy, offsetFromTop, height, path[path.length - 1])
+                leftOfSubHierarchy = leftOfHierarchy + widthOfBox + hierarchyGaps
             }
 
             if (height >= explosionThreshold && tree.children.length > 0) {
@@ -196,19 +205,29 @@
             }
         }
         function drawHierarchyBox(x, y, height, text) {
+            context.font = `${fontSize}px sans-serif`
+
             const textWidth = context.measureText(text).width
-            const boxWidth = textWidth + 2 * textPadding
+            const boxWidth = textWidth + 2 * textHorizontalPadding
 
             context.fillStyle = '#cccccc'
             context.fillRect(x, y, boxWidth, height - hierarchyGaps)
-            
-            context.font = `${fontSize}px sans-serif`
-            context.fillStyle = 'black'
 
-            if (height >= fontSize) {
-                context.fillText(text, x + textPadding, y + (height + fontSize) / 2)
+            if (height >= fontSize + 2 * textVerticalPadding) {
+                const textRadius = fontSize / 2
+                const textCenterY = (y + height / 2)
+                    .clamp(
+                        textStickyGap + textRadius + textVerticalPadding,
+                        canvas.height - textStickyGap - textRadius - textVerticalPadding,
+                    )
+                    .clamp(
+                        y + textRadius + textVerticalPadding,
+                        y + height - textRadius - textVerticalPadding,
+                    )
 
-                // TODO: make sure the text doesn't leave the screen
+                context.fillStyle = 'black'
+                context.textBaseline = 'middle'
+                context.fillText(text, x + textHorizontalPadding, textCenterY)
             }
 
             return boxWidth
