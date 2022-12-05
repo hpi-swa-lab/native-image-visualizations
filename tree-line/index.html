@@ -210,13 +210,12 @@
             context.fillStyle = '#cccccc'
             context.fillRect(x, y, boxWidth, height - hierarchyGaps)
 
+            const visibleStart = y.clamp(0, canvas.height)
+            const visibleEnd = (y + height).clamp(0, canvas.height)
+
             if (height >= fontSize + 2 * textVerticalPadding) {
                 const textRadius = fontSize / 2
-                const textCenterY = (y + height / 2)
-                    .clamp(
-                        textStickyGap + textRadius + textVerticalPadding,
-                        canvas.height - textStickyGap - textRadius - textVerticalPadding,
-                    )
+                const textCenterY = ((visibleStart + visibleEnd) / 2)
                     .clamp(
                         y + textRadius + textVerticalPadding,
                         y + height - textRadius - textVerticalPadding,
