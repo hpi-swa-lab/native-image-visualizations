@@ -1520,6 +1520,7 @@ static size_t copy_method_with_insertions(const ConstantPoolOffsets& cp, const m
                         }
                         else if(frame_type < 128)
                         {
+                            return false;
                             cerr << "StackMapTable: Problematic entry. Trying to fix..." << endl;
 
                             // We have to extend
@@ -1641,9 +1642,6 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
 
         auto name = cp[m.name_index]->str();
 
-        if(name != "toArray" || cp[m.descriptor_index]->str() != "()[Ljava/lang/Object;")
-            continue;
-
         Code_attribute_1* code1 = nullptr;
 
         for(const attribute_info& m_attr : *(method_or_field_info*)&m)
@@ -1709,7 +1707,10 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
         }
 
         size_t bytes_copied = copy_method_with_insertions(cp, (const method_or_field_info*)src, (method_or_field_info*)dst, {&insertions[0], insertion_count});
-        assert(bytes_copied);
+
+        if(!bytes_copied)
+            continue;
+
         modified = true;
 
         {
