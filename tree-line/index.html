@@ -139,49 +139,79 @@
 
         const context = canvas.getContext('2d', { alpha: false })
 
-        const barWidth = 200;
-        const barPadding = 10;
-        const fontSize = 16;
+        // Constants that determine how the visualization looks.
+        const barWidth = 200
+        const barPadding = 10 // used on all sides of the bar
+        const fontSize = 16
+        const textPadding = 10 // used left and right of the text
+        const hierarchyGaps = 2 // used between boxes of the hierarchy
+        const explosionThreshold = 100 // at this height, entities explode into children
         const colors = {
             'helloworld': '#f28e2c',
             'micronaut': '#1b9e77',
             'helloworld,micronaut': '#e6f5c9',
         }
 
-        function drawDiagram(tree, offsetFromTop, pixelsPerByte, prefix='') {
+        function drawDiagram(tree, offsetFromTop, pixelsPerByte, path, leftOfHierarchy) {
             const height = tree.unionedSize * pixelsPerByte
 
             if (offsetFromTop > canvas.height || offsetFromTop + height < 0) {
-                // Outside of the visible area.
-                return
+                return // Outside of the visible area.
             }
 
-            // If there's enough space available, show our children instead of
-            // the package itself.
-            if (height > 100 && tree.children.length > 0) { // && tree.children.all(child => child.unionedSize * pixelsPerByte > 100)) {
+            // Show the hierarchy on the right.
+            let leftOfSubHierarchy = undefined;
+            if (path.length == 0) {
+                leftOfSubHierarchy = leftOfHierarchy
+            } else {
+                const width = drawHierarchyBox(leftOfHierarchy, offsetFromTop, height, path[path.length - 1])
+                leftOfSubHierarchy = leftOfHierarchy + width + hierarchyGaps
+            }
+
+            if (height >= explosionThreshold && tree.children.length > 0) {
+                // There is enough room to not only show a summary of this
+                // entity, but to show our children instead.
+                let childOffsetFromTop = offsetFromTop;
                 for (const child of tree.children) {
-                    drawDiagram(child, offsetFromTop, pixelsPerByte, `${prefix}.${tree.name}`)
-                    offsetFromTop += child.unionedSize * pixelsPerByte
+                    let childPath = path.slice();
+                    childPath.push(child.name);
+                    drawDiagram(child, childOffsetFromTop, pixelsPerByte, childPath, leftOfSubHierarchy)
+                    childOffsetFromTop += child.unionedSize * pixelsPerByte
                 }
             } else {
+                // Only show a summary of this entity where colors stack
+                // vertically proportional to how much code is used in each
+                // universe.
                 let offsetFromLeft = barPadding
                 for (const [combination, size] of Object.entries(tree.exclusiveSizes)) {
                     let width = barWidth * size / tree.unionedSize
                     context.fillStyle = colors[combination]
+                    // Note: Floating point calculations are never accurate, so
+                    // `floor` and `ceil` are used to avoid the background
+                    // peeking through the gaps.
                     context.fillRect(offsetFromLeft, Math.floor(offsetFromTop), width, Math.ceil(height))
                     offsetFromLeft += width
                 }
 
-                if (height >= fontSize) {
-                    context.font = `${fontSize}px sans-serif`
-                    context.fillStyle = 'black'
-                    context.fillText(
-                        `${prefix}.${tree.name}`,
-                        barPadding + barWidth + barPadding,
-                        offsetFromTop + (height + fontSize) / 2,
-                    )
-                }
             }
+        }
+        function drawHierarchyBox(x, y, height, text) {
+            const textWidth = context.measureText(text).width
+            const boxWidth = textWidth + 2 * textPadding
+
+            context.fillStyle = '#cccccc'
+            context.fillRect(x, y, boxWidth, height - hierarchyGaps)
+            
+            context.font = `${fontSize}px sans-serif`
+            context.fillStyle = 'black'
+
+            if (height >= fontSize) {
+                context.fillText(text, x + textPadding, y + (height + fontSize) / 2)
+
+                // TODO: make sure the text doesn't leave the screen
+            }
+
+            return boxWidth
         }
 
         let initialBarHeight = canvas.height - barPadding * 2
@@ -194,10 +224,12 @@
             context.fillStyle = 'white'
             context.fillRect(0, 0, canvas.width, canvas.height)
 
-            let offsetFromTop = initialOffsetFromTop + transform.y
-            let pixelsPerByte = initialPixelsPerByte * transform.k
+            const offsetFromTop = initialOffsetFromTop + transform.y
+            const pixelsPerByte = initialPixelsPerByte * transform.k
 
-            drawDiagram(universes, offsetFromTop, pixelsPerByte)
+            const leftOfHierarchy = barPadding + barWidth + barPadding
+
+            drawDiagram(universes, offsetFromTop, pixelsPerByte, [], leftOfHierarchy)
         }
         redraw()
 
