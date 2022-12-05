@@ -21,7 +21,7 @@
         Number.prototype.clamp = function (min, max) {
             return Math.min(Math.max(this, min), max);
         }
-        
+
         /// Parses the content of a `used_methods_...` file into a tree. Ignores
         /// generated classes and their children.
         // TODO: Use the common function after Luc's PR is merged.
@@ -139,7 +139,7 @@
         const universes = await loadUniverses();
         console.debug("Universes:")
         console.debug(universes)
-        
+
         const canvas = document.getElementById('treeline')
         const context = canvas.getContext('2d', { alpha: false })
 
@@ -158,10 +158,10 @@
             'helloworld,micronaut': '#e6f5c9',
         }
 
-        function drawDiagram(tree, offsetFromTop, pixelsPerByte, path, leftOfHierarchy) {
+        function drawDiagram(tree, top, pixelsPerByte, path, leftOfHierarchy) {
             const height = tree.unionedSize * pixelsPerByte
 
-            if (offsetFromTop > canvas.height || offsetFromTop + height < 0) {
+            if (top > canvas.height || top + height < 0) {
                 return // Outside of the visible area.
             }
 
@@ -170,14 +170,14 @@
             if (path.length == 0) {
                 leftOfSubHierarchy = leftOfHierarchy
             } else {
-                const widthOfBox = drawHierarchyBox(leftOfHierarchy, offsetFromTop, height, path[path.length - 1])
+                const widthOfBox = drawHierarchyBox(leftOfHierarchy, top, height, path[path.length - 1])
                 leftOfSubHierarchy = leftOfHierarchy + widthOfBox + hierarchyGaps
             }
 
             if (height >= explosionThreshold && tree.children.length > 0) {
                 // There is enough room to not only show a summary of this
                 // entity, but to show our children instead.
-                let childOffsetFromTop = offsetFromTop;
+                let childOffsetFromTop = top;
                 for (const child of tree.children) {
                     let childPath = path.slice();
                     childPath.push(child.name);
@@ -195,35 +195,35 @@
                     // Note: Floating point calculations are never accurate, so
                     // `floor` and `ceil` are used to avoid the background
                     // peeking through the gaps.
-                    context.fillRect(offsetFromLeft, Math.floor(offsetFromTop), width, Math.ceil(height))
+                    context.fillRect(offsetFromLeft, Math.floor(top), width, Math.ceil(height))
                     offsetFromLeft += width
                 }
 
             }
         }
-        function drawHierarchyBox(x, y, height, text) {
+        function drawHierarchyBox(left, top, height, text) {
             context.font = `${fontSize}px sans-serif`
 
             const textWidth = context.measureText(text).width
             const boxWidth = textWidth + 2 * textHorizontalPadding
 
             context.fillStyle = '#cccccc'
-            context.fillRect(x, y, boxWidth, height - hierarchyGaps)
+            context.fillRect(left, top, boxWidth, height - hierarchyGaps)
 
-            const visibleStart = y.clamp(0, canvas.height)
-            const visibleEnd = (y + height).clamp(0, canvas.height)
+            const visibleStart = top.clamp(0, canvas.height)
+            const visibleEnd = (top + height).clamp(0, canvas.height)
 
             if (height >= fontSize + 2 * textVerticalPadding) {
                 const textRadius = fontSize / 2
                 const textCenterY = ((visibleStart + visibleEnd) / 2)
                     .clamp(
-                        y + textRadius + textVerticalPadding,
-                        y + height - textRadius - textVerticalPadding,
+                        top + textRadius + textVerticalPadding,
+                        top + height - textRadius - textVerticalPadding,
                     )
 
                 context.fillStyle = 'black'
                 context.textBaseline = 'middle'
-                context.fillText(text, x + textHorizontalPadding, textCenterY)
+                context.fillText(text, left + textHorizontalPadding, textCenterY)
             }
 
             return boxWidth
@@ -237,7 +237,7 @@
 
         let initialBarHeight = canvas.height - linePadding * 2
         let initialPixelsPerByte = initialBarHeight / universes.unionedSize
-        let initialOffsetFromTop = linePadding
+        let initialTop = linePadding
 
         function redraw() {
             fitCanvasToScreen()
@@ -247,12 +247,12 @@
             context.fillStyle = 'white'
             context.fillRect(0, 0, canvas.width, canvas.height)
 
-            const offsetFromTop = initialOffsetFromTop + transform.y
+            const top = initialTop + transform.y
             const pixelsPerByte = initialPixelsPerByte * transform.k
 
             const leftOfHierarchy = linePadding + lineWidth + linePadding
 
-            drawDiagram(universes, offsetFromTop, pixelsPerByte, [], leftOfHierarchy)
+            drawDiagram(universes, top, pixelsPerByte, [], leftOfHierarchy)
         }
         redraw()
 
