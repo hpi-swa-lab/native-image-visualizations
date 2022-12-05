@@ -162,15 +162,20 @@
 
         // Visualization code.
 
-        let gradients = {}
-        function buildGradients() {
+        let fillStyles = {}
+        function buildFillStyles() {
             const lightenedColors = {}
             for (const [name, color] of Object.entries(colors)) {
                 lightenedColors[name] = lightenColor(color)
             }
 
-            gradients = {}
+            fillStyles = {}
             for (const combination of combinations) {
+                if (!combination.includes(',')) {
+                    fillStyles[combination] = colors[combination]
+                    continue
+                }
+
                 const gradientColors = combination.split(',').map(universe => lightenedColors[universe])
                 const size = Math.max(canvas.width, canvas.height)
                 const gradient = context.createLinearGradient(0, 0, size, size)
@@ -184,7 +189,7 @@
                     }
                 }
 
-                gradients[combination] = gradient
+                fillStyles[combination] = gradient
             }
         }
         function lightenColor(color) {
@@ -248,7 +253,9 @@
                     // Note: Floating point calculations are never accurate, so
                     // `floor` and `ceil` are used to avoid the background
                     // peeking through the gaps.
-                    drawBox(offsetFromLeft, Math.floor(top), width, Math.ceil(height), combination)
+                    context.fillStyle = fillStyles[combination]
+                    context.fillRect(offsetFromLeft, Math.floor(top), width, Math.ceil(height))
+                    
                     // context.fillRect(offsetFromLeft, Math.floor(top), width, Math.ceil(height))
                     offsetFromLeft += width
                 }
@@ -260,10 +267,8 @@
             const textWidth = context.measureText(text).width
             const boxWidth = textWidth + 2 * textHorizontalPadding
 
-            drawBox(
-                left, top, boxWidth, height - hierarchyGaps,
-                containingCombinations.length == 1 ? containingCombinations[0] : undefined
-            )
+            context.fillStyle = containingCombinations.length == 1 ? fillStyles[containingCombinations[0]] : '#cccccc'
+            context.fillRect(left, top, boxWidth, height - hierarchyGaps)
 
             const visibleStart = top.clamp(0, canvas.height)
             const visibleEnd = (top + height).clamp(0, canvas.height)
@@ -282,17 +287,11 @@
 
             return boxWidth
         }
-        function drawBox(left, top, width, height, combination) {
-            context.fillStyle = (!combination) ? '#cccccc'
-                : (!combination.includes(',')) ? colors[combination]
-                : gradients[combination]
-            context.fillRect(left, top, width, height)
-        }
 
         function fitToScreen() {
             canvas.width = window.innerWidth
             canvas.height = window.innerHeight - 5
-            buildGradients()
+            buildFillStyles()
         }
         fitToScreen()
 
