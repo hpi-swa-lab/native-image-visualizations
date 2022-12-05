@@ -144,8 +144,8 @@
         const context = canvas.getContext('2d', { alpha: false })
 
         // Constants that determine how the visualization looks.
-        const barWidth = 256
-        const barPadding = 16 // used on the left and right of the bar
+        const lineWidth = 256
+        const linePadding = 16 // used on the left and right of the line
         const fontSize = 16
         const textHorizontalPadding = 8
         const textVerticalPadding = 2
@@ -188,9 +188,9 @@
                 // Only show a summary of this entity where colors stack
                 // vertically proportional to how much code is used in each
                 // universe.
-                let offsetFromLeft = barPadding
+                let offsetFromLeft = linePadding
                 for (const [combination, size] of Object.entries(tree.exclusiveSizes)) {
-                    let width = barWidth * size / tree.unionedSize
+                    let width = lineWidth * size / tree.unionedSize
                     context.fillStyle = colors[combination]
                     // Note: Floating point calculations are never accurate, so
                     // `floor` and `ceil` are used to avoid the background
@@ -235,9 +235,9 @@
         }
         fitCanvasToScreen()
 
-        let initialBarHeight = canvas.height - barPadding * 2
+        let initialBarHeight = canvas.height - linePadding * 2
         let initialPixelsPerByte = initialBarHeight / universes.unionedSize
-        let initialOffsetFromTop = barPadding
+        let initialOffsetFromTop = linePadding
 
         function redraw() {
             fitCanvasToScreen()
@@ -250,7 +250,7 @@
             const offsetFromTop = initialOffsetFromTop + transform.y
             const pixelsPerByte = initialPixelsPerByte * transform.k
 
-            const leftOfHierarchy = barPadding + barWidth + barPadding
+            const leftOfHierarchy = linePadding + lineWidth + linePadding
 
             drawDiagram(universes, offsetFromTop, pixelsPerByte, [], leftOfHierarchy)
         }
