@@ -175,9 +175,9 @@
                 leftOfSubHierarchy = leftOfHierarchy + widthOfBox + hierarchyGaps
             }
 
-            if (height >= explosionThreshold && tree.children.length > 0) {
-                // There is enough room to not only show a summary of this
-                // entity, but to show our children instead.
+            const shouldExplode = tree.children.length == 1
+                || height >= explosionThreshold && tree.children.length > 0
+            if (shouldExplode) {
                 let childOffsetFromTop = top;
                 for (const child of tree.children) {
                     let childPath = path.slice();
