@@ -1,19 +1,18 @@
 import { removeChildren } from "../utils"
 
 export default class Tooltip {
-    title: string = ""
-    datapoints: Record<string, any>
+    _title: string = ""
+    _datapoints: Record<string, any>
 
     _container: HTMLDivElement
-    _title: HTMLElement
-    _dataContainer: HTMLElement
+    _titleElement: HTMLElement
+    _dataElement: HTMLElement
 
     constructor(title: string = "", datapoints: Record<string, any> = {}, visible: boolean = false) {
+        this._build()
+        
         this.title = title
         this.datapoints = datapoints
-
-        this._build()
-        this.buildContents()
 
         if (visible) {
             this.setVisible()
@@ -26,14 +25,46 @@ export default class Tooltip {
         return this._container
     }
 
+    get title() {
+        return this._title
+    }
+
+    set title(newValue: string) {
+        this._title = newValue
+        this._buildTitleContent()
+    }
+
+    get datapoints() {
+        return this._datapoints
+    }
+
+    set datapoints(newValues: Record<string, any>) {
+        this._datapoints = newValues
+        this._buildDataContainerContent()
+    }
+
+    setVisible() {
+        this.widget.style.visibility = 'visible'
+    }
+
+    setInvisible() {
+        this.widget.style.visibility = 'hidden'
+    }
+
+    moveToCoordinates(top: number, left: number) {
+        this.widget.style.top = top + 'px'
+        this.widget.style.left = left + 'px'
+    }
+
+
     _build() {
         this._container = this._buildContainer()
 
-        this._title = this._buildTitle()
-        this._dataContainer = this._buildDataContainer()
+        this._titleElement = this._buildTitle()
+        this._dataElement = this._buildDataContainer()
 
-        this._container.appendChild(this._title)
-        this._container.appendChild(this._dataContainer)
+        this._container.appendChild(this._titleElement)
+        this._container.appendChild(this._dataElement)
     }
 
     _buildContainer(): HTMLDivElement {
@@ -65,10 +96,12 @@ export default class Tooltip {
         return result
     }
 
-    buildContents(): void {
-        this._title.innerHTML = this.title
+    _buildTitleContent() {
+        this._titleElement.innerHTML = this.title
+    }
 
-        removeChildren(this._dataContainer)
+    _buildDataContainerContent() {
+        removeChildren(this._dataElement)
         Object.keys(this.datapoints).forEach((name: string) => {
             const element = document.createElement("div")
 
@@ -81,20 +114,7 @@ export default class Tooltip {
             element.appendChild(title)
             element.appendChild(data)
 
-            this._dataContainer.appendChild(element)
+            this._dataElement.appendChild(element)
         })
-    }
-
-    setVisible() {
-        this.widget.style.visibility = 'visible'
-    }
-
-    setInvisible() {
-        this.widget.style.visibility = 'hidden'
-    }
-
-    moveToCoordinates(top: number, left: number) {
-        this.widget.style.top = top + 'px'
-        this.widget.style.left = left + 'px'
     }
 }

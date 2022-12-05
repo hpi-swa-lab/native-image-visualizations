@@ -121,7 +121,6 @@ export default class ClassBubbles implements Visualization {
                 tooltip.datapoints = {
                     'full package name': node.tooltip
                 }
-                tooltip.buildContents()
                 tooltip.setVisible()
             })
             .on('mousemove', (event) => {
