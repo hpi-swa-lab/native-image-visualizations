@@ -21,11 +21,14 @@ export function loadTextFile(file: File): Promise<string> {
 
 export function parseToPackageHierarchy(hierarchyString: string): HierarchyNode {
     const data: HierarchyNode = {
+        id: 0,
         parent: null,
         name: 'root',
         fullPath: '',
         children: []
     }
+
+    let counter: number = 1
 
     hierarchyString.split('\n').forEach((row: string) => {
         let currentChildren: HierarchyNode[] = data.children
@@ -37,12 +40,14 @@ export function parseToPackageHierarchy(hierarchyString: string): HierarchyNode 
 
             if (!child) {
                 child = {
+                    id: counter,
                     parent: parent,
                     name: pathSegment,
                     fullPath: splittedRow.slice(0, index + 1).join('.'),
                     children: []
                 }
                 currentChildren.push(child)
+                counter++
             }
 
             currentChildren = child.children
@@ -55,11 +60,14 @@ export function parseToPackageHierarchy(hierarchyString: string): HierarchyNode 
 
 export function parseToCleanedPackageHierarchy(hierarchyString: string): HierarchyNode {
     const data: HierarchyNode = {
+        id: 0,
         parent: null,
         name: 'root',
         fullPath: '',
         children: []
     }
+
+    let counter: number = 1
 
     hierarchyString.split('\n').forEach((row: string) => {
         if (!row.match(/[\$\.]\$/)) {
@@ -76,12 +84,14 @@ export function parseToCleanedPackageHierarchy(hierarchyString: string): Hierarc
 
                 if (!child) {
                     child = {
+                        id: counter,
                         parent: parent,
                         name: pathSegment,
                         fullPath: splittedRow.slice(0, index + 1).join('.'),
                         children: []
                     }
                     currentChildren.push(child)
+                    counter++
                 }
 
                 currentChildren = child.children

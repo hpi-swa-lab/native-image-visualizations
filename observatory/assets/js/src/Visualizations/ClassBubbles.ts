@@ -2,85 +2,133 @@ import * as d3 from 'd3'
 import Visualization from './Visualization'
 import CircleNode from '../SharedInterfaces/CircleNode'
 import HierarchyNode from '../SharedInterfaces/HierarchyNode'
-import { randomColor, randomInteger } from '../utils'
+import Edge from '../SharedInterfaces/Edge'
+import { randomColor, randomInteger, uniqueColor } from '../utils'
 import Tooltip from '../Components/Tooltip'
+import { color, forceCollide, forceLink, forceManyBody, forceSimulation } from 'd3'
 
 export default class ClassBubbles implements Visualization {
     hierarchy: HierarchyNode
+
     nodes: CircleNode[] = []
-    bubbleRadius: number = 5
+    nodesById: Record<number, CircleNode>
+    edges: Edge[] = []
 
-    constructor() {}
+    tooltip: Tooltip
 
-    generate(): void {
-        this.constructNodes()
-        this.prepareSVG()
-        this.addNodesToSVG()
+    simulation: d3.Simulation<CircleNode, undefined>
+
+    constructor(hierarchy: HierarchyNode) {
+        this.hierarchy = hierarchy
     }
 
-    constructNodes(): void {
-        let leafs = this.getLeafNodes(this.hierarchy)
-        let colorMapping: { [id: string]: string } = {}
+    generate(): void {
+        this.tooltip = new Tooltip();
+        document.body.appendChild(this.tooltip.widget);
 
-        const columns = Math.floor(Math.sqrt(leafs.length))
+        [this.nodes, this.nodesById] = this._constructNodes(this.hierarchy);
+        this.edges = this._constructEdges(this.hierarchy);
+
+        this._prepareSVG()
+
+        this.simulation = forceSimulation(this.nodes)
+            .force('link', forceLink(this.edges))
+            .force('collision', forceCollide().radius((node: CircleNode) => node.radius * 1.1))
+            .on('tick', () => this._tick())
+        
+        this.simulation.stop()
+        this.continueSimulation()
+    }
+
+    continueSimulation(seconds: number = 3000) {
+        this.simulation.restart()
+        setTimeout(() => {
+            this.simulation.stop()
+        }, seconds)
+    }
+
+    _constructNodes(hierarchy: HierarchyNode): [CircleNode[], Record<number, CircleNode>] {
+        const result: CircleNode[] = []
+        const resultIdMapping: Record<number, CircleNode> = {}
+
+        const hierarchyNodes = this._getNodes(hierarchy)
+        const colorMapping: Record<string, string> = {}
+
+        const columns = Math.floor(Math.sqrt(hierarchyNodes.length))
         const radius = 30
-        const diameter = radius * 2
         const padding = 5
 
-        leafs.forEach((leaf: HierarchyNode, index: number) => {
-            const colorIdentifyer: string = this.getColorIdentifyerForNode(leaf)
-            let color: string = this.getUniqueColor(colorIdentifyer, colorMapping)
-            colorMapping[colorIdentifyer] = color
+        hierarchyNodes.forEach((node: HierarchyNode, index: number) => {
+            const colorIdentifyer: string = this._getColorIdentifyerForNode(node)
+
+            let color: string
+            if (colorMapping[colorIdentifyer]) {
+                color = colorMapping[colorIdentifyer]
+            } else {
+                color = uniqueColor(Object.values(colorMapping))
+                colorMapping[colorIdentifyer] = color
+            }
 
             const newNode: CircleNode = {
                 x:
-                    Math.floor(index % columns) * diameter +
+                    Math.floor(index % columns) * radius * 2 +
                     (Math.floor(index % columns) - 1) * padding,
                 y:
-                    Math.floor(index / columns) * diameter +
+                    Math.floor(index / columns) * radius * 2 +
                     (Math.floor(index / columns) - 1) * padding,
                 color: color,
-                label: leaf.name,
+                label: node.name,
                 radius: 30,
-                tooltip: leaf.fullPath
+                tooltip: node.fullPath
             }
-            this.nodes.push(newNode)
+
+            resultIdMapping[node.id] = newNode
+            result.push(newNode)
         })
+
+        return [result, resultIdMapping]
     }
 
-    getColorIdentifyerForNode(node: HierarchyNode): string {
+    _constructEdges(startingPoint: HierarchyNode): Edge[] {
+        let result: Edge[] = []
+
+        startingPoint.children.forEach((child: HierarchyNode) => {
+            result.push({
+                source: this.nodes.indexOf(this.nodesById[startingPoint.id]),
+                target: this.nodes.indexOf(this.nodesById[child.id]),
+                weight: 1
+            })
+
+            result = result.concat(this._constructEdges(child))
+        })
+
+        return result
+    }
+
+    _getColorIdentifyerForNode(node: HierarchyNode): string {
         if (node.parent === null) {
             return node.fullPath
         }
         return node.parent.fullPath
     }
 
-    getUniqueColor(identifyer: string, colorMapping: { [id: string]: string }): string {
-        if (colorMapping[identifyer]) return colorMapping[identifyer]
+    
 
-        const colors: string[] = Object.values(colorMapping)
-        let generatedColor = randomColor()
-        while (colors.includes(generatedColor)) {
-            generatedColor = randomColor()
-        }
+    _getNodes(startingPoint: HierarchyNode): HierarchyNode[] {
+        let result: HierarchyNode[] = []
 
-        return generatedColor
-    }
+        result.push(startingPoint)
 
-    getLeafNodes(startingPoint: HierarchyNode): HierarchyNode[] {
-        let leafs: HierarchyNode[] = []
-
-        if (startingPoint.children.length === 0) {
-            leafs = [startingPoint]
-        } else {
+        if (startingPoint.children.length > 0) {
             startingPoint.children.forEach((child) => {
-                leafs = leafs.concat(this.getLeafNodes(child))
+                result = result.concat(this._getNodes(child))
             })
         }
-        return leafs
+
+        return result
     }
 
-    prepareSVG(): void {
+    _prepareSVG(): void {
         let svg = d3
             .select('#container')
             .append('svg')
@@ -94,10 +142,7 @@ export default class ClassBubbles implements Visualization {
             .append('g')
     }
 
-    addNodesToSVG(): void {
-        const tooltip = new Tooltip()
-        document.body.appendChild(tooltip.widget)
-
+    _tick(): void {
         d3.select('svg g')
             .selectAll('circle')
             .data(this.nodes)
@@ -110,21 +155,22 @@ export default class ClassBubbles implements Visualization {
                 d3.selectAll('circle')
                     .data(this.nodes)
                     .join('circle')
-                    .style('fill', (nodeToColorOut: CircleNode) => nodeToColorOut.color + '22')
+                    .style('fill', (otherNode: CircleNode) => {
+                        if (otherNode.color === node.color) {
+                            return otherNode.color
+                        } else {
+                            return otherNode.color + '22'
+                        }
+                    })
 
-                d3.select(event.target).style(
-                    'fill',
-                    (nodeToColorIn: CircleNode) => nodeToColorIn.color
-                )
-
-                tooltip.title = node.label
-                tooltip.datapoints = {
+                this.tooltip.title = node.label
+                this.tooltip.datapoints = {
                     'full package name': node.tooltip
                 }
-                tooltip.setVisible()
+                this.tooltip.setVisible()
             })
             .on('mousemove', (event) => {
-                tooltip.moveToCoordinates(
+                this.tooltip.moveToCoordinates(
                     event.pageY - 10,
                     event.pageX + 10
                 )
@@ -133,9 +179,9 @@ export default class ClassBubbles implements Visualization {
                 d3.selectAll('circle')
                     .data(this.nodes)
                     .join('circle')
-                    .style('fill', (nodeToColorIn: CircleNode) => nodeToColorIn.color)
+                    .style('fill', (otherNode: CircleNode) => otherNode.color)
 
-                tooltip.setInvisible()
+                this.tooltip.setInvisible()
             })
 
         d3.select('svg g')

@@ -14,7 +14,7 @@
 
             <label for="input-file">Input file:</label>
             <input type="file" id="input-file" accept=".txt" />
-            <button id="button-confirm">Show me the classes!</button>
+            <button id="button-confirm">Start Simulation</button>
         </div>
         <div id="container" class="cb-svg-container"></div>
 
@@ -23,17 +23,24 @@
             const buttonConfirm = document.getElementById('button-confirm')
             const container = document.getElementById('container')
 
+            let visualization = undefined;
+
             buttonConfirm.addEventListener('click', async () => {
-                while (container.firstChild) {
-                    container.removeChild(container.lastChild)
-                }
+                if (visualization) {
+                    visualization.continueSimulation()
+                } else {
+                    while (container.firstChild) {
+                        container.removeChild(container.lastChild)
+                    }
 
-                if (input.files.length === 0) {
-                    errorMessages.push("I'm missing the input file.")
-                    return
-                }
+                    if (input.files.length === 0) {
+                        errorMessages.push("I'm missing the input file.")
+                        return
+                    }
 
-                Observatory.generateClassBubbles(input.files[0])
+                    visualization = await Observatory.generateClassBubbles(input.files[0])
+                    buttonConfirm.innerHTML = "Continue Simulation"
+                }
             })
         </script>
     </body>

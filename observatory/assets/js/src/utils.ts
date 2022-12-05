@@ -1,3 +1,5 @@
+import { Color } from "d3"
+
 export function randomColor(): string {
     let color = '#'
 
@@ -7,6 +9,16 @@ export function randomColor(): string {
     }
 
     return color
+}
+
+export function uniqueColor(existingColors: string[]): string {
+    let generatedColor = randomColor()
+    
+    while (existingColors.includes(generatedColor)) {
+        generatedColor = randomColor()
+    }
+
+    return generatedColor
 }
 
 export function randomInteger(min: number, max: number): number {

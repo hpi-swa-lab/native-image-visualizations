@@ -4,13 +4,14 @@ import TreeVisualization from './Visualizations/TreeVisualization'
 import { loadTextFile } from './BuildReportsParser'
 import { parseToCleanedPackageHierarchy } from './BuildReportsParser'
 
-export async function generateClassBubbles(file: File) {
-    const input_string = await loadTextFile(file)
-    const hierarchy = parseToCleanedPackageHierarchy(input_string)
+export async function generateClassBubbles(file: File): Promise<ClassBubbles> {
+    const inputString = await loadTextFile(file)
+    const hierarchy = parseToCleanedPackageHierarchy(inputString)
 
-    const visualization = new ClassBubbles()
-    visualization.hierarchy = hierarchy
+    const visualization = new ClassBubbles(hierarchy)
     visualization.generate()
+
+    return visualization
 }
 
 export function generateVenn() {
