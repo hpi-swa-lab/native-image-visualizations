@@ -1,4 +1,4 @@
-import { load_csv_file } from "./csv_parser.js";
+import { load_csv_file } from './csv_parser.js'
 
 export async function constructCausalityHierarchyGraph(
     entryPointsFile,

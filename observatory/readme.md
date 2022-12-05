@@ -4,7 +4,7 @@ The observatory is a collection of tools designed to inspect GraalVM Native Imag
 
 ## Setup
 
-1. Install Node & npm ( see https://docs.npmjs.com/downloading-and-installing-node-js-and-npm ) 
+1. Install Node & npm ( see https://docs.npmjs.com/downloading-and-installing-node-js-and-npm )
 2. Go to the root directory of the project containing `package.json` and install dependencies: `npm install`
 
 ## Development
