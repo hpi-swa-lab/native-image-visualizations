@@ -3,7 +3,6 @@ import { removeChildren } from "../utils"
 export default class Tooltip {
     title: string = ""
     datapoints: Record<string, any>
-    id: number
 
     _container: HTMLDivElement
     _title: HTMLElement
