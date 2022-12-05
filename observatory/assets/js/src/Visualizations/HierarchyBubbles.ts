@@ -7,7 +7,7 @@ import { randomColor, randomInteger, uniqueColor } from '../utils'
 import Tooltip from '../Components/Tooltip'
 import { color, forceCollide, forceLink, forceManyBody, forceSimulation } from 'd3'
 
-export default class ClassBubbles implements Visualization {
+export default class HierarchyBubbles implements Visualization {
     hierarchy: HierarchyNode
 
     nodes: CircleNode[] = []
@@ -40,14 +40,17 @@ export default class ClassBubbles implements Visualization {
             .on('tick', () => this._tick())
 
         this.simulation.stop()
-        this.continueSimulation()
     }
 
-    continueSimulation(seconds: number = 3000) {
+    continueSimulation(
+        callback: () => void = () => {},
+        milliseconds: number = 5000
+    ) {
         this.simulation.restart()
         setTimeout(() => {
             this.simulation.stop()
-        }, seconds)
+            callback()
+        }, milliseconds)
     }
 
     _constructNodes(hierarchy: HierarchyNode): [CircleNode[], Record<number, CircleNode>] {
@@ -96,12 +99,14 @@ export default class ClassBubbles implements Visualization {
         let result: Edge[] = []
 
         startingPoint.children.forEach((child: HierarchyNode) => {
-            result.push({
-                source: this.nodes.indexOf(this.nodesById[startingPoint.id]),
-                target: this.nodes.indexOf(this.nodesById[child.id]),
-                weight: 1
-            })
-
+            if (startingPoint !== this.hierarchy) {
+                result.push({
+                    source: this.nodes.indexOf(this.nodesById[startingPoint.id]),
+                    target: this.nodes.indexOf(this.nodesById[child.id]),
+                    weight: 1
+                })
+            }
+            
             result = result.concat(this._constructEdges(child))
         })
 
@@ -118,7 +123,9 @@ export default class ClassBubbles implements Visualization {
     _getNodes(startingPoint: HierarchyNode): HierarchyNode[] {
         let result: HierarchyNode[] = []
 
-        result.push(startingPoint)
+        if (startingPoint !== this.hierarchy) {
+            result.push(startingPoint)
+        }
 
         if (startingPoint.children.length > 0) {
             startingPoint.children.forEach((child) => {
@@ -156,6 +163,8 @@ export default class ClassBubbles implements Visualization {
                 d3.selectAll('circle')
                     .data(this.nodes)
                     .join('circle')
+                    .transition()
+                    .duration(100)
                     .style('fill', (otherNode: CircleNode) => {
                         if (otherNode.color === node.color) {
                             return otherNode.color
@@ -177,6 +186,8 @@ export default class ClassBubbles implements Visualization {
                 d3.selectAll('circle')
                     .data(this.nodes)
                     .join('circle')
+                    .transition()
+                    .duration(100)
                     .style('fill', (otherNode: CircleNode) => otherNode.color)
 
                 this.tooltip.setInvisible()
