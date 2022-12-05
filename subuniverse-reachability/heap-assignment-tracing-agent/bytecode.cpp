@@ -1517,8 +1517,8 @@ static size_t copy_method_with_insertions(const ConstantPoolOffsets& cp, const m
                     }
                     else if(frame_type < 128)
                     {
-                        return false;
                         cerr << "StackMapTable: Problematic entry. Trying to fix..." << endl;
+                        return false;
 
                         // We have to extend
                         size_t bci = frame_type & 63;
@@ -1605,7 +1605,7 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
 
 
     unsigned char* dst;
-    jvmti_env->Allocate(src_len + 1000, &dst);
+    jvmti_env->Allocate(src_len + 10000, &dst);
     unsigned char* dst_start = dst;
 
     // Copy ClassFile1:
@@ -1636,7 +1636,7 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
     dst = (uint8_t*)dst_file2;
 
 
-    uint8_t call_onArrayWrite_code[4] = { 0 };
+    uint8_t call_onArrayWrite_code[8] = { 0 };
 
     uint8_t call_onClinitStart_code[4];
     call_onClinitStart_code[0] = static_cast<uint8_t>(OpCode::invokestatic);
@@ -1647,7 +1647,7 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
     auto src = (const uint8_t*)file2;
     bool modified = false;
 
-    size_t allowed_replacements = 0;
+    size_t allowed_replacements = 1;
 
     for(auto& m : *file4)
     {
@@ -1688,6 +1688,7 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
 #endif
             }
         }
+        insert_clinit_callback = false; // Test
 
         size_t insertion_count = insert_clinit_callback;
         size_t insertion_index = 0;
@@ -1725,10 +1726,32 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
             }
         }
 
-        size_t bytes_copied = copy_method_with_insertions(cp, (const method_or_field_info*)src, (method_or_field_info*)dst, {&insertions[0], insertion_count});
+        uint8_t tmp_src[100000];
+        assert(((method_or_field_info*)src)->len() <= sizeof(tmp_src));
+        std::copy(src, src + ((method_or_field_info*)src)->len(), tmp_src);
+        assert(((method_or_field_info*)tmp_src)->len() == ((method_or_field_info*)src)->len());
+
+        size_t bytes_copied = ((method_or_field_info*)src)->len();
+
+        assert(insertion_count <= 1);
+
+        for(auto insertion : insertions)
+        {
+            bytes_copied = copy_method_with_insertions(cp, (const method_or_field_info*)tmp_src, (method_or_field_info*)dst, {&insertion, 1});
+
+            if(!bytes_copied)
+                break;
+
+            assert(((method_or_field_info*)dst)->len() == bytes_copied);
+
+            assert(bytes_copied <= sizeof(tmp_src));
+            std::copy(dst, dst + bytes_copied, tmp_src);
+        }
 
         if(!bytes_copied)
             continue;
+
+        std::copy(tmp_src, tmp_src + bytes_copied, dst);
 
         modified = true;
 
@@ -1748,7 +1771,7 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
             assert(dst_code1);
 
             //cerr << "Third run: " << dec << dst_code1->code_length << endl;
-
+#if 0
             size_t remaining = insertion_count - (insert_clinit_callback ? 1 : 0);
             for(Instruction& i : *dst_code1)
             {
@@ -1759,6 +1782,7 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
                     *(u2*)(&i + 1) = onArrayWrite_methodref.index;
                 }
             }
+#endif
         }
 
         dst += bytes_copied;

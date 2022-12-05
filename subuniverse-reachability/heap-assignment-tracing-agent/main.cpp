@@ -473,7 +473,7 @@ static void JNICALL onClassFileLoad(
 
     bool instrumented = add_clinit_hook(jvmti_env, class_data, class_data_len, new_class_data, new_class_data_len);
 
-    if(instrumented && string_view(name) == "com/oracle/svm/hosted/NativeImageGeneratorRunner")
+    if(instrumented && string_view(name) == "java/util/ResourceBundle$ResourceBundleProviderHelper")
     {
         {
             ofstream original("original.class");
@@ -602,7 +602,7 @@ extern "C" JNIEXPORT void JNICALL Java_ClassInitializationTracing_notifyArrayWri
     }
 
 
-#if LOG || 1
+#if LOG
     cerr << cause_class_name << ": " << class_name << '[' << index << ']' << " = " << new_value_class_name << '\n';
 #endif
 }
