@@ -16,103 +16,49 @@ using namespace std;
 
 #define BYTEWISE __attribute__((aligned(1), packed))
 
+template<typename T>
+T bswap(T);
+
+template<> int8_t   bswap(int8_t   val) { return val; }
+template<> uint8_t  bswap(uint8_t  val) { return val; }
+template<> int16_t  bswap(int16_t  val) { return __builtin_bswap16(val); }
+template<> uint16_t bswap(uint16_t val) { return __builtin_bswap16(val); }
+template<> int32_t  bswap(int32_t  val) { return __builtin_bswap32(val); }
+template<> uint32_t bswap(uint32_t val) { return __builtin_bswap32(val); }
+
+template<typename T>
+class BYTEWISE BigEndianInt
+{
+    T backing;
+
+public:
+    BigEndianInt() = default;
+
+    BigEndianInt(T val) : backing(bswap(val)) {}
+
+    operator T() const
+    {
+        return bswap(backing);
+    }
+
+    template<typename TOther>
+    void operator+=(TOther other)
+    {
+        T val = *this;
+        if(__builtin_add_overflow(val, other, &val))
+            assert(false);
+        *this = val;
+    }
+};
+
 using u1 = uint8_t;
+using u2 = BigEndianInt<uint16_t>;
+using u4 = BigEndianInt<uint32_t>;
+using i2 = BigEndianInt<int16_t>;
+using i4 = BigEndianInt<int32_t>;
 
-class BYTEWISE u2
-{
-    uint16_t backing;
 
-public:
-    u2() = default;
 
-    u2(uint16_t val)
-    {
-        backing = __builtin_bswap16(val);
-    }
-
-    operator uint16_t() const
-    {
-        return __builtin_bswap16(backing);
-    }
-
-    template<typename T>
-    void operator+=(T other)
-    {
-        backing = __builtin_bswap16(__builtin_bswap16(backing) + other);
-    }
-};
-
-class BYTEWISE i2
-{
-    int16_t backing;
-
-public:
-    i2() = default;
-
-    i2(int16_t val)
-    {
-        backing = __builtin_bswap16(val);
-    }
-
-    operator int16_t() const
-    {
-        return __builtin_bswap16(backing);
-    }
-
-    template<typename T>
-    void operator+=(T other)
-    {
-        backing = __builtin_bswap16(__builtin_bswap16(backing) + other);
-    }
-};
-
-class BYTEWISE u4
-{
-    uint32_t backing;
-
-public:
-    u4() = default;
-
-    u4(uint32_t val)
-    {
-        backing = __builtin_bswap32(val);
-    }
-
-    operator uint32_t() const
-    {
-        return __builtin_bswap32(backing);
-    }
-
-    template<typename T>
-    void operator+=(T other)
-    {
-        backing = __builtin_bswap32(__builtin_bswap32(backing) + other);
-    }
-};
-
-class BYTEWISE i4
-{
-    int32_t backing;
-
-public:
-    i4() = default;
-
-    i4(int32_t val)
-    {
-        backing = __builtin_bswap32(val);
-    }
-
-    operator int32_t() const
-    {
-        return __builtin_bswap32(backing);
-    }
-
-    template<typename T>
-    void operator+=(T other)
-    {
-        backing = __builtin_bswap32(__builtin_bswap32(backing) + other);
-    }
-};
 
 struct Insertion
 {
@@ -148,7 +94,7 @@ public:
             offset += insertion.data.size();
         }
 
-        assert((int64_t)(T)offset == offset && "bci overflow!");
+        assert((int64_t)(T)offset == offset && "_bci overflow!");
 
         bci_offset = offset;
     }
@@ -166,7 +112,7 @@ public:
             address += insertion.data.size();
         }
 
-        assert((int64_t)(T)address == address && "bci overflow!");
+        assert((int64_t)(T)address == address && "_bci overflow!");
         bci = address;
     }
 };
@@ -554,7 +500,7 @@ struct Instruction
         {
             LookupSwitchBody* body = LookupSwitchBody::from_instruction_address(this, bci);
             size_t len = ((uint8_t*)body - (uint8_t*)this) + body->len();
-            //cerr << dec << "LookupSwitch: address: " << hex << uintptr_t(this) << dec << " bci: " << bci << " npairs: " << body->npairs << " len: " << len << endl;
+            //cerr << dec << "LookupSwitch: address: " << hex << uintptr_t(this) << dec << " _bci: " << _bci << " npairs: " << body->npairs << " len: " << len << endl;
             return len;
         }
         if(op >= OpCode::ireturn && op <= OpCode::return_)
@@ -629,16 +575,16 @@ template<>
 class table_iterator<Instruction>
 {
     Instruction* ptr;
-    size_t bci;
+    size_t _bci;
 
 public:
-    table_iterator(Instruction* ptr, size_t bci) : ptr(ptr), bci(bci) {}
+    table_iterator(Instruction* ptr, size_t bci) : ptr(ptr), _bci(bci) {}
 
     table_iterator& operator++()
     {
-        size_t len = ptr->len(bci);
+        size_t len = ptr->len(_bci);
         ptr += len;
-        bci += len;
+        _bci += len;
         return *this;
     }
 
@@ -654,6 +600,8 @@ public:
     }
 
     Instruction* operator->() { return ptr; }
+
+    size_t bci() const { return _bci;}
 };
 
 
@@ -1408,6 +1356,18 @@ T* apply_offset(intptr_t offset, const T* ptr)
     return (T*)((u1*)ptr + offset);
 }
 
+static void relocate_instructions(span<Instruction> ins, BciShift bci_shift, size_t bci)
+{
+    table_iterator<Instruction> inst_it(&*ins.begin(), bci);
+    table_iterator<Instruction> inst_end(&*ins.end(), bci + ins.size());
+
+    while(inst_it != inst_end)
+    {
+        inst_it->relocate_relative(bci_shift, inst_it.bci());
+        ++inst_it;
+    }
+}
+
 // Returns number of written bytes
 // This is 0 if the method does not have any code and therefore no replacement happened
 static size_t copy_method_with_insertions(const ConstantPoolOffsets& cp, const method_or_field_info* src_method, method_or_field_info* dst_method, const span<const Insertion> insertions)
@@ -1435,31 +1395,38 @@ static size_t copy_method_with_insertions(const ConstantPoolOffsets& cp, const m
     const uint8_t* src = (const uint8_t*)src_method;
     uint8_t* dst = (uint8_t*)dst_method;
 
+    dst = std::copy(src, (const uint8_t*)code1->code, dst);
+    src = (const uint8_t*)code1->code;
+
     Code_attribute_1* dst_code1 = apply_offset(dst - src, code1);
+
+    size_t original_bci = 0;
+    BciShift bci_shift(insertions);
 
     for(const auto& insertion : insertions)
     {
+        auto prev_dst = dst;
         dst = std::copy(src, (const unsigned char*)code1->code + insertion.pos, dst);
         src = (const unsigned char*)code1->code + insertion.pos;
+
+        relocate_instructions({(Instruction*)prev_dst, (Instruction*)dst}, bci_shift, original_bci);
+        original_bci += (dst - prev_dst);
 
         assert((insertion.data.size() % 4) == 0 && "Switch Jumps may need to be 4-byte-aligned, so only the insertion of multiples of 4 is safe");
         dst = std::copy(insertion.data.begin(), insertion.data.end(), dst);
     }
 
+    auto prev_dst = dst;
+    auto prev_src = src;
     dst = std::copy(src, src_method_end, dst);
     src = src_method_end;
+
+    relocate_instructions({(Instruction*)prev_dst, size_t((Instruction*)code1->next() - (Instruction*)prev_src)}, bci_shift, original_bci);
 
     assert(dst_code1->attribute_length == code1->attribute_length);
     assert(dst_code1->code_length == code1->code_length);
     dst_code1->attribute_length += insertions_size;
     dst_code1->code_length += insertions_size;
-
-    BciShift bci_shift(insertions);
-
-    for(Instruction& i : *dst_code1)
-    {
-        i.relocate_relative(bci_shift, &i - dst_code1->code);
-    }
 
 
     for(auto& e : apply_offset(dst - src, code2)->exceptions())
@@ -1503,10 +1470,9 @@ static size_t copy_method_with_insertions(const ConstantPoolOffsets& cp, const m
 
                     u1& frame_type = frame.frame_type;
 
-                    assert(offset <= 63 && "TODO");
-
-                    if(frame_type < 64 - offset || frame_type >= 64 && frame_type < 128 - offset)
+                    if(offset <= 64 && (frame_type < 64 - offset || frame_type >= 64 && frame_type < 128 - offset))
                     {
+                        assert(offset <= 64 && "TODO");
                         frame_type += offset;
                     }
                     else if(frame_type >= 247)
@@ -1729,30 +1695,10 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
             }
         }
 
-        uint8_t tmp_src[100000];
-        assert(((method_or_field_info*)src)->len() <= sizeof(tmp_src));
-        std::copy(src, src + ((method_or_field_info*)src)->len(), tmp_src);
-        assert(((method_or_field_info*)tmp_src)->len() == ((method_or_field_info*)src)->len());
-
-        size_t bytes_copied = ((method_or_field_info*)src)->len();
-
-        for(intptr_t i = insertion_count - 1; i >= 0; i--)
-        {
-            bytes_copied = copy_method_with_insertions(cp, (const method_or_field_info*)tmp_src, (method_or_field_info*)dst, {&insertions[i], 1});
-
-            if(!bytes_copied)
-                break;
-
-            assert(((method_or_field_info*)dst)->len() == bytes_copied);
-
-            assert(bytes_copied <= sizeof(tmp_src));
-            std::copy(dst, dst + bytes_copied, tmp_src);
-        }
+        size_t bytes_copied = copy_method_with_insertions(cp, (const method_or_field_info*)src, (method_or_field_info*)dst, {insertions, insertion_count});
 
         if(!bytes_copied)
             continue;
-
-        std::copy(tmp_src, tmp_src + bytes_copied, dst);
 
         modified = true;
 
