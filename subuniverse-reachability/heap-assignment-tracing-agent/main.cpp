@@ -463,13 +463,9 @@ static void JNICALL onClassFileLoad(
 #endif
 
     if(string_view(name) == "ClassInitializationTracing"
-    || string_view(name) == "com/oracle/svm/core/SubstrateOptions")
+    //|| string_view(name) == "com/oracle/svm/core/SubstrateOptions"
+    || string_view(name) == "org/graalvm/compiler/nodes/cfg/ControlFlowGraph")
         return;
-
-    /*
-    if(string_view(name) != "com/oracle/svm/hosted/NativeImageGeneratorRunner")
-        return;
-        */
 
     bool instrumented = add_clinit_hook(jvmti_env, class_data, class_data_len, new_class_data, new_class_data_len);
 

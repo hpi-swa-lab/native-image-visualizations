@@ -1503,7 +1503,7 @@ static size_t copy_method_with_insertions(const ConstantPoolOffsets& cp, const m
 
                     u1& frame_type = frame.frame_type;
 
-                    assert(offset <= 64 && "TODO");
+                    assert(offset <= 63 && "TODO");
 
                     if(frame_type < 64 - offset || frame_type >= 64 && frame_type < 128 - offset)
                     {
@@ -1517,9 +1517,9 @@ static size_t copy_method_with_insertions(const ConstantPoolOffsets& cp, const m
                     }
                     else if(frame_type < 128)
                     {
+#if LOG
                         cerr << "StackMapTable: Problematic entry. Trying to fix..." << endl;
-                        return false;
-
+#endif
                         // We have to extend
                         size_t bci = frame_type & 63;
                         bci += offset;
@@ -1595,6 +1595,8 @@ static size_t copy_method_with_insertions(const ConstantPoolOffsets& cp, const m
     return dst - (uint8_t*)dst_method;
 }
 
+#define SLACK_SPACE 100000
+
 bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint src_len, unsigned char** dst_ptr, jint* dst_len_ptr)
 {
     auto file1 = (ClassFile1*)src_start;
@@ -1605,7 +1607,7 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
 
 
     unsigned char* dst;
-    jvmti_env->Allocate(src_len + 10000, &dst);
+    jvmti_env->Allocate(src_len + SLACK_SPACE, &dst);
     unsigned char* dst_start = dst;
 
     // Copy ClassFile1:
@@ -1647,8 +1649,6 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
     auto src = (const uint8_t*)file2;
     bool modified = false;
 
-    size_t allowed_replacements = 1;
-
     for(auto& m : *file4)
     {
         dst = std::copy(src, (const uint8_t*)&m, dst);
@@ -1679,16 +1679,10 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
             auto class_name_index = cp[ConstantPoolIndex<Class_info>(file2->this_class)]->name_index;
             auto class_name = cp[class_name_index]->str();
 
-            if(class_name == "com/oracle/svm/hosted/phases/IntrinsifyMethodHandlesInvocationPlugin")
-                insert_clinit_callback = false;
-            else
-            {
 #if LOG
                 cerr << "Found <clinit> of " << class_name << '\n';
 #endif
-            }
         }
-        insert_clinit_callback = false; // Test
 
         size_t insertion_count = insert_clinit_callback;
         size_t insertion_index = 0;
@@ -1698,11 +1692,7 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
         for(Instruction& i : *code1)
         {
             if(i.op == OpCode::aastore)
-                if(allowed_replacements > 0)
-                {
-                    allowed_replacements--;
-                    insertion_count++;
-                }
+                insertion_count++;
         }
 
         if(insertion_count == 0)
@@ -1733,11 +1723,9 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
 
         size_t bytes_copied = ((method_or_field_info*)src)->len();
 
-        assert(insertion_count <= 1);
-
-        for(auto insertion : insertions)
+        for(intptr_t i = insertion_count - 1; i >= 0; i--)
         {
-            bytes_copied = copy_method_with_insertions(cp, (const method_or_field_info*)tmp_src, (method_or_field_info*)dst, {&insertion, 1});
+            bytes_copied = copy_method_with_insertions(cp, (const method_or_field_info*)tmp_src, (method_or_field_info*)dst, {&insertions[i], 1});
 
             if(!bytes_copied)
                 break;
@@ -1796,6 +1784,7 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
     }
     else
     {
+        assert((dst - dst_start) <= (src_len + SLACK_SPACE));
         dst = std::copy(src, src_start + src_len, dst);
         *dst_ptr = dst_start;
         *dst_len_ptr = dst - dst_start;
