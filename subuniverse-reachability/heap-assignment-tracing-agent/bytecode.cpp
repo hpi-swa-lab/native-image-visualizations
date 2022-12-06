@@ -1,4 +1,3 @@
-#include <iostream>
 #include <span>
 #include <iterator>
 #include <jni_md.h>
@@ -9,7 +8,6 @@
 #include "settings.h"
 #include <algorithm>
 #include <numeric>
-#include <ranges>
 
 using namespace std;
 
@@ -455,8 +453,6 @@ struct Instruction
 
     size_t len(size_t bci) const
     {
-        //cerr << hex << (uint32_t)op << endl;
-
         if(op >= OpCode::nop && op < OpCode::bipush)
             return 1;
         if(op == OpCode::bipush)
@@ -499,9 +495,7 @@ struct Instruction
         if(op == OpCode::lookupswitch)
         {
             LookupSwitchBody* body = LookupSwitchBody::from_instruction_address(this, bci);
-            size_t len = ((uint8_t*)body - (uint8_t*)this) + body->len();
-            //cerr << dec << "LookupSwitch: address: " << hex << uintptr_t(this) << dec << " _bci: " << _bci << " npairs: " << body->npairs << " len: " << len << endl;
-            return len;
+            return ((uint8_t*)body - (uint8_t*)this) + body->len();
         }
         if(op >= OpCode::ireturn && op <= OpCode::return_)
             return 1;
@@ -1348,7 +1342,6 @@ public:
     }
 };
 
-static uint32_t num = 0;
 
 template<typename T>
 T* apply_offset(intptr_t offset, const T* ptr)
@@ -1439,8 +1432,6 @@ static size_t copy_method_with_insertions(const ConstantPoolOffsets& cp, const m
     Code_attribute_3* code3 = code2->next();
     Code_attribute_3* dst_code3 = apply_offset(dst - src, code3);
 
-    vector<span<uint8_t>> to_remove;
-
     for(attribute_info& c_attr : *dst_code3)
     {
         auto str = cp[c_attr.attribute_name_index]->str();
@@ -1514,7 +1505,6 @@ static size_t copy_method_with_insertions(const ConstantPoolOffsets& cp, const m
                 }
             }
         }
-#if 1
         else if(str == "LineNumberTable")
         {
             auto* lnt = (LineNumberTable_attribute*)&c_attr;
@@ -1522,8 +1512,6 @@ static size_t copy_method_with_insertions(const ConstantPoolOffsets& cp, const m
             for(auto& line : lnt->lines())
                 bci_shift.relocate_absolute(line.start_pc);
         }
-#endif
-#if 1
         else if(str == "LocalVariableTable")
         {
             auto* lvt = (LocalVariableTable_attribute*)&c_attr;
@@ -1534,8 +1522,6 @@ static size_t copy_method_with_insertions(const ConstantPoolOffsets& cp, const m
                 bci_shift.relocate_absolute(e.start_pc);
             }
         }
-#endif
-#if 1
         else if(str == "LocalVariableTypeTable")
         {
             auto* lvtt = (LocalVariableTypeTable_attribute*)&c_attr;
@@ -1546,23 +1532,9 @@ static size_t copy_method_with_insertions(const ConstantPoolOffsets& cp, const m
                 bci_shift.relocate_absolute(e.start_pc);
             }
         }
-#endif
-        else
-        {
-            to_remove.emplace_back((uint8_t*)&c_attr, c_attr.len());
-        }
     }
 
     assert(((u1*)iterate_to_end(code3->attributes, code3->attributes_count)) == ((u1*)code1 + code1->len()));
-
-    for(auto remove_span : views::reverse(to_remove))
-    {
-        dst = std::copy(&*remove_span.end(), dst, &*remove_span.begin());
-        dst_code1->attribute_length = dst_code1->attribute_length - remove_span.size();
-    }
-
-    assert(dst_code3->attributes_count == code3->attributes_count);
-    dst_code3->attributes_count = dst_code3->attributes_count - to_remove.size();
 
     return dst - (uint8_t*)dst_method;
 }
@@ -1597,15 +1569,8 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
     auto onClinitStart_name_and_type = cpa.append<NameAndType_info>(onClinitStart_name, onClinitStart_descriptor);
     auto onClinitStart_methodref = cpa.append<ref_info>(Methodref, instrumentation_class, onClinitStart_name_and_type);
 
-#define DUMMY 0
-
-#if DUMMY
-    auto onArrayWrite_name = cpa.append<Utf8_info>("Dummy");
-    auto onArrayWrite_descriptor = cpa.append<Utf8_info>("()V");
-#else
     auto onArrayWrite_name = cpa.append<Utf8_info>("onArrayWrite");
     auto onArrayWrite_descriptor = cpa.append<Utf8_info>("([Ljava/lang/Object;ILjava/lang/Object;)V");
-#endif
     auto onArrayWrite_name_and_type = cpa.append<NameAndType_info>(onArrayWrite_name, onArrayWrite_descriptor);
     auto onArrayWrite_methodref = cpa.append<ref_info>(Methodref, instrumentation_class, onArrayWrite_name_and_type);
 
@@ -1666,8 +1631,6 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
         size_t insertion_count = insert_clinit_callback;
         size_t insertion_index = 0;
 
-        //cerr << "First run: " << dec << code1->code_length << endl;
-
         for(Instruction& i : *code1)
         {
             if(i.op == OpCode::aastore)
@@ -1683,8 +1646,6 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
         {
             insertions[insertion_index++] = { .data = call_onClinitStart_code, .pos = 0 };
         }
-
-        //cerr << "Second run: " << dec << code1->code_length << endl;
 
         for(Instruction& i : *code1)
         {
