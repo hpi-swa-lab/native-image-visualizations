@@ -1548,7 +1548,7 @@ static size_t copy_method_with_insertions(const ConstantPoolOffsets& cp, const m
                 }
             }
         }
-#if 0
+#if 1
         else if(str == "LineNumberTable")
         {
             auto* lnt = (LineNumberTable_attribute*)&c_attr;
@@ -1557,22 +1557,28 @@ static size_t copy_method_with_insertions(const ConstantPoolOffsets& cp, const m
                 bci_shift.relocate_absolute(line.start_pc);
         }
 #endif
-#if 0
+#if 1
         else if(str == "LocalVariableTable")
         {
             auto* lvt = (LocalVariableTable_attribute*)&c_attr;
 
             for(auto& e : lvt->local_variables())
+            {
+                bci_shift.relocate_relative(e.length, e.start_pc);
                 bci_shift.relocate_absolute(e.start_pc);
+            }
         }
 #endif
-#if 0
+#if 1
         else if(str == "LocalVariableTypeTable")
         {
             auto* lvtt = (LocalVariableTypeTable_attribute*)&c_attr;
 
             for(auto& e : lvtt->local_variable_types())
+            {
+                bci_shift.relocate_relative(e.length, e.start_pc);
                 bci_shift.relocate_absolute(e.start_pc);
+            }
         }
 #endif
         else
@@ -1638,7 +1644,7 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
     dst = (uint8_t*)dst_file2;
 
 
-    uint8_t call_onArrayWrite_code[8] = { 0 };
+    uint8_t call_onArrayWrite_code[4] = { 0 };
 
     uint8_t call_onClinitStart_code[4];
     call_onClinitStart_code[0] = static_cast<uint8_t>(OpCode::invokestatic);
@@ -1680,7 +1686,7 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
             auto class_name = cp[class_name_index]->str();
 
 #if LOG
-                cerr << "Found <clinit> of " << class_name << '\n';
+            cerr << "Found <clinit> of " << class_name << '\n';
 #endif
         }
 
@@ -1760,12 +1766,10 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
 
             //cerr << "Third run: " << dec << dst_code1->code_length << endl;
 #if 0
-            size_t remaining = insertion_count - (insert_clinit_callback ? 1 : 0);
             for(Instruction& i : *dst_code1)
             {
-                if(i.op == OpCode::aastore && remaining)
+                if(i.op == OpCode::aastore)
                 {
-                    remaining--;
                     i.op = OpCode::invokestatic;
                     *(u2*)(&i + 1) = onArrayWrite_methodref.index;
                 }
