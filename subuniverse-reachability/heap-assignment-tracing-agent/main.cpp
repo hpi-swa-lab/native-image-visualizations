@@ -376,7 +376,7 @@ static void onFieldModification(
     }
 
 
-#if LOG
+#if LOG || PRINT_CLINIT_HEAP_WRITES
     cerr << cause_class_name << ": " << class_name << "." << field_name << " = " << new_value_class_name << '\n';
 #endif
 }
@@ -406,7 +406,7 @@ static void JNICALL onFramePop(
     get_class_name(jvmti_env, type, inner_clinit_name);
 
 #if LOG
-    cerr << "CLINIT end: " << inner_clinit_name << '\n';
+    cerr << inner_clinit_name << ".<clinit>() ENDED\n";
 #endif
 }
 
@@ -421,7 +421,7 @@ static void JNICALL onClassPrepare(
 
 extern "C" JNIEXPORT void JNICALL Java_com_oracle_svm_hosted_classinitialization_ClassInitializationSupport_onInit(JNIEnv* env, jobject self, jclass clazz, jboolean start)
 {
-    //return;
+    return;
     // Currently not needed bc Clinit-Detection happens automatically via instrumentation!
 
     jthread t;
@@ -516,8 +516,11 @@ extern "C" JNIEXPORT void JNICALL Java_ClassInitializationTracing_onClinitStart(
         get_class_name(_jvmti_env, tc->clinit_top(), outer_clinit_name);
     }
 
-#if LOG
-    cerr << outer_clinit_name << ": " << "CLINIT start: " << inner_clinit_name << '\n';
+#if LOG || PRINT_CLINIT_HEAP_WRITES
+    if(LOG || (outer_clinit_name[0] != 0 && strcmp(inner_clinit_name, outer_clinit_name) != 0))
+    {
+        cerr << outer_clinit_name << ": " << inner_clinit_name << ".<clinit>()\n";
+    }
 #endif
 
     tc->clinit_push(env, type);
@@ -598,7 +601,7 @@ extern "C" JNIEXPORT void JNICALL Java_ClassInitializationTracing_notifyArrayWri
     }
 
 
-#if LOG
+#if LOG || PRINT_CLINIT_HEAP_WRITES
     cerr << cause_class_name << ": " << class_name << '[' << index << ']' << " = " << new_value_class_name << '\n';
 #endif
 }

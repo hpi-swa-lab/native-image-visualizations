@@ -21,10 +21,5 @@ public final class ClassInitializationTracing
     {
         notifyArrayWrite(arr, index, val);
         arr[index] = val;
-        //System.err.println("onArrayWrite CALLED!");
-    }
-
-    public static void Dummy()
-    {
     }
 }

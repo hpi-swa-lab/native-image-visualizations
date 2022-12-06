@@ -1631,8 +1631,15 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
     auto onClinitStart_name_and_type = cpa.append<NameAndType_info>(onClinitStart_name, onClinitStart_descriptor);
     auto onClinitStart_methodref = cpa.append<ref_info>(Methodref, instrumentation_class, onClinitStart_name_and_type);
 
+#define DUMMY 0
+
+#if DUMMY
+    auto onArrayWrite_name = cpa.append<Utf8_info>("Dummy");
+    auto onArrayWrite_descriptor = cpa.append<Utf8_info>("()V");
+#else
     auto onArrayWrite_name = cpa.append<Utf8_info>("onArrayWrite");
     auto onArrayWrite_descriptor = cpa.append<Utf8_info>("([Ljava/lang/Object;ILjava/lang/Object;)V");
+#endif
     auto onArrayWrite_name_and_type = cpa.append<NameAndType_info>(onArrayWrite_name, onArrayWrite_descriptor);
     auto onArrayWrite_methodref = cpa.append<ref_info>(Methodref, instrumentation_class, onArrayWrite_name_and_type);
 
@@ -1764,8 +1771,6 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
 
             assert(dst_code1);
 
-            //cerr << "Third run: " << dec << dst_code1->code_length << endl;
-#if 0
             for(Instruction& i : *dst_code1)
             {
                 if(i.op == OpCode::aastore)
@@ -1774,7 +1779,6 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
                     *(u2*)(&i + 1) = onArrayWrite_methodref.index;
                 }
             }
-#endif
         }
 
         dst += bytes_copied;
