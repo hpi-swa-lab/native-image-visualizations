@@ -1254,10 +1254,10 @@ struct BYTEWISE ClassFile3;
 struct BYTEWISE ClassFile2
 {
     u2 access_flags;
-    u2 this_class;
-    u2 super_class;
+    ConstantPoolIndex<Class_info, u2> this_class;
+    ConstantPoolIndex<Class_info, u2> super_class;
     u2 interfaces_count;
-    u2 interfaces[];
+    ConstantPoolIndex<Class_info, u2> interfaces[];
 
     ClassFile3* continuation()
     {
@@ -1539,6 +1539,14 @@ static size_t copy_method_with_insertions(const ConstantPoolOffsets& cp, const m
     return dst - (uint8_t*)dst_method;
 }
 
+static ConstantPoolIndex<ref_info> create_method_ref(ConstantPoolAppender& cpa, ConstantPoolIndex<Class_info> declaringClass, const char* name, const char* descriptor)
+{
+    auto name_index = cpa.append<Utf8_info>(name);
+    auto descriptor_index = cpa.append<Utf8_info>(descriptor);
+    auto nameAndType_index = cpa.append<NameAndType_info>(name_index, descriptor_index);
+    return cpa.append<ref_info>(Methodref, declaringClass, nameAndType_index);
+}
+
 #define SLACK_SPACE 100000
 
 bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint src_len, unsigned char** dst_ptr, jint* dst_len_ptr)
@@ -1564,15 +1572,9 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
     auto instrumentation_class_name = cpa.append<Utf8_info>("ClassInitializationTracing");
     auto instrumentation_class = cpa.append<Class_info>(instrumentation_class_name);
 
-    auto onClinitStart_name = cpa.append<Utf8_info>("onClinitStart");
-    auto onClinitStart_descriptor = cpa.append<Utf8_info>("()V");
-    auto onClinitStart_name_and_type = cpa.append<NameAndType_info>(onClinitStart_name, onClinitStart_descriptor);
-    auto onClinitStart_methodref = cpa.append<ref_info>(Methodref, instrumentation_class, onClinitStart_name_and_type);
-
-    auto onArrayWrite_name = cpa.append<Utf8_info>("onArrayWrite");
-    auto onArrayWrite_descriptor = cpa.append<Utf8_info>("([Ljava/lang/Object;ILjava/lang/Object;)V");
-    auto onArrayWrite_name_and_type = cpa.append<NameAndType_info>(onArrayWrite_name, onArrayWrite_descriptor);
-    auto onArrayWrite_methodref = cpa.append<ref_info>(Methodref, instrumentation_class, onArrayWrite_name_and_type);
+    auto onClinitStart = create_method_ref(cpa, instrumentation_class, "onClinitStart", "()V");
+    auto onArrayWrite = create_method_ref(cpa, instrumentation_class, "onArrayWrite", "([Ljava/lang/Object;ILjava/lang/Object;)V");
+    auto onThreadStart = create_method_ref(cpa, instrumentation_class, "onThreadStart", "(Ljava/lang/Thread;)V");
 
     dst_file1->constant_pool_count = cpa.cp_count();
 
@@ -1581,14 +1583,18 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
 
     dst = (uint8_t*)dst_file2;
 
-
+    // Insert NOPS behind aastore and then replace it using the newly gained space
     uint8_t call_onArrayWrite_code[4] = { 0 };
 
     uint8_t call_onClinitStart_code[4];
     call_onClinitStart_code[0] = static_cast<uint8_t>(OpCode::invokestatic);
-    *(u2*)&call_onClinitStart_code[1] = onClinitStart_methodref.index;
+    *(u2*)&call_onClinitStart_code[1] = onClinitStart.index;
     call_onClinitStart_code[3] = static_cast<uint8_t>(OpCode::nop); // Padding
 
+    uint8_t call_onThreadStart_code[4];
+    call_onThreadStart_code[0] = (uint8_t)OpCode::aload_0;
+    call_onThreadStart_code[1] = (uint8_t)OpCode::invokestatic;
+    *(u2*)&call_onThreadStart_code[2] = onThreadStart.index;
 
     auto src = (const uint8_t*)file2;
     bool modified = false;
@@ -1618,18 +1624,25 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
 
         bool insert_clinit_callback = name == "<clinit>";
 
+#if LOG
         if(insert_clinit_callback)
         {
-            auto class_name_index = cp[ConstantPoolIndex<Class_info>(file2->this_class)]->name_index;
-            auto class_name = cp[class_name_index]->str();
-
-#if LOG
             cerr << "Found <clinit> of " << class_name << '\n';
-#endif
         }
+#endif
 
-        size_t insertion_count = insert_clinit_callback;
-        size_t insertion_index = 0;
+        bool insert_threadstart_callback =
+                name == "start"
+                //&& cp[m.descriptor_index]->str() == "()V"
+                && cp[cp[file2->this_class]->name_index]->str() == "java/lang/Thread";
+
+        size_t insertion_count = 0;
+
+        if(insert_clinit_callback)
+            insertion_count++;
+
+        if(insert_threadstart_callback)
+            insertion_count++;
 
         for(Instruction& i : *code1)
         {
@@ -1642,9 +1655,15 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
 
         Insertion insertions[insertion_count];
 
+        size_t insertion_index = 0;
         if(insert_clinit_callback)
         {
             insertions[insertion_index++] = { .data = call_onClinitStart_code, .pos = 0 };
+        }
+
+        if(insert_threadstart_callback)
+        {
+            insertions[insertion_index++] = { .data = call_onThreadStart_code, .pos = 0 };
         }
 
         for(Instruction& i : *code1)
@@ -1683,7 +1702,7 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
                 if(i.op == OpCode::aastore)
                 {
                     i.op = OpCode::invokestatic;
-                    *(u2*)(&i + 1) = onArrayWrite_methodref.index;
+                    *(u2*)(&i + 1) = onArrayWrite.index;
                 }
             }
         }

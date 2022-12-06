@@ -8,7 +8,7 @@
 #include "settings.h"
 
 #define check_code(retcode, result) if((result)) { cerr << (#result) << "Error!!! code " << result << ":" << endl; return retcode; }
-#define check(result) check_code(,result)
+#define check(result) if((result)) { cerr << (#result) << "Error!!! code " << result << ":" << endl; exit(1); }
 
 using namespace std;
 
@@ -82,9 +82,15 @@ public:
     static AgentThreadContext* from_thread(jvmtiEnv* jvmti_env, jthread t)
     {
         AgentThreadContext* tc;
-        auto res = jvmti_env->GetThreadLocalStorage(t, (void**)&tc);
-        assert(res == 0);
-        assert(tc);
+        check(jvmti_env->GetThreadLocalStorage(t, (void**)&tc));
+
+        if(!tc)
+        {
+            cerr << "Thread had no initialized context!" << endl;
+            tc = new AgentThreadContext();
+            check(jvmti_env->SetThreadLocalStorage(t, tc));
+        }
+
         return tc;
     }
 
@@ -117,6 +123,31 @@ struct ObjectContext
 };
 
 #include <unistd.h>
+#include <link.h>
+
+static int callback(dl_phdr_info* info, size_t size, void* data)
+{
+    auto name = string_view(info->dlpi_name);
+    string_view self("libheap_assignment_tracing_agent.so");
+
+    if(name.ends_with(self))
+    {
+        *(string*)data = string_view(info->dlpi_name).substr(0, name.size() - self.size());
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+static string get_own_path()
+{
+    string path;
+    bool success = dl_iterate_phdr(callback, &path);
+    assert(success);
+    return path;
+}
 
 JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
 {
@@ -126,7 +157,8 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
     jvmtiEnv* env;
     check_code(1, vm->GetEnv(reinterpret_cast<void **>(&env), JVMTI_VERSION_1_2));
 
-    check_code(1, env->AddToBootstrapClassLoaderSearch("/home/christoph/MPWS2022RH1/subuniverse-reachability/heap-assignment-tracing-agent/build"));
+    auto own_path = get_own_path();
+    check_code(1, env->AddToBootstrapClassLoaderSearch(own_path.c_str()));
 
 
     _jvmti_env = env;
@@ -135,6 +167,7 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
     cap.can_generate_frame_pop_events = true;
     cap.can_tag_objects = true;
     cap.can_generate_object_free_events = true;
+    cap.can_retransform_classes = true;
 #if BREAKPOINTS_ENABLE
     cap.can_generate_breakpoint_events = true;
     cap.can_generate_field_modification_events = true;
@@ -157,6 +190,9 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
     check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_THREAD_START, nullptr));
     check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_THREAD_END, nullptr));
     check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_OBJECT_FREE, nullptr));
+#if REWRITE_ENABLE
+    check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_FILE_LOAD_HOOK, nullptr));
+#endif
 
     return 0;
 }
@@ -227,9 +263,6 @@ static void processClass(jvmtiEnv* jvmti_env, jclass klass)
 
 static void JNICALL onVMInit(jvmtiEnv *jvmti_env, JNIEnv* jni_env, jthread thread)
 {
-#if REWRITE_ENABLE
-    check(jvmti_env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_FILE_LOAD_HOOK, nullptr));
-#endif
 #if BREAKPOINTS_ENABLE
     check(jvmti_env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_PREPARE, nullptr));
 
@@ -249,6 +282,9 @@ static void JNICALL onVMInit(jvmtiEnv *jvmti_env, JNIEnv* jni_env, jthread threa
             processClass(jvmti_env, clazz);
     }
 #endif // BREAKPOINTS_ENABLE
+
+    jclass threadclass = jni_env->FindClass("java/lang/Thread");
+    check(jvmti_env->RetransformClasses(1, &threadclass));
 }
 
 static void get_class_name(jvmtiEnv *jvmti_env, jclass clazz, span<char> buffer)
@@ -467,25 +503,16 @@ static void JNICALL onClassFileLoad(
     || string_view(name) == "org/graalvm/compiler/nodes/cfg/ControlFlowGraph")
         return;
 
-    bool instrumented = add_clinit_hook(jvmti_env, class_data, class_data_len, new_class_data, new_class_data_len);
-
-    if(instrumented && string_view(name) == "java/util/ResourceBundle$ResourceBundleProviderHelper")
-    {
-        {
-            ofstream original("original.class");
-            original.write((char*)class_data, class_data_len);
-        }
-        {
-            ofstream instrumented("instrumented.class");
-            instrumented.write((char*)*new_class_data, *new_class_data_len);
-        }
-    }
+    add_clinit_hook(jvmti_env, class_data, class_data_len, new_class_data, new_class_data_len);
 }
 
 extern "C" JNIEXPORT void JNICALL Java_ClassInitializationTracing_onClinitStart(JNIEnv* env, jobject self)
 {
-    // Could possibly be removed entirely...
-    // Yet for some reason a few field writes are missing then.
+    jvmtiPhase phase;
+    check(_jvmti_env->GetPhase(&phase));
+
+    if(phase != JVMTI_PHASE_LIVE)
+        return;
 
     jthread thread;
     check(_jvmti_env->GetCurrentThread(&thread));
@@ -605,3 +632,28 @@ extern "C" JNIEXPORT void JNICALL Java_ClassInitializationTracing_notifyArrayWri
     cerr << cause_class_name << ": " << class_name << '[' << index << ']' << " = " << new_value_class_name << '\n';
 #endif
 }
+
+extern "C" JNIEXPORT void JNICALL Java_ClassInitializationTracing_onThreadStart(JNIEnv* env, jobject self, jthread newThread)
+{
+    jvmtiPhase phase;
+    check(_jvmti_env->GetPhase(&phase));
+
+    if(phase != JVMTI_PHASE_LIVE)
+        return;
+
+    jthread thread;
+    check(_jvmti_env->GetCurrentThread(&thread));
+
+    AgentThreadContext* tc = AgentThreadContext::from_thread(_jvmti_env, thread);
+
+    if(tc->clinit_empty())
+        return;
+
+    char outer_clinit_name[1024];
+    get_class_name(_jvmti_env, tc->clinit_top(), outer_clinit_name);
+
+#if LOG || PRINT_CLINIT_HEAP_WRITES || 1
+    cerr << outer_clinit_name << ": " << "Thread.start()\n";
+#endif
+}
+
