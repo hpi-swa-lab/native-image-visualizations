@@ -498,9 +498,9 @@ static void JNICALL onClassFileLoad(
     cerr << "ClassLoad: " << name << endl;
 #endif
 
-    if(string_view(name) == "ClassInitializationTracing"
-    //|| string_view(name) == "com/oracle/svm/core/SubstrateOptions"
-    || string_view(name) == "org/graalvm/compiler/nodes/cfg/ControlFlowGraph")
+    if(string_view(name) == "ClassInitializationTracing" // Do not replace our own hooks, logically
+    || string_view(name) == "org/graalvm/compiler/nodes/cfg/ControlFlowGraph" // Crashes during classloading
+    || string_view(name) == "com/oracle/svm/core/jni/functions/JNIFunctionTables") // Crashes during late compile phase
         return;
 
     add_clinit_hook(jvmti_env, class_data, class_data_len, new_class_data, new_class_data_len);
@@ -652,8 +652,21 @@ extern "C" JNIEXPORT void JNICALL Java_ClassInitializationTracing_onThreadStart(
     char outer_clinit_name[1024];
     get_class_name(_jvmti_env, tc->clinit_top(), outer_clinit_name);
 
-#if LOG || PRINT_CLINIT_HEAP_WRITES || 1
-    cerr << outer_clinit_name << ": " << "Thread.start()\n";
+    jvmtiThreadInfo info;
+    check(_jvmti_env->GetThreadInfo(newThread, &info));
+
+#if LOG || PRINT_CLINIT_HEAP_WRITES
+    cerr << outer_clinit_name << ": " << "Thread.start(): \"" << info.name << "\"\n";
 #endif
 }
 
+extern "C" JNIEXPORT jclass JNICALL Java_com_oracle_svm_hosted_dashboard_HeapBreakdownJsonObject_getResponsibleClass(JNIEnv* env, jobject thisClass, jobject imageHeapObject)
+{
+    ObjectContext* oc;
+    check(_jvmti_env->GetTag(imageHeapObject, (jlong*)&oc));
+
+    if(!oc)
+        return nullptr;
+
+    return oc->allocReason;
+}
