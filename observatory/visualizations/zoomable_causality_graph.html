@@ -5,6 +5,7 @@
         <title>Zoomable Causality Graph</title>
 
         <link rel="stylesheet" type="text/css" href="/assets/css/dist/main.css" />
+        <script src="../assets/js/dist/observatory.umd.js"></script>
     </head>
 
     <body>
@@ -67,7 +68,6 @@
         <div id="container" class="zcg-svg-container"></div>
 
         <script type="module">
-            import { constructCausalityHierarchyGraph } from '../assets/js/src/zoomable_causality_graph.js'
 
             const entryPointsInput = document.getElementById('input-file-entry-points')
             const methodsInput = document.getElementById('input-file-methods')

@@ -1,5 +1,6 @@
 import { nodeResolve } from '@rollup/plugin-node-resolve'
 import typescript from '@rollup/plugin-typescript'
+import commonjs from "@rollup/plugin-commonjs";
 
 export default [
     {
@@ -12,7 +13,8 @@ export default [
         },
         plugins: [
             nodeResolve(), // so rollup can find node modules
-            typescript()
+            typescript(),
+            commonjs(),
         ]
     }
 ]
