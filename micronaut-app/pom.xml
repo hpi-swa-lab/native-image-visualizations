@@ -136,6 +136,7 @@
         <configuration>
           <buildArgs combine.children="append">
             <buildArg>-H:+PrintAnalysisCallTree</buildArg>
+            <buildArg>-H:PrintAnalysisCallTreeType=CSV</buildArg>
           </buildArgs>
         </configuration>
       </plugin>

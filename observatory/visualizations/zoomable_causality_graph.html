@@ -68,7 +68,6 @@
         <div id="container" class="zcg-svg-container"></div>
 
         <script type="module">
-
             const entryPointsInput = document.getElementById('input-file-entry-points')
             const methodsInput = document.getElementById('input-file-methods')
             const directEdgesInput = document.getElementById('input-file-direct-edges')
@@ -104,7 +103,7 @@
                     entryPointsInput.files[0],
                     methodsInput.files[0],
                     directEdgesInput.files[0],
-                    virtualEdgesInput.files[0],
+                    virtualEdgesInput.files[0]
                 )
 
                 const graph = await constructCausalityHierarchyGraph(

@@ -19,7 +19,7 @@ export async function generateZoomableausalityGraph(
     entryPointsFile: File,
     methodsFile: File,
     directEdgesFile: File,
-    virtualEdgesFile: File,
+    virtualEdgesFile: File
 ): Promise<ZoomableCausalityGraph> {
     const [entryPoints, methods, directEdges, virtualEdges] = await Promise.all([
         loadCSVFile(entryPointsFile),
@@ -28,11 +28,7 @@ export async function generateZoomableausalityGraph(
         loadCSVFile(virtualEdgesFile)
     ])
 
-    debugger
-
-    // TODO: csv in sinnvolle Daten parsen.
-
-    return new ZoomableCausalityGraph()
+    return new ZoomableCausalityGraph(entryPoints, methods, directEdges, virtualEdges)
 }
 
 export function generateVenn() {
