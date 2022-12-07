@@ -8,7 +8,7 @@
     </head>
 
     <body>
-        <div class="control-container">
+        <div class="zcg-control-container">
             <h1>Visualization of Message Graphs using a Force Simulation</h1>
 
             <br />
@@ -64,10 +64,10 @@
 
             <button id="buttonConfirm">Observe!</button>
         </div>
-        <div id="container" class="svg-container"></div>
+        <div id="container" class="zcg-svg-container"></div>
 
         <script type="module">
-            import { constructCausalityHierarchyGraph } from '../assets/js/zoomable_causality_graph.js'
+            import { constructCausalityHierarchyGraph } from '../assets/js/src/zoomable_causality_graph.js'
 
             const entryPointsInput = document.getElementById('input-file-entry-points')
             const methodsInput = document.getElementById('input-file-methods')

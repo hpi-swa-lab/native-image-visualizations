@@ -1,0 +1,37 @@
+{
+    "parser": "@typescript-eslint/parser",
+    "env": {
+        "es2021": true
+    },
+    "extends": ["airbnb-base", "prettier"],
+    "parserOptions": {
+        "ecmaVersion": 12,
+        "sourceType": "module"
+    },
+    "plugins": ["only-warn", "@typescript-eslint"],
+    "ignorePatterns": ["/node_modules", "/external"],
+    "rules": {
+        "@typescript-eslint/naming-convention": "warn",
+        "@typescript-eslint/semi": "warn",
+        "curly": "warn",
+        "eqeqeq": "warn",
+        "import/extensions": "off",
+        "no-console": ["error", { "allow": ["warn", "error"] }],
+        "no-plusplus": [
+            2,
+            {
+                "allowForLoopAfterthoughts": true
+            }
+        ],
+        "no-throw-literal": "warn",
+        "no-underscore-dangle": [
+            2,
+            {
+                "allowAfterThis": true,
+                "allowAfterSuper": true
+            }
+        ],
+        "object-shorthand": "off",
+        "semi": "off",
+    }
+}
