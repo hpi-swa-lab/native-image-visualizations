@@ -455,7 +455,7 @@ static void JNICALL onClassPrepare(
     processClass(jvmti_env, klass);
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_oracle_svm_hosted_classinitialization_ClassInitializationSupport_onInit(JNIEnv* env, jobject self, jclass clazz, jboolean start)
+extern "C" JNIEXPORT void JNICALL Java_com_oracle_graal_pointsto_reports_ClassInitializationTracing_onClinitRequested(JNIEnv* env, jobject self, jclass clazz, jboolean start)
 {
     return;
     // Currently not needed bc Clinit-Detection happens automatically via instrumentation!
@@ -660,7 +660,7 @@ extern "C" JNIEXPORT void JNICALL Java_ClassInitializationTracing_onThreadStart(
 #endif
 }
 
-extern "C" JNIEXPORT jclass JNICALL Java_com_oracle_svm_hosted_dashboard_HeapBreakdownJsonObject_getResponsibleClass(JNIEnv* env, jobject thisClass, jobject imageHeapObject)
+extern "C" JNIEXPORT jclass JNICALL Java_com_oracle_graal_pointsto_reports_ClassInitializationTracing_getResponsibleClass(JNIEnv* env, jobject thisClass, jobject imageHeapObject)
 {
     ObjectContext* oc;
     check(_jvmti_env->GetTag(imageHeapObject, (jlong*)&oc));
