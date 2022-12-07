@@ -1,4 +1,5 @@
 import HierarchyNode from './SharedInterfaces/HierarchyNode'
+import { parse } from 'papaparse'
 
 export function loadTextFile(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -19,9 +20,20 @@ export function loadTextFile(file: File): Promise<string> {
     })
 }
 
-export function loadCSVFile(file: File): Promise<string> {
+export function loadCSVFile(file: File): Promise<unknown[]> {
     return new Promise((resolve, reject) => {
-        // TODO
+        Papa.parse(file, {
+            worker: true,
+            header: true,
+            dynamicTyping: true,
+            skipEmptyLines: true,
+            complete: (result, file) => {
+                resolve(result.data)
+            },
+            error: (error, file) => {
+                reject(error)
+            }
+        })
     })
 }
 

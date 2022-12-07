@@ -28,9 +28,11 @@ export async function generateZoomableausalityGraph(
         loadCSVFile(virtualEdgesFile)
     ])
 
+    debugger
+
     // TODO: csv in sinnvolle Daten parsen.
 
-    return new ZoomableCausalityGraph(entryPoints, methods, directEdges, virtualEdges)
+    return new ZoomableCausalityGraph()
 }
 
 export function generateVenn() {
