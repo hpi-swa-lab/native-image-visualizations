@@ -19,6 +19,12 @@ export function loadTextFile(file: File): Promise<string> {
     })
 }
 
+export function loadCSVFile(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+        // TODO
+    })
+}
+
 export function parseToPackageHierarchy(hierarchyString: string): HierarchyNode {
     const data: HierarchyNode = {
         id: 0,
