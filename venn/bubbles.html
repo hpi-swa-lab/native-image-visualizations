@@ -32,15 +32,15 @@
         ]).then(function(files) {
                 // Files to universes
                 const names = ['Hello World', 'Micronaut Basic', 'Micronaut w/ log4j'];
-                //const universes = [{name: names[2], packages: files[2]}, {name: names[1], packages: files[1]}];
-                const universes = [{name: names[0], packages: files[0]}, {name: names[1], packages: files[1]}, {name: names[2], packages: files[2]}];
+                const universes = files.map((file, index) => 
+                        Object.create({}, {
+                                name: {value: names[index]},
+                                packages: {value: file}
+                        }));
 
                 // Universes to intersections & venn sets
-                const exclusive_intersections = get_universe_intersections(universes); // THESE ARE EXCLUSIVE!!!!
-                // todo: INCLUSIVE!
-                const inclusive_intersections = intersections_between(universes);
-                //const venn_intersections = exclusive_intersections.map(universe_to_venn_set).filter(intersection => intersection.sets.length > 1);
-                //const venn_sets = universes.map(universe_to_venn_set).concat(venn_intersections);
+                const exclusive_intersections = get_universe_intersections(universes);
+                const inclusive_intersections = intersections_between(universes); 
                 const venn_sets = inclusive_intersections.map(universe_to_venn_set);
 
                 // Visualize Data 
@@ -80,7 +80,6 @@
                         y: {value: node.attributes.y.value },
                 })); 
                 var nodes = [];
-                // change to inclusive
                 exclusive_intersections.forEach((universe, index) => {
                         nodes.push(...universe.packages.map(package => Object.create({}, {
                                 universe: {value: exclusiveIndexToInclusive(index)}, 
@@ -128,8 +127,8 @@
                         });
 
                 const simulation = d3.forceSimulation(nodes)
-                        .alphaTarget(0.03) // stay hot
-                        .velocityDecay(0.12) // low friction
+                        .alphaTarget(0.03) // stay hot -> take out for better performance!
+                        .velocityDecay(0.12) // low friction 
                         .force("center", d3.forceCenter(0.53 * width , 0.53 * height))
                         .force("charge", d3.forceManyBody())
                         .force("x", d3.forceX().strength(0.12))
@@ -139,7 +138,7 @@
 
                 function ticked() {
 
-                        var k = this.alpha() * 0.2; //0.06 guter wert //je höher, desto enger wollen sie ans center
+                        var k = this.alpha() * 0.2; //higher -> nodes want to get close to center
                         //move the nodes to their foci/cluster
                         nodes.forEach(function(n, i) {
                                 n.y += (foci[n.universe].y - n.y) * k;
@@ -219,6 +218,7 @@
                         .append("text")
                         .text("Number of packages: " + num_packages);
 
+                // text below
                 exclusive_intersections
                         .sort((a,b) => d3.descending(a.packages.length,b.packages.length))
                         .forEach(i => {
