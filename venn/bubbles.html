@@ -48,8 +48,8 @@
                 const fociOffset = [10, 40];
                 const transitionDuration = 400;
                 const innerCircleRadius = 5;
-                const width = 1000;
-                const height = 720;
+                const bubble_svg_width = 1600; 
+                const bubble_svg_height = 800;
                 const colors = ["#4e79a7","#e15759","#76b7b2","#59a14f","#edc949","#f28e2c", "#af7aa1","#ff9da7","#9c755f","#bab0ab"]; //tableau 10
                 const num_packages = exclusive_intersections
                                 .map(i => i.packages.length)
@@ -57,13 +57,13 @@
 
                 const svgContainer = d3.select("#svg")
                                      .append("svg")
-                                     .attr("width", width)
-                                     .attr("height", height);
+                                     .attr("width", bubble_svg_width)
+                                     .attr("height", bubble_svg_height);
                 const venngroup = svgContainer.append("g").attr("id", "venngroup");
                 const chart = venn.VennDiagram({
                         colorScheme: colors,
                         textFill: '#000',
-                        }).width(width).height(height);
+                        }).width(bubble_svg_width).height(bubble_svg_height);
                 const div = d3.select("#venngroup");
                 div.datum(venn_sets).call(chart);
 
@@ -129,7 +129,7 @@
                 const simulation = d3.forceSimulation(nodes)
                         .alphaTarget(0.03) // stay hot -> take out for better performance!
                         .velocityDecay(0.12) // low friction 
-                        .force("center", d3.forceCenter(0.53 * width , 0.53 * height))
+                        .force("center", d3.forceCenter(0.53 * bubble_svg_width , 0.53 * bubble_svg_height))
                         .force("charge", d3.forceManyBody())
                         .force("x", d3.forceX().strength(0.12))
                         .force("y", d3.forceY().strength(0.12))
@@ -177,7 +177,7 @@
                 const pie_div = d3.selectAll("#pie")
                         .append("svg")
                         .append("g")
-                        .attr("transform", `translate(${[0.1*width, 0.1*height]})`);
+                        .attr("transform", `translate(${[100, 75]})`);
 
                 const pie = d3.pie()
                         .value(function(d) {return d[1].packages.length});
