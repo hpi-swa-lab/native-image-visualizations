@@ -49,7 +49,7 @@
                     </td>
                 </tr>
                 <tr>
-                    <td><label for="input-file-virtual-edges">Virtial edges file:</label></td>
+                    <td><label for="input-file-virtual-edges">Virtual edges file:</label></td>
                     <td>
                         <input
                             type="file"
@@ -99,21 +99,12 @@
                     return
                 }
 
-                visualization = await Observatory.generateZoomableausalityGraph(
+                const visualization = await Observatory.generateZoomableausalityGraph(
                     entryPointsInput.files[0],
                     methodsInput.files[0],
                     directEdgesInput.files[0],
                     virtualEdgesInput.files[0]
                 )
-
-                const graph = await constructCausalityHierarchyGraph(
-                    entryPointsInput.files[0],
-                    methodsInput.files[0],
-                    directEdgesInput.files[0],
-                    virtualEdgesInput.files[0]
-                )
-
-                console.log(graph)
             })
         </script>
     </body>

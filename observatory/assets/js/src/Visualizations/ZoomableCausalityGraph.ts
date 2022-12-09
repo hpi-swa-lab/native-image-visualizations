@@ -2,23 +2,11 @@ import Visualization from './Visualization'
 import * as d3 from 'd3'
 
 export default class ZoomableCausalityGraph implements Visualization {
-    entryPoints: Record<string, any>[]
-    methods: Record<string, any>[]
-    directEdges: Record<string, any>[]
-    virtualEdges: Record<string, any>[]
+    causalityGraph: Record<number, Record<string, any>>
 
-    constructor(
-        entryPoints: Record<string, any>[],
-        methods: Record<string, any>[],
-        directEdges: Record<string, any>[],
-        virtualEdges: Record<string, any>[]
-    ) {
-        this.entryPoints = entryPoints
-        this.methods = methods
-        this.directEdges = directEdges
-        this.virtualEdges = virtualEdges
-
-        debugger
+    constructor(causalityGraph: Record<number, Record<string, any>>) {
+        this.causalityGraph = causalityGraph
+        console.log(JSON.stringify(this.causalityGraph))
     }
 
     generate(): void {}

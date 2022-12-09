@@ -2,8 +2,12 @@ import HierarchyBubbles from './Visualizations/HierarchyBubbles'
 import VennVisualization from './Visualizations/VennVisualization'
 import TreeVisualization from './Visualizations/TreeVisualization'
 import ZoomableCausalityGraph from './Visualizations/ZoomableCausalityGraph'
-import { loadTextFile, loadCSVFile } from './BuildReportsParser'
-import { parseToCleanedPackageHierarchy } from './BuildReportsParser'
+import {
+    loadTextFile,
+    loadCSVFile,
+    parseToCleanedPackageHierarchy,
+    parseToCausalityGraph
+} from './BuildReportsParser'
 
 export async function generateHierarchyBubbles(file: File): Promise<HierarchyBubbles> {
     const inputString = await loadTextFile(file)
@@ -28,7 +32,9 @@ export async function generateZoomableausalityGraph(
         loadCSVFile(virtualEdgesFile)
     ])
 
-    return new ZoomableCausalityGraph(entryPoints, methods, directEdges, virtualEdges)
+    const causalityGraph = parseToCausalityGraph(entryPoints, methods, directEdges, virtualEdges)
+
+    return new ZoomableCausalityGraph(causalityGraph)
 }
 
 export function generateVenn() {
