@@ -11,10 +11,10 @@ set(CMAKE_CXX_STANDARD 20)
 add_library(heap_assignment_tracing_agent SHARED main.cpp bytecode.cpp settings.h)
 
 add_custom_command(
-        OUTPUT ${CMAKE_BINARY_DIR}/ClassInitializationTracing.class
-        COMMAND javac ClassInitializationTracing.java && mv ClassInitializationTracing.class ${CMAKE_BINARY_DIR}
+        OUTPUT ${CMAKE_BINARY_DIR}/HeapAssignmentTracingHooks.class
+        COMMAND javac HeapAssignmentTracingHooks.java && mv HeapAssignmentTracingHooks.class ${CMAKE_BINARY_DIR}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/
 )
 
-add_custom_target(ClassInitializationTracing ALL
-        DEPENDS ClassInitializationTracing.class)
+add_custom_target(HeapAssignmentTracingHooks ALL
+        DEPENDS HeapAssignmentTracingHooks.class)

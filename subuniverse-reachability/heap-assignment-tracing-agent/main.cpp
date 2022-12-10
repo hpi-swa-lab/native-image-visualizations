@@ -460,7 +460,7 @@ static void processClass(jvmtiEnv* jvmti_env, jclass klass)
 #endif
     }
 
-    if(strcmp(class_signature, "LClassInitializationTracing;") == 0)
+    if(strcmp(class_signature, "L" HOOK_CLASS_NAME ";") == 0)
     {
         span<jmethodID> methods;
         {
@@ -691,33 +691,6 @@ static void JNICALL onClassPrepare(
     processClass(jvmti_env, klass);
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_oracle_graal_pointsto_reports_ClassInitializationTracing_onClinitRequested(JNIEnv* env, jobject self, jclass clazz, jboolean start)
-{
-    return;
-    // Currently not needed bc Clinit-Detection happens automatically via instrumentation!
-
-    jthread t;
-    check(_jvmti_env->GetCurrentThread(&t));
-
-#if BREAKPOINTS_ENABLE
-    check(_jvmti_env->SetEventNotificationMode(start ? JVMTI_ENABLE : JVMTI_DISABLE, JVMTI_EVENT_FIELD_MODIFICATION, t));
-#endif
-
-    AgentThreadContext* tc = AgentThreadContext::from_thread(_jvmti_env, t);
-
-    if(start)
-    {
-        assert(tc->clinit_empty());
-        tc->clinit_push(env, clazz);
-    }
-    else
-    {
-        tc->clinit_pop(env);
-        assert(tc->clinit_empty());
-    }
-}
-
-
 static void JNICALL onClassFileLoad(
         jvmtiEnv *jvmti_env,
         JNIEnv* jni_env,
@@ -734,7 +707,7 @@ static void JNICALL onClassFileLoad(
     cerr << "ClassLoad: " << name << endl;
 #endif
 
-    if(string_view(name) == "ClassInitializationTracing" // Do not replace our own hooks, logically
+    if(string_view(name) == HOOK_CLASS_NAME // Do not replace our own hooks, logically
     || string_view(name) == "org/graalvm/compiler/nodes/cfg/ControlFlowGraph" // Crashes during classloading
     || string_view(name) == "com/oracle/svm/core/jni/functions/JNIFunctionTables") // Crashes during late compile phase
         return;
@@ -742,7 +715,7 @@ static void JNICALL onClassFileLoad(
     add_clinit_hook(jvmti_env, class_data, class_data_len, new_class_data, new_class_data_len);
 }
 
-extern "C" JNIEXPORT void JNICALL Java_ClassInitializationTracing_onClinitStart(JNIEnv* env, jobject self)
+extern "C" JNIEXPORT void JNICALL Java_HeapAssignmentTracingHooks_onClinitStart(JNIEnv* env, jobject self)
 {
     jvmtiPhase phase;
     check(_jvmti_env->GetPhase(&phase));
@@ -811,7 +784,7 @@ void onObjectFree(jvmtiEnv *jvmti_env, jlong tag)
     delete oc;
 }
 
-extern "C" JNIEXPORT void JNICALL Java_ClassInitializationTracing_notifyArrayWrite(JNIEnv* env, jobject self, jarray arr, jint index, jobject val)
+extern "C" JNIEXPORT void JNICALL Java_HeapAssignmentTracingHooks_notifyArrayWrite(JNIEnv* env, jobject self, jarray arr, jint index, jobject val)
 {
     jthread thread;
     check(_jvmti_env->GetCurrentThread(&thread));
@@ -864,7 +837,7 @@ extern "C" JNIEXPORT void JNICALL Java_ClassInitializationTracing_notifyArrayWri
 #endif
 }
 
-extern "C" JNIEXPORT void JNICALL Java_ClassInitializationTracing_onThreadStart(JNIEnv* env, jobject self, jthread newThread)
+extern "C" JNIEXPORT void JNICALL Java_HeapAssignmentTracingHooks_onThreadStart(JNIEnv* env, jobject self, jthread newThread)
 {
     jvmtiPhase phase;
     check(_jvmti_env->GetPhase(&phase));
@@ -891,7 +864,7 @@ extern "C" JNIEXPORT void JNICALL Java_ClassInitializationTracing_onThreadStart(
 #endif
 }
 
-extern "C" JNIEXPORT jclass JNICALL Java_com_oracle_graal_pointsto_reports_ClassInitializationTracing_getResponsibleClass(JNIEnv* env, jobject thisClass, jobject imageHeapObject)
+extern "C" JNIEXPORT jclass JNICALL Java_com_oracle_graal_pointsto_reports_HeapAssignmentTracing_00024NativeImpl_getResponsibleClass(JNIEnv* env, jobject thisClass, jobject imageHeapObject)
 {
     ObjectContext* oc = ObjectContext::get(_jvmti_env, imageHeapObject);
 
@@ -901,7 +874,7 @@ extern "C" JNIEXPORT jclass JNICALL Java_com_oracle_graal_pointsto_reports_Class
     return oc->allocReason;
 }
 
-extern "C" JNIEXPORT jclass JNICALL Java_com_oracle_graal_pointsto_reports_ClassInitializationTracing_getClassResponsibleForNonstaticFieldWrite(JNIEnv* env, jobject thisClass, jobject receiver, jobject field, jobject val)
+extern "C" JNIEXPORT jclass JNICALL Java_com_oracle_graal_pointsto_reports_HeapAssignmentTracing_00024NativeImpl_getClassResponsibleForNonstaticFieldWrite(JNIEnv* env, jobject thisClass, jobject receiver, jobject field, jobject val)
 {
     auto receiver_oc = (NonArrayObjectContext*)ObjectContext::get(_jvmti_env, receiver);
     auto val_oc = (NonArrayObjectContext*)ObjectContext::get(_jvmti_env, val);
@@ -943,7 +916,7 @@ extern "C" JNIEXPORT jclass JNICALL Java_com_oracle_graal_pointsto_reports_Class
     return res;
 }
 
-extern "C" JNIEXPORT jclass JNICALL Java_com_oracle_graal_pointsto_reports_ClassInitializationTracing_getClassResponsibleForStaticFieldWrite(JNIEnv* env, jobject thisClass, jclass declaring, jobject field, jobject val)
+extern "C" JNIEXPORT jclass JNICALL Java_com_oracle_graal_pointsto_reports_HeapAssignmentTracing_00024NativeImpl_getClassResponsibleForStaticFieldWrite(JNIEnv* env, jobject thisClass, jclass declaring, jobject field, jobject val)
 {
     auto declaring_cc = ClassContext::get_or_create(_jvmti_env, env, declaring);
     auto val_oc = (NonArrayObjectContext*)ObjectContext::get(_jvmti_env, val);
@@ -975,7 +948,7 @@ extern "C" JNIEXPORT jclass JNICALL Java_com_oracle_graal_pointsto_reports_Class
     return res;
 }
 
-extern "C" JNIEXPORT jclass JNICALL Java_com_oracle_graal_pointsto_reports_ClassInitializationTracing_getClassResponsibleForArrayWrite(JNIEnv* env, jobject thisClass, jobjectArray array, jint index, jobject val)
+extern "C" JNIEXPORT jclass JNICALL Java_com_oracle_graal_pointsto_reports_HeapAssignmentTracing_00024NativeImpl_getClassResponsibleForArrayWrite(JNIEnv* env, jobject thisClass, jobjectArray array, jint index, jobject val)
 {
     auto array_oc = (ArrayObjectContext*)ObjectContext::get(_jvmti_env, array);
     auto val_oc = (NonArrayObjectContext*)ObjectContext::get(_jvmti_env, val);

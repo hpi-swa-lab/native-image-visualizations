@@ -1569,7 +1569,7 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
     // Add necessary constants
     ConstantPoolAppender cpa(dst, file1->constant_pool_count);
 
-    auto instrumentation_class_name = cpa.append<Utf8_info>("ClassInitializationTracing");
+    auto instrumentation_class_name = cpa.append<Utf8_info>(HOOK_CLASS_NAME);
     auto instrumentation_class = cpa.append<Class_info>(instrumentation_class_name);
 
     auto onClinitStart = create_method_ref(cpa, instrumentation_class, "onClinitStart", "()V");

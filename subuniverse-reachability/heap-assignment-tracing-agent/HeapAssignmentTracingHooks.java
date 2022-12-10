@@ -1,4 +1,4 @@
-public final class ClassInitializationTracing
+public final class HeapAssignmentTracingHooks
 {
     public static native void onClinitStart();
 
