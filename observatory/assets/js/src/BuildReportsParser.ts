@@ -1,7 +1,7 @@
 import HierarchyNode from './SharedInterfaces/HierarchyNode'
-import CausalityNode from './SharedInterfaces/CausalityNode'
+import CausalityNode from './Visualizations/ZoomableCausalityGraph/Interfaces/CausalityNode'
 import { parse } from 'papaparse'
-import CausalityEdge from './SharedInterfaces/CausalityEdge'
+import CausalityEdge from './Visualizations/ZoomableCausalityGraph/Interfaces/CausalityEdge'
 
 export function loadTextFile(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -97,17 +97,28 @@ function parseSubclassesToPackageNames(rows: string[]): string[] {
 function getNodesById(methods: Record<string, any>[]): Record<number, CausalityNode> {
     const result: Record<number, CausalityNode> = {}
 
-    methods.forEach((method: Record<string, any>) => result[method.Id] = {
-        display: method.Display,
-        flags: method.Flags,
-        id: method.Id,
-        name: method.Name,
-        parameters: method.Parameters,
-        returnType: method.Return,
-        type: method.Type,
-        isEntryPoint: false,
-        directEdges: [],
-        virtualEdges: []
+    methods = methods.filter((method: Record<string, any>) => {
+        return !method.Type.match(/[\$\.]\$/)
+    })
+
+    methods.forEach((method: Record<string, any>) => {
+        method.Display = method.Display.replaceAll('$', '.')
+        method.Name = method.Name.replaceAll('$', '.')
+        method.Return = method.Return.replaceAll('$', '.')
+        method.Type = method.Type.replaceAll('$', '.')
+
+        result[method.Id] = {
+            display: method.Display,
+            flags: method.Flags,
+            id: method.Id,
+            name: method.Name,
+            parameters: method.Parameters,
+            returnType: method.Return,
+            type: method.Type,
+            isEntryPoint: false,
+            directEdges: [],
+            virtualEdges: []
+        }
     })
 
     return result
@@ -116,11 +127,13 @@ function getNodesById(methods: Record<string, any>[]): Record<number, CausalityN
 function parseEdges(edgesReport: Record<string, any>[]): CausalityEdge[] {
     const result: CausalityEdge[] = []
 
-    edgesReport.forEach((edge: Record<string, any>) => result.push({
-        sourceId: edge.StartId,
-        targetId: edge.EndId,
-        bytecodeIndexes: edge.BytecodeIndexes.toString()
-    }))
+    edgesReport.forEach((edge: Record<string, any>) =>
+        result.push({
+            sourceId: edge.StartId,
+            targetId: edge.EndId,
+            bytecodeIndexes: edge.BytecodeIndexes.toString()
+        })
+    )
 
     return result
 }
@@ -136,15 +149,24 @@ export function parseToCausalityGraph(
     const virtualEdges = parseEdges(virtualEdgesReport)
 
     entryPointReports.forEach((entryPoint: Record<string, number>) => {
-        nodesById[entryPoint.Id].isEntryPoint = true
+        const node = nodesById[entryPoint.Id]
+        if (node) {
+            node.isEntryPoint = true
+        }
     })
 
     directEdges.forEach((directEdge: CausalityEdge) => {
-        nodesById[directEdge.sourceId].directEdges.push(directEdge)
+        const node = nodesById[directEdge.sourceId]
+        if (node) {
+            node.directEdges.push(directEdge)
+        }
     })
 
     virtualEdges.forEach((virtualEdge: CausalityEdge) => {
-        nodesById[virtualEdge.sourceId].virtualEdges.push(virtualEdge)
+        const node = nodesById[virtualEdge.sourceId]
+        if (node) {
+            node.virtualEdges.push(virtualEdge)
+        }
     })
 
     return nodesById

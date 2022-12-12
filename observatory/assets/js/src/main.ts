@@ -1,7 +1,7 @@
 import HierarchyBubbles from './Visualizations/HierarchyBubbles'
 import VennVisualization from './Visualizations/VennVisualization'
 import TreeVisualization from './Visualizations/TreeVisualization'
-import ZoomableCausalityGraph from './Visualizations/ZoomableCausalityGraph'
+import ZoomableCausalityGraph from './Visualizations/ZoomableCausalityGraph/ZoomableCausalityGraph'
 import {
     loadTextFile,
     loadCSVFile,
@@ -33,8 +33,11 @@ export async function generateZoomableausalityGraph(
     ])
 
     const causalityGraph = parseToCausalityGraph(entryPoints, methods, directEdges, virtualEdges)
-    debugger
-    return new ZoomableCausalityGraph(causalityGraph)
+
+    const visualization = new ZoomableCausalityGraph(causalityGraph)
+    visualization.generate()
+
+    return visualization
 }
 
 export function generateVenn() {

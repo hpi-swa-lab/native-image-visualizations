@@ -63,7 +63,10 @@
 
             <br />
 
-            <button id="buttonConfirm">Observe!</button>
+            <button id="buttonConfirm">
+                <div id="loader" class="zcg-loader"></div>
+                <p id="buttonText">Observe!</p>
+            </button>
         </div>
         <div id="container" class="zcg-svg-container"></div>
 
@@ -73,6 +76,8 @@
             const directEdgesInput = document.getElementById('input-file-direct-edges')
             const virtualEdgesInput = document.getElementById('input-file-virtual-edges')
 
+            const loader = document.getElementById('loader')
+            const buttonText = document.getElementById('buttonText')
             const buttonConfirm = document.getElementById('buttonConfirm')
 
             buttonConfirm.addEventListener('click', async () => {
@@ -99,12 +104,20 @@
                     return
                 }
 
+                loader.style.visibility = 'visible'
+                buttonText.style.visibility = 'hidden'
+
                 const visualization = await Observatory.generateZoomableausalityGraph(
                     entryPointsInput.files[0],
                     methodsInput.files[0],
                     directEdgesInput.files[0],
                     virtualEdgesInput.files[0]
                 )
+
+                visualization.continueSimulation(() => {
+                    loader.style.visibility = 'hidden'
+                    buttonText.style.visibility = 'visible'
+                })
             })
         </script>
     </body>
