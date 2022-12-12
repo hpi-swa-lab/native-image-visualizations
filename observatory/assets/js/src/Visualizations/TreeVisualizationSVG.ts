@@ -3,15 +3,16 @@ import {HierarchyPointNode} from "d3";
 import TreeVisualization from "./TreeVisualization";
 import {
     countPrivateLeaves,
-    createHierarchyFromPackages, Dictionary, margin,
+    createHierarchyFromPackages, Dictionary, margin, markTreeUnmodified,
     markNodesModifiedFromLeaves,
     MyNode,
-    SvgSelections, Tree, UniverseProps, updateTree
+    SvgSelections, Tree, TreeNodesFilter, UniverseProps, updateTree
 } from "./SvgTreeUtils";
 
 export default class TreeVisualizationSVG extends TreeVisualization {
 
     universesMetadata: Dictionary<UniverseProps>;
+    filter: TreeNodesFilter;
 
     constructor() {
         super()
@@ -23,12 +24,18 @@ export default class TreeVisualizationSVG extends TreeVisualization {
             '01': {name: 'micronautguide, helloworld', color: d3.rgb(150,150, 150)},
             'modified': {name: 'modified but common', color: d3.rgb(0,0, 200)}
         }
+        this.filter = {
+            // universes: new Set(Object.keys(this.universesMetadata).filter(key => key.length == 1))
+            universes: new Set('1')
+        }
     }
 
     generate(): void {
 
         this.loadUniverses().then((tree:Tree) => {
             console.debug("Universes: ", tree)
+
+            const form = this.createInputForm()
 
             const svg = d3.select('body').append('svg');
 
@@ -62,7 +69,7 @@ export default class TreeVisualizationSVG extends TreeVisualization {
             tree.root.descendants().forEach((d: any, i) => {
                 d.id = i;
                 d._children = d.children;
-                if (d.depth > 0) d.children = null;
+                // if (d.depth > 0) d.children = null; // only expand the first level of children
             });
 
             const dx = 20;
@@ -118,10 +125,12 @@ export default class TreeVisualizationSVG extends TreeVisualization {
 
             svg.call(d3.zoom().on('zoom', (svgTransform) => {
                 zoomG.attr('transform', svgTransform.transform)
-                updateTree(null, tree.root, tree, svgSelections, this.universesMetadata)
+                updateTree(null, tree.root, this.filter, tree, svgSelections, this.universesMetadata)
             }));
 
-            updateTree(null, tree.root, tree, svgSelections, this.universesMetadata);
+            form.addEventListener('submit', (e) => this.submit(e, tree, svgSelections, this.universesMetadata))
+
+            updateTree(null, tree.root, this.filter, tree, svgSelections, this.universesMetadata);
         });
 
 
@@ -156,7 +165,7 @@ export default class TreeVisualizationSVG extends TreeVisualization {
             treeData: treeData
         }
 
-        markNodesModifiedFromLeaves(tree.leaves)
+        markNodesModifiedFromLeaves(tree.leaves, this.filter)
 
 
         // let colors:d3.RGBColor[] = [d3.rgb(200,0,0), d3.rgb(0,200,0), d3.rgb(150,150,150)]
@@ -181,6 +190,61 @@ export default class TreeVisualizationSVG extends TreeVisualization {
         // Filter out basic packages used in both universes
         // dataTree.children.filter((child:MyNode) => child.universes.size < 2)
         return  tree
+    }
+
+    createInputForm() {
+        const form = document.createElement('form')
+        const fieldset = document.createElement('fieldset')
+        const legend = document.createElement('legend')
+        legend.innerText = 'Choose Universe(s) to be displayed'
+        fieldset.appendChild(legend)
+
+        const keys = Object.keys(this.universesMetadata)
+        keys.pop()
+        const filteredKeys = keys.filter(key => key.length == 1)
+       filteredKeys.forEach(key => {
+           const div = document.createElement('div')
+           const checkbox = document.createElement('input')
+           checkbox.setAttribute('type', 'checkbox')
+           checkbox.setAttribute('id', key)
+           checkbox.setAttribute('value', key)
+
+           if(this.filter.universes.has(key))
+               checkbox.checked = true;
+
+           const label = document.createElement('Label')
+           label.setAttribute('for', key)
+           label.innerText = this.universesMetadata[key].name
+
+           div.appendChild(checkbox)
+           div.appendChild(label)
+           fieldset.appendChild(div)
+        })
+        form.appendChild(fieldset)
+
+        const submitBtn = document.createElement('button')
+        submitBtn.setAttribute('type', 'submit')
+        submitBtn.innerText = 'update tree'
+        form.appendChild(submitBtn)
+        document.body.appendChild(form)
+
+        return form
+    }
+
+    submit(e:SubmitEvent, tree: Tree, svgSelections: SvgSelections, universePropsDict: Dictionary<UniverseProps>) {
+        e.preventDefault(); // prevent page refresh
+
+        const form = e.target as HTMLFormElement
+        const checkedKeys = Array.from(form.querySelectorAll("input[type=checkbox]:checked")).map((item:HTMLInputElement) => item.value)
+        console.log(`%c form submitted [${checkedKeys}]`, 'background: green')
+
+
+        this.filter.universes = new Set(checkedKeys)
+
+        markTreeUnmodified(tree.treeData)
+        markNodesModifiedFromLeaves(tree.leaves, this.filter)
+
+        updateTree(null, tree.root, this.filter, tree, svgSelections, universePropsDict)
     }
 
 }

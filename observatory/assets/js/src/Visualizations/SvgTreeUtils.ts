@@ -49,6 +49,10 @@ export interface Dictionary<T> {
     [id: string]: T
 }
 
+export interface TreeNodesFilter {
+    universes: Set<string>
+}
+
 export function setAttributes(el:HTMLElement, attrs: { [key: string]: string}) {
     for(const key in attrs) {
         el.setAttribute(key, attrs[key]);
@@ -102,10 +106,11 @@ export function createHierarchyFromPackages(universeId: number, text: string, da
     }
 }
 
-export function markNodesModifiedFromLeaves(leaves: MyNode[]) {
+export function markNodesModifiedFromLeaves(leaves: MyNode[], filter: TreeNodesFilter) {
     for (const leave of leaves) {
         if(leave.universes.size < 1) continue
-        markModified(leave)
+        if(Array.from(leave.universes).every(u => filter.universes.has(u.toString())))
+            markModified(leave)
     }
 }
 
@@ -187,6 +192,7 @@ export function countPrivateLeaves(node: any): number {
 
 export function updateTree(event: any | null,
                     sourceNode: any/*HierarchyPointNode<MyNode>*/,
+                    treeFilter: TreeNodesFilter,
                     tree: Tree,
                     svgSelections: SvgSelections,
                     universePropsDict: Dictionary<UniverseProps>) {
@@ -198,7 +204,6 @@ export function updateTree(event: any | null,
 
     // Compute the new treeLayout layout.
     tree.layout(tree.root)
-
 
     // const nodes = root.descendants()/*.filter(node => node.depth < 3 /!*&& isNodeVisible(flipNode(node), viewBox)*!/)*/.reverse();
     // const links = root.links()/*.filter(link => link.target.depth < 3 /!*&& isLinkVisible(flipLink(link), viewBox)*!/)*/;
@@ -236,7 +241,7 @@ export function updateTree(event: any | null,
         .attr("stroke-opacity", 0)
         .on("click", (evt, d: any) => {
             d.children ? collapseChildren(d) : d.children = d._children;
-            updateTree(evt, d, tree, svgSelections, universePropsDict);
+            updateTree(evt, d, treeFilter, tree, svgSelections, universePropsDict);
         });
 
     let nodeEnterCircle = nodeEnter.append("circle")
