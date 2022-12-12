@@ -434,7 +434,7 @@ int main(int argc, const char** argv)
 
     string name;
 
-    while(true)
+    while(!cin.eof())
     {
         getline(cin, name);
 
@@ -531,7 +531,7 @@ int main(int argc, const char** argv)
     }
 
     cerr << "Running DFS on original graph...\n";
-    
+
     auto all_methods_reachable = bfs(adj);
 
     cerr << "Running DFS on purged graph...\n";
