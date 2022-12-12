@@ -74,7 +74,6 @@ export default class Tooltip {
         const result = document.createElement('div')
 
         result.style.position = 'absolute'
-        result.style.width = 'fit-content'
         result.style.zIndex = '999'
         result.style.background = '#ffffff'
         result.style.borderStyle = 'solid'
@@ -107,12 +106,13 @@ export default class Tooltip {
         removeChildren(this._dataElement)
         Object.keys(this.datapoints).forEach((name: string) => {
             const element = document.createElement('div')
+            element.classList.add('d-flex', 'flex-row', 'px-4')
 
             const title = document.createElement('p')
             title.innerHTML = name + ': '
 
             const data = document.createElement('p')
-            data.innerHTML = this.datapoints[name]
+            data.innerHTML = this.datapoints[name] ? this.datapoints[name] : "[none]"
 
             element.appendChild(title)
             element.appendChild(data)
