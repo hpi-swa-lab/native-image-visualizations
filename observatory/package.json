@@ -9,6 +9,7 @@
         "scss_output": "assets/css/dist/main.css"
     },
     "scripts": {
+        "autofix": "npm-run-all eslint-autofix prettier-autofix",
         "build": "npm-run-all css bundle",
         "bundle": "rollup -c",
         "clean-build": "npm run clean && npm run build",
