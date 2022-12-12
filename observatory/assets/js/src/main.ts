@@ -33,7 +33,7 @@ export async function generateZoomableausalityGraph(
     ])
 
     const causalityGraph = parseToCausalityGraph(entryPoints, methods, directEdges, virtualEdges)
-
+    debugger
     return new ZoomableCausalityGraph(causalityGraph)
 }
 
