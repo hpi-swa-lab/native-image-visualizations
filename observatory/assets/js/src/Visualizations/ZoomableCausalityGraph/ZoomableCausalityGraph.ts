@@ -18,6 +18,8 @@ export default class ZoomableCausalityGraph implements Visualization {
 
     tooltip: Tooltip
 
+    currentScale: number
+
     constructor(nodesById: Record<number, CausalityNode>) {
         this.tooltip = new Tooltip()
         document.body.appendChild(this.tooltip.widget)
@@ -30,6 +32,8 @@ export default class ZoomableCausalityGraph implements Visualization {
 
         this.root = CausalityHierarchyNode.buildHierarchy(Object.values(this.nodesById))
         this.nodesToDisplay = this.root.id === -1 ? this.root.children : [this.root]
+
+        this.currentScale = 1
 
         this.updateEdgesToDisplay()
 
@@ -53,10 +57,31 @@ export default class ZoomableCausalityGraph implements Visualization {
             .call(
                 d3.zoom().on('zoom', (event) => {
                     svg.attr('transform', event.transform)
-                    // TODO: change nodes to display depending on zoom level
+
+                    const scale = event.transform.k
+
+                    console.log(event.transform, this.currentScale, scale / this.currentScale > 70)
+
+                    if (this.currentScale / scale > 70) {
+                        this.currentScale = scale
+                        // TODO: zoom out
+                    }
+                    if (scale / this.currentScale > 70) {
+                        this.currentScale = scale
+                        // TODO: zoom in
+                        const visibleNodes = this.getVisibleNodes(event.transform)
+                        if (visibleNodes.length > 1) {
+                            // TODO: show the inner workings of that node
+                        }
+                    }
                 })
             )
             .append('g')
+    }
+
+    getVisibleNodes(transform: any): CausalityHierarchyNode[] {
+        // TODO: filter out node that are not inside the current view port
+        return this.nodesToDisplay.filter((node: CausalityHierarchyNode) => true)
     }
 
     continueSimulation(callback: () => void = () => {}, milliseconds: number = 5000) {
