@@ -4,7 +4,7 @@
 #include <cassert>
 
 #define LOG 0
-#define PRINT_CLINIT_HEAP_WRITES 0
+#define PRINT_CLINIT_HEAP_WRITES 1
 
 #define SHOW_EXISTING 2
 

@@ -649,7 +649,22 @@ static void onFieldModification(
 
 
 #if LOG || PRINT_CLINIT_HEAP_WRITES
-    cerr << cause_class_name << ": " << class_name << "." << field_name << " = " << new_value_class_name << '\n';
+    if(string_view(new_value_class_name) == "java.lang.String")
+    {
+        const char* str_val = jni_env->GetStringUTFChars((jstring)new_value.l, nullptr);
+        cerr << cause_class_name << ": " << class_name << "." << field_name << " = \"" << str_val << "\"\n";
+        jni_env->ReleaseStringUTFChars((jstring)new_value.l, str_val);
+    }
+    else if(string_view(new_value_class_name) == "java.lang.Class")
+    {
+        char val_content[1024];
+        get_class_name(jvmti_env, (jclass)new_value.l, val_content);
+        cerr << cause_class_name << ": " << class_name << "." << field_name << " = java.lang.Class: \"" << val_content << "\"\n";
+    }
+    else
+    {
+        cerr << cause_class_name << ": " << class_name << "." << field_name << " = " << new_value_class_name << '\n';
+    }
 #endif
 }
 
@@ -753,7 +768,7 @@ extern "C" JNIEXPORT void JNICALL Java_HeapAssignmentTracingHooks_onClinitStart(
     }
 
 #if LOG || PRINT_CLINIT_HEAP_WRITES
-    if(LOG || (outer_clinit_name[0] != 0 && strcmp(inner_clinit_name, outer_clinit_name) != 0))
+    if(LOG || (strcmp(inner_clinit_name, outer_clinit_name) != 0))
     {
         cerr << outer_clinit_name << ": " << inner_clinit_name << ".<clinit>()\n";
     }
