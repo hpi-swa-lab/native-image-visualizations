@@ -1,4 +1,4 @@
-import {HierarchyPointLink, HierarchyPointNode} from "d3";
+import {HierarchyPointNode} from "d3";
 import * as d3 from "d3";
 
 export const margin = {top: 0, right: 50, bottom: 0, left: 75};
@@ -59,17 +59,6 @@ export function setAttributes(el:HTMLElement, attrs: { [key: string]: string}) {
     }
 }
 
-// export function getDataFromText(text: string): MyNode {
-//     let data: MyNode = {
-//         name: "universe",
-//         children: []
-//     };
-//     data = this.createHierarchyFromPackages(data, text)
-//     data = this.reducePackageNames(data)
-//
-//     return data
-// }
-
 export function createHierarchyFromPackages(universeId: number, text: string, dataTree: MyNode, leaves: Set<MyNode>, sets: Set<string>) {
     // let possibleSets = new Set<string>()
     // let leaves: Set<MyNode> = new Set()
@@ -126,54 +115,6 @@ export function markTreeUnmodified(node: MyNode) {
     node.children.forEach(markTreeUnmodified);
 }
 
-export function reducePackageNames(data: MyNode): MyNode {
-    data.children.forEach(pkg => {
-        while(pkg.children.length === 1)
-            if (pkg.children.length === 1){
-                pkg.name += '.' + pkg.children[0].name;
-                pkg.children = pkg.children[0].children;
-            }
-    })
-    return data
-}
-
-
-// ##################################################################
-// ### HELPER FUNCTIONS #############################################
-// ##################################################################
-
-export function isPointInRect(point: Point, viewbox: Rectangle): boolean {
-    return point.x >= viewbox.x && point.x < viewbox.x + viewbox.width &&
-        point.y >= viewbox.y && point.y < viewbox.y + viewbox.height
-}
-
-export function isNodeVisible(node: Point, viewbox: Rectangle): boolean {
-    return isPointInRect(node, viewbox)
-}
-
-export function isLinkVisible(link: HierarchyPointLink<any>, viewbox: Rectangle): boolean {
-    if (link.source.x < viewbox.x && link.target.x < viewbox.x) return false
-    if (link.source.y < viewbox.y && link.target.y < viewbox.y) return false
-    if (link.source.x > (viewbox.x + viewbox.width) && link.target.x > (viewbox.x + viewbox.width)) return false
-    if (link.source.y > (viewbox.y + viewbox.height) && link.target.y > (viewbox.y + viewbox.height)) return false
-    return true
-}
-
-export function flip(point: Point): Point {
-    return {
-        x: point.y,
-        y: point.x
-    }
-}
-
-export function flipNode(node: HierarchyPointNode<any>): Point {
-    return flip(node);
-}
-
-export function flipLink(link: HierarchyPointLink<any>): HierarchyPointLink<any> {
-    return {source: flip(link.source) as any, target: flip(link.target) as any};
-}
-
 export function collapseChildren(d: any) {
     if (!d.children) return;
 
@@ -190,6 +131,10 @@ export function countPrivateLeaves(node: any): number {
 
 
 
+// ##########################################################################################################
+// ##### UPDATE TREE ########################################################################################
+// ##########################################################################################################
+
 export function updateTree(event: any | null,
                     sourceNode: any/*HierarchyPointNode<MyNode>*/,
                     treeFilter: TreeNodesFilter,
@@ -205,8 +150,6 @@ export function updateTree(event: any | null,
     // Compute the new treeLayout layout.
     tree.layout(tree.root)
 
-    // const nodes = root.descendants()/*.filter(node => node.depth < 3 /!*&& isNodeVisible(flipNode(node), viewBox)*!/)*/.reverse();
-    // const links = root.links()/*.filter(link => link.target.depth < 3 /!*&& isLinkVisible(flipLink(link), viewBox)*!/)*/;
     const nodes = tree.root.descendants().filter(node => node.data.isModified).reverse();
     const links = tree.root.links().filter(link => link.target.data.isModified);
 
