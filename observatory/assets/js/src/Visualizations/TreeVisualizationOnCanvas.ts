@@ -1,6 +1,13 @@
 import * as d3 from 'd3'
 import {HierarchyPointLink, HierarchyPointNode, D3ZoomEvent} from "d3";
-import TreeVisualization, {MyNode, Point, Rectangle} from "./TreeVisualization";
+import TreeVisualization from "./TreeVisualization";
+import {Point, Rectangle} from "./SvgTreeUtils";
+
+export interface MyNode {
+    name: string,
+    children: MyNode[]
+}
+
 
 export default class TreeVisualizationOnCanvas extends TreeVisualization {
     constructor() {
@@ -35,7 +42,7 @@ export default class TreeVisualizationOnCanvas extends TreeVisualization {
         context.fillStyle = 'white'
         context.fillRect(0, 0, canvas.node().width, canvas.node().height)
 
-        d3.text('../assets/data/used_methods_micronautguide').then(text => {
+        d3.text('../assets/data/used_methods_micronautguide.txt').then(text => {
             const data = this.getDataFromText(text);
 
             const tree = d3.tree()
@@ -176,5 +183,52 @@ export default class TreeVisualizationOnCanvas extends TreeVisualization {
         })
 
 
+    }
+
+    getDataFromText(text: string): MyNode {
+        let data: MyNode = {
+            name: "root",
+            children: []
+        };
+        data = this.createHierarchyFromPackages(data, text)
+        data = this.reducePackageNames(data)
+
+        return data
+    }
+
+    createHierarchyFromPackages(data: MyNode, text: string): MyNode {
+        let rows = text.split('\n');
+        rows.forEach(row => {
+            if(row.includes('$$')){
+                return
+            }
+            let fields = row.split('.');
+            fields.pop() // removes methods
+            fields.pop() // removes classes
+            let current = data.children;
+            for (let field of fields) {
+                if (!current.find((child:any) => child.name === field)) {
+                    current.push({
+                        name: field,
+                        children: []
+                    })
+
+                }
+                current = current.find((child:any) => child.name === field).children;
+            }
+        })
+
+        return data
+    }
+
+    reducePackageNames(data: MyNode): MyNode {
+        data.children.forEach((pkg:any) => {
+            while(pkg.children.length === 1)
+                if (pkg.children.length === 1){
+                    pkg.name += '.' + pkg.children[0].name;
+                    pkg.children = pkg.children[0].children;
+                }
+        })
+        return data
     }
 }
