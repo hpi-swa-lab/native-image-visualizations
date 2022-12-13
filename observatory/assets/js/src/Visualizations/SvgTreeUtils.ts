@@ -147,10 +147,17 @@ export function updateTree(event: any | null,
         duration = event && event.altKey ? 2500 : 250;
     }
 
+    // this is for forcing a re-layouting of the tree's nodes!
+    // remove to keep the ful tree's layout, but just remove single nodes in their positions
+    tree.root.eachBefore((node:any) => {
+        if (!node._children) return;
+        node.children = node._children.filter((child:any) => child.data.isModified)
+    })
+
     // Compute the new treeLayout layout.
     tree.layout(tree.root)
 
-    const nodes = tree.root.descendants().filter(node => node.data.isModified).reverse();
+    const nodes = tree.root.descendants().reverse();
     const links = tree.root.links().filter(link => link.target.data.isModified);
 
     // console.debug(`${nodes.length} nodes, ${links.length} links visible`)

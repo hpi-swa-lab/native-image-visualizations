@@ -200,7 +200,7 @@ export default class TreeVisualizationSVG extends TreeVisualization {
         fieldset.appendChild(legend)
 
         const keys = Object.keys(this.universesMetadata)
-        keys.pop()
+        keys.pop() // removes the modified but common option
         const filteredKeys = keys.filter(key => key.length == 1)
        filteredKeys.forEach(key => {
            const div = document.createElement('div')
@@ -225,7 +225,7 @@ export default class TreeVisualizationSVG extends TreeVisualization {
         const submitBtn = document.createElement('button')
         submitBtn.setAttribute('type', 'submit')
         submitBtn.innerText = 'update tree'
-        form.appendChild(submitBtn)
+        fieldset.appendChild(submitBtn)
         document.body.appendChild(form)
 
         return form
