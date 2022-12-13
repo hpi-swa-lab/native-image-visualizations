@@ -1,8 +1,20 @@
 cmake_minimum_required(VERSION 3.22)
 project(heap_assignment_tracing_agent)
 
+set(JAVA_AWT_LIBRARY NotNeeded)
+set(JAVA_AWT_INCLUDE_PATH NotNeeded)
+find_package(JNI REQUIRED)
+include_directories(${JNI_INCLUDE_DIRS})
+
 set(CMAKE_CXX_STANDARD 20)
 
-include_directories(/usr/lib/jvm/graalvm-ce-java17-22.3.0/include/ /usr/lib/jvm/graalvm-ce-java17-22.3.0/include/linux/)
+add_library(heap_assignment_tracing_agent SHARED main.cpp bytecode.cpp settings.h)
 
-add_library(heap_assignment_tracing_agent SHARED main.cpp)
+add_custom_command(
+        OUTPUT ${CMAKE_BINARY_DIR}/HeapAssignmentTracingHooks.class
+        COMMAND javac HeapAssignmentTracingHooks.java && mv HeapAssignmentTracingHooks.class ${CMAKE_BINARY_DIR}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/
+)
+
+add_custom_target(HeapAssignmentTracingHooks ALL
+        DEPENDS HeapAssignmentTracingHooks.class)
