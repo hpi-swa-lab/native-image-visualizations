@@ -480,7 +480,7 @@ int main(int argc, const char** argv)
         }
     }
 
-    if(false)
+    if(true)
     {
         boost::dynamic_bitset<> redundant_typeflows(adj.n_typeflows());
 
@@ -530,11 +530,13 @@ int main(int argc, const char** argv)
         cerr << "Redundant typeflows: " << redundant_typeflows.count() << "/" << (adj.n_typeflows() - 1) << "=" << ((float) redundant_typeflows.count() / (adj.n_typeflows() - 1)) << endl;
     }
 
-    cerr << "Running DFS on original graph...\n";
+    cerr << "Running DFS on original graph...";
 
     auto all_methods_reachable = bfs(adj);
 
-    cerr << "Running DFS on purged graph...\n";
+    cerr << " " << std::count_if(all_methods_reachable.begin(), all_methods_reachable.end(), [](bool b) { return b; }) << " methods reachable!\n";
+
+    cerr << "Running DFS on purged graph...";
 
     for(uint32_t mid : purged_mids)
     {
@@ -542,6 +544,8 @@ int main(int argc, const char** argv)
     }
 
     auto methods_reachable = bfs(adj);
+
+    cerr << " " << std::count_if(methods_reachable.begin(), methods_reachable.end(), [](bool b) { return b; }) << " methods reachable!\n";
 
     for(size_t i = 1; i < methods_reachable.size(); i++)
     {
