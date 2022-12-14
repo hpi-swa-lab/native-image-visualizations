@@ -35,30 +35,13 @@
 //
 
 form {
-    width: 500px;
-    margin: 0 auto;
-}
-
-div {
-    margin: 10px 0 0 10px;
+    width: 400px;
+    position: absolute;
+    z-index: 100;
+    background-color: white;
+    margin: 20px;
 }
 
 fieldset {
-    background: white;
-    border: 2px solid black;
-    font-size: 1.5em;
-}
-
-label {
-    margin-left: 20px;
-}
-
-input[type=checkbox] {
-    transform: translate(5px, -4px) scale(2);
-}
-
-legend {
-    padding: 10px;
-    background: black;
-    color: white;
+    border-radius: 10px;
 }

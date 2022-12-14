@@ -3,13 +3,17 @@ import {HierarchyPointNode} from "d3";
 import TreeVisualization from "./TreeVisualization";
 import {
     countPrivateLeaves,
-    createHierarchyFromPackages, Dictionary, margin, markTreeUnmodified,
-    markNodesModifiedFromLeaves,
+    createHierarchyFromPackages, Dictionary, margin, removeFilterFromTree,
+    filterNodesFromLeaves,
     MyNode,
-    SvgSelections, Tree, TreeNodesFilter, UniverseProps, updateTree
+    SvgSelections, Tree, TreeNodesFilter, UniverseProps, updateTree, markNodesModifiedFromLeaves
 } from "./SvgTreeUtils";
 
+
+
 export default class TreeVisualizationSVG extends TreeVisualization {
+
+    UNMODIFIED = 'UNMODIFIED'
 
     universesMetadata: Dictionary<UniverseProps>;
     filter: TreeNodesFilter;
@@ -22,11 +26,13 @@ export default class TreeVisualizationSVG extends TreeVisualization {
             '0': {name: 'micronautguide', color: d3.rgb(200,0,0)},
             '1': {name: 'helloworld', color: d3.rgb(0,200,0)},
             '01': {name: 'micronautguide, helloworld', color: d3.rgb(150,150, 150)},
-            'modified': {name: 'modified but common', color: d3.rgb(0,0, 200)}
+            'modified': {name: 'common and modified', color: d3.rgb(165, 216, 255)}
         }
         this.filter = {
-            // universes: new Set(Object.keys(this.universesMetadata).filter(key => key.length == 1))
-            universes: new Set('1')
+            universes: new Set(Object.keys(this.universesMetadata).filter(key => key.length == 1)),
+            // universes: new Set('1'),
+            showUnmodified: false,
+            ignore: false
         }
     }
 
@@ -125,10 +131,11 @@ export default class TreeVisualizationSVG extends TreeVisualization {
 
             svg.call(d3.zoom().on('zoom', (svgTransform) => {
                 zoomG.attr('transform', svgTransform.transform)
+                this.filter.ignore = true; // to not apply filter to filter all node's children on transition
                 updateTree(null, tree.root, this.filter, tree, svgSelections, this.universesMetadata)
             }));
 
-            form.addEventListener('submit', (e) => this.submit(e, tree, svgSelections, this.universesMetadata))
+            form.addEventListener('submit', (e) => this.onSubmit(e, tree, svgSelections, this.universesMetadata))
 
             updateTree(null, tree.root, this.filter, tree, svgSelections, this.universesMetadata);
         });
@@ -150,7 +157,14 @@ export default class TreeVisualizationSVG extends TreeVisualization {
         ]);
 
         // build tree including universes
-        let treeData: MyNode = {name: 'diffing', children: [], parent: undefined, universes: new Set<number>(), isModified: false};
+        let treeData: MyNode = {
+            name: 'diffing',
+            children: [],
+            parent: undefined,
+            universes: new Set<number>(),
+            isModified: false,
+            isFiltered: false
+        }
         let sets = new Set<string>()
         let leaves: Set<MyNode> = new Set()
 
@@ -165,7 +179,8 @@ export default class TreeVisualizationSVG extends TreeVisualization {
             treeData: treeData
         }
 
-        markNodesModifiedFromLeaves(tree.leaves, this.filter)
+        markNodesModifiedFromLeaves(tree.leaves)
+        filterNodesFromLeaves(tree.leaves, this.filter)
 
 
         // let colors:d3.RGBColor[] = [d3.rgb(200,0,0), d3.rgb(0,200,0), d3.rgb(150,150,150)]
@@ -187,43 +202,38 @@ export default class TreeVisualizationSVG extends TreeVisualization {
             console.debug(`%c ${key}, ${this.universesMetadata[key].name}`, `background: ${this.universesMetadata[key].color}`)
         }
 
-        // Filter out basic packages used in both universes
-        // dataTree.children.filter((child:MyNode) => child.universes.size < 2)
         return  tree
     }
 
     createInputForm() {
         const form = document.createElement('form')
         const fieldset = document.createElement('fieldset')
+        fieldset.classList.add('border', 'p-2', 'w-auto')
         const legend = document.createElement('legend')
+        legend.classList.add('w-auto', 'float-none','p-2')
         legend.innerText = 'Choose Universe(s) to be displayed'
         fieldset.appendChild(legend)
-
         const keys = Object.keys(this.universesMetadata)
         keys.pop() // removes the modified but common option
         const filteredKeys = keys.filter(key => key.length == 1)
-       filteredKeys.forEach(key => {
-           const div = document.createElement('div')
-           const checkbox = document.createElement('input')
-           checkbox.setAttribute('type', 'checkbox')
-           checkbox.setAttribute('id', key)
-           checkbox.setAttribute('value', key)
 
-           if(this.filter.universes.has(key))
-               checkbox.checked = true;
-
-           const label = document.createElement('Label')
-           label.setAttribute('for', key)
-           label.innerText = this.universesMetadata[key].name
-
-           div.appendChild(checkbox)
-           div.appendChild(label)
-           fieldset.appendChild(div)
+        // add checkboxes & labels
+        filteredKeys.forEach(key => {
+           fieldset.appendChild(this.createCheckboxLabelDiv(
+               key,
+               this.universesMetadata[key].name,
+               this.universesMetadata[key].color.toString()))
         })
+        fieldset.appendChild(this.createCheckboxLabelDiv(this.UNMODIFIED, 'unmodified packages', '#555'), )
+
         form.appendChild(fieldset)
 
+        // add submit button
         const submitBtn = document.createElement('button')
         submitBtn.setAttribute('type', 'submit')
+        submitBtn.classList.add('btn')
+        submitBtn.classList.add('btn-sm')
+        submitBtn.classList.add('btn-primary')
         submitBtn.innerText = 'update tree'
         fieldset.appendChild(submitBtn)
         document.body.appendChild(form)
@@ -231,7 +241,33 @@ export default class TreeVisualizationSVG extends TreeVisualization {
         return form
     }
 
-    submit(e:SubmitEvent, tree: Tree, svgSelections: SvgSelections, universePropsDict: Dictionary<UniverseProps>) {
+    createCheckboxLabelDiv(id:string, label:string, backgroundColor: string){
+        const div = document.createElement('div')
+        div.classList.add('form-check')
+        const checkboxEl = document.createElement('input')
+        checkboxEl.classList.add('form-check-input')
+        checkboxEl.setAttribute('type', 'checkbox')
+        checkboxEl.setAttribute('id', id)
+        checkboxEl.setAttribute('value', id)
+
+        if (this.filter.universes.has(id)) {
+            checkboxEl.checked = true;
+        }
+
+        const labelEl = document.createElement('Label')
+        labelEl.classList.add('form-check-label')
+        labelEl.setAttribute('for', id)
+        labelEl.innerText = label
+        div.style.backgroundColor = backgroundColor
+
+
+        div.appendChild(checkboxEl)
+        div.appendChild(labelEl)
+
+        return div
+    }
+
+    onSubmit(e:SubmitEvent, tree: Tree, svgSelections: SvgSelections, universePropsDict: Dictionary<UniverseProps>) {
         e.preventDefault(); // prevent page refresh
 
         const form = e.target as HTMLFormElement
@@ -240,9 +276,11 @@ export default class TreeVisualizationSVG extends TreeVisualization {
 
 
         this.filter.universes = new Set(checkedKeys)
+        this.filter.ignore= false
+        this.filter.showUnmodified = checkedKeys.includes(this.UNMODIFIED)
 
-        markTreeUnmodified(tree.treeData)
-        markNodesModifiedFromLeaves(tree.leaves, this.filter)
+        removeFilterFromTree(tree.treeData)
+        filterNodesFromLeaves(tree.leaves, this.filter)
 
         updateTree(null, tree.root, this.filter, tree, svgSelections, universePropsDict)
     }

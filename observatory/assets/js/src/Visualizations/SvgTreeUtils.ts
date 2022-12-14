@@ -9,6 +9,7 @@ export interface MyNode {
     parent: MyNode
     universes: Set<number>
     isModified: boolean
+    isFiltered: boolean
 //     sizes?: { [id: string] : number; }
 //     size?: number
 //     exclusiveSizes?: { [id: string] : number; }
@@ -50,7 +51,9 @@ export interface Dictionary<T> {
 }
 
 export interface TreeNodesFilter {
-    universes: Set<string>
+    universes: Set<string>;
+    showUnmodified: boolean;
+    ignore: boolean // true, if this filter should be ignored; otherwise false
 }
 
 export function setAttributes(el:HTMLElement, attrs: { [key: string]: string}) {
@@ -60,9 +63,6 @@ export function setAttributes(el:HTMLElement, attrs: { [key: string]: string}) {
 }
 
 export function createHierarchyFromPackages(universeId: number, text: string, dataTree: MyNode, leaves: Set<MyNode>, sets: Set<string>) {
-    // let possibleSets = new Set<string>()
-    // let leaves: Set<MyNode> = new Set()
-
     for (const row of text.split('\n')) {
         if (row == '' || row.includes('$$')) continue
         let current = dataTree
@@ -73,7 +73,6 @@ export function createHierarchyFromPackages(universeId: number, text: string, da
         for (let i = 0; i < pathSegments.length; i++) {
             let child = current.children.find((child) => child.name === pathSegments[i])
             if (child) {
-                // console.debug('add universe', universeId, child.universes)
                 child.universes.add(universeId)
             } else {
                 child = {
@@ -81,7 +80,8 @@ export function createHierarchyFromPackages(universeId: number, text: string, da
                     children: [],
                     parent: current,
                     universes: new Set<number>().add(universeId),
-                    isModified: false
+                    isModified: false,
+                    isFiltered: false
                 }
                 current.children.push(child)
             }
@@ -95,11 +95,10 @@ export function createHierarchyFromPackages(universeId: number, text: string, da
     }
 }
 
-export function markNodesModifiedFromLeaves(leaves: MyNode[], filter: TreeNodesFilter) {
+export function markNodesModifiedFromLeaves(leaves: MyNode[]) {
     for (const leave of leaves) {
-        if(leave.universes.size < 1) continue
-        if(Array.from(leave.universes).every(u => filter.universes.has(u.toString())))
-            markModified(leave)
+        if(leave.universes.size !== 1 ) continue
+        markModified(leave)
     }
 }
 
@@ -110,9 +109,29 @@ function markModified(node: MyNode) {
         markModified(node.parent)
 }
 
-export function markTreeUnmodified(node: MyNode) {
-    node.isModified = false;
-    node.children.forEach(markTreeUnmodified);
+export function filterNodesFromLeaves(leaves: MyNode[], filter: TreeNodesFilter) {
+    for (const leave of leaves) {
+        if(leave.universes.size < 1) continue
+        if(filter.showUnmodified) {
+            if (!leave.isModified || Array.from(leave.universes).every(u => filter.universes.has(u.toString()))) {
+                markFiltered(leave)
+            }
+        } else if (leave.isModified && Array.from(leave.universes).every(u => filter.universes.has(u.toString()))) {
+            markFiltered(leave)
+        }
+    }
+}
+
+function markFiltered(node: MyNode) {
+    if (node.isFiltered) return
+    node.isFiltered = true
+    if (node.parent !== undefined)
+        markFiltered(node.parent)
+}
+
+export function removeFilterFromTree(node: MyNode) {
+    node.isFiltered = false;
+    node.children.forEach(removeFilterFromTree);
 }
 
 export function collapseChildren(d: any) {
@@ -141,6 +160,7 @@ export function updateTree(event: any | null,
                     tree: Tree,
                     svgSelections: SvgSelections,
                     universePropsDict: Dictionary<UniverseProps>) {
+
     let duration = 0;
 
     if (event) {
@@ -149,16 +169,18 @@ export function updateTree(event: any | null,
 
     // this is for forcing a re-layouting of the tree's nodes!
     // remove to keep the ful tree's layout, but just remove single nodes in their positions
-    tree.root.eachBefore((node:any) => {
-        if (!node._children) return;
-        node.children = node._children.filter((child:any) => child.data.isModified)
-    })
+    if(treeFilter && !treeFilter.ignore) {
+        tree.root.eachBefore((node: any) => {
+            if (!node._children) return;
+            node.children = node._children.filter((child: any) => child.data.isFiltered)
+        })
+    }
 
     // Compute the new treeLayout layout.
     tree.layout(tree.root)
 
     const nodes = tree.root.descendants().reverse();
-    const links = tree.root.links().filter(link => link.target.data.isModified);
+    const links = tree.root.links().filter(link => link.target.data.isFiltered);
 
     // console.debug(`${nodes.length} nodes, ${links.length} links visible`)
 
@@ -190,16 +212,13 @@ export function updateTree(event: any | null,
         .attr("fill-opacity", 0)
         .attr("stroke-opacity", 0)
         .on("click", (evt, d: any) => {
-            d.children ? collapseChildren(d) : d.children = d._children;
+            treeFilter.ignore = true
+            d.children ? collapseChildren(d) : d.children = d._children.filter((child:any) => child.data.isFiltered);
             updateTree(evt, d, treeFilter, tree, svgSelections, universePropsDict);
         });
 
     let nodeEnterCircle = nodeEnter.append("circle")
         .attr("r", (d: any) => d._children && d.id !== 0 ? 5 + (countPrivateLeaves(d) / 2) : 5)
-        // .attr("fill", (d: any) => d._children ? "#555" : "#999")
-        // TODO
-        //  if isModified == true && d.data.universes.size > 1, then set gray color
-        //  if is Modified == true && d.data.universe.size == 1, set color according to universe
         .attr("fill", (d: any) => {
             if (d.data.universes.size == 1) {
                 return universePropsDict[Array.from(d.data.universes).join('')].color.toString()
@@ -211,7 +230,7 @@ export function updateTree(event: any | null,
             }
 
             // d.data.universes.size == 0 ? '#555' : universePropsDict[Array.from(d.data.universes).join('')].color.toString()
-        } /*? "#555" : "#999"*/)
+        })
         // Add the pattern
         // .attr('fill', 'url(#diagonalHatch)')
         // .attr('stroke', '#ff0000')
@@ -222,14 +241,16 @@ export function updateTree(event: any | null,
     // see source code: https://d3-graph-gallery.com/graph/interactivity_tooltip.html
     // Three function that change the tooltip when user hover / move / leave a cell
     let mouseover = function(event:MouseEvent, d: HierarchyPointNode<MyNode>) {
-        // console.log(event, d)
         svgSelections.tooltip.style("opacity", 1)
     }
     let mousemove = function(event:MouseEvent, d: HierarchyPointNode<MyNode>) {
         svgSelections.tooltip
-            .html(`**Node data:** <br>
-                            isModified: ${d.data.isModified} <br>
-                            universes: ${universePropsDict[Array.from(d.data.universes).join('')].name}
+            .html(`**Node data:**
+                            <br>isFiltered: ${d.data.isFiltered}
+                            <br>isModified: ${d.data.isModified}
+                            <br>universes: ${universePropsDict[Array.from(d.data.universes).join('')].name}
+                            <br>has children: ${d.children?.length || undefined}
+                            <br>has _children: ${(d as any)._children?.length || undefined}
                             `)
             .style("left", (event.x +20) + "px")
             .style("top", (event.y) + "px")
