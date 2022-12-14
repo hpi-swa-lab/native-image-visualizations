@@ -2,7 +2,6 @@ import HierarchyNode from './SharedInterfaces/HierarchyNode'
 import { parse } from 'papaparse'
 import { NodeWithSize } from './SharedTypes/NodeWithSize'
 import { NodeType } from './SharedTypes/Node'
-import { pack } from 'd3'
 
 export function loadTextFile(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
