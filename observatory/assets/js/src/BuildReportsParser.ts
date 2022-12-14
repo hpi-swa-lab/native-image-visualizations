@@ -114,6 +114,26 @@ export function parseBuildReportToNodeWithSizeHierarchy(buildReport: Map<string,
     return root
 }
 
+function _getPackageList(name: string): string[] {
+    // remove function
+    if (name.match(/\(.*\)/)) {
+        // remove everything from the first ( on aka the function parameters
+        name = name.replace(/\(.*$/, '')
+        // remove everything from the last dot on aka the function name
+        name = name.replace(/(\.[^.]*)$/, '')
+    }
+
+    // remove inner classes
+    if (name.match(/\$.*$/)) {
+        // remove everything from the first $ on aka the inner classes
+        name = name.replace(/\$.*$/, '')
+        // remove everything from the first dot on aka the first class
+        name = name.replace(/(\.[^.]*)$/, '')
+    }
+
+    return name.split('.')
+}
+
 export function parseToPackageHierarchy(hierarchyString: string): HierarchyNode {
     const data: HierarchyNode = {
         id: 0,
