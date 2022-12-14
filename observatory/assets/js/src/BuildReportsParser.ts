@@ -2,6 +2,7 @@ import HierarchyNode from './SharedInterfaces/HierarchyNode'
 import { parse } from 'papaparse'
 import { NodeWithSize } from './SharedTypes/NodeWithSize'
 import { NodeType } from './SharedTypes/Node'
+import { pack } from 'd3'
 
 export function loadTextFile(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -47,42 +48,66 @@ export function parseBuildReportToNodeWithSizeHierarchy(buildReport: Map<string,
         size: 0
     }
 
-    let currentChildren: NodeWithSize[] = root.children
-    let parent: NodeWithSize = root
+    let currentChildren: NodeWithSize[]
+    let parent: NodeWithSize
 
     buildReport.forEach((report: Map<string, any>) => {
         currentChildren = root.children
         parent = root
 
-        const name: string = report.get('name')
+        const name = report.get('name')
         if (name) {
-            const splitName: string[] = name.split('.')
-            splitName.forEach((segment: string, index: number) => {
-                let child = currentChildren.find((child: NodeWithSize) => child.name === segment)
+            const packageList: string[] = _getPackageList(name)
+            const classList: string[] = _getStringList(name)
+            const method: string = _getMethod(name)
 
-                let childType: NodeType
-                if (index === splitName.length - 1) {
-                    childType = NodeType.Method
-                } else if (index === splitName.length - 2) {
-                    childType = NodeType.Class
-                } else {
-                    childType = NodeType.Package
-                }
+            packageList.forEach((packageName: string) => {
+                let packageNode: NodeWithSize = currentChildren.find((node: NodeWithSize) => node.name === packageName)
 
-                if (!child) {
-                    child = {
-                        name: segment,
-                        type: childType,
+                if (!packageNode) {
+                    packageNode = {
+                        name: packageName,
+                        type: NodeType.Package,
                         children: [] as NodeWithSize[],
-                        size: report.get('size')
+                        size: 0
                     }
 
-                    currentChildren.push(child)
+                    currentChildren.push(packageNode)
                 }
 
-                currentChildren = child.children
-                parent = child
+                currentChildren = packageNode.children
+                parent = packageNode
             })
+
+            classList.forEach((className: string) => {
+                let classNode: NodeWithSize = currentChildren.find((node: NodeWithSize) => node.name === className)
+
+                if (!classNode) {
+                    classNode = {
+                        name: className,
+                        type: NodeType.Package,
+                        children: [] as NodeWithSize[],
+                        size: 0
+                    }
+
+                    currentChildren.push(classNode)
+                }
+
+                currentChildren = classNode.children
+                parent = classNode
+            })
+
+            let methodNode = currentChildren.find((node: NodeWithSize) => node.name === method)
+            if (!methodNode) {
+                methodNode = {
+                    name: method,
+                    type: NodeType.Method,
+                    children: [] as NodeWithSize[],
+                    size: report.get('size')
+                }
+
+                currentChildren.push(methodNode)
+            }
         }
     })
 
