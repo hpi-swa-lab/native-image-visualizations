@@ -318,7 +318,7 @@ static void check_basic_integrity(vector<string>& method_names, vector<string>& 
     }
 }
 
-static uint32_t resolve_method(unordered_map<string, uint32_t>& method_ids_by_name, const string& name)
+static uint32_t resolve_method(const unordered_map<string, uint32_t>& method_ids_by_name, const string& name)
 {
     auto it = method_ids_by_name.find(name);
 
@@ -389,6 +389,78 @@ static bool is_redundant(Adjacency& adj, uint32_t typeflow)
     return false;
 }
 
+static void simulate_purge(Adjacency& adj, const vector<string>& method_names, const unordered_map<string, uint32_t>& method_ids_by_name)
+{
+    vector<uint32_t> purged_mids;
+
+    string name;
+
+    while(!cin.eof())
+    {
+        getline(cin, name);
+
+        if(name.length() == 0)
+            break;
+
+        uint32_t mid = resolve_method(method_ids_by_name, name);
+        purged_mids.push_back(mid);
+    }
+
+    cerr << "Running DFS on original graph...";
+
+    auto all_methods_reachable = bfs(adj);
+
+    cerr << " " << std::count_if(all_methods_reachable.begin(), all_methods_reachable.end(), [](bool b) { return b; }) << " methods reachable!\n";
+
+    cerr << "Running DFS on purged graph...";
+
+    for(uint32_t mid : purged_mids)
+    {
+        adj.purge_method(mid);
+    }
+
+    auto methods_reachable = bfs(adj);
+
+    cerr << " " << std::count_if(methods_reachable.begin(), methods_reachable.end(), [](bool b) { return b; }) << " methods reachable!\n";
+
+    for(size_t i = 1; i < methods_reachable.size(); i++)
+    {
+        if(all_methods_reachable[i] && !methods_reachable[i])
+            cout << method_names[i] << endl;
+    }
+}
+
+static void print_reachability(Adjacency& adj, const vector<string>& method_names, const unordered_map<string, uint32_t>& method_ids_by_name)
+{
+    cerr << "Running DFS on original graph...";
+
+    auto all_methods_reachable = bfs(adj);
+
+    cerr << " " << std::count_if(all_methods_reachable.begin(), all_methods_reachable.end(), [](bool b) { return b; }) << " methods reachable!\n";
+
+    string name;
+
+    while(!cin.eof())
+    {
+        getline(cin, name);
+
+        if(name.length() == 0)
+            break;
+
+        auto it = method_ids_by_name.find(name);
+
+        if(it == method_ids_by_name.end())
+        {
+            cerr << "Method " << name << " doesn't exist!" << endl;
+            continue;
+        }
+
+        uint32_t mid = it->second;
+
+        cout << (all_methods_reachable[mid] ? "True" : "False") << endl;
+    }
+}
+
 int main(int argc, const char** argv)
 {
     vector<string> type_names;
@@ -430,55 +502,8 @@ int main(int argc, const char** argv)
     vector<uint32_t> typeflow_methods(1);
     read_buffer(typeflow_methods, "typeflow_methods.bin");
 
-    vector<uint32_t> purged_mids;
-
-    string name;
-
-    while(!cin.eof())
-    {
-        getline(cin, name);
-
-        if(name.length() == 0)
-            break;
-
-        uint32_t mid = resolve_method(method_ids_by_name, name);
-        purged_mids.push_back(mid);
-    }
-
 
     Adjacency adj(type_names.size(), method_names.size(), typeflow_names.size(), interflows, virtual_invokes, direct_invokes, typestates, std::move(typeflow_methods));
-
-    if(false)
-    {
-        boost::dynamic_bitset<> typeflow_with_unnecessary_mask(adj.n_typeflows());
-
-        for(uint32_t typeflow = 1; typeflow < adj.n_typeflows(); typeflow++)
-        {
-            auto M = adj.typeflow_methods[typeflow];
-
-            if(M != 0 && adj.neighbour_methods[typeflow].empty())
-            {
-                for(auto &e: adj.neighbour_flows[typeflow])
-                {
-                    if(adj.typeflow_methods[e.dst] != M)
-                        goto outerloop;
-                }
-
-                typeflow_with_unnecessary_mask[typeflow] = true;
-            }
-
-            outerloop:
-            {};
-        }
-
-        cout << "Unnecessary mask typeflows: " << typeflow_with_unnecessary_mask.count() << endl;
-
-        for(uint32_t typeflow = 1; typeflow < adj.n_typeflows(); typeflow++)
-        {
-            if(typeflow_with_unnecessary_mask[typeflow])
-                adj.typeflow_methods[typeflow] = 0;
-        }
-    }
 
     if(true)
     {
@@ -530,28 +555,6 @@ int main(int argc, const char** argv)
         cerr << "Redundant typeflows: " << redundant_typeflows.count() << "/" << (adj.n_typeflows() - 1) << "=" << ((float) redundant_typeflows.count() / (adj.n_typeflows() - 1)) << endl;
     }
 
-    cerr << "Running DFS on original graph...";
 
-    auto all_methods_reachable = bfs(adj);
-
-    cerr << " " << std::count_if(all_methods_reachable.begin(), all_methods_reachable.end(), [](bool b) { return b; }) << " methods reachable!\n";
-
-    cerr << "Running DFS on purged graph...";
-
-    for(uint32_t mid : purged_mids)
-    {
-        adj.purge_method(mid);
-    }
-
-    auto methods_reachable = bfs(adj);
-
-    cerr << " " << std::count_if(methods_reachable.begin(), methods_reachable.end(), [](bool b) { return b; }) << " methods reachable!\n";
-
-    for(size_t i = 1; i < methods_reachable.size(); i++)
-    {
-        if(all_methods_reachable[i] && !methods_reachable[i])
-            cout << method_names[i] << endl;
-    }
-
-    return 0;
+    print_reachability(adj, method_names, method_ids_by_name);
 }
