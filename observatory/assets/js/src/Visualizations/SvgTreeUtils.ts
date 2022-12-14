@@ -23,16 +23,6 @@ export interface Tree {
     treeData: MyNode
 }
 
-export interface Point {
-    x: number;
-    y: number;
-}
-
-export interface Rectangle extends Point {
-    height: number;
-    width: number;
-}
-
 export interface SvgSelections {
     svg: d3.Selection<SVGSVGElement, unknown, HTMLElement, any>;
     zoomG: d3.Selection<SVGGElement, unknown, HTMLElement, any>;

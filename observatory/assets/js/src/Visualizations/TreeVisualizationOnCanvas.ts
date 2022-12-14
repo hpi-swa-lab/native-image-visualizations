@@ -1,13 +1,21 @@
 import * as d3 from 'd3'
 import {HierarchyPointLink, HierarchyPointNode, D3ZoomEvent} from "d3";
 import TreeVisualization from "./TreeVisualization";
-import {Point, Rectangle} from "./SvgTreeUtils";
 
 export interface MyNode {
     name: string,
     children: MyNode[]
 }
 
+export interface Point {
+    x: number;
+    y: number;
+}
+
+export interface Rectangle extends Point {
+    height: number;
+    width: number;
+}
 
 export default class TreeVisualizationOnCanvas extends TreeVisualization {
     constructor() {
