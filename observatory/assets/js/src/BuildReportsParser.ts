@@ -58,8 +58,8 @@ export function parseBuildReportToNodeWithSizeHierarchy(buildReport: Map<string,
         const name = report.get('name')
         if (name) {
             const packageList: string[] = _getPackageList(name)
-            const classList: string[] = _getStringList(name)
-            const method: string = _getMethod(name)
+            const classList: string[] = _getClassList(name)
+            const method: string = _getMethodName(name)
 
             packageList.forEach((packageName: string) => {
                 let packageNode: NodeWithSize = currentChildren.find((node: NodeWithSize) => node.name === packageName)
@@ -115,15 +115,9 @@ export function parseBuildReportToNodeWithSizeHierarchy(buildReport: Map<string,
 }
 
 function _getPackageList(name: string): string[] {
-    // remove function
-    if (name.match(/\(.*\)/)) {
-        // remove everything from the first ( on aka the function parameters
-        name = name.replace(/\(.*$/, '')
-        // remove everything from the last dot on aka the function name
-        name = name.replace(/(\.[^.]*)$/, '')
-    }
-
-    // remove inner classes
+    name = _removeFunctionQualifier(name)
+    
+    // check if it has a $ before the end, indicating an inner class
     if (name.match(/\$.*$/)) {
         // remove everything from the first $ on aka the inner classes
         name = name.replace(/\$.*$/, '')
@@ -132,6 +126,30 @@ function _getPackageList(name: string): string[] {
     }
 
     return name.split('.')
+}
+
+function _getClassList(name: string): string[] {
+    name = _removeFunctionQualifier(name)
+
+    // check if it has a last dot before the end
+    if (name.match(/.*(?=\.)\./)) {
+        // remove everything before the last dot aka the package list
+        name = name.replace(/.*(?=\.)\./, '')
+    }
+
+    return name.split('$')
+}
+
+function _removeFunctionQualifier(path: string): string {
+    // check if it has a ( before the end
+    if (path.match(/\(.*$/)) {
+        // remove everything from the first ( on aka the function parameters
+        path = path.replace(/\(.*$/, '')
+        // remove everything from the last dot on aka the function name
+        path = path.replace(/(\.[^.]*)$/, '')
+    }
+
+    return path
 }
 
 export function parseToPackageHierarchy(hierarchyString: string): HierarchyNode {
