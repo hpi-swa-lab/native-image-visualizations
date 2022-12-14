@@ -140,6 +140,16 @@ function _getClassList(name: string): string[] {
     return name.split('$')
 }
 
+function _getMethodName(path: string): string {
+    // check if it has a ( before the end
+    if (path.match(/\(.*$/)) {
+        // remove everything from the first ( on aka the function parameters
+        path = path.replace(/\(.*$/, '')
+    }
+
+    return path.replace(/.*(?=\.)\./, '')    
+}
+
 function _removeFunctionQualifier(path: string): string {
     // check if it has a ( before the end
     if (path.match(/\(.*$/)) {
