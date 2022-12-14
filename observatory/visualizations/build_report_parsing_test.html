@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Report Parsing Test</title>
+
+        <link rel="stylesheet" type="text/css" href="/assets/css/dist/main.css" />
+        <script src="../assets/js/dist/observatory.umd.js"></script>
+    </head>
+
+    <body>
+        <button id="button-confirm">Go Test</button>
+
+        <script type="module">
+            const buttonConfirm = document.getElementById('button-confirm')
+
+            buttonConfirm.addEventListener('click', async () => {
+                const result = Observatory.testBuildReportParser()
+                console.log(result)
+            })
+        </script>
+    </body>
+</html>

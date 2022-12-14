@@ -39,7 +39,7 @@ export function loadCSVFile(file: File): Promise<unknown[]> {
     })
 }
 
-export function parseBuildReportToNodeWithSizeHierarchy(buildReport: Map<string, any>[]): NodeWithSize {
+export function parseBuildReportToNodeWithSizeHierarchy(buildReport: Record<string, any>[]): NodeWithSize {
     const root: NodeWithSize = {
         name: 'root',
         type: NodeType.Package,
@@ -50,15 +50,14 @@ export function parseBuildReportToNodeWithSizeHierarchy(buildReport: Map<string,
     let currentChildren: NodeWithSize[]
     let parent: NodeWithSize
 
-    buildReport.forEach((report: Map<string, any>) => {
+    buildReport.forEach((report: Record<string, any>) => {
         currentChildren = root.children
         parent = root
 
-        const name = report.get('name')
-        if (name) {
-            const packageList: string[] = _getPackageList(name)
-            const classList: string[] = _getClassList(name)
-            const method: string = _getMethodName(name)
+        if (report.name) {
+            const packageList: string[] = _getPackageList(report.name)
+            const classList: string[] = _getClassList(report.name)
+            const method: string = _getMethodName(report.name)
 
             packageList.forEach((packageName: string) => {
                 let packageNode: NodeWithSize = currentChildren.find((node: NodeWithSize) => node.name === packageName)
@@ -84,7 +83,7 @@ export function parseBuildReportToNodeWithSizeHierarchy(buildReport: Map<string,
                 if (!classNode) {
                     classNode = {
                         name: className,
-                        type: NodeType.Package,
+                        type: NodeType.Class,
                         children: [] as NodeWithSize[],
                         size: 0
                     }
@@ -102,7 +101,7 @@ export function parseBuildReportToNodeWithSizeHierarchy(buildReport: Map<string,
                     name: method,
                     type: NodeType.Method,
                     children: [] as NodeWithSize[],
-                    size: report.get('size')
+                    size: report.size ? report.size : 0
                 }
 
                 currentChildren.push(methodNode)
