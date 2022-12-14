@@ -1,5 +1,7 @@
 import HierarchyNode from './SharedInterfaces/HierarchyNode'
 import { parse } from 'papaparse'
+import { NodeWithSize } from './SharedTypes/NodeWithSize'
+import { NodeType } from './SharedTypes/Node'
 
 export function loadTextFile(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -35,6 +37,56 @@ export function loadCSVFile(file: File): Promise<unknown[]> {
             }
         })
     })
+}
+
+export function parseBuildReportToNodeWithSizeHierarchy(buildReport: Map<string, any>[]): NodeWithSize {
+    const root: NodeWithSize = {
+        name: 'root',
+        type: NodeType.Package,
+        children: [] as NodeWithSize[],
+        size: 0
+    }
+
+    let currentChildren: NodeWithSize[] = root.children
+    let parent: NodeWithSize = root
+
+    buildReport.forEach((report: Map<string, any>) => {
+        currentChildren = root.children
+        parent = root
+
+        const name: string = report.get('name')
+        if (name) {
+            const splitName: string[] = name.split('.')
+            splitName.forEach((segment: string, index: number) => {
+                let child = currentChildren.find((child: NodeWithSize) => child.name === segment)
+
+                let childType: NodeType
+                if (index === splitName.length - 1) {
+                    childType = NodeType.Method
+                } else if (index === splitName.length - 2) {
+                    childType = NodeType.Class
+                } else {
+                    childType = NodeType.Package
+                }
+
+                if (!child) {
+                    child = {
+                        name: segment,
+                        type: childType,
+                        children: [] as NodeWithSize[],
+                        size: report.get('size')
+                    }
+
+                    currentChildren.push(child)
+                }
+
+                currentChildren = child.children
+                parent = child
+            })
+        }
+    })
+
+    return root
 }
 
 export function parseToPackageHierarchy(hierarchyString: string): HierarchyNode {
