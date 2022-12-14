@@ -6,7 +6,7 @@ import CausalityEdge from './Interfaces/CausalityEdge'
 import CausalityHierarchyNode from './Classes/CausalityHierarchyNode'
 import Edge from '../../SharedInterfaces/Edge'
 import Tooltip from '../../Components/Tooltip'
-import { forceCollide, forceLink, forceSimulation } from 'd3'
+import { forceCollide, forceLink, forceSimulation, ZoomTransform } from 'd3'
 
 export default class ZoomableCausalityGraph implements Visualization {
     nodesById: Record<number, CausalityHierarchyNode>
@@ -23,7 +23,7 @@ export default class ZoomableCausalityGraph implements Visualization {
     constructor(nodesById: Record<number, CausalityNode>) {
         this.tooltip = new Tooltip()
         document.body.appendChild(this.tooltip.widget)
-        
+
         this.nodesById = {}
 
         Object.values(nodesById).forEach((node: CausalityHierarchyNode) => {
@@ -60,18 +60,31 @@ export default class ZoomableCausalityGraph implements Visualization {
 
                     const scale = event.transform.k
 
-                    console.log(event.transform, this.currentScale, scale / this.currentScale > 70)
-
                     if (this.currentScale / scale > 70) {
                         this.currentScale = scale
                         // TODO: zoom out
                     }
                     if (scale / this.currentScale > 70) {
                         this.currentScale = scale
-                        // TODO: zoom in
+
                         const visibleNodes = this.getVisibleNodes(event.transform)
+
                         if (visibleNodes.length > 1) {
-                            // TODO: show the inner workings of that node
+                            this.nodesToDisplay = visibleNodes
+                            this._tick()
+
+                            visibleNodes.forEach((node: CausalityHierarchyNode) => {
+                                // TODO: figure out how to get the d3-element of that node
+                                d3.select(node)
+                                    .append('g')
+                                    .selectAll('circle')
+                                    .data(node.children)
+                                    .join('circle')
+                                    .attr('r', (node: CausalityHierarchyNode) => node.radius)
+                                    .attr('fill', (node: CausalityHierarchyNode) => node.color)
+                                    .attr('cx', (node: CausalityHierarchyNode) => node.x)
+                                    .attr('cy', (node: CausalityHierarchyNode) => node.y)
+                            })
                         }
                     }
                 })
@@ -79,9 +92,19 @@ export default class ZoomableCausalityGraph implements Visualization {
             .append('g')
     }
 
-    getVisibleNodes(transform: any): CausalityHierarchyNode[] {
-        // TODO: filter out node that are not inside the current view port
-        return this.nodesToDisplay.filter((node: CausalityHierarchyNode) => true)
+    getVisibleNodes(transform: ZoomTransform): CausalityHierarchyNode[] {
+        return this.nodesToDisplay.filter((node: CausalityHierarchyNode) => {
+            const x = node.x + transform.x / transform.k
+            const y = node.y + transform.y / transform.k
+            const radius = node.radius
+
+            return (
+                x + radius > 0 &&
+                x - radius < window.innerWidth &&
+                y + radius > 0 &&
+                y - radius < window.innerHeight
+            )
+        })
     }
 
     continueSimulation(callback: () => void = () => {}, milliseconds: number = 5000) {
@@ -92,7 +115,7 @@ export default class ZoomableCausalityGraph implements Visualization {
         }, milliseconds)
     }
 
-    _tick(){
+    _tick() {
         d3.select('svg g')
             .selectAll('circle')
             .data(this.nodesToDisplay)
@@ -106,7 +129,7 @@ export default class ZoomableCausalityGraph implements Visualization {
                 this.tooltip.datapoints = {
                     display: node.display,
                     name: node.name,
-                    type: node.type,
+                    type: node.type
                 }
                 this.tooltip.setVisible()
             })

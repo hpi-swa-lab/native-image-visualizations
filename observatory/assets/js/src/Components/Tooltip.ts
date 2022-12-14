@@ -112,7 +112,7 @@ export default class Tooltip {
             title.innerHTML = name + ': '
 
             const data = document.createElement('p')
-            data.innerHTML = this.datapoints[name] ? this.datapoints[name] : "[none]"
+            data.innerHTML = this.datapoints[name] ? this.datapoints[name] : '[none]'
 
             element.appendChild(title)
             element.appendChild(data)
