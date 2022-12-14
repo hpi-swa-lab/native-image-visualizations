@@ -23,8 +23,8 @@ export default class TreeVisualizationSVG extends TreeVisualization {
 
         // this.universesMetadata = {}
         this.universesMetadata = {
-            '0': {name: 'micronautguide', color: d3.rgb(200,0,0)},
-            '1': {name: 'helloworld', color: d3.rgb(0,200,0)},
+            '0': {name: 'micronautguide', color: d3.rgb(148, 216, 45)},
+            '1': {name: 'helloworld', color: d3.rgb(250, 82, 82)},
             '01': {name: 'micronautguide, helloworld', color: d3.rgb(150,150, 150)},
             'modified': {name: 'common and modified', color: d3.rgb(165, 216, 255)}
         }
