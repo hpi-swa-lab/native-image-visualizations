@@ -1,5 +1,6 @@
 import {HierarchyPointNode} from "d3";
 import * as d3 from "d3";
+import {COLOR_UNMODIFIED, MODIFIED, ROOT_NODE_NAME} from "./TreeConstants";
 
 export const margin = {top: 0, right: 50, bottom: 0, left: 75};
 
@@ -147,7 +148,7 @@ function setSize(nodes:MyNode[]) {
             parents.add(node.parent)
     }
 
-    if(nodes.length == 1 && nodes[0].name == 'diffing') return
+    if(nodes.length == 1 && nodes[0].name == ROOT_NODE_NAME) return
 
     setSize(Array.from(parents))
 }
@@ -235,10 +236,10 @@ export function updateTree(event: any | null,
             if (d.data.universes.size == 1) {
                 return universePropsDict[Array.from(d.data.universes).join('')].color.toString()
             } else if (d.data.isModified) {
-                return universePropsDict['modified'].color.toString()
+                return universePropsDict[MODIFIED].color.toString()
             }
             else {
-                return '#555'
+                return COLOR_UNMODIFIED.toString()
             }
 
             // d.data.universes.size == 0 ? '#555' : universePropsDict[Array.from(d.data.universes).join('')].color.toString()

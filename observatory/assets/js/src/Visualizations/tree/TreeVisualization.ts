@@ -7,12 +7,10 @@ import {
     MyNode,
     SvgSelections, Tree, TreeNodesFilter, UniverseProps, updateTree, markNodesModifiedFromLeaves, setNodeSizeFromLeaves
 } from "./TreeUtils";
-
+import {COLOR_GREEN, COLOR_MODIFIED, COLOR_RED, ROOT_NODE_NAME, UNMODIFIED} from "./TreeConstants";
 
 
 export default class TreeVisualization implements Visualization {
-
-    UNMODIFIED = 'UNMODIFIED'
 
     universesMetadata: Dictionary<UniverseProps>;
     filter: TreeNodesFilter;
@@ -20,10 +18,10 @@ export default class TreeVisualization implements Visualization {
     constructor() {
         // this.universesMetadata = {}
         this.universesMetadata = {
-            '0': {name: 'micronautguide', color: d3.rgb(148, 216, 45)},
-            '1': {name: 'helloworld', color: d3.rgb(250, 82, 82)},
+            '0': {name: 'micronautguide', color: COLOR_RED},
+            '1': {name: 'helloworld', color: COLOR_GREEN},
             '01': {name: 'micronautguide, helloworld', color: d3.rgb(150,150, 150)},
-            'modified': {name: 'common and modified', color: d3.rgb(165, 216, 255)}
+            MODIFIED: {name: 'modified packages', color: COLOR_MODIFIED}
         }
         this.filter = {
             universes: new Set(Object.keys(this.universesMetadata).filter(key => key.length == 1)),
@@ -155,7 +153,7 @@ export default class TreeVisualization implements Visualization {
 
         // build tree including universes
         let treeData: MyNode = {
-            name: 'diffing',
+            name: ROOT_NODE_NAME,
             children: [],
             parent: undefined,
             universes: new Set<number>(),
@@ -191,7 +189,7 @@ export default class TreeVisualization implements Visualization {
         //     }
         // })
         //
-        // that.universesMetadata['modified'] = {
+        // that.universesMetadata[MODIFIED] = {
         //     name: 'common but modified',
         //     color: d3.rgb(0,0,200)
         // }
@@ -223,7 +221,7 @@ export default class TreeVisualization implements Visualization {
                 this.universesMetadata[key].name,
                 this.universesMetadata[key].color.toString()))
         })
-        fieldset.appendChild(this.createCheckboxLabelDiv(this.UNMODIFIED, 'unmodified packages', '#555'), )
+        fieldset.appendChild(this.createCheckboxLabelDiv(UNMODIFIED, 'unmodified packages', '#555'), )
 
         form.appendChild(fieldset)
 
@@ -275,7 +273,7 @@ export default class TreeVisualization implements Visualization {
 
         this.filter.universes = new Set(checkedKeys)
         this.filter.ignore= false
-        this.filter.showUnmodified = checkedKeys.includes(this.UNMODIFIED)
+        this.filter.showUnmodified = checkedKeys.includes(UNMODIFIED)
 
         removeFilterFromTree(tree.treeData)
         filterNodesFromLeaves(tree.leaves, this.filter)
