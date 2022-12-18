@@ -5,7 +5,7 @@ import {
     createHierarchyFromPackages, Dictionary, margin, removeFilterFromTree,
     filterNodesFromLeaves,
     MyNode,
-    SvgSelections, Tree, TreeNodesFilter, UniverseProps, updateTree, markNodesModifiedFromLeaves
+    SvgSelections, Tree, TreeNodesFilter, UniverseProps, updateTree, markNodesModifiedFromLeaves, setNodeSizeFromLeaves
 } from "./TreeUtils";
 
 
@@ -160,7 +160,8 @@ export default class TreeVisualization implements Visualization {
             parent: undefined,
             universes: new Set<number>(),
             isModified: false,
-            isFiltered: false
+            isFiltered: false,
+            codeSize: 0
         }
         let sets = new Set<string>()
         let leaves: Set<MyNode> = new Set()
@@ -176,6 +177,7 @@ export default class TreeVisualization implements Visualization {
             treeData: treeData
         }
 
+        setNodeSizeFromLeaves(tree.leaves)
         markNodesModifiedFromLeaves(tree.leaves)
         filterNodesFromLeaves(tree.leaves, this.filter)
 
@@ -270,7 +272,6 @@ export default class TreeVisualization implements Visualization {
         const form = e.target as HTMLFormElement
         const checkedKeys = Array.from(form.querySelectorAll("input[type=checkbox]:checked")).map((item:HTMLInputElement) => item.value)
         console.log(`%c form submitted [${checkedKeys}]`, 'background: green')
-
 
         this.filter.universes = new Set(checkedKeys)
         this.filter.ignore= false

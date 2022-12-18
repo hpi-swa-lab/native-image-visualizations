@@ -11,7 +11,7 @@ export interface MyNode {
     isModified: boolean
     isFiltered: boolean
 //     sizes?: { [id: string] : number; }
-//     size?: number
+    codeSize: number
 //     exclusiveSizes?: { [id: string] : number; }
 }
 
@@ -71,7 +71,8 @@ export function createHierarchyFromPackages(universeId: number, text: string, da
                     parent: current,
                     universes: new Set<number>().add(universeId),
                     isModified: false,
-                    isFiltered: false
+                    isFiltered: false,
+                    codeSize: 0,
                 }
                 current.children.push(child)
             }
@@ -80,8 +81,6 @@ export function createHierarchyFromPackages(universeId: number, text: string, da
             if (i === pathSegments.length - 1)
                 leaves.add(child)
         }
-
-
     }
 }
 
@@ -129,6 +128,28 @@ export function collapseChildren(d: any) {
 
     d.children.forEach((child: any) => collapseChildren(child))
     d.children = null;
+}
+
+export function setNodeSizeFromLeaves(leaves: MyNode[]) {
+    const parents = new Set<MyNode>()
+    for(let leave of leaves) {
+        leave.codeSize = 1
+        parents.add(leave.parent)
+    }
+    setSize(Array.from(parents))
+}
+
+function setSize(nodes:MyNode[]) {
+    const parents = new Set<MyNode>()
+    for(let node of nodes) {
+        node.codeSize = node.children.map(child => child.codeSize).reduce((sum: number, codeSize: number) => sum + codeSize)
+        if(node.parent)
+            parents.add(node.parent)
+    }
+
+    if(nodes.length == 1 && nodes[0].name == 'diffing') return
+
+    setSize(Array.from(parents))
 }
 
 export function countPrivateLeaves(node: any): number {
@@ -208,7 +229,8 @@ export function updateTree(event: any | null,
         });
 
     let nodeEnterCircle = nodeEnter.append("circle")
-        .attr("r", (d: any) => d._children && d.id !== 0 ? 5 + (countPrivateLeaves(d) / 2) : 5)
+        // .attr("r", (d: any) => d._children && d.id !== 0 ? 5 + (countPrivateLeaves(d) / 2) : 5)
+        .attr("r", (d: any) => d._children && d.id !== 0 ? 9 + (d.data.codeSize / 2) : 9)
         .attr("fill", (d: any) => {
             if (d.data.universes.size == 1) {
                 return universePropsDict[Array.from(d.data.universes).join('')].color.toString()
@@ -236,6 +258,7 @@ export function updateTree(event: any | null,
     let mousemove = function(event:MouseEvent, d: HierarchyPointNode<MyNode>) {
         svgSelections.tooltip
             .html(`**Node data:**
+                            <br>codeSize: ${d.data.codeSize}
                             <br>isFiltered: ${d.data.isFiltered}
                             <br>isModified: ${d.data.isModified}
                             <br>universes: ${universePropsDict[Array.from(d.data.universes).join('')].name}
