@@ -1,17 +1,16 @@
 import * as d3 from 'd3'
 import {HierarchyPointNode} from "d3";
-import TreeVisualization from "./TreeVisualization";
 import {
     countPrivateLeaves,
     createHierarchyFromPackages, Dictionary, margin, removeFilterFromTree,
     filterNodesFromLeaves,
     MyNode,
     SvgSelections, Tree, TreeNodesFilter, UniverseProps, updateTree, markNodesModifiedFromLeaves
-} from "./SvgTreeUtils";
+} from "./TreeUtils";
 
 
 
-export default class TreeVisualizationSVG extends TreeVisualization {
+export default class TreeVisualization implements Visualization {
 
     UNMODIFIED = 'UNMODIFIED'
 
@@ -19,8 +18,6 @@ export default class TreeVisualizationSVG extends TreeVisualization {
     filter: TreeNodesFilter;
 
     constructor() {
-        super()
-
         // this.universesMetadata = {}
         this.universesMetadata = {
             '0': {name: 'micronautguide', color: d3.rgb(148, 216, 45)},
@@ -219,10 +216,10 @@ export default class TreeVisualizationSVG extends TreeVisualization {
 
         // add checkboxes & labels
         filteredKeys.forEach(key => {
-           fieldset.appendChild(this.createCheckboxLabelDiv(
-               key,
-               this.universesMetadata[key].name,
-               this.universesMetadata[key].color.toString()))
+            fieldset.appendChild(this.createCheckboxLabelDiv(
+                key,
+                this.universesMetadata[key].name,
+                this.universesMetadata[key].color.toString()))
         })
         fieldset.appendChild(this.createCheckboxLabelDiv(this.UNMODIFIED, 'unmodified packages', '#555'), )
 
