@@ -2,12 +2,12 @@ import * as d3 from 'd3'
 import {HierarchyPointNode} from "d3";
 import {
     countPrivateLeaves,
-    createHierarchyFromPackages, Dictionary, margin, removeFilterFromTree,
+    createHierarchyFromPackages, margin, removeFilterFromTree,
     filterNodesFromLeaves,
-    MyNode,
-    SvgSelections, Tree, TreeNodesFilter, UniverseProps, updateTree, markNodesModifiedFromLeaves, setNodeSizeFromLeaves
+    updateTree, markNodesModifiedFromLeaves, setNodeSizeFromLeaves
 } from "./TreeUtils";
 import {COLOR_GREEN, COLOR_MODIFIED, COLOR_RED, ROOT_NODE_NAME, UNMODIFIED} from "./TreeConstants";
+import {Dictionary, MyNode, SvgSelections, Tree, TreeNodesFilter, UniverseProps} from "./TreeTypes";
 
 
 export default class TreeVisualization implements Visualization {
@@ -32,7 +32,6 @@ export default class TreeVisualization implements Visualization {
     }
 
     generate(): void {
-
         this.loadUniverses().then((tree:Tree) => {
             console.debug("Universes: ", tree)
 
@@ -70,6 +69,7 @@ export default class TreeVisualization implements Visualization {
             tree.root.descendants().forEach((d: any, i) => {
                 d.id = i;
                 d._children = d.children;
+                // FIXME ? only expand first level of children
                 // if (d.depth > 0) d.children = null; // only expand the first level of children
             });
 

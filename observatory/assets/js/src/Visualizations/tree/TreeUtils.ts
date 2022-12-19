@@ -1,51 +1,11 @@
 import {HierarchyPointNode} from "d3";
 import * as d3 from "d3";
 import {COLOR_UNMODIFIED, MODIFIED, ROOT_NODE_NAME} from "./TreeConstants";
+import {Dictionary, MyNode, SvgSelections, Tree, TreeNodesFilter, UniverseProps} from "./TreeTypes";
 
 export const margin = {top: 0, right: 50, bottom: 0, left: 75};
 
-export interface MyNode {
-    name: string,
-    children: MyNode[]
-    parent: MyNode
-    universes: Set<number>
-    isModified: boolean
-    isFiltered: boolean
-//     sizes?: { [id: string] : number; }
-    codeSize: number
-//     exclusiveSizes?: { [id: string] : number; }
-}
 
-export interface Tree {
-    layout?: d3.TreeLayout<unknown>;
-    root?: HierarchyPointNode<MyNode>;
-    leaves: MyNode[];
-    sets: string[];
-    treeData: MyNode
-}
-
-export interface SvgSelections {
-    svg: d3.Selection<SVGSVGElement, unknown, HTMLElement, any>;
-    zoomG: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
-    gNode: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
-    gLink: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
-    tooltip: d3.Selection<HTMLDivElement, unknown, HTMLElement, any>;
-}
-
-export interface UniverseProps {
-    name: string,
-    color: d3.Color
-}
-
-export interface Dictionary<T> {
-    [id: string]: T
-}
-
-export interface TreeNodesFilter {
-    universes: Set<string>;
-    showUnmodified: boolean;
-    ignore: boolean // true, if this filter should be ignored; otherwise false
-}
 
 export function setAttributes(el:HTMLElement, attrs: { [key: string]: string}) {
     for(const key in attrs) {
