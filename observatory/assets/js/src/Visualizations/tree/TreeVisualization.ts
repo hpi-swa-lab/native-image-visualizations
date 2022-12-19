@@ -8,9 +8,19 @@ import {
     filterNodesFromLeaves,
     updateTree,
     markNodesModifiedFromLeaves,
-    setNodeSizeFromLeaves
+    setNodeSizeFromLeaves,
+    createCheckboxLabelDiv,
+    createLabelDiv
 } from './TreeUtils'
-import { COLOR_GREEN, COLOR_MODIFIED, COLOR_RED, ROOT_NODE_NAME, UNMODIFIED } from './TreeConstants'
+import {
+    COLOR_GREEN,
+    COLOR_MODIFIED,
+    COLOR_RED,
+    COLOR_UNMODIFIED,
+    MODIFIED,
+    ROOT_NODE_NAME,
+    UNMODIFIED
+} from './TreeConstants'
 import {
     Dictionary,
     MyNode,
@@ -25,18 +35,12 @@ export default class TreeVisualization implements Visualization {
     filter: TreeNodesFilter
 
     constructor() {
-        // this.universesMetadata = {}
-        this.universesMetadata = {
-            '0': { name: 'micronautguide', color: COLOR_RED },
-            '1': { name: 'helloworld', color: COLOR_GREEN },
-            '01': { name: 'micronautguide, helloworld', color: d3.rgb(150, 150, 150) },
-            MODIFIED: { name: 'modified packages', color: COLOR_MODIFIED }
-        }
+        this.universesMetadata = {}
         this.filter = {
-            universes: new Set(
-                Object.keys(this.universesMetadata).filter((key) => key.length == 1)
-            ),
-            // universes: new Set('1'),
+            universes: new Set(['0', '1']),
+            // universes: new Set(
+            //     Object.keys(this.universesMetadata).filter((key) => key.length == 1)
+            // ),
             showUnmodified: false,
             ignore: false
         }
@@ -144,12 +148,18 @@ export default class TreeVisualization implements Visualization {
     // ##################################################################
 
     async loadUniverses() {
-        // must be in the same order as read-in files!
-        const universeNames = ['micronautguide', 'helloworld']
-        const texts = await Promise.all([
-            d3.text('../assets/data/used_methods_micronautguide.txt'),
-            d3.text('../assets/data/used_methods_helloworld.txt')
-        ])
+        const files = [
+            '../assets/data/used_methods_micronautguide.txt',
+            '../assets/data/used_methods_helloworld.txt'
+        ]
+
+        const universeNames = files.map((path) => {
+            const pathSegments = path.split('/')
+            const nameSegments = pathSegments[pathSegments.length - 1].split('_')
+            return nameSegments[nameSegments.length - 1].split('.')[0]
+        })
+
+        const texts = await Promise.all(files.map((file) => d3.text(file)))
 
         // build tree including universes
         let treeData: MyNode = {
@@ -179,20 +189,26 @@ export default class TreeVisualization implements Visualization {
         markNodesModifiedFromLeaves(tree.leaves)
         filterNodesFromLeaves(tree.leaves, this.filter)
 
-        // let colors:d3.RGBColor[] = [d3.rgb(200,0,0), d3.rgb(0,200,0), d3.rgb(150,150,150)]
+        let colors: d3.RGBColor[] = [COLOR_RED, COLOR_GREEN]
         //
-        // myTree.sets.forEach((setId, i) => {
-        //     that.universesMetadata[setId] = {
-        //         name: setId.split('').map((id:string) => universeNames[parseInt(id)]).join(', '),
-        //         color: colors[i]
-        //     }
-        // })
-        //
-        // that.universesMetadata[MODIFIED] = {
-        //     name: 'common but modified',
-        //     color: d3.rgb(0,0,200)
-        // }
+        Array.from(sets)
+            .filter((setId) => setId.length == 1)
+            .forEach((setId, i) => {
+                this.universesMetadata[setId] = {
+                    name: setId
+                        .split('')
+                        .map((id: string) => universeNames[parseInt(id)])
+                        .join(', '),
+                    color: colors[i]
+                }
+            })
 
+        this.universesMetadata[MODIFIED] = {
+            name: 'common and modified',
+            color: COLOR_MODIFIED
+        }
+
+        // TODO remove debug log
         console.debug('universesMetadata: ', this.universesMetadata)
         for (let key in this.universesMetadata) {
             console.debug(
@@ -213,20 +229,30 @@ export default class TreeVisualization implements Visualization {
         legend.innerText = 'Choose Universe(s) to be displayed'
         fieldset.appendChild(legend)
         const keys = Object.keys(this.universesMetadata)
-        keys.pop() // removes the modified but common option
         const filteredKeys = keys.filter((key) => key.length == 1)
 
         // add checkboxes & labels
         filteredKeys.forEach((key) => {
             fieldset.appendChild(
-                this.createCheckboxLabelDiv(
+                createCheckboxLabelDiv(
                     key,
                     this.universesMetadata[key].name,
-                    this.universesMetadata[key].color.toString()
+                    this.universesMetadata[key].color.toString(),
+                    this.filter
                 )
             )
         })
-        fieldset.appendChild(this.createCheckboxLabelDiv(UNMODIFIED, 'unmodified packages', '#555'))
+        fieldset.appendChild(
+            createCheckboxLabelDiv(
+                UNMODIFIED,
+                'unmodified packages',
+                COLOR_UNMODIFIED.toString(),
+                this.filter
+            )
+        )
+        fieldset.appendChild(
+            createLabelDiv(MODIFIED, 'modified packages', COLOR_MODIFIED.toString())
+        )
 
         form.appendChild(fieldset)
 
@@ -241,31 +267,6 @@ export default class TreeVisualization implements Visualization {
         document.body.appendChild(form)
 
         return form
-    }
-
-    createCheckboxLabelDiv(id: string, label: string, backgroundColor: string) {
-        const div = document.createElement('div')
-        div.classList.add('form-check')
-        const checkboxEl = document.createElement('input')
-        checkboxEl.classList.add('form-check-input')
-        checkboxEl.setAttribute('type', 'checkbox')
-        checkboxEl.setAttribute('id', id)
-        checkboxEl.setAttribute('value', id)
-
-        if (this.filter.universes.has(id)) {
-            checkboxEl.checked = true
-        }
-
-        const labelEl = document.createElement('Label')
-        labelEl.classList.add('form-check-label')
-        labelEl.setAttribute('for', id)
-        labelEl.innerText = label
-        div.style.backgroundColor = backgroundColor
-
-        div.appendChild(checkboxEl)
-        div.appendChild(labelEl)
-
-        return div
     }
 
     onSubmit(

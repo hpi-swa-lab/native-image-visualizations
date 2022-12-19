@@ -136,6 +136,57 @@ export function countPrivateLeaves(node: any): number {
 }
 
 // ##########################################################################################################
+// ##### CREATE HTML ########################################################################################
+// ##########################################################################################################
+
+export function createCheckboxLabelDiv(
+    id: string,
+    label: string,
+    backgroundColor: string,
+    filter: TreeNodesFilter
+) {
+    const div = createDiv(backgroundColor)
+    div.appendChild(createCheckbox(id, filter))
+    div.appendChild(createLabel(id, label))
+    return div
+}
+
+export function createLabelDiv(id: string, label: string, backgroundColor: string) {
+    const div = createDiv(backgroundColor)
+    div.appendChild(createLabel(id, label))
+    return div
+}
+
+function createDiv(backgroundColor: string) {
+    const div = document.createElement('div')
+    div.classList.add('form-check')
+    div.style.backgroundColor = backgroundColor
+    return div
+}
+
+function createCheckbox(id: string, filter: TreeNodesFilter) {
+    const checkboxEl = document.createElement('input')
+    checkboxEl.classList.add('form-check-input')
+    checkboxEl.setAttribute('type', 'checkbox')
+    checkboxEl.setAttribute('id', id)
+    checkboxEl.setAttribute('value', id)
+
+    if (filter.universes.has(id)) {
+        checkboxEl.checked = true
+    }
+
+    return checkboxEl
+}
+
+function createLabel(id: string, label: string) {
+    const labelEl = document.createElement('Label')
+    labelEl.classList.add('form-check-label')
+    labelEl.setAttribute('for', id)
+    labelEl.innerText = label
+    return labelEl
+}
+
+// ##########################################################################################################
 // ##### UPDATE TREE ########################################################################################
 // ##########################################################################################################
 
