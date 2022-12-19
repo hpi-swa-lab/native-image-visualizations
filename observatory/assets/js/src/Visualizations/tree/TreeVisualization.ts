@@ -50,21 +50,6 @@ export default class TreeVisualization implements Visualization {
 
             const svg = d3.select('body').append('svg')
 
-            // TODO remove pattern if unused
-            // svg.append('pattern')
-            //     .attr('id', 'diagonalHatch')
-            //     .attr('patternUnits', 'userSpaceOnUse')
-            //     .attr('width', 8)
-            //     .attr('height', 8)
-            // .append('path')
-            //     .attr('d', 'M-2,2 l4,-4 M0,8 l8,-8 M6,10 l4,-4')
-            //     .attr('stroke', '#ff0000')
-            //     .attr('stroke-width', 4)
-            // .append('path')
-            //     .attr('d', '2,-2 l2,-2 M0,4 l4,-4 M3,5 l2,-2')
-            //     .attr('stroke', '#00ff00')
-            //     .attr('stroke-width', 1)
-
             const width = document.body.clientWidth
             const height = document.body.clientHeight
             const innerWidth = width - margin.left - margin.right

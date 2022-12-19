@@ -222,11 +222,6 @@ export function updateTree(
 
             // d.data.universes.size == 0 ? '#555' : universePropsDict[Array.from(d.data.universes).join('')].color.toString()
         })
-        // Add the pattern
-        // .attr('fill', 'url(#diagonalHatch)')
-        // .attr('stroke', '#ff0000')
-        // Add the mask
-        // .attr("style", "mask:url(#mask);")
         .attr('stroke-width', 10)
 
     // see source code: https://d3-graph-gallery.com/graph/interactivity_tooltip.html
