@@ -1,5 +1,5 @@
 import VennVisualization from './Visualizations/VennVisualization'
-import TreeVisualization from "./Visualizations/tree/TreeVisualization";
+import TreeVisualization from './Visualizations/tree/TreeVisualization'
 
 export function generateVenn() {
     let venn = new VennVisualization()
