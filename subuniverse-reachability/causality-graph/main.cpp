@@ -9,6 +9,9 @@
 #include <cstring>
 #include <boost/dynamic_bitset.hpp>
 
+#define PRINT_ALL 1
+#define PRINT_PURGED 1
+
 using namespace std;
 
 static void read_lines(vector<string>& dst, const char* path)
@@ -232,12 +235,15 @@ static vector<bool> bfs(const Adjacency& adj)
     vector<uint32_t> next_method_worklist;
     queue<uint32_t> typeflow_worklist{{0}};
 
+    uint64_t n_worklist_added = 0;
+
     while(true)
     {
         while(!typeflow_worklist.empty())
         {
             uint32_t u = typeflow_worklist.front();
             typeflow_worklist.pop();
+            n_worklist_added++;
 
             for(auto [ v, filter] : adj.neighbour_flows.at(u))
             {
@@ -265,6 +271,8 @@ static vector<bool> bfs(const Adjacency& adj)
         if(method_worklist.empty())
             break;
 
+        n_worklist_added += method_worklist.size();
+
         for(uint32_t u : method_worklist)
         {
 
@@ -288,6 +296,8 @@ static vector<bool> bfs(const Adjacency& adj)
 
     //cerr << "Typeflow iterations needed: " << typeflow_iterations << endl;
     //cerr << "Bits transferred/Typeflow transfers: " << transfer_bit_count << "/" << typeflow_transfers << "=" << ((double)transfer_bit_count / typeflow_transfers) << endl;
+
+    cerr << "n_worklist_added(" << n_worklist_added << ')';
 
     return method_visited;
 }
@@ -425,7 +435,11 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
 
     for(size_t i = 1; i < methods_reachable.size(); i++)
     {
+#if PRINT_PURGED
         if(all_methods_reachable[i] && !methods_reachable[i])
+#else
+        if(methods_reachable[i])
+#endif
             cout << method_names[i] << endl;
     }
 }
@@ -505,7 +519,7 @@ int main(int argc, const char** argv)
 
     Adjacency adj(type_names.size(), method_names.size(), typeflow_names.size(), interflows, virtual_invokes, direct_invokes, typestates, std::move(typeflow_methods));
 
-    if(true)
+    if(false)
     {
         boost::dynamic_bitset<> redundant_typeflows(adj.n_typeflows());
 
@@ -555,6 +569,10 @@ int main(int argc, const char** argv)
         cerr << "Redundant typeflows: " << redundant_typeflows.count() << "/" << (adj.n_typeflows() - 1) << "=" << ((float) redundant_typeflows.count() / (adj.n_typeflows() - 1)) << endl;
     }
 
-
-    print_reachability(adj, method_names, method_ids_by_name);
+#if REACHABILITY
+    print_reachability
+#else
+    simulate_purge
+#endif
+    (adj, method_names, method_ids_by_name);
 }
