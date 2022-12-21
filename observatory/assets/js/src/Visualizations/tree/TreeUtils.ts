@@ -157,7 +157,7 @@ export function createLabelDiv(id: string, label: string, backgroundColor: strin
 
 function createDiv(backgroundColor: string) {
     const div = document.createElement('div')
-    div.classList.add('form-check')
+    div.classList.add('form-check', 'form-switch')
     div.style.backgroundColor = backgroundColor
     return div
 }
@@ -166,6 +166,7 @@ function createCheckbox(id: string, filter: TreeNodesFilter) {
     const checkboxEl = document.createElement('input')
     checkboxEl.classList.add('form-check-input')
     checkboxEl.setAttribute('type', 'checkbox')
+    checkboxEl.setAttribute('role', 'switch')
     checkboxEl.setAttribute('id', id)
     checkboxEl.setAttribute('value', id)
 
