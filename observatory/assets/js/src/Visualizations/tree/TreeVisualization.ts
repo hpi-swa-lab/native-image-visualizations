@@ -9,7 +9,7 @@ import {
     markNodesModifiedFromLeaves,
     setNodeSizeFromLeaves,
     createCheckboxLabelDiv,
-    createLabelDiv
+    createLabelDiv, createFieldsetWithLegend
 } from './TreeUtils'
 import {
     COLOR_GREEN,
@@ -222,12 +222,26 @@ export default class TreeVisualization implements Visualization {
 
     createInputForm() {
         const form = document.createElement('form')
-        const fieldset = document.createElement('fieldset')
-        fieldset.classList.add('border', 'p-2', 'w-auto')
-        const legend = document.createElement('legend')
-        legend.classList.add('w-auto', 'float-none', 'p-2')
-        legend.innerText = 'Choose Universe(s) to be displayed'
-        fieldset.appendChild(legend)
+        form.classList.add('border', 'p-2', 'rounded')
+
+        form.appendChild(this.createFieldsetUniverses())
+        form.appendChild(this.createFieldsetSorting())
+        form.appendChild(this.createFieldsetDetailsSlider())
+        form.appendChild(this.createFieldsetMethodsFilter())
+
+        // add submit button
+        const submitBtn = document.createElement('button')
+        submitBtn.setAttribute('type', 'submit')
+        submitBtn.classList.add('btn', 'btn-sm', 'btn-primary', 'm-2')
+        submitBtn.innerText = 'update tree'
+        form.appendChild(submitBtn)
+        document.body.appendChild(form)
+
+        return form
+    }
+
+    createFieldsetUniverses() {
+        const fieldset = createFieldsetWithLegend('Choose Universe(s) to be displayed')
         const keys = Object.keys(this.universesMetadata)
         const filteredKeys = keys.filter((key) => key.length == 1)
 
@@ -254,19 +268,22 @@ export default class TreeVisualization implements Visualization {
             createLabelDiv(MODIFIED, 'modified packages', COLOR_MODIFIED.toString())
         )
 
-        form.appendChild(fieldset)
+        return fieldset
+    }
 
-        // add submit button
-        const submitBtn = document.createElement('button')
-        submitBtn.setAttribute('type', 'submit')
-        submitBtn.classList.add('btn')
-        submitBtn.classList.add('btn-sm')
-        submitBtn.classList.add('btn-primary')
-        submitBtn.innerText = 'update tree'
-        fieldset.appendChild(submitBtn)
-        document.body.appendChild(form)
+    createFieldsetSorting() {
+        const fieldset = createFieldsetWithLegend('WIP - Sorting')
+        return fieldset
+    }
 
-        return form
+    createFieldsetDetailsSlider() {
+        const fieldset = createFieldsetWithLegend('WIP - Details Slider')
+        return fieldset
+    }
+
+    createFieldsetMethodsFilter() {
+        const fieldset = createFieldsetWithLegend('WIP - Methods Filter')
+        return fieldset
     }
 
     onSubmit(

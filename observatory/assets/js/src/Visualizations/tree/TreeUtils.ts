@@ -137,6 +137,16 @@ export function countPrivateLeaves(node: any): number {
 // ##### CREATE HTML ########################################################################################
 // ##########################################################################################################
 
+export function createFieldsetWithLegend(legendText: string) {
+    const fieldset = document.createElement('fieldset')
+    fieldset.classList.add('border', 'p-2', 'w-auto')
+    const legend = document.createElement('legend')
+    legend.classList.add('w-auto', 'float-none', 'p-2', 'fs-5' )
+    legend.innerText = legendText
+    fieldset.appendChild(legend)
+    return fieldset
+}
+
 export function createCheckboxLabelDiv(
     id: string,
     label: string,
