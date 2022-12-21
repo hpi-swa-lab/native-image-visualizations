@@ -1,6 +1,6 @@
 import { HierarchyPointNode } from 'd3'
 import * as d3 from 'd3'
-import { COLOR_UNMODIFIED, MODIFIED, ROOT_NODE_NAME } from './TreeConstants'
+import { COLOR_UNMODIFIED, MARGIN, MODIFIED, ROOT_NODE_NAME } from './TreeConstants'
 import {
     Dictionary,
     MyNode,
@@ -9,8 +9,6 @@ import {
     TreeNodesFilter,
     UniverseProps
 } from './TreeTypes'
-
-export const margin = { top: 0, right: 50, bottom: 0, left: 75 }
 
 export function setAttributes(el: HTMLElement, attrs: { [key: string]: string }) {
     for (const key in attrs) {
@@ -229,7 +227,7 @@ export function updateTree(
         if (node.x > right.x) right = node
     })
     // take the far-most left and far-most right in a top-down treeLayout to get the height (because we have a horizontal treeLayout)
-    const height = right.x - left.x + margin.top + margin.bottom
+    const height = right.x - left.x + MARGIN.top + MARGIN.bottom
 
     // define a transition
     const transition = svgSelections.zoomG

@@ -3,7 +3,6 @@ import { HierarchyPointNode } from 'd3'
 import {
     countPrivateLeaves,
     createHierarchyFromPackages,
-    margin,
     removeFilterFromTree,
     filterNodesFromLeaves,
     updateTree,
@@ -17,6 +16,7 @@ import {
     COLOR_MODIFIED,
     COLOR_RED,
     COLOR_UNMODIFIED,
+    MARGIN,
     MODIFIED,
     ROOT_NODE_NAME,
     UNMODIFIED
@@ -56,8 +56,8 @@ export default class TreeVisualization implements Visualization {
 
             const width = document.body.clientWidth
             const height = document.body.clientHeight
-            const innerWidth = width - margin.left - margin.right
-            const innerHeight = height - margin.top - margin.bottom
+            const innerWidth = width - MARGIN.left - MARGIN.right
+            const innerHeight = height - MARGIN.top - MARGIN.bottom
 
             const defaultViewbox = [0, 0, innerWidth, innerHeight].join(' ')
 
@@ -85,9 +85,9 @@ export default class TreeVisualization implements Visualization {
                 .attr('viewBox', defaultViewbox)
                 .append('g')
                 .attr('id', 'zoomG')
-                .attr('width', innerWidth - margin.left)
+                .attr('width', innerWidth - MARGIN.left)
                 .attr('height', innerHeight * 0.5)
-                .attr('transform', `translate(${margin.left}, ${innerHeight * 0.5})`)
+                .attr('transform', `translate(${MARGIN.left}, ${innerHeight * 0.5})`)
 
             // TODO clean up, the rect is only for test reasons
             // zoomG.append("rect")

@@ -12,3 +12,5 @@ export const COLOR_BLUE = d3.rgb(165, 216, 255)
 export const COLOR_MODIFIED = COLOR_BLUE
 export const COLOR_GREY = d3.rgb(150, 150, 150)
 export const COLOR_UNMODIFIED = COLOR_GREY
+
+export const MARGIN = { top: 0, right: 50, bottom: 0, left: 75 }
