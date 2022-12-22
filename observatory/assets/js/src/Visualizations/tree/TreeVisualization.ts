@@ -23,6 +23,8 @@ import {
 import {
     Dictionary,
     MyNode,
+    SortingOption,
+    SortingOrder,
     SvgSelections,
     Tree,
     TreeNodesFilter,
@@ -43,6 +45,10 @@ export default class TreeVisualization implements Visualization {
                 //     Object.keys(this.universesMetadata).filter((key) => key.length == 1)
                 // ),
                 showUnmodified: false
+            },
+            sorting: {
+                option: SortingOption.NAME,
+                order: SortingOrder.ASCENDING
             }
         }
     }
@@ -229,7 +235,7 @@ export default class TreeVisualization implements Visualization {
         return tree
     }
 
-    onSubmit(
+    private onSubmit(
         e: SubmitEvent,
         tree: Tree,
         svgSelections: SvgSelections,
@@ -240,6 +246,7 @@ export default class TreeVisualization implements Visualization {
         const form = e.target as HTMLFormElement
 
         this.setDiffingFilter(form)
+        this.setSortingFilter(form)
 
         removeDiffingFilterFromTree(tree.treeData)
         diffNodesFromLeaves(tree.leaves, this.filter)
@@ -263,5 +270,16 @@ export default class TreeVisualization implements Visualization {
 
         this.filter.diffing.universes = new Set(checkedKeys)
         this.filter.diffing.showUnmodified = checkedKeys.includes(UNMODIFIED)
+    }
+
+    private setSortingFilter(form: HTMLFormElement) {
+        const checkedSorting = Array.from(
+            form
+                .querySelector('fieldset[id=sortingFilter]')
+                .querySelectorAll('input[type=radio]:checked')
+        ).map((item: HTMLInputElement) => item.value)
+
+        this.filter.sorting.option = checkedSorting[0]
+        this.filter.sorting.order = checkedSorting[1]
     }
 }

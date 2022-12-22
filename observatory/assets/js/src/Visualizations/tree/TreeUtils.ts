@@ -6,6 +6,9 @@ import {
     CustomEventName,
     Dictionary,
     MyNode,
+    NodesSortingFilter,
+    SortingOption,
+    SortingOrder,
     SvgSelections,
     Tree,
     TreeNodesFilter,
@@ -156,9 +159,38 @@ export function countPrivateLeaves(node: any): number {
 // ##### UPDATE TREE ########################################################################################
 // ##########################################################################################################
 
+// Toggle children.
+function toggle(d: any) {
+    d.children
+        ? collapseChildren(d)
+        : (d.children = d._children.filter((child: any) => child.data.isFiltered))
+}
+
 function filterDiffingUniverses(node: any) {
     if (!node._children) return
     return node._children.filter((child: any) => child.data.isFiltered)
+}
+
+function sortChildren(node: any, filter: NodesSortingFilter) {
+    return node._children.sort((a: any, b: any) => {
+        const valueA = getSortingValue(a, filter)
+        const valueB = getSortingValue(b, filter)
+        if (filter.option !== SortingOption.NAME && valueA === valueB) {
+            // sort alphabetically ascending
+            // FIXME it's magically alphabetically reversed sometimes ò.ó
+            return a.name > b.name
+        }
+        return filter.order == SortingOrder.ASCENDING ? valueA > valueB : valueA < valueB
+    })
+}
+
+function getSortingValue(node: any, filter: NodesSortingFilter) {
+    switch (filter.option) {
+        case SortingOption.NAME:
+            return node.data.name
+        case SortingOption.SIZE:
+            return node.data.codeSize
+    }
 }
 
 export function updateTree(
@@ -175,6 +207,8 @@ export function updateTree(
             if (event.detail.name === CustomEventName.APPLY_FILTER) {
                 console.log(event.detail.name, true)
                 tree.root.eachBefore((node: any) => {
+                    if (!node._children) return
+                    sortChildren(node, event.detail.filter.sorting)
                     if (node.children) node.children = filterDiffingUniverses(node)
                 })
             }
@@ -184,6 +218,7 @@ export function updateTree(
                 console.log(event.detail.name, true)
                 tree.root.eachBefore((node: any) => {
                     if (!node._children) return
+                    sortChildren(node, event.detail.filter.sorting)
                     node.children = filterDiffingUniverses(node)
                 })
             }
@@ -234,9 +269,7 @@ export function updateTree(
         .attr('fill-opacity', 0)
         .attr('stroke-opacity', 0)
         .on('click', (evt, d: any) => {
-            d.children
-                ? collapseChildren(d)
-                : (d.children = d._children.filter((child: any) => child.data.isFiltered))
+            toggle(d)
             updateTree(evt, d, tree, svgSelections, universePropsDict)
         })
 

@@ -10,6 +10,16 @@ export enum CheckInputRole {
     SWITCH = 'switch'
 }
 
+export enum SortingOption {
+    NAME = 'name',
+    SIZE = 'size'
+}
+
+export enum SortingOrder {
+    ASCENDING = 'ascending',
+    DESCENDING = 'descending'
+}
+
 export enum CustomEventName {
     APPLY_FILTER = 'apply-filter',
     EXTEND_TREE = 'extend-tree'
@@ -59,9 +69,15 @@ export type Dictionary<T> = {
 
 export type TreeNodesFilter = {
     diffing: DiffingUniversesFilter
+    sorting: NodesSortingFilter
 }
 
 export type DiffingUniversesFilter = {
     universes: Set<string>
     showUnmodified: boolean
+}
+
+export type NodesSortingFilter = {
+    option: string
+    order: string
 }

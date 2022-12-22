@@ -3,6 +3,8 @@ import {
     CheckInputRole,
     CheckInputType,
     Dictionary,
+    SortingOption,
+    SortingOrder,
     TreeNodesFilter,
     UniverseProps
 } from './TreeTypes'
@@ -15,7 +17,7 @@ export default class TreeInputForm {
         form.classList.add('border', 'p-2', 'rounded')
 
         form.appendChild(this.createFieldsetDiffingFilter(universesMetadata, filter))
-        form.appendChild(this.createFieldsetSorting())
+        form.appendChild(this.createFieldsetSorting(filter))
         form.appendChild(this.createFieldsetDetailsSlider())
         form.appendChild(this.createFieldsetMethodsFilter())
 
@@ -62,16 +64,26 @@ export default class TreeInputForm {
         return fieldset
     }
 
-    createFieldsetSorting() {
-        const fieldset = this.createFieldsetWithLegend('sortingFilter', 'WIP - Sort nodes by ...')
+    createFieldsetSorting(filter: TreeNodesFilter) {
+        const fieldset = this.createFieldsetWithLegend('sortingFilter', 'Sort nodes by ...')
 
         const divRow = this.createDiv(['row'])
-        const optionsCol1 = ['name', 'size']
-        divRow.appendChild(this.createRadioGroupDiv(optionsCol1, 'sorting-type', 0, ['col-sm-3']))
-
-        const optionsCol2 = ['ascending', 'descending']
-        divRow.appendChild(this.createRadioGroupDiv(optionsCol2, 'sorting-order', 0, ['col-sm-3']))
-
+        divRow.appendChild(
+            this.createRadioGroupDiv(
+                Object.values(SortingOption),
+                'sorting-option',
+                filter.sorting.option,
+                ['col-sm-3']
+            )
+        )
+        divRow.appendChild(
+            this.createRadioGroupDiv(
+                Object.values(SortingOrder),
+                'sorting-order',
+                filter.sorting.order,
+                ['col-sm-3']
+            )
+        )
         fieldset.appendChild(divRow)
 
         return fieldset
@@ -180,13 +192,13 @@ export default class TreeInputForm {
     createRadioGroupDiv(
         options: string[],
         name: string,
-        checkedIndex: number,
+        checkedOption: string,
         divClassList?: string[],
         backgroundColor?: string
     ) {
         const div = this.createDiv(divClassList, backgroundColor)
-        options.forEach((option, i) => {
-            div.appendChild(this.createRadioLabelDiv(name, option, option, i == checkedIndex))
+        options.forEach((option) => {
+            div.appendChild(this.createRadioLabelDiv(name, option, option, option == checkedOption))
         })
         return div
     }
