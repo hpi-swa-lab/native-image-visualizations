@@ -3,11 +3,12 @@ import { HierarchyPointNode } from 'd3'
 import {
     countPrivateLeaves,
     createHierarchyFromPackages,
-    removeFilterFromTree,
-    filterNodesFromLeaves,
+    removeDiffingFilterFromTree,
+    diffNodesFromLeaves,
     updateTree,
     markNodesModifiedFromLeaves,
-    setNodeSizeFromLeaves
+    setNodeSizeFromLeaves,
+    createApplyFilterEvent
 } from './TreeUtils'
 import {
     COLOR_GREEN,
@@ -35,12 +36,13 @@ export default class TreeVisualization implements Visualization {
     constructor() {
         this.universesMetadata = {}
         this.filter = {
-            universes: new Set(['0', '1']),
-            // universes: new Set(
-            //     Object.keys(this.universesMetadata).filter((key) => key.length == 1)
-            // ),
-            showUnmodified: false,
-            ignore: false
+            diffing: {
+                universes: new Set(['0', '1']),
+                // universes: new Set(
+                //     Object.keys(this.universesMetadata).filter((key) => key.length == 1)
+                // ),
+                showUnmodified: false
+            }
         }
     }
 
@@ -121,15 +123,6 @@ export default class TreeVisualization implements Visualization {
             svg.call(
                 d3.zoom().on('zoom', (svgTransform) => {
                     zoomG.attr('transform', svgTransform.transform)
-                    this.filter.ignore = true // to not apply filter to filter all node's children on transition
-                    updateTree(
-                        null,
-                        tree.root,
-                        this.filter,
-                        tree,
-                        svgSelections,
-                        this.universesMetadata
-                    )
                 })
             )
 
@@ -137,7 +130,13 @@ export default class TreeVisualization implements Visualization {
                 this.onSubmit(e, tree, svgSelections, this.universesMetadata)
             )
 
-            updateTree(null, tree.root, this.filter, tree, svgSelections, this.universesMetadata)
+            updateTree(
+                createApplyFilterEvent(this.filter),
+                tree.root,
+                tree,
+                svgSelections,
+                this.universesMetadata
+            )
         })
     }
 
@@ -145,7 +144,7 @@ export default class TreeVisualization implements Visualization {
     // ### BUILD TREE HELPER FUNCTIONS #############################################
     // ##################################################################
 
-    async loadUniverses() {
+    private async loadUniverses() {
         const files = [
             '../assets/data/used_methods_micronautguide.txt',
             '../assets/data/used_methods_helloworld.txt'
@@ -185,7 +184,7 @@ export default class TreeVisualization implements Visualization {
 
         setNodeSizeFromLeaves(tree.leaves)
         markNodesModifiedFromLeaves(tree.leaves)
-        filterNodesFromLeaves(tree.leaves, this.filter)
+        diffNodesFromLeaves(tree.leaves, this.filter)
 
         let colors: d3.RGBColor[] = [COLOR_RED, COLOR_GREEN]
         //
@@ -227,18 +226,30 @@ export default class TreeVisualization implements Visualization {
         e.preventDefault() // prevent page refresh
 
         const form = e.target as HTMLFormElement
-        const checkedKeys = Array.from(form.querySelectorAll('input[type=checkbox]:checked')).map(
-            (item: HTMLInputElement) => item.value
+
+        this.setDiffingFilter(form)
+
+        removeDiffingFilterFromTree(tree.treeData)
+        diffNodesFromLeaves(tree.leaves, this.filter)
+
+        updateTree(
+            createApplyFilterEvent(this.filter),
+            tree.root,
+            tree,
+            svgSelections,
+            universePropsDict
         )
+    }
+
+    private setDiffingFilter(form: HTMLFormElement) {
+        const checkedKeys = Array.from(
+            form
+                .querySelector('fieldset[id=diffingFilter]')
+                .querySelectorAll('input[type=checkbox]:checked')
+        ).map((item: HTMLInputElement) => item.value)
         console.log(`%c form submitted [${checkedKeys}]`, 'background: green')
 
-        this.filter.universes = new Set(checkedKeys)
-        this.filter.ignore = false
-        this.filter.showUnmodified = checkedKeys.includes(UNMODIFIED)
-
-        removeFilterFromTree(tree.treeData)
-        filterNodesFromLeaves(tree.leaves, this.filter)
-
-        updateTree(null, tree.root, this.filter, tree, svgSelections, universePropsDict)
+        this.filter.diffing.universes = new Set(checkedKeys)
+        this.filter.diffing.showUnmodified = checkedKeys.includes(UNMODIFIED)
     }
 }

@@ -10,6 +10,15 @@ export enum CheckInputRole {
     SWITCH = 'switch'
 }
 
+export enum CustomEventName {
+    APPLY_FILTER = 'apply-filter'
+}
+
+export type CustomEventDetails = {
+    name: string
+    filter: TreeNodesFilter
+}
+
 export type MyNode = {
     name: string
     children: MyNode[]
@@ -48,7 +57,10 @@ export type Dictionary<T> = {
 }
 
 export type TreeNodesFilter = {
+    diffing: DiffingUniversesFilter
+}
+
+export type DiffingUniversesFilter = {
     universes: Set<string>
     showUnmodified: boolean
-    ignore: boolean // true, if this filter should be ignored; otherwise false
 }

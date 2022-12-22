@@ -2,6 +2,8 @@ import { HierarchyPointNode } from 'd3'
 import * as d3 from 'd3'
 import { COLOR_UNMODIFIED, MARGIN, MODIFIED, ROOT_NODE_NAME } from './TreeConstants'
 import {
+    CustomEventDetails,
+    CustomEventName,
     Dictionary,
     MyNode,
     SvgSelections,
@@ -14,6 +16,15 @@ export function setAttributes(el: HTMLElement, attrs: { [key: string]: string })
     for (const key in attrs) {
         el.setAttribute(key, attrs[key])
     }
+}
+
+export function createApplyFilterEvent(filter: TreeNodesFilter) {
+    return new CustomEvent<CustomEventDetails>(CustomEventName.APPLY_FILTER, {
+        detail: {
+            name: CustomEventName.APPLY_FILTER,
+            filter: filter
+        }
+    })
 }
 
 export function createHierarchyFromPackages(
@@ -66,19 +77,19 @@ function markModified(node: MyNode) {
     if (node.parent !== undefined) markModified(node.parent)
 }
 
-export function filterNodesFromLeaves(leaves: MyNode[], filter: TreeNodesFilter) {
+export function diffNodesFromLeaves(leaves: MyNode[], filter: TreeNodesFilter) {
     for (const leave of leaves) {
         if (leave.universes.size < 1) continue
-        if (filter.showUnmodified) {
+        if (filter.diffing.showUnmodified) {
             if (
                 !leave.isModified ||
-                Array.from(leave.universes).every((u) => filter.universes.has(u.toString()))
+                Array.from(leave.universes).every((u) => filter.diffing.universes.has(u.toString()))
             ) {
                 markFiltered(leave)
             }
         } else if (
             leave.isModified &&
-            Array.from(leave.universes).every((u) => filter.universes.has(u.toString()))
+            Array.from(leave.universes).every((u) => filter.diffing.universes.has(u.toString()))
         ) {
             markFiltered(leave)
         }
@@ -91,9 +102,9 @@ function markFiltered(node: MyNode) {
     if (node.parent !== undefined) markFiltered(node.parent)
 }
 
-export function removeFilterFromTree(node: MyNode) {
+export function removeDiffingFilterFromTree(node: MyNode) {
     node.isFiltered = false
-    node.children.forEach(removeFilterFromTree)
+    node.children.forEach(removeDiffingFilterFromTree)
 }
 
 export function collapseChildren(d: any) {
@@ -137,10 +148,14 @@ export function countPrivateLeaves(node: any): number {
 // ##### UPDATE TREE ########################################################################################
 // ##########################################################################################################
 
+function filterDiffingUniverses(node: any) {
+    if (!node._children) return
+    return node._children.filter((child: any) => child.data.isFiltered)
+}
+
 export function updateTree(
     event: any | null,
     sourceNode: any /*HierarchyPointNode<MyNode>*/,
-    treeFilter: TreeNodesFilter,
     tree: Tree,
     svgSelections: SvgSelections,
     universePropsDict: Dictionary<UniverseProps>
@@ -148,16 +163,17 @@ export function updateTree(
     let duration = 0
 
     if (event) {
-        duration = event && event.altKey ? 2500 : 250
-    }
-
-    // this is for forcing a re-layouting of the tree's nodes!
-    // remove to keep the ful tree's layout, but just remove single nodes in their positions
-    if (treeFilter && !treeFilter.ignore) {
-        tree.root.eachBefore((node: any) => {
-            if (!node._children) return
-            node.children = node._children.filter((child: any) => child.data.isFiltered)
-        })
+        if (Object.values(CustomEventName).includes(event.type)) {
+            if (event.detail.name === CustomEventName.APPLY_FILTER) {
+                console.log(event.detail.name, true)
+                tree.root.eachBefore((node: any) => {
+                    if (node.children) node.children = filterDiffingUniverses(node)
+                })
+            }
+        } else {
+            // if you press alt / option key, then the collapse/extend animation is much slower :D
+            duration = event && event.altKey ? 2500 : 250
+        }
     }
 
     // Compute the new treeLayout layout.
@@ -166,6 +182,7 @@ export function updateTree(
     const nodes = tree.root.descendants().reverse()
     const links = tree.root.links().filter((link) => link.target.data.isFiltered)
 
+    // TODO needed or can be removed?
     // console.debug(`${nodes.length} nodes, ${links.length} links visible`)
 
     // figure out the most left and most right node in a top-down treeLayout
@@ -175,6 +192,8 @@ export function updateTree(
         if (node.x < left.x) left = node
         if (node.x > right.x) right = node
     })
+
+    // TODO needed or can be removed?
     // take the far-most left and far-most right in a top-down treeLayout to get the height (because we have a horizontal treeLayout)
     const height = right.x - left.x + MARGIN.top + MARGIN.bottom
 
@@ -198,11 +217,10 @@ export function updateTree(
         .attr('fill-opacity', 0)
         .attr('stroke-opacity', 0)
         .on('click', (evt, d: any) => {
-            treeFilter.ignore = true
             d.children
                 ? collapseChildren(d)
                 : (d.children = d._children.filter((child: any) => child.data.isFiltered))
-            updateTree(evt, d, treeFilter, tree, svgSelections, universePropsDict)
+            updateTree(evt, d, tree, svgSelections, universePropsDict)
         })
 
     let nodeEnterCircle = nodeEnter

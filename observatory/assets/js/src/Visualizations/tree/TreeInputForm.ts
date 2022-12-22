@@ -29,7 +29,10 @@ export default class TreeInputForm {
         universesMetadata: Dictionary<UniverseProps>,
         filter: TreeNodesFilter
     ) {
-        const fieldset = this.createFieldsetWithLegend('Choose Universe(s) to be displayed')
+        const fieldset = this.createFieldsetWithLegend(
+            'diffingFilter',
+            'Choose Universe(s) to be displayed'
+        )
         const keys = Object.keys(universesMetadata)
         const filteredKeys = keys.filter((key) => key.length == 1)
 
@@ -39,7 +42,7 @@ export default class TreeInputForm {
                 key,
                 universesMetadata[key].name,
                 universesMetadata[key].color.toString(),
-                filter.universes.has(key)
+                filter.diffing.universes.has(key)
             )
             fieldset.appendChild(div)
         })
@@ -48,7 +51,7 @@ export default class TreeInputForm {
                 UNMODIFIED,
                 'unmodified packages',
                 COLOR_UNMODIFIED.toString(),
-                filter.universes.has(UNMODIFIED)
+                filter.diffing.universes.has(UNMODIFIED)
             )
         )
         fieldset.appendChild(
@@ -59,7 +62,7 @@ export default class TreeInputForm {
     }
 
     createFieldsetSorting() {
-        const fieldset = this.createFieldsetWithLegend('WIP - Sort nodes by ...')
+        const fieldset = this.createFieldsetWithLegend('sortingFilter', 'WIP - Sort nodes by ...')
 
         const divRow = this.createDiv(['row'])
         const optionsCol1 = ['name', 'size']
@@ -74,12 +77,12 @@ export default class TreeInputForm {
     }
 
     createFieldsetDetailsSlider() {
-        const fieldset = this.createFieldsetWithLegend('WIP - Details Slider')
+        const fieldset = this.createFieldsetWithLegend('detailsFilter', 'WIP - Details Slider')
         return fieldset
     }
 
     createFieldsetMethodsFilter() {
-        const fieldset = this.createFieldsetWithLegend('WIP - Methods Filter')
+        const fieldset = this.createFieldsetWithLegend('methodsFilter', 'WIP - Methods Filter')
         return fieldset
     }
 
@@ -95,8 +98,9 @@ export default class TreeInputForm {
     // ##### CREATE HTML ########################################################################################
     // ##########################################################################################################
 
-    createFieldsetWithLegend(legendText: string) {
+    createFieldsetWithLegend(id: string, legendText: string) {
         const fieldset = document.createElement('fieldset')
+        fieldset.setAttribute('id', id)
         fieldset.classList.add('border', 'p-2', 'w-auto')
         const legend = document.createElement('legend')
         legend.classList.add('w-auto', 'float-none', 'p-2', 'fs-5')
