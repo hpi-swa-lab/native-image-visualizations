@@ -8,7 +8,8 @@ import {
     updateTree,
     markNodesModifiedFromLeaves,
     setNodeSizeFromLeaves,
-    createApplyFilterEvent
+    createApplyFilterEvent,
+    createExtendTreeEvent
 } from './TreeUtils'
 import {
     COLOR_GREEN,
@@ -129,6 +130,17 @@ export default class TreeVisualization implements Visualization {
             inputForm.element.addEventListener('submit', (e) =>
                 this.onSubmit(e, tree, svgSelections, this.universesMetadata)
             )
+
+            document.getElementById('extend-tree-btn').addEventListener('click', (e) => {
+                console.log(e)
+                updateTree(
+                    createExtendTreeEvent(this.filter),
+                    tree.root,
+                    tree,
+                    svgSelections,
+                    this.universesMetadata
+                )
+            })
 
             updateTree(
                 createApplyFilterEvent(this.filter),

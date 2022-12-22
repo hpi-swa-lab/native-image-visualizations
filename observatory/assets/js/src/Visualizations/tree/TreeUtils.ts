@@ -19,9 +19,17 @@ export function setAttributes(el: HTMLElement, attrs: { [key: string]: string })
 }
 
 export function createApplyFilterEvent(filter: TreeNodesFilter) {
-    return new CustomEvent<CustomEventDetails>(CustomEventName.APPLY_FILTER, {
+    return createCustomEventWithDetails(CustomEventName.APPLY_FILTER, filter)
+}
+
+export function createExtendTreeEvent(filter: TreeNodesFilter) {
+    return createCustomEventWithDetails(CustomEventName.EXTEND_TREE, filter)
+}
+
+export function createCustomEventWithDetails(name: string, filter: TreeNodesFilter) {
+    return new CustomEvent<CustomEventDetails>(name, {
         detail: {
-            name: CustomEventName.APPLY_FILTER,
+            name: name,
             filter: filter
         }
     })
@@ -168,6 +176,15 @@ export function updateTree(
                 console.log(event.detail.name, true)
                 tree.root.eachBefore((node: any) => {
                     if (node.children) node.children = filterDiffingUniverses(node)
+                })
+            }
+
+            // extend full tree
+            if (event.detail.name === CustomEventName.EXTEND_TREE) {
+                console.log(event.detail.name, true)
+                tree.root.eachBefore((node: any) => {
+                    if (!node._children) return
+                    node.children = filterDiffingUniverses(node)
                 })
             }
         } else {

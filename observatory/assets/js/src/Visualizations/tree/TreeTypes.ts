@@ -11,7 +11,8 @@ export enum CheckInputRole {
 }
 
 export enum CustomEventName {
-    APPLY_FILTER = 'apply-filter'
+    APPLY_FILTER = 'apply-filter',
+    EXTEND_TREE = 'extend-tree'
 }
 
 export type CustomEventDetails = {

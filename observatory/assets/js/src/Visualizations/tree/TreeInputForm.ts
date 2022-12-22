@@ -20,6 +20,7 @@ export default class TreeInputForm {
         form.appendChild(this.createFieldsetMethodsFilter())
 
         form.appendChild(this.createSubmitButton())
+        form.appendChild(this.createExtendTreeButton())
 
         document.body.appendChild(form)
         this.element = form
@@ -92,6 +93,15 @@ export default class TreeInputForm {
         submitBtn.classList.add('btn', 'btn-sm', 'btn-primary', 'm-2')
         submitBtn.innerText = 'update tree'
         return submitBtn
+    }
+
+    createExtendTreeButton() {
+        const btn = document.createElement('button')
+        btn.setAttribute('type', 'button')
+        btn.setAttribute('id', 'extend-tree-btn')
+        btn.classList.add('btn', 'btn-sm', 'btn-light', 'm-2')
+        btn.innerText = 'extend full tree'
+        return btn
     }
 
     // ##########################################################################################################
