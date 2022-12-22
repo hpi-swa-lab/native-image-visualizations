@@ -7,15 +7,12 @@ import {
     filterNodesFromLeaves,
     updateTree,
     markNodesModifiedFromLeaves,
-    setNodeSizeFromLeaves,
-    createCheckboxLabelDiv,
-    createLabelDiv, createFieldsetWithLegend
+    setNodeSizeFromLeaves
 } from './TreeUtils'
 import {
     COLOR_GREEN,
     COLOR_MODIFIED,
     COLOR_RED,
-    COLOR_UNMODIFIED,
     MARGIN,
     MODIFIED,
     ROOT_NODE_NAME,
@@ -29,6 +26,7 @@ import {
     TreeNodesFilter,
     UniverseProps
 } from './TreeTypes'
+import TreeInputForm from './TreeInputForm'
 
 export default class TreeVisualization implements Visualization {
     universesMetadata: Dictionary<UniverseProps>
@@ -50,7 +48,7 @@ export default class TreeVisualization implements Visualization {
         this.loadUniverses().then((tree: Tree) => {
             console.debug('Universes: ', tree)
 
-            const form = this.createInputForm()
+            const inputForm = new TreeInputForm(this.universesMetadata, this.filter)
 
             const svg = d3.select('body').append('svg')
 
@@ -135,7 +133,7 @@ export default class TreeVisualization implements Visualization {
                 })
             )
 
-            form.addEventListener('submit', (e) =>
+            inputForm.element.addEventListener('submit', (e) =>
                 this.onSubmit(e, tree, svgSelections, this.universesMetadata)
             )
 
@@ -218,72 +216,6 @@ export default class TreeVisualization implements Visualization {
         }
 
         return tree
-    }
-
-    createInputForm() {
-        const form = document.createElement('form')
-        form.classList.add('border', 'p-2', 'rounded')
-
-        form.appendChild(this.createFieldsetUniverses())
-        form.appendChild(this.createFieldsetSorting())
-        form.appendChild(this.createFieldsetDetailsSlider())
-        form.appendChild(this.createFieldsetMethodsFilter())
-
-        // add submit button
-        const submitBtn = document.createElement('button')
-        submitBtn.setAttribute('type', 'submit')
-        submitBtn.classList.add('btn', 'btn-sm', 'btn-primary', 'm-2')
-        submitBtn.innerText = 'update tree'
-        form.appendChild(submitBtn)
-        document.body.appendChild(form)
-
-        return form
-    }
-
-    createFieldsetUniverses() {
-        const fieldset = createFieldsetWithLegend('Choose Universe(s) to be displayed')
-        const keys = Object.keys(this.universesMetadata)
-        const filteredKeys = keys.filter((key) => key.length == 1)
-
-        // add checkboxes & labels
-        filteredKeys.forEach((key) => {
-            fieldset.appendChild(
-                createCheckboxLabelDiv(
-                    key,
-                    this.universesMetadata[key].name,
-                    this.universesMetadata[key].color.toString(),
-                    this.filter
-                )
-            )
-        })
-        fieldset.appendChild(
-            createCheckboxLabelDiv(
-                UNMODIFIED,
-                'unmodified packages',
-                COLOR_UNMODIFIED.toString(),
-                this.filter
-            )
-        )
-        fieldset.appendChild(
-            createLabelDiv(MODIFIED, 'modified packages', COLOR_MODIFIED.toString())
-        )
-
-        return fieldset
-    }
-
-    createFieldsetSorting() {
-        const fieldset = createFieldsetWithLegend('WIP - Sorting')
-        return fieldset
-    }
-
-    createFieldsetDetailsSlider() {
-        const fieldset = createFieldsetWithLegend('WIP - Details Slider')
-        return fieldset
-    }
-
-    createFieldsetMethodsFilter() {
-        const fieldset = createFieldsetWithLegend('WIP - Methods Filter')
-        return fieldset
     }
 
     onSubmit(

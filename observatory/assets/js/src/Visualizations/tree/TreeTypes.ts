@@ -1,6 +1,15 @@
 import * as d3 from 'd3'
 import { HierarchyPointNode } from 'd3'
 
+export enum CheckInputType {
+    CHECKBOX = 'checkbox',
+    RADIO = 'radio'
+}
+
+export enum CheckInputRole {
+    SWITCH = 'switch'
+}
+
 export type MyNode = {
     name: string
     children: MyNode[]
