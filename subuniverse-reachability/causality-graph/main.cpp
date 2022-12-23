@@ -125,10 +125,30 @@ static void read_typestate_bitsets(size_t num_types, vector<Bitset>& typestates,
     }
 }
 
+struct method_id
+{
+    uint32_t id;
+
+    method_id(uint32_t id) : id(id) {}
+    method_id() = default;
+    explicit operator uint32_t() const { return id; }
+    bool operator==(method_id other) const { return id == other.id; }
+};
+
+struct typeflow_id
+{
+    uint32_t id;
+
+    typeflow_id(uint32_t id) : id(id) {}
+    typeflow_id() = default;
+    explicit operator uint32_t() const { return id; }
+    bool operator==(typeflow_id other) const { return id == other.id; }
+};
+
 struct TypestateEdge
 {
-    uint32_t src;
-    uint32_t dst;
+    typeflow_id src;
+    method_id dst;
     uint32_t typestate_id;
 };
 
@@ -137,15 +157,19 @@ static_assert(offsetof(TypestateEdge, src) == 0);
 static_assert(offsetof(TypestateEdge, dst) == 4);
 static_assert(offsetof(TypestateEdge, typestate_id) == 8);
 
+template<typename T>
 struct Edge
 {
-    uint32_t src;
-    uint32_t dst;
+    T src;
+    T dst;
 };
 
-static_assert(sizeof(Edge) == 8);
-static_assert(offsetof(Edge, src) == 0);
-static_assert(offsetof(Edge, dst) == 4);
+static_assert(sizeof(Edge<method_id>) == 8);
+static_assert(sizeof(Edge<typeflow_id>) == 8);
+static_assert(offsetof(Edge<method_id>, src) == 0);
+static_assert(offsetof(Edge<typeflow_id>, src) == 0);
+static_assert(offsetof(Edge<method_id>, dst) == 4);
+static_assert(offsetof(Edge<typeflow_id>, dst) == 4);
 
 template<typename T>
 static void read_buffer(vector<T>& dst, const char* path)
@@ -164,10 +188,10 @@ static void read_buffer(vector<T>& dst, const char* path)
 
 struct TypestateArc
 {
-    uint32_t dst;
+    method_id dst;
     const Bitset* filter;
 
-    explicit TypestateArc(uint32_t dst, const Bitset* filter) : dst(dst), filter(filter)
+    explicit TypestateArc(method_id dst, const Bitset* filter) : dst(dst), filter(filter)
     {
         assert(filter);
     }
@@ -175,52 +199,70 @@ struct TypestateArc
 
 struct Adjacency
 {
-    size_t _n_types;
-    vector<vector<uint32_t>> neighbour_flows;
-    vector<vector<uint32_t>> neighbour_flows_backwards;
-    vector<vector<TypestateArc>> neighbour_methods;
-    vector<vector<uint32_t>> direct_methods;
-    vector<vector<uint32_t>> typeflows_by_method;
-    vector<const Bitset*> typeflow_filters;
-    vector<uint32_t> typeflow_methods;
+    struct TypeflowInfo
+    {
+        vector<typeflow_id> forward_edges;
+        vector<typeflow_id> backward_edges;
+        vector<TypestateArc> neighbour_methods;
+        const Bitset* filter;
+        method_id method;
+    };
 
-    Adjacency(size_t n_types, size_t n_methods, size_t n_typeflows, const vector<Edge>& interflows, const vector<TypestateEdge>& virtual_invokes, const vector<Edge>& direct_invokes, const vector<Bitset>& typestates, const vector<uint32_t>& typeflow_filters, vector<uint32_t>&& typeflow_methods)
-            : _n_types(n_types), neighbour_flows(n_typeflows), neighbour_flows_backwards(n_typeflows), neighbour_methods(n_typeflows), direct_methods(n_methods), typeflows_by_method(n_methods), typeflow_filters(typeflow_filters.size()), typeflow_methods(std::move(typeflow_methods))
+    struct MethodInfo
+    {
+        vector<method_id> direct_calls;
+        vector<typeflow_id> contained_typeflows;
+    };
+
+    size_t _n_types;
+    vector<TypeflowInfo> flows;
+    vector<MethodInfo> methods;
+
+    Adjacency(size_t n_types, size_t n_methods, size_t n_typeflows, const vector<Edge<typeflow_id>>& interflows, const vector<TypestateEdge>& virtual_invokes, const vector<Edge<method_id>>& direct_invokes, const vector<Bitset>& typestates, const vector<uint32_t>& typeflow_filters, const vector<uint32_t>& typeflow_methods)
+            : _n_types(n_types), flows(n_typeflows), methods(n_methods)
     {
         for(auto e : interflows)
         {
             assert(e.src != e.dst);
-            neighbour_flows.at(e.src).push_back(e.dst);
-            neighbour_flows_backwards.at(e.dst).push_back(e.src);
+            flows[e.src.id].forward_edges.push_back(e.dst);
+            flows[e.dst.id].backward_edges.push_back(e.src);
         }
         for(auto e : virtual_invokes)
-            neighbour_methods.at(e.src).push_back(TypestateArc(e.dst, &typestates.at(e.typestate_id)));
+            flows[e.src.id].neighbour_methods.emplace_back(e.dst, &typestates.at(e.typestate_id));
         for(auto e : direct_invokes)
-            direct_methods.at(e.src).push_back(e.dst);
-        for(size_t flow = 0; flow < this->typeflow_methods.size(); flow++)
-            typeflows_by_method.at(this->typeflow_methods[flow]).push_back(flow);
+            methods[e.src.id].direct_calls.push_back(e.dst);
+        for(size_t flow = 0; flow < typeflow_methods.size(); flow++)
+        {
+            flows[flow].method = typeflow_methods[flow];
+            methods[typeflow_methods[flow]].contained_typeflows.push_back(flow);
+        }
 
-
-        for(size_t i = 1; i < typeflow_filters.size(); i++)
-            this->typeflow_filters[i] = &typestates.at(typeflow_filters[i]);
+        for(size_t i = 0; i < typeflow_filters.size(); i++)
+            flows[i].filter = &typestates.at(typeflow_filters[i]);
     }
 
-    [[nodiscard]] size_t n_typeflows() const { return neighbour_flows.size(); }
+    [[nodiscard]] size_t n_typeflows() const { return flows.size(); }
 
-    [[nodiscard]] size_t n_methods() const { return direct_methods.size(); }
+    [[nodiscard]] size_t n_methods() const { return methods.size(); }
 
     [[nodiscard]] size_t n_types() const { return _n_types; }
 
-    void purge_method(uint32_t mid)
+    [[nodiscard]] MethodInfo& operator[](method_id id) { return methods[(uint32_t)id]; }
+    [[nodiscard]] const MethodInfo& operator[](method_id id) const { return methods[(uint32_t)id]; }
+
+    [[nodiscard]] TypeflowInfo& operator[](typeflow_id id) { return flows[(uint32_t)id]; }
+    [[nodiscard]] const TypeflowInfo& operator[](typeflow_id id) const { return flows[(uint32_t)id]; }
+
+    void purge_method(method_id mid)
     {
-        for(auto& targets : direct_methods)
+        for(auto& m : methods)
         {
-            erase(targets, mid);
+            erase(m.direct_calls, mid);
         }
 
-        for(auto& edges : neighbour_methods)
+        for(auto& f : flows)
         {
-            erase_if(edges, [mid](TypestateArc& arc) { return arc.dst == mid; });
+            erase_if(f.neighbour_methods, [mid](TypestateArc& arc) { return arc.dst == mid; });
         }
     }
 };
@@ -237,9 +279,9 @@ static vector<bool> bfs(const Adjacency& adj)
     method_visited[0] = true;
     typeflow_visited[0].fill(true);
 
-    vector<uint32_t> method_worklist(1, 0);
-    vector<uint32_t> next_method_worklist;
-    queue<uint32_t> typeflow_worklist{{0}};
+    vector<method_id> method_worklist(1, 0);
+    vector<method_id> next_method_worklist;
+    queue<typeflow_id> typeflow_worklist{{0}};
 
     uint64_t n_worklist_added = 0;
 
@@ -247,28 +289,28 @@ static vector<bool> bfs(const Adjacency& adj)
     {
         while(!typeflow_worklist.empty())
         {
-            uint32_t u = typeflow_worklist.front();
+            typeflow_id u = typeflow_worklist.front();
             typeflow_worklist.pop();
             n_worklist_added++;
 
-            for(auto v : adj.neighbour_flows.at(u))
+            for(auto v : adj[u].forward_edges)
             {
-                Bitset transfer = typeflow_visited.at(u) & *adj.typeflow_filters[v];
+                Bitset transfer = typeflow_visited[u.id] & *adj[v].filter;
 
-                if(!typeflow_visited.at(v).is_superset(transfer))
+                if(!typeflow_visited[v.id].is_superset(transfer))
                 {
-                    typeflow_visited.at(v) |= transfer;
+                    typeflow_visited[v.id] |= transfer;
 
-                    if(method_visited[adj.typeflow_methods.at(v)])
+                    if(method_visited[adj[v].method.id])
                         typeflow_worklist.push(v);
                 }
             }
 
-            for(auto [ v, filter ] : adj.neighbour_methods.at(u))
+            for(auto [ v, filter ] : adj[u].neighbour_methods)
             {
-                if(!method_visited.at(v) && !typeflow_visited.at(u).are_disjoint(*filter))
+                if(!method_visited[v.id] && !typeflow_visited[u.id].are_disjoint(*filter))
                 {
-                    method_visited.at(v) = true;
+                    method_visited[v.id] = true;
                     next_method_worklist.push_back(v);
                 }
             }
@@ -279,18 +321,19 @@ static vector<bool> bfs(const Adjacency& adj)
 
         n_worklist_added += method_worklist.size();
 
-        for(uint32_t u : method_worklist)
+        for(method_id u : method_worklist)
         {
+            const auto& m = adj[u];
 
-            for(auto v : adj.typeflows_by_method.at(u))
-                if(typeflow_visited.at(v).any())
+            for(auto v : m.contained_typeflows)
+                if(typeflow_visited[v.id].any())
                     typeflow_worklist.push(v);
 
-            for(auto v : adj.direct_methods.at(u))
+            for(auto v : m.direct_calls)
             {
-                if(!method_visited.at(v))
+                if(!method_visited[v.id])
                 {
-                    method_visited.at(v) = true;
+                    method_visited[v.id] = true;
                     next_method_worklist.push_back(v);
                 }
             }
@@ -308,32 +351,6 @@ static vector<bool> bfs(const Adjacency& adj)
     return method_visited;
 }
 
-static void check_basic_integrity(vector<string>& method_names, vector<string>& typeflow_names, vector<TypestateEdge>& interflows, vector<Edge>& direct_invokes)
-{
-    unordered_set<uint32_t> root_methods;
-
-    for(Edge call : direct_invokes)
-        if(call.src == 0)
-            root_methods.insert(call.dst);
-
-    for(uint32_t mid : root_methods)
-    {
-        assert(!method_names.at(mid).empty());
-        cout << method_names.at(mid) << endl;
-    }
-
-    unordered_set<uint32_t> root_typeflows;
-
-    for(auto flowEdge : interflows)
-        if(flowEdge.src == 0)
-            root_typeflows.insert(flowEdge.dst);
-
-    for(uint32_t fid : root_typeflows)
-    {
-        assert(!typeflow_names.at(fid).empty());
-    }
-}
-
 static uint32_t resolve_method(const unordered_map<string, uint32_t>& method_ids_by_name, const string& name)
 {
     auto it = method_ids_by_name.find(name);
@@ -347,68 +364,58 @@ static uint32_t resolve_method(const unordered_map<string, uint32_t>& method_ids
     return it->second;
 }
 
-static bool is_redundant(Adjacency& adj, uint32_t typeflow)
+static bool is_redundant(const Adjacency& adj, typeflow_id typeflow)
 {
-    if(adj.neighbour_flows_backwards[typeflow].empty())
+    const auto& f = adj[typeflow];
+
+    if(f.backward_edges.empty())
         return true;
 
-    if(adj.neighbour_flows[typeflow].empty() && adj.neighbour_methods[typeflow].empty())
+    if(f.forward_edges.empty() && f.neighbour_methods.empty())
         return true;
 
-    if(adj.neighbour_methods[typeflow].empty())
+    if(f.neighbour_methods.empty())
     {
-        if(adj.neighbour_flows[typeflow].size() == 1 && adj.neighbour_flows_backwards[typeflow].size() == 1)
+        if(f.forward_edges.size() == 1 && f.backward_edges.size() == 1)
         {
-            uint32_t M1 = adj.typeflow_methods[adj.neighbour_flows_backwards[typeflow][0]];
-            uint32_t M2 = adj.typeflow_methods[typeflow];
-            uint32_t M3 = adj.typeflow_methods[adj.neighbour_flows[typeflow][0]];
+            method_id M1 = adj[f.backward_edges[0]].method;
+            method_id M2 = f.method;
+            method_id M3 = adj[f.forward_edges[0]].method;
 
             if((M2 == M1 || M2 == M3 || M2 == 0)
-            && adj.typeflow_filters[typeflow]->is_superset(*adj.typeflow_filters[adj.neighbour_flows[typeflow][0]]))
+            && f.filter->is_superset(*adj[f.forward_edges[0]].filter))
                 return true;
         }
 
-        if(adj.neighbour_flows_backwards[typeflow].size() == 1 && adj.neighbour_flows[typeflow].size() > 1)
+        if(f.forward_edges.size() > 1 && f.backward_edges.size() == 1)
         {
-            uint32_t M1 = adj.typeflow_methods[adj.neighbour_flows_backwards[typeflow][0]];
-            uint32_t M2 = adj.typeflow_methods[typeflow];
+            method_id M1 = adj[f.backward_edges[0]].method;
+            method_id M2 = f.method;
 
-            for(auto& next : adj.neighbour_flows[typeflow])
+            for(auto& next : f.forward_edges)
             {
-                if(!adj.typeflow_filters[typeflow]->is_superset(*adj.typeflow_filters[next]))
+                if(!f.filter->is_superset(*adj[next].filter))
                     return false;
             }
 
             if(M2 == M1 || M2 == 0)
                 return true;
 
-            for(auto& e : adj.neighbour_flows[typeflow])
-            {
-                if(adj.typeflow_methods[e] != M2)
-                    return false;
-            }
-
-            return true;
+            return std::all_of(f.forward_edges.begin(), f.forward_edges.end(), [&](typeflow_id next) { return adj[next].method == M2; });
         }
 
-        if(adj.neighbour_flows[typeflow].size() == 1 && adj.neighbour_flows_backwards[typeflow].size() > 1)
+        if(f.forward_edges.size() == 1 && f.backward_edges.size() > 1)
         {
-            uint32_t M2 = adj.typeflow_methods[typeflow];
-            uint32_t M3 = adj.typeflow_methods[adj.neighbour_flows[typeflow][0]];
+            method_id M2 = f.method;
+            method_id M3 = adj[f.forward_edges[0]].method;
 
-            if(!adj.typeflow_filters[typeflow]->is_superset(*adj.typeflow_filters[adj.neighbour_flows[typeflow][0]]))
+            if(!f.filter->is_superset(*adj[f.forward_edges[0]].filter))
                 return false;
 
             if(M2 == M3 || M2 == 0)
                 return true;
 
-            for(auto& e : adj.neighbour_flows_backwards[typeflow])
-            {
-                if(adj.typeflow_methods[e] != M2)
-                    return false;
-            }
-
-            return true;
+            return std::all_of(f.backward_edges.begin(), f.backward_edges.end(), [&](typeflow_id next) { return adj[next].method == M2; });
         }
     }
 
@@ -421,35 +428,36 @@ static void remove_redundant(Adjacency& adj)
 
     size_t useless_iterations = 0;
 
-    for(uint32_t typeflow = 1; typeflow < adj.n_typeflows(); typeflow = typeflow == adj.n_typeflows() - 1 ? 1 : typeflow + 1)
+    for(typeflow_id typeflow = 1; useless_iterations <= adj.n_typeflows(); typeflow = typeflow.id == adj.n_typeflows() - 1 ? 1 : typeflow.id + 1)
     {
-        if(!redundant_typeflows[typeflow] && is_redundant(adj, typeflow))
+        if(!redundant_typeflows[typeflow.id] && is_redundant(adj, typeflow))
         {
-            redundant_typeflows[typeflow] = true;
+            redundant_typeflows[typeflow.id] = true;
+            auto& f = adj[typeflow];
 
-            for(auto next : adj.neighbour_flows[typeflow])
+            for(auto next : f.forward_edges)
             {
-                auto removed = erase(adj.neighbour_flows_backwards[next], typeflow);
+                auto removed = erase(adj[next].backward_edges, typeflow);
                 assert(removed == 1);
             }
 
-            for(auto prev : adj.neighbour_flows_backwards[typeflow])
+            for(auto prev : f.backward_edges)
             {
-                auto removed = erase(adj.neighbour_flows[prev], typeflow);
+                auto removed = erase(adj[prev].forward_edges, typeflow);
                 assert(removed == 1);
 
-                for(auto& next : adj.neighbour_flows[typeflow])
+                for(auto& next : f.forward_edges)
                 {
-                    if(next != prev && std::find(adj.neighbour_flows[prev].begin(), adj.neighbour_flows[prev].end(), next) == adj.neighbour_flows[prev].end())
+                    if(next != prev && std::find(adj[prev].forward_edges.begin(), adj[prev].forward_edges.end(), next) == adj[prev].forward_edges.end())
                     {
-                        adj.neighbour_flows[prev].push_back(next);
-                        adj.neighbour_flows_backwards[next].push_back(prev);
+                        adj[prev].forward_edges.push_back(next);
+                        adj[next].backward_edges.push_back(prev);
                     }
                 }
             }
 
-            adj.neighbour_flows[typeflow].clear();
-            adj.neighbour_flows_backwards[typeflow].clear();
+            f.forward_edges.clear();
+            f.backward_edges.clear();
 
             useless_iterations = 0;
         }
@@ -457,9 +465,6 @@ static void remove_redundant(Adjacency& adj)
         {
             useless_iterations++;
         }
-
-        if(useless_iterations > adj.n_typeflows())
-            break;
     }
 
     cerr << "Redundant typeflows: " << redundant_typeflows.count() << "/" << (adj.n_typeflows() - 1) << "=" << ((float) redundant_typeflows.count() / (adj.n_typeflows() - 1)) << endl;
@@ -570,13 +575,13 @@ int main(int argc, const char** argv)
 
     cerr << "All instantiated types: " << max_typestate_size << endl;
 
-    vector<Edge> interflows;
+    vector<Edge<typeflow_id>> interflows;
     read_buffer(interflows, "interflows.bin");
 
     vector<TypestateEdge> virtual_invokes;
     read_buffer(virtual_invokes, "virtual_invokes.bin");
 
-    vector<Edge> direct_invokes;
+    vector<Edge<method_id>> direct_invokes;
     read_buffer(direct_invokes, "direct_invokes.bin");
 
     vector<uint32_t> typeflow_methods(1);
