@@ -176,20 +176,22 @@ struct TypestateArc
 struct Adjacency
 {
     size_t _n_types;
-    vector<vector<TypestateArc>> neighbour_flows;
-    vector<vector<TypestateArc>> neighbour_flows_backwards;
+    vector<vector<uint32_t>> neighbour_flows;
+    vector<vector<uint32_t>> neighbour_flows_backwards;
     vector<vector<TypestateArc>> neighbour_methods;
     vector<vector<uint32_t>> direct_methods;
     vector<vector<uint32_t>> typeflows_by_method;
+    vector<const Bitset*> typeflow_filters;
     vector<uint32_t> typeflow_methods;
 
-    Adjacency(size_t n_types, size_t n_methods, size_t n_typeflows, const vector<TypestateEdge>& interflows, const vector<TypestateEdge>& virtual_invokes, const vector<Edge>& direct_invokes, const vector<Bitset>& typestates, vector<uint32_t>&& typeflow_methods)
-            : _n_types(n_types), neighbour_flows(n_typeflows), neighbour_flows_backwards(n_typeflows), neighbour_methods(n_typeflows), direct_methods(n_methods), typeflows_by_method(n_methods), typeflow_methods(std::move(typeflow_methods))
+    Adjacency(size_t n_types, size_t n_methods, size_t n_typeflows, const vector<Edge>& interflows, const vector<TypestateEdge>& virtual_invokes, const vector<Edge>& direct_invokes, const vector<Bitset>& typestates, const vector<uint32_t>& typeflow_filters, vector<uint32_t>&& typeflow_methods)
+            : _n_types(n_types), neighbour_flows(n_typeflows), neighbour_flows_backwards(n_typeflows), neighbour_methods(n_typeflows), direct_methods(n_methods), typeflows_by_method(n_methods), typeflow_filters(typeflow_filters.size()), typeflow_methods(std::move(typeflow_methods))
     {
         for(auto e : interflows)
         {
-            neighbour_flows.at(e.src).push_back(TypestateArc(e.dst, &typestates.at(e.typestate_id)));
-            neighbour_flows_backwards.at(e.dst).push_back(TypestateArc(e.src, &typestates.at(e.typestate_id)));
+            assert(e.src != e.dst);
+            neighbour_flows.at(e.src).push_back(e.dst);
+            neighbour_flows_backwards.at(e.dst).push_back(e.src);
         }
         for(auto e : virtual_invokes)
             neighbour_methods.at(e.src).push_back(TypestateArc(e.dst, &typestates.at(e.typestate_id)));
@@ -197,6 +199,10 @@ struct Adjacency
             direct_methods.at(e.src).push_back(e.dst);
         for(size_t flow = 0; flow < this->typeflow_methods.size(); flow++)
             typeflows_by_method.at(this->typeflow_methods[flow]).push_back(flow);
+
+
+        for(size_t i = 1; i < typeflow_filters.size(); i++)
+            this->typeflow_filters[i] = &typestates.at(typeflow_filters[i]);
     }
 
     [[nodiscard]] size_t n_typeflows() const { return neighbour_flows.size(); }
@@ -245,9 +251,9 @@ static vector<bool> bfs(const Adjacency& adj)
             typeflow_worklist.pop();
             n_worklist_added++;
 
-            for(auto [ v, filter] : adj.neighbour_flows.at(u))
+            for(auto v : adj.neighbour_flows.at(u))
             {
-                Bitset transfer = typeflow_visited.at(u) & *filter;
+                Bitset transfer = typeflow_visited.at(u) & *adj.typeflow_filters[v];
 
                 if(!typeflow_visited.at(v).is_superset(transfer))
                 {
@@ -353,25 +359,32 @@ static bool is_redundant(Adjacency& adj, uint32_t typeflow)
     {
         if(adj.neighbour_flows[typeflow].size() == 1 && adj.neighbour_flows_backwards[typeflow].size() == 1)
         {
-            uint32_t M1 = adj.typeflow_methods[adj.neighbour_flows_backwards[typeflow][0].dst];
+            uint32_t M1 = adj.typeflow_methods[adj.neighbour_flows_backwards[typeflow][0]];
             uint32_t M2 = adj.typeflow_methods[typeflow];
-            uint32_t M3 = adj.typeflow_methods[adj.neighbour_flows[typeflow][0].dst];
+            uint32_t M3 = adj.typeflow_methods[adj.neighbour_flows[typeflow][0]];
 
-            if(M2 == M1 || M2 == M3 || M2 == 0)
+            if((M2 == M1 || M2 == M3 || M2 == 0)
+            && adj.typeflow_filters[typeflow]->is_superset(*adj.typeflow_filters[adj.neighbour_flows[typeflow][0]]))
                 return true;
         }
 
         if(adj.neighbour_flows_backwards[typeflow].size() == 1 && adj.neighbour_flows[typeflow].size() > 1)
         {
-            uint32_t M1 = adj.typeflow_methods[adj.neighbour_flows_backwards[typeflow][0].dst];
+            uint32_t M1 = adj.typeflow_methods[adj.neighbour_flows_backwards[typeflow][0]];
             uint32_t M2 = adj.typeflow_methods[typeflow];
+
+            for(auto& next : adj.neighbour_flows[typeflow])
+            {
+                if(!adj.typeflow_filters[typeflow]->is_superset(*adj.typeflow_filters[next]))
+                    return false;
+            }
 
             if(M2 == M1 || M2 == 0)
                 return true;
 
             for(auto& e : adj.neighbour_flows[typeflow])
             {
-                if(adj.typeflow_methods[e.dst] != M2)
+                if(adj.typeflow_methods[e] != M2)
                     return false;
             }
 
@@ -381,14 +394,17 @@ static bool is_redundant(Adjacency& adj, uint32_t typeflow)
         if(adj.neighbour_flows[typeflow].size() == 1 && adj.neighbour_flows_backwards[typeflow].size() > 1)
         {
             uint32_t M2 = adj.typeflow_methods[typeflow];
-            uint32_t M3 = adj.typeflow_methods[adj.neighbour_flows[typeflow][0].dst];
+            uint32_t M3 = adj.typeflow_methods[adj.neighbour_flows[typeflow][0]];
+
+            if(!adj.typeflow_filters[typeflow]->is_superset(*adj.typeflow_filters[adj.neighbour_flows[typeflow][0]]))
+                return false;
 
             if(M2 == M3 || M2 == 0)
                 return true;
 
             for(auto& e : adj.neighbour_flows_backwards[typeflow])
             {
-                if(adj.typeflow_methods[e.dst] != M2)
+                if(adj.typeflow_methods[e] != M2)
                     return false;
             }
 
@@ -397,6 +413,56 @@ static bool is_redundant(Adjacency& adj, uint32_t typeflow)
     }
 
     return false;
+}
+
+static void remove_redundant(Adjacency& adj)
+{
+    boost::dynamic_bitset<> redundant_typeflows(adj.n_typeflows());
+
+    size_t useless_iterations = 0;
+
+    for(uint32_t typeflow = 1; typeflow < adj.n_typeflows(); typeflow = typeflow == adj.n_typeflows() - 1 ? 1 : typeflow + 1)
+    {
+        if(!redundant_typeflows[typeflow] && is_redundant(adj, typeflow))
+        {
+            redundant_typeflows[typeflow] = true;
+
+            for(auto next : adj.neighbour_flows[typeflow])
+            {
+                auto removed = erase(adj.neighbour_flows_backwards[next], typeflow);
+                assert(removed == 1);
+            }
+
+            for(auto prev : adj.neighbour_flows_backwards[typeflow])
+            {
+                auto removed = erase(adj.neighbour_flows[prev], typeflow);
+                assert(removed == 1);
+
+                for(auto& next : adj.neighbour_flows[typeflow])
+                {
+                    if(next != prev && std::find(adj.neighbour_flows[prev].begin(), adj.neighbour_flows[prev].end(), next) == adj.neighbour_flows[prev].end())
+                    {
+                        adj.neighbour_flows[prev].push_back(next);
+                        adj.neighbour_flows_backwards[next].push_back(prev);
+                    }
+                }
+            }
+
+            adj.neighbour_flows[typeflow].clear();
+            adj.neighbour_flows_backwards[typeflow].clear();
+
+            useless_iterations = 0;
+        }
+        else
+        {
+            useless_iterations++;
+        }
+
+        if(useless_iterations > adj.n_typeflows())
+            break;
+    }
+
+    cerr << "Redundant typeflows: " << redundant_typeflows.count() << "/" << (adj.n_typeflows() - 1) << "=" << ((float) redundant_typeflows.count() / (adj.n_typeflows() - 1)) << endl;
 }
 
 static void simulate_purge(Adjacency& adj, const vector<string>& method_names, const unordered_map<string, uint32_t>& method_ids_by_name)
@@ -504,7 +570,7 @@ int main(int argc, const char** argv)
 
     cerr << "All instantiated types: " << max_typestate_size << endl;
 
-    vector<TypestateEdge> interflows;
+    vector<Edge> interflows;
     read_buffer(interflows, "interflows.bin");
 
     vector<TypestateEdge> virtual_invokes;
@@ -516,58 +582,12 @@ int main(int argc, const char** argv)
     vector<uint32_t> typeflow_methods(1);
     read_buffer(typeflow_methods, "typeflow_methods.bin");
 
+    vector<uint32_t> typeflow_filters(1);
+    read_buffer(typeflow_filters, "typeflow_filters.bin");
 
-    Adjacency adj(type_names.size(), method_names.size(), typeflow_names.size(), interflows, virtual_invokes, direct_invokes, typestates, std::move(typeflow_methods));
+    Adjacency adj(type_names.size(), method_names.size(), typeflow_names.size(), interflows, virtual_invokes, direct_invokes, typestates, typeflow_filters, std::move(typeflow_methods));
 
-    if(false)
-    {
-        boost::dynamic_bitset<> redundant_typeflows(adj.n_typeflows());
-
-        size_t useless_iterations = 0;
-
-        for(uint32_t typeflow = 1; typeflow < adj.n_typeflows(); typeflow = typeflow == adj.n_typeflows() - 1 ? 1 : typeflow + 1)
-        {
-            if(!redundant_typeflows[typeflow] && is_redundant(adj, typeflow))
-            {
-                redundant_typeflows[typeflow] = true;
-
-                for(auto& e : adj.neighbour_flows[typeflow])
-                {
-                    uint32_t dst = e.dst;
-                    erase_if(adj.neighbour_flows_backwards[dst], [typeflow](auto& e2) { return e2.dst == typeflow; });
-                }
-
-                for(auto& e : adj.neighbour_flows_backwards[typeflow])
-                {
-                    uint32_t src = e.dst;
-                    erase_if(adj.neighbour_flows[src], [typeflow](auto& e2) { return e2.dst == typeflow; });
-
-                    for(auto& e_forward : adj.neighbour_flows[typeflow])
-                    {
-                        Bitset* newFilter = new Bitset(*e_forward.filter);
-                        *newFilter &= *e.filter;
-
-                        adj.neighbour_flows[src].push_back(TypestateArc(e_forward.dst, newFilter));
-                        adj.neighbour_flows_backwards[e_forward.dst].push_back(TypestateArc(src, newFilter));
-                    }
-                }
-
-                adj.neighbour_flows[typeflow].clear();
-                adj.neighbour_flows_backwards[typeflow].clear();
-
-                useless_iterations = 0;
-            }
-            else
-            {
-                useless_iterations++;
-            }
-
-            if(useless_iterations > adj.n_typeflows())
-                break;
-        }
-
-        cerr << "Redundant typeflows: " << redundant_typeflows.count() << "/" << (adj.n_typeflows() - 1) << "=" << ((float) redundant_typeflows.count() / (adj.n_typeflows() - 1)) << endl;
-    }
+    remove_redundant(adj);
 
 #if REACHABILITY
     print_reachability
