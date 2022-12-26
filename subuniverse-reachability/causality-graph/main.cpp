@@ -10,9 +10,8 @@
 #include <boost/dynamic_bitset.hpp>
 #include <ranges>
 
-#define PRINT_ALL 1
-#define PRINT_PURGED 1
-#define REACHABILITY 1
+#define PRINT_PURGED (-1)
+#define REACHABILITY 0
 
 using namespace std;
 
@@ -106,11 +105,24 @@ public:
         return bitset.count();
     }
 
-    [[
-
-    nodiscard]] size_t first() const
+    [[nodiscard]] size_t first() const
     {
         return bitset.find_first();
+    }
+
+    [[nodiscard]] size_t next(size_t pos) const
+    {
+        return bitset.find_next(pos);
+    }
+
+    auto operator[](size_t i)
+    {
+        return bitset[i];
+    }
+
+    size_t size() const
+    {
+        return bitset.size();
     }
 };
 
@@ -182,6 +194,29 @@ static_assert(offsetof(Edge<typeflow_id>, src) == 0);
 static_assert(offsetof(Edge<method_id>, dst) == 4);
 static_assert(offsetof(Edge<typeflow_id>, dst) == 4);
 
+class ContainingMethod
+{
+    uint32_t _id : 31;
+    bool _is_reaching : 1;
+
+public:
+    ContainingMethod() = default;
+    ContainingMethod(method_id id, bool is_reaching) : _id(id), _is_reaching(is_reaching) {}
+
+    method_id reaching() const {
+        return _is_reaching ? _id : 0;
+    }
+
+    method_id dependent() const {
+        return _is_reaching ? 0 : _id;
+    }
+};
+
+static_assert(sizeof(ContainingMethod) == 4);
+
+
+
+
 template<typename T>
 static void read_buffer(vector<T>& dst, const char* path)
 {
@@ -214,24 +249,25 @@ struct Adjacency
     {
         vector<typeflow_id> forward_edges;
         vector<typeflow_id> backward_edges;
-        vector<TypestateArc> virtual_invokes;
         const Bitset* filter;
-        method_id method;
+        ContainingMethod method;
+        string name;
     };
 
     struct MethodInfo
     {
         vector<method_id> forward_edges;
         vector<method_id> backward_edges;
-        vector<typeflow_id> contained_typeflows;
+        vector<typeflow_id> dependent_typeflows;
         vector<typeflow_id> virtual_invocation_sources;
     };
 
     size_t _n_types;
     vector<TypeflowInfo> flows;
     vector<MethodInfo> methods;
+    typeflow_id allInstantiated;
 
-    Adjacency(size_t n_types, size_t n_methods, size_t n_typeflows, const vector<Edge<typeflow_id>>& interflows, const vector<TypestateEdge>& virtual_invokes, const vector<Edge<method_id>>& direct_invokes, const vector<Bitset>& typestates, const vector<uint32_t>& typeflow_filters, const vector<uint32_t>& typeflow_methods)
+    Adjacency(size_t n_types, size_t n_methods, size_t n_typeflows, const vector<Edge<typeflow_id>>& interflows, const vector<Edge<method_id>>& direct_invokes, const vector<Bitset>& typestates, const vector<uint32_t>& typeflow_filters, const vector<ContainingMethod>& typeflow_methods, const vector<string>& typeflow_names)
             : _n_types(n_types), flows(n_typeflows), methods(n_methods)
     {
         for(auto e : interflows)
@@ -239,11 +275,6 @@ struct Adjacency
             assert(e.src != e.dst);
             flows[e.src.id].forward_edges.push_back(e.dst);
             flows[e.dst.id].backward_edges.push_back(e.src);
-        }
-        for(auto e : virtual_invokes)
-        {
-            flows[e.src.id].virtual_invokes.emplace_back(e.dst, &typestates.at(e.typestate_id));
-            methods[e.dst.id].virtual_invocation_sources.push_back(e.src);
         }
         for(auto e : direct_invokes)
         {
@@ -253,11 +284,22 @@ struct Adjacency
         for(size_t flow = 0; flow < typeflow_methods.size(); flow++)
         {
             flows[flow].method = typeflow_methods[flow];
-            methods[typeflow_methods[flow]].contained_typeflows.push_back(flow);
+            if(typeflow_methods[flow].dependent())
+                methods[typeflow_methods[flow].dependent().id].dependent_typeflows.push_back(flow);
         }
 
         for(size_t i = 0; i < typeflow_filters.size(); i++)
             flows[i].filter = &typestates.at(typeflow_filters[i]);
+
+        allInstantiated = 0;
+        for(size_t i = 0; i < typeflow_names.size(); i++)
+        {
+            flows[i].name = typeflow_names[i];
+            if(typeflow_names[i] == "AllInstantiatedTypeFlow: java.lang.Object")
+                allInstantiated = i;
+        }
+
+        assert(allInstantiated);
     }
 
     [[nodiscard]] size_t n_typeflows() const { return flows.size(); }
@@ -281,168 +323,8 @@ struct Adjacency
 
         for(auto& f : flows)
         {
-            erase_if(f.virtual_invokes, [mid](TypestateArc& arc) { return arc.dst == mid; });
-        }
-    }
-};
-
-
-
-struct BigTypeflowHistory
-{
-    vector<uint8_t> dists;
-
-    int add_type(uint16_t type, uint8_t dist)
-    {
-        if(type > dists.size())
-        {
-            dists.resize(type, numeric_limits<uint8_t>::max());
-            dists.push_back(dist);
-            return 1;
-        }
-        else if(dists[type] == numeric_limits<uint8_t>::max())
-        {
-            dists[type] = dist;
-            return 1;
-        }
-        else
-        {
-            return 0;
-        }
-    }
-
-    struct iterator
-    {
-        struct end_it{};
-
-        const uint8_t* start;
-        const uint8_t* end;
-        const uint8_t* ptr;
-
-        iterator(const uint8_t* start, const uint8_t* end) : start(start), end(end), ptr(start)
-        {
-            while(ptr != end && *ptr == numeric_limits<uint8_t>::max())
-                ptr++;
-        }
-
-        bool operator==(end_it e) const
-        {
-            return ptr == end;
-        }
-
-        uint16_t operator*() const
-        {
-            return ptr - start;
-        }
-
-        void operator++()
-        {
-            do
-                ptr++;
-            while(ptr != end && *ptr == numeric_limits<uint8_t>::max());
-        }
-    };
-
-    iterator begin() const { return { &dists[0], &dists[dists.size()]}; }
-
-    iterator::end_it end() const { return {}; }
-};
-
-struct InlineTypeflowHistory
-{
-    uint16_t types[20] = { numeric_limits<uint16_t>::max() };
-    uint8_t dists[20] = { numeric_limits<uint8_t>::max() };
-
-public:
-
-    int add_type(uint16_t type, uint8_t dist)
-    {
-        for(size_t i = 0; i < 20; i++)
-        {
-            if(types[i] == numeric_limits<uint16_t>::max())
-            {
-                types[i] = type;
-                dists[i] = dist;
-                return 1;
-            }
-            else if(types[i] == type)
-            {
-                return 0;
-            }
-        }
-
-        return -1;
-    }
-
-    BigTypeflowHistory enlarge() const
-    {
-        BigTypeflowHistory h;
-
-        for(size_t i = 0; i < 20; i++)
-        {
-            if(types[i] == numeric_limits<uint16_t>::max())
-            {
-                break;
-            }
-
-            h.add_type(types[i], dists[i]);
-        }
-
-        return h;
-    }
-
-    struct iterator
-    {
-        struct end_it{};
-
-        const InlineTypeflowHistory* parent;
-        size_t pos;
-
-        iterator(const InlineTypeflowHistory* parent) : parent(parent), pos(0) {}
-
-        bool operator==(end_it e) const
-        {
-            return pos == 20 || parent->types[pos] == numeric_limits<uint16_t>::max();
-        }
-
-        uint16_t operator*() const
-        {
-            return pos;
-        }
-
-        void operator++()
-        {
-            pos++;
-        }
-    };
-
-    iterator begin() const { return { this }; }
-
-    iterator::end_it end() const { return {}; }
-};
-
-struct TypeflowHistory
-{
-    std::variant<InlineTypeflowHistory, BigTypeflowHistory> backing;
-
-    bool add_type(uint16_t type, uint8_t dist)
-    {
-        int r;
-
-        switch(backing.index())
-        {
-            case 0:
-                r = get<0>(backing).add_type(type, dist);
-                if(r != -1)
-                    return r;
-
-                // Resize...
-                backing = get<0>(backing).enlarge();
-
-            case 1:
-                return get<1>(backing).add_type(type, dist);
-            default:
-                __builtin_unreachable();
+            if(f.method.reaching() == mid)
+                f.method = {};
         }
     }
 };
@@ -454,7 +336,10 @@ public:
     vector<Bitset> typeflow_visited;
     vector<uint8_t> method_history;
 
-    __attribute__((optimize("O3"))) explicit BFS(const Adjacency& adj) : method_visited(adj.n_methods()), typeflow_visited(adj.n_typeflows(), adj.n_types()), method_history(adj.n_methods(), numeric_limits<uint8_t>::max())
+    explicit BFS(const Adjacency& adj)
+    : method_visited(adj.n_methods()),
+      typeflow_visited(adj.n_typeflows(),adj.n_types()),
+      method_history(adj.n_methods(), numeric_limits<uint8_t>::max())
     {
         typeflow_visited[0].fill(true);
         method_visited[0] = true;
@@ -476,6 +361,15 @@ public:
                 typeflow_worklist.pop();
                 n_worklist_added++;
 
+                method_id reaching = adj[u].method.reaching();
+
+                if(!method_visited[reaching.id])
+                {
+                    method_visited[reaching.id] = true;
+                    method_history[reaching.id] = dist;
+                    next_method_worklist.push_back(reaching.id);
+                }
+
                 for(auto v : adj[u].forward_edges)
                 {
                     Bitset transfer = typeflow_visited[u.id] & *adj[v].filter;
@@ -484,18 +378,8 @@ public:
                     {
                         typeflow_visited[v.id] |= transfer;
 
-                        if(method_visited[adj[v].method.id])
+                        if(method_visited[adj[v].method.dependent().id])
                             typeflow_worklist.push(v);
-                    }
-                }
-
-                for(auto [ v, filter ] : adj[u].virtual_invokes)
-                {
-                    if(!method_visited[v.id] && !typeflow_visited[u.id].are_disjoint(*filter))
-                    {
-                        method_visited[v.id] = true;
-                        method_history[v.id] = dist;
-                        next_method_worklist.push_back(v);
                     }
                 }
             }
@@ -509,7 +393,7 @@ public:
             {
                 const auto& m = adj[u];
 
-                for(auto v : m.contained_typeflows)
+                for(auto v : m.dependent_typeflows)
                     if(typeflow_visited[v.id].any())
                         typeflow_worklist.push(v);
 
@@ -528,9 +412,6 @@ public:
             swap(method_worklist, next_method_worklist);
             dist++;
         }
-
-        //cerr << "Typeflow iterations needed: " << typeflow_iterations << endl;
-        //cerr << "Bits transferred/Typeflow transfers: " << transfer_bit_count << "/" << typeflow_transfers << "=" << ((double)transfer_bit_count / typeflow_transfers) << endl;
 
         cerr << "n_worklist_added(" << n_worklist_added << ')';
     }
@@ -556,16 +437,16 @@ static bool is_redundant(const Adjacency& adj, typeflow_id typeflow)
     if(f.backward_edges.empty())
         return true;
 
-    if(f.forward_edges.empty() && f.virtual_invokes.empty())
+    if(f.forward_edges.empty() && !f.method.reaching())
         return true;
 
-    if(f.virtual_invokes.empty())
+    if(!f.method.reaching())
     {
         if(f.forward_edges.size() == 1 && f.backward_edges.size() == 1)
         {
-            method_id M1 = adj[f.backward_edges[0]].method;
-            method_id M2 = f.method;
-            method_id M3 = adj[f.forward_edges[0]].method;
+            method_id M1 = adj[f.backward_edges[0]].method.dependent();
+            method_id M2 = f.method.dependent();
+            method_id M3 = adj[f.forward_edges[0]].method.dependent();
 
             if((M2 == M1 || M2 == M3 || M2 == 0)
             && f.filter->is_superset(*adj[f.forward_edges[0]].filter))
@@ -574,8 +455,8 @@ static bool is_redundant(const Adjacency& adj, typeflow_id typeflow)
 
         if(f.forward_edges.size() > 1 && f.backward_edges.size() == 1)
         {
-            method_id M1 = adj[f.backward_edges[0]].method;
-            method_id M2 = f.method;
+            method_id M1 = adj[f.backward_edges[0]].method.dependent();
+            method_id M2 = f.method.dependent();
 
             for(auto& next : f.forward_edges)
             {
@@ -586,13 +467,13 @@ static bool is_redundant(const Adjacency& adj, typeflow_id typeflow)
             if(M2 == M1 || M2 == 0)
                 return true;
 
-            return std::all_of(f.forward_edges.begin(), f.forward_edges.end(), [&](typeflow_id next) { return adj[next].method == M2; });
+            return std::all_of(f.forward_edges.begin(), f.forward_edges.end(), [&](typeflow_id next) { return adj[next].method.dependent() == M2; });
         }
 
         if(f.forward_edges.size() == 1 && f.backward_edges.size() > 1)
         {
-            method_id M2 = f.method;
-            method_id M3 = adj[f.forward_edges[0]].method;
+            method_id M2 = f.method.dependent();
+            method_id M3 = adj[f.forward_edges[0]].method.dependent();
 
             if(!f.filter->is_superset(*adj[f.forward_edges[0]].filter))
                 return false;
@@ -600,7 +481,7 @@ static bool is_redundant(const Adjacency& adj, typeflow_id typeflow)
             if(M2 == M3 || M2 == 0)
                 return true;
 
-            return std::all_of(f.backward_edges.begin(), f.backward_edges.end(), [&](typeflow_id next) { return adj[next].method == M2; });
+            return std::all_of(f.backward_edges.begin(), f.backward_edges.end(), [&](typeflow_id next) { return adj[next].method.dependent() == M2; });
         }
     }
 
@@ -691,15 +572,18 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
 
     for(size_t i = 1; i < after_purge.method_visited.size(); i++)
     {
-#if PRINT_PURGED
+#if PRINT_PURGED == 1
         if(all.method_visited[i] && !after_purge.method_visited[i])
-#else
+#elif PRINT_PURGED == 0
         if(all.method_visited[i])
+#else
+        if(!all.method_visited[i])
 #endif
             cout << method_names[i] << endl;
     }
 }
 
+/*
 static void print_reachability_of_method(const Adjacency& adj, const vector<string>& method_names, const vector<string>& type_names, const BFS& all, method_id m, size_t print_depth, vector<bool>& visited)
 {
     size_t dist = all.method_history[m.id];
@@ -836,6 +720,7 @@ __attribute__((optimize("O0"))) static void print_reachability(const Adjacency& 
         }
     }
 }
+*/
 
 int main(int argc, const char** argv)
 {
@@ -869,19 +754,16 @@ int main(int argc, const char** argv)
     vector<Edge<typeflow_id>> interflows;
     read_buffer(interflows, "interflows.bin");
 
-    vector<TypestateEdge> virtual_invokes;
-    read_buffer(virtual_invokes, "virtual_invokes.bin");
-
     vector<Edge<method_id>> direct_invokes;
     read_buffer(direct_invokes, "direct_invokes.bin");
 
-    vector<uint32_t> typeflow_methods(1);
+    vector<ContainingMethod> typeflow_methods(1);
     read_buffer(typeflow_methods, "typeflow_methods.bin");
 
     vector<uint32_t> typeflow_filters(1);
     read_buffer(typeflow_filters, "typeflow_filters.bin");
 
-    Adjacency adj(type_names.size(), method_names.size(), typeflow_names.size(), interflows, virtual_invokes, direct_invokes, typestates, typeflow_filters, std::move(typeflow_methods));
+    Adjacency adj(type_names.size(), method_names.size(), typeflow_names.size(), interflows, direct_invokes, typestates, typeflow_filters, std::move(typeflow_methods), typeflow_names);
 
     //remove_redundant(adj);
 
