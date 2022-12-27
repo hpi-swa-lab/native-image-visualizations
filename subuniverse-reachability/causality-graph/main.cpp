@@ -318,7 +318,7 @@ struct Adjacency
     }
 };
 
-struct TypeflowHistory
+struct __attribute__((aligned(64))) TypeflowHistory
 {
     uint16_t types[20];
     uint8_t dists[20];
@@ -391,6 +391,8 @@ public:
     }
 };
 
+static_assert(sizeof(TypeflowHistory) == 64);
+
 class BFS
 {
 public:
@@ -403,6 +405,7 @@ public:
       typeflow_visited(adj.n_typeflows()),
       method_history(adj.n_methods(), numeric_limits<uint8_t>::max())
     {
+        Bitset tmp(adj.n_types());
         Bitset allInstantiated(adj.n_types());
 
         method_visited[0] = true;
@@ -453,7 +456,7 @@ public:
                     {
                         method_visited[reaching.id] = true;
                         method_history[reaching.id] = dist;
-                        next_method_worklist.push_back(reaching.id);
+                        method_worklist.push_back(reaching.id);
                     }
 
                     if(!typeflow_visited[u.id].is_saturated())
@@ -508,14 +511,13 @@ public:
 
                                 bool changed = false;
 
-                                for(size_t t = 0; t < adj.n_types(); t++)
+                                tmp = allInstantiated;
+                                tmp &= *adj[v].filter;
+                                for(size_t t = tmp.first(); t < adj.n_types(); t = tmp.next(t))
                                 {
-                                    if(allInstantiated[t] && (*adj[v].filter)[t])
-                                    {
-                                        changed |= typeflow_visited[v.id].add_type(t, dist);
-                                        if(typeflow_visited[v.id].is_saturated())
-                                            break;
-                                    }
+                                    changed |= typeflow_visited[v.id].add_type(t, dist);
+                                    if(typeflow_visited[v.id].is_saturated())
+                                        break;
                                 }
 
                                 if(changed && method_visited[adj[v].method.dependent().id])
@@ -742,6 +744,7 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
 
     cerr << " " << std::count_if(all.method_visited.begin(), all.method_visited.end(), [](bool b) { return b; }) << " methods reachable!\n";
 
+#if PRINT_PURGED == 1
     cerr << "Running DFS on purged graph...";
 
     for(uint32_t mid : purged_mids)
@@ -753,7 +756,9 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
 
     cerr << " " << std::count_if(after_purge.method_visited.begin(), after_purge.method_visited.end(), [](bool b) { return b; }) << " methods reachable!\n";
 
-    for(size_t i = 1; i < after_purge.method_visited.size(); i++)
+#endif
+
+    for(size_t i = 1; i < all.method_visited.size(); i++)
     {
 #if PRINT_PURGED == 1
         if(all.method_visited[i] && !after_purge.method_visited[i])
