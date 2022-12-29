@@ -10,9 +10,6 @@
 #include <boost/dynamic_bitset.hpp>
 #include <ranges>
 
-#define PRINT_PURGED (-1)
-#define REACHABILITY 0
-
 using namespace std;
 
 static void read_lines(vector<string>& dst, const char* path)
@@ -275,6 +272,8 @@ struct Adjacency
             flows[flow].method = typeflow_methods[flow];
             if(typeflow_methods[flow].dependent())
                 methods[typeflow_methods[flow].dependent().id].dependent_typeflows.push_back(flow);
+            if(typeflow_methods[flow].reaching())
+                methods[typeflow_methods[flow].reaching().id].virtual_invocation_sources.push_back(flow);
         }
 
         for(size_t i = 0; i < typeflow_filters.size(); i++)
@@ -438,10 +437,36 @@ public:
 
         uint64_t n_worklist_added = 0;
 
-        uint8_t dist = 1;
+        uint8_t dist = 0;
 
-        while(true)
+        while(!method_worklist.empty())
         {
+            n_worklist_added += method_worklist.size();
+
+            for(method_id u : method_worklist)
+            {
+                method_history[u.id] = dist;
+                const auto& m = adj[u];
+
+                for(auto v : m.dependent_typeflows)
+                    if(typeflow_visited[v.id].any())
+                        typeflow_worklist.push(v);
+
+                for(auto v : m.forward_edges)
+                {
+                    if(!method_visited[v.id])
+                    {
+                        method_visited[v.id] = true;
+                        next_method_worklist.push_back(v);
+                    }
+                }
+            }
+
+            method_worklist.clear();
+            swap(method_worklist, next_method_worklist);
+
+            dist++;
+
             while(!typeflow_worklist.empty())
             {
                 while(!typeflow_worklist.empty())
@@ -455,7 +480,6 @@ public:
                     if(!method_visited[reaching.id])
                     {
                         method_visited[reaching.id] = true;
-                        method_history[reaching.id] = dist;
                         method_worklist.push_back(reaching.id);
                     }
 
@@ -493,7 +517,7 @@ public:
                                     break;
                             }
 
-                            if(changed && method_visited[adj[v].method.dependent().id])
+                            if(changed && method_history[adj[v].method.dependent().id] != numeric_limits<uint8_t>::max())
                                 typeflow_worklist.push(v);
                         }
                     }
@@ -520,7 +544,7 @@ public:
                                         break;
                                 }
 
-                                if(changed && method_visited[adj[v].method.dependent().id])
+                                if(changed && method_history[adj[v].method.dependent().id] != numeric_limits<uint8_t>::max())
                                     typeflow_worklist.push(v);
                             }
                         }
@@ -557,7 +581,7 @@ public:
                                     break;
                             }
 
-                            if(changed && method_visited[adj[u].method.dependent().id])
+                            if(changed && method_history[adj[u].method.dependent().id] != numeric_limits<uint8_t>::max())
                                 typeflow_worklist.push(u);
 
                             it++;
@@ -567,34 +591,6 @@ public:
 
                 instantiated_since_last_iteration.clear();
             }
-
-            if(method_worklist.empty())
-                break;
-
-            n_worklist_added += method_worklist.size();
-
-            for(method_id u : method_worklist)
-            {
-                const auto& m = adj[u];
-
-                for(auto v : m.dependent_typeflows)
-                    if(typeflow_visited[v.id].any())
-                        typeflow_worklist.push(v);
-
-                for(auto v : m.forward_edges)
-                {
-                    if(!method_visited[v.id])
-                    {
-                        method_visited[v.id] = true;
-                        method_history[v.id] = dist;
-                        next_method_worklist.push_back(v);
-                    }
-                }
-            }
-
-            method_worklist.clear();
-            swap(method_worklist, next_method_worklist);
-            dist++;
         }
 
         cerr << "n_worklist_added(" << n_worklist_added << ") ";
@@ -721,106 +717,221 @@ static void remove_redundant(Adjacency& adj)
     cerr << "Redundant typeflows: " << redundant_typeflows.count() << "/" << (adj.n_typeflows() - 1) << "=" << ((float) redundant_typeflows.count() / (adj.n_typeflows() - 1)) << endl;
 }
 
-static void simulate_purge(Adjacency& adj, const vector<string>& method_names, const unordered_map<string, uint32_t>& method_ids_by_name)
+static void simulate_purge(Adjacency& adj, const vector<string>& method_names, const unordered_map<string, uint32_t>& method_ids_by_name, string_view command)
 {
-    vector<uint32_t> purged_mids;
-
-    string name;
-
-    while(!cin.eof())
+    if(command == "purged")
     {
-        getline(cin, name);
+        vector<uint32_t> purged_mids;
+        string name;
 
-        if(name.length() == 0)
-            break;
+        while(!cin.eof())
+        {
+            getline(cin, name);
 
-        uint32_t mid = resolve_method(method_ids_by_name, name);
-        purged_mids.push_back(mid);
+            if(name.length() == 0)
+                break;
+
+            uint32_t mid = resolve_method(method_ids_by_name, name);
+            purged_mids.push_back(mid);
+        }
+
+        cerr << "Running DFS on original graph...";
+        BFS all(adj);
+        cerr << " " << std::count_if(all.method_visited.begin(), all.method_visited.end(), [](bool b) { return b; }) << " methods reachable!\n";
+
+        cerr << "Running DFS on purged graph...";
+
+        for(uint32_t mid: purged_mids)
+        {
+            adj.purge_method(mid);
+        }
+
+        BFS after_purge(adj);
+
+        cerr << " " << std::count_if(after_purge.method_visited.begin(), after_purge.method_visited.end(), [](bool b) { return b; }) << " methods reachable!\n";
+
+        for(size_t i = 1; i < all.method_visited.size(); i++)
+        {
+            if(all.method_visited[i] && !after_purge.method_visited[i])
+                cout << method_names[i] << endl;
+        }
     }
-
-    cerr << "Running DFS on original graph...";
-
-    BFS all(adj);
-
-    cerr << " " << std::count_if(all.method_visited.begin(), all.method_visited.end(), [](bool b) { return b; }) << " methods reachable!\n";
-
-#if PRINT_PURGED == 1
-    cerr << "Running DFS on purged graph...";
-
-    for(uint32_t mid : purged_mids)
+    else
     {
-        adj.purge_method(mid);
-    }
+        cerr << "Running DFS on original graph...";
+        BFS all(adj);
+        cerr << " " << std::count_if(all.method_visited.begin(), all.method_visited.end(), [](bool b) { return b; }) << " methods reachable!\n";
 
-    BFS after_purge(adj);
-
-    cerr << " " << std::count_if(after_purge.method_visited.begin(), after_purge.method_visited.end(), [](bool b) { return b; }) << " methods reachable!\n";
-
-#endif
-
-    for(size_t i = 1; i < all.method_visited.size(); i++)
-    {
-#if PRINT_PURGED == 1
-        if(all.method_visited[i] && !after_purge.method_visited[i])
-#elif PRINT_PURGED == 0
-        if(all.method_visited[i])
-#else
-        if(!all.method_visited[i])
-#endif
-            cout << method_names[i] << endl;
+        if(command == "all")
+        {
+            for(size_t i = 1; i < all.method_visited.size(); i++)
+            {
+                if(all.method_visited[i])
+                    cout << method_names[i] << endl;
+            }
+        }
+        else if(command == "missing")
+        {
+            for(size_t i = 1; i < all.method_visited.size(); i++)
+            {
+                if(!all.method_visited[i])
+                    cout << method_names[i] << endl;
+            }
+        }
     }
 }
 
-/*
-static void print_reachability_of_method(const Adjacency& adj, const vector<string>& method_names, const vector<string>& type_names, const BFS& all, method_id m, size_t print_depth, vector<bool>& visited)
+class TreeIndenter
+{
+    size_t depth = 0;
+    vector<size_t> vertical_bars;
+
+public:
+    class indent
+    {
+        TreeIndenter& parent;
+
+    public:
+        explicit indent(TreeIndenter& parent) : parent(parent)
+        {
+            parent.depth++;
+        }
+
+        indent(const indent&) = delete;
+        indent(indent&&) = delete;
+
+        ~indent()
+        {
+            parent.depth--;
+        }
+    };
+
+    void begin_bars()
+    {
+        vertical_bars.push_back(depth);
+    }
+
+    void end_bars()
+    {
+        vertical_bars.pop_back();
+    }
+
+    void print(ostream& out) const
+    {
+        auto bars_it = vertical_bars.begin();
+
+        for(size_t i = 0; i < depth; i++)
+        {
+            if(bars_it != vertical_bars.end() && *bars_it == i)
+            {
+                out << "| ";
+                bars_it++;
+            }
+            else
+            {
+                out << "  ";
+            }
+        }
+
+        if(bars_it != vertical_bars.end())
+        {
+            out << "├─";
+        }
+        else
+        {
+            out << "└─";
+        }
+    }
+};
+
+static ostream& operator<<(ostream& out, const TreeIndenter& indentation)
+{
+    indentation.print(out);
+    return out;
+}
+
+static void print_reachability_of_method(const Adjacency& adj, const vector<string>& method_names, const vector<string>& type_names, const BFS& all, method_id m, vector<bool>& visited, TreeIndenter& indentation)
 {
     size_t dist = all.method_history[m.id];
 
     if(dist == 0)
+    {
+        cout << indentation << "<Root>" << endl;
         return;
+    }
 
-    for(size_t i = 0; i < print_depth * 2; i++)
-        cout << ' ';
-    cout << "-> " << method_names[m.id] << " (dist: " << (size_t)all.method_history[m.id] << ')' << endl;
+    cout << indentation << method_names[m.id] << " (dist: " << (size_t)all.method_history[m.id] << ')' << endl;
 
     if(visited[m.id])
+    {
+        TreeIndenter::indent i(indentation);
+        cout << indentation << "..." << endl;
         return;
+    }
 
     visited[m.id] = true;
 
-    dist--;
+    auto it = std::find_if(adj.methods[m.id].backward_edges.begin(), adj.methods[m.id].backward_edges.end(), [&](method_id prev) { return all.method_history[prev.id] < dist; });
 
-    auto it = std::find_if(adj.methods[m.id].backward_edges.begin(), adj.methods[m.id].backward_edges.end(), [&](method_id prev) { return all.method_history[prev.id] == dist; });
+    TreeIndenter::indent i(indentation);
 
     if(it != adj.methods[m.id].backward_edges.end())
     {
-        print_reachability_of_method(adj, method_names, type_names, all, *it, print_depth + 1, visited);
+        print_reachability_of_method(adj, method_names, type_names, all, *it, visited, indentation);
     }
     else
     {
         // --- Do backwards-search in typeflow-nodes ---
 
         vector<typeflow_id> parent(adj.n_typeflows());
-        queue<pair<typeflow_id, Bitset>> worklist;
+        queue<typeflow_id> worklist;
 
-        for(typeflow_id flow : adj.methods[m.id].virtual_invocation_sources)
+        typeflow_id start_flow;
+        uint16_t flow_type;
+        uint8_t flow_type_dist = numeric_limits<uint8_t>::max();
+
+        for(typeflow_id flow : adj[m].virtual_invocation_sources)
         {
-            for(const TypestateArc& e : adj[flow].virtual_invokes)
+            const TypeflowHistory& history = all.typeflow_visited[flow.id];
+            if(history.is_saturated())
             {
-                if(e.dst == m && !e.filter->are_disjoint(all.typeflow_visited[flow.id]))
+                if(history.saturated_dist < flow_type_dist)
                 {
-                    worklist.emplace(flow, *e.filter & all.typeflow_visited[flow.id]);
-                    parent[flow.id] = numeric_limits<typeflow_id>::max();
+                    flow_type = adj[flow].filter->first();
+                    flow_type_dist = history.saturated_dist;
+                    start_flow = flow;
+                }
+            }
+            else
+            {
+                for(auto pair : history)
+                {
+                    if(pair.second < flow_type_dist)
+                    {
+                        flow_type = pair.first;
+                        flow_type_dist = pair.second;
+                        start_flow = flow;
+                    }
                 }
             }
         }
+
+        assert(flow_type_dist <= dist);
+        worklist.push(start_flow);
 
         for(;;)
         {
             assert(!worklist.empty());
 
-            auto [flow, followTypes] = worklist.front();
+            typeflow_id flow = worklist.front();
             worklist.pop();
+
+            if(flow != adj.allInstantiated && all.typeflow_visited[flow.id].is_saturated())
+            {
+                parent[adj.allInstantiated.id] = flow;
+                worklist.emplace(adj.allInstantiated);
+                continue;
+            }
 
             for(typeflow_id prev : adj[flow].backward_edges)
             {
@@ -830,22 +941,34 @@ static void print_reachability_of_method(const Adjacency& adj, const vector<stri
 
                     for(typeflow_id cur = flow; parent[cur.id] != numeric_limits<typeflow_id>::max(); cur = parent[cur.id])
                     {
-                        method_id cur_container = adj[cur].method;
-                        if(cur_container && !(!methods.empty() && methods.back() == cur_container))
-                            methods.push_back(cur_container);
+                        if(all.typeflow_visited[cur.id].is_saturated() && !(!methods.empty() && methods.back() == numeric_limits<method_id>::max()))
+                            methods.push_back(numeric_limits<method_id>::max());
+                        else
+                        {
+                            method_id cur_container = adj[cur].method.dependent();
+                            if(cur_container && !(!methods.empty() && methods.back() == cur_container))
+                                methods.push_back(cur_container);
+                        }
                     }
 
-                    for(size_t i = 0; i < (print_depth + 1) * 2; i++)
-                        cout << ' ';
-                    cout << "- Virtually called through " << type_names[followTypes.first()];
-                    size_t typesCount = followTypes.count();
-                    if(typesCount > 1)
-                        cout << " (and " << typesCount << " others)";
-                    cout << endl;
+                    indentation.begin_bars();
 
+                    cout << indentation << "(Virtually called through " << type_names[flow_type] << ')' << endl;
+
+                    size_t i = methods.size();
                     for(method_id containing_method : views::reverse(methods))
                     {
-                        print_reachability_of_method(adj, method_names, type_names, all, containing_method, print_depth + 1, visited);
+                        if(--i == 0) // last method
+                            indentation.end_bars();
+
+                        if(containing_method == numeric_limits<method_id>::max())
+                        {
+                            cout << indentation << "(Saturated)" << endl;
+                        }
+                        else
+                        {
+                            print_reachability_of_method(adj, method_names, type_names, all, containing_method, visited, indentation);
+                        }
                     }
 
                     return;
@@ -854,14 +977,26 @@ static void print_reachability_of_method(const Adjacency& adj, const vector<stri
                 if(parent[prev.id])
                     continue;
 
-                if(all.typeflow_visited[prev.id].are_disjoint(followTypes))
+                if(adj[prev].method.dependent().id && all.method_history[adj[prev].method.dependent().id] >= dist)
                     continue;
 
-                if(adj[prev].method.id && all.method_history[adj[prev].method.id] > dist + 1)
-                    continue;
-
-                parent[prev.id] = flow;
-                worklist.emplace(prev, all.typeflow_visited[prev.id] & followTypes);
+                if(all.typeflow_visited[prev.id].is_saturated())
+                {
+                    parent[prev.id] = flow;
+                    worklist.emplace(prev);
+                }
+                else
+                {
+                    for(auto t2 : all.typeflow_visited[prev.id])
+                    {
+                        if(flow_type == t2.first)
+                        {
+                            parent[prev.id] = flow;
+                            worklist.emplace(prev);
+                            break;
+                        }
+                    }
+                }
             }
         }
     }
@@ -904,11 +1039,11 @@ __attribute__((optimize("O0"))) static void print_reachability(const Adjacency& 
         else
         {
             vector<bool> visited(adj.n_methods());
-            print_reachability_of_method(adj, method_names, type_names, all, mid, 0, visited);
+            TreeIndenter indentation;
+            print_reachability_of_method(adj, method_names, type_names, all, mid, visited, indentation);
         }
     }
 }
-*/
 
 int main(int argc, const char** argv)
 {
@@ -955,9 +1090,20 @@ int main(int argc, const char** argv)
 
     remove_redundant(adj);
 
-#if REACHABILITY
-    print_reachability(adj, method_names, method_ids_by_name, type_names);
-#else
-    simulate_purge(adj, method_names, method_ids_by_name);
-#endif
+    if(argc < 2)
+    {
+        cerr << "Usage: " << argv[0] << " <command>" << endl;
+        return 1;
+    }
+
+    string_view command = argv[1];
+
+    if(command == "reachability")
+    {
+        print_reachability(adj, method_names, method_ids_by_name, type_names);
+    }
+    else
+    {
+        simulate_purge(adj, method_names, method_ids_by_name, command);
+    }
 }
