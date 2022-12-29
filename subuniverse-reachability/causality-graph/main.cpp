@@ -232,17 +232,6 @@ static void read_buffer(vector<T>& dst, const char* path)
     in.read((char*)&dst[prev_size], len);
 }
 
-struct TypestateArc
-{
-    method_id dst;
-    const Bitset* filter;
-
-    explicit TypestateArc(method_id dst, const Bitset* filter) : dst(dst), filter(filter)
-    {
-        assert(filter);
-    }
-};
-
 struct Adjacency
 {
     struct TypeflowInfo
@@ -329,25 +318,120 @@ struct Adjacency
     }
 };
 
+struct TypeflowHistory
+{
+    uint16_t types[20];
+    uint8_t dists[20];
+    uint8_t saturated_dist = numeric_limits<uint8_t>::max();
+
+public:
+    TypeflowHistory()
+    {
+        fill(types, types + 20, numeric_limits<uint16_t>::max());
+        fill(dists, dists + 20, numeric_limits<uint8_t>::max());
+    }
+
+    bool add_type(uint16_t type, uint8_t dist)
+    {
+        for(size_t i = 0; i < 20; i++)
+        {
+            if(types[i] == numeric_limits<uint16_t>::max())
+            {
+                types[i] = type;
+                dists[i] = dist;
+                return true;
+            }
+            else if(types[i] == type)
+            {
+                return false;
+            }
+        }
+
+        saturated_dist = dist;
+        return true;
+    }
+
+    struct iterator
+    {
+        struct end_it{};
+
+        const TypeflowHistory* parent;
+        size_t pos;
+
+        iterator(const TypeflowHistory* parent) : parent(parent), pos(0) {}
+
+        bool operator==(end_it e) const
+        {
+            return pos == 20 || parent->types[pos] == numeric_limits<uint16_t>::max();
+        }
+
+        pair<uint16_t, uint8_t> operator*() const
+        {
+            return {parent->types[pos], parent->dists[pos]};
+        }
+
+        void operator++()
+        {
+            pos++;
+        }
+    };
+
+    iterator begin() const { return { this }; }
+
+    iterator::end_it end() const { return {}; }
+
+    bool is_saturated() const
+    {
+        return saturated_dist != numeric_limits<uint8_t>::max();
+    }
+
+    bool any() const
+    {
+        return is_saturated() || types[0] != numeric_limits<uint16_t>::max();
+    }
+};
+
 class BFS
 {
 public:
     vector<bool> method_visited;
-    vector<Bitset> typeflow_visited;
+    vector<TypeflowHistory> typeflow_visited;
     vector<uint8_t> method_history;
 
     explicit BFS(const Adjacency& adj)
     : method_visited(adj.n_methods()),
-      typeflow_visited(adj.n_typeflows(),adj.n_types()),
+      typeflow_visited(adj.n_typeflows()),
       method_history(adj.n_methods(), numeric_limits<uint8_t>::max())
     {
-        typeflow_visited[0].fill(true);
+        Bitset allInstantiated(adj.n_types());
+
         method_visited[0] = true;
         method_history[0] = 0;
 
         vector<method_id> method_worklist(1, 0);
         vector<method_id> next_method_worklist;
-        queue<typeflow_id> typeflow_worklist{{0}};
+        queue<typeflow_id> typeflow_worklist;
+
+        // Handle white-hole typeflow
+        for(auto v: adj.flows[0].forward_edges)
+        {
+            const Bitset* filter = adj[v].filter;
+            bool changed = false;
+
+            for(size_t t = filter->first(); t < adj.n_types(); t = filter->next(t))
+            {
+                changed |= typeflow_visited[v.id].add_type(t, 0);
+                if(typeflow_visited[v.id].is_saturated())
+                    break;
+            }
+
+            if(changed && !adj[v].method.dependent())
+                typeflow_worklist.push(v);
+        }
+
+        vector<uint16_t> instantiated_since_last_iteration;
+        list<typeflow_id> saturation_uses;
+        vector<bool> included_in_saturation_uses(adj.n_typeflows());
 
         uint64_t n_worklist_added = 0;
 
@@ -357,31 +441,129 @@ public:
         {
             while(!typeflow_worklist.empty())
             {
-                typeflow_id u = typeflow_worklist.front();
-                typeflow_worklist.pop();
-                n_worklist_added++;
-
-                method_id reaching = adj[u].method.reaching();
-
-                if(!method_visited[reaching.id])
+                while(!typeflow_worklist.empty())
                 {
-                    method_visited[reaching.id] = true;
-                    method_history[reaching.id] = dist;
-                    next_method_worklist.push_back(reaching.id);
-                }
+                    typeflow_id u = typeflow_worklist.front();
+                    typeflow_worklist.pop();
+                    n_worklist_added++;
 
-                for(auto v : adj[u].forward_edges)
-                {
-                    Bitset transfer = typeflow_visited[u.id] & *adj[v].filter;
+                    method_id reaching = adj[u].method.reaching();
 
-                    if(!typeflow_visited[v.id].is_superset(transfer))
+                    if(!method_visited[reaching.id])
                     {
-                        typeflow_visited[v.id] |= transfer;
+                        method_visited[reaching.id] = true;
+                        method_history[reaching.id] = dist;
+                        next_method_worklist.push_back(reaching.id);
+                    }
 
-                        if(method_visited[adj[v].method.dependent().id])
-                            typeflow_worklist.push(v);
+                    if(!typeflow_visited[u.id].is_saturated())
+                    {
+                        for(auto v: adj[u].forward_edges)
+                        {
+                            if(v == adj.allInstantiated)
+                            {
+                                for(pair<uint16_t, uint8_t> type: typeflow_visited[u.id])
+                                {
+                                    if(!allInstantiated[type.first])
+                                    {
+                                        allInstantiated[type.first] = true;
+                                        instantiated_since_last_iteration.push_back(type.first);
+                                    }
+                                }
+                            }
+
+                            if(typeflow_visited[v.id].is_saturated())
+                                continue;
+
+                            const Bitset& filter = *adj[v].filter;
+
+                            bool changed = false;
+
+                            for(pair<uint16_t, uint8_t> type: typeflow_visited[u.id])
+                            {
+                                if(!filter[type.first])
+                                    continue;
+
+                                changed |= typeflow_visited[v.id].add_type(type.first, dist);
+
+                                if(typeflow_visited[v.id].is_saturated())
+                                    break;
+                            }
+
+                            if(changed && method_visited[adj[v].method.dependent().id])
+                                typeflow_worklist.push(v);
+                        }
+                    }
+                    else
+                    {
+                        for(auto v: adj[u].forward_edges)
+                        {
+                            if(typeflow_visited[v.id].is_saturated())
+                                continue;
+
+                            if(!included_in_saturation_uses[v.id])
+                            {
+                                saturation_uses.push_back(v);
+                                included_in_saturation_uses[v.id] = true;
+
+                                bool changed = false;
+
+                                for(size_t t = 0; t < adj.n_types(); t++)
+                                {
+                                    if(allInstantiated[t] && (*adj[v].filter)[t])
+                                    {
+                                        changed |= typeflow_visited[v.id].add_type(t, dist);
+                                        if(typeflow_visited[v.id].is_saturated())
+                                            break;
+                                    }
+                                }
+
+                                if(changed && method_visited[adj[v].method.dependent().id])
+                                    typeflow_worklist.push(v);
+                            }
+                        }
                     }
                 }
+
+                {
+                    auto it = saturation_uses.begin();
+
+                    while(it != saturation_uses.end())
+                    {
+                        typeflow_id u = *it;
+
+                        if(typeflow_visited[u.id].is_saturated())
+                        {
+                            assert(included_in_saturation_uses[u.id]);
+                            included_in_saturation_uses[u.id] = false;
+                            it = saturation_uses.erase(it);
+                        }
+                        else
+                        {
+                            const Bitset& filter = *adj[u].filter;
+
+                            bool changed = false;
+
+                            for(uint16_t type: instantiated_since_last_iteration)
+                            {
+                                if(!filter[type])
+                                    continue;
+
+                                changed |= typeflow_visited[u.id].add_type(type, dist);
+
+                                if(typeflow_visited[u.id].is_saturated())
+                                    break;
+                            }
+
+                            if(changed && method_visited[adj[u].method.dependent().id])
+                                typeflow_worklist.push(u);
+
+                            it++;
+                        }
+                    }
+                }
+
+                instantiated_since_last_iteration.clear();
             }
 
             if(method_worklist.empty())
@@ -413,7 +595,8 @@ public:
             dist++;
         }
 
-        cerr << "n_worklist_added(" << n_worklist_added << ')';
+        cerr << "n_worklist_added(" << n_worklist_added << ") ";
+        cerr << "n_types_instantiated(" << allInstantiated.count() << '/' << allInstantiated.size() << ") ";
     }
 };
 
@@ -765,7 +948,7 @@ int main(int argc, const char** argv)
 
     Adjacency adj(type_names.size(), method_names.size(), typeflow_names.size(), interflows, direct_invokes, typestates, typeflow_filters, std::move(typeflow_methods), typeflow_names);
 
-    //remove_redundant(adj);
+    remove_redundant(adj);
 
 #if REACHABILITY
     print_reachability(adj, method_names, method_ids_by_name, type_names);
