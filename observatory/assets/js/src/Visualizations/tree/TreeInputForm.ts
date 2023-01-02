@@ -22,13 +22,13 @@ export default class TreeInputForm {
         form.appendChild(this.createFieldsetMethodsFilter())
 
         form.appendChild(this.createSubmitButton())
-        form.appendChild(this.createExtendTreeButton())
+        form.appendChild(this.createExpandTreeButton())
 
         document.body.appendChild(form)
         this.element = form
     }
 
-    createFieldsetDiffingFilter(
+    private createFieldsetDiffingFilter(
         universesMetadata: Dictionary<UniverseProps>,
         filter: TreeNodesFilter
     ) {
@@ -64,7 +64,7 @@ export default class TreeInputForm {
         return fieldset
     }
 
-    createFieldsetSorting(filter: TreeNodesFilter) {
+    private createFieldsetSorting(filter: TreeNodesFilter) {
         const fieldset = this.createFieldsetWithLegend('sortingFilter', 'Sort nodes by ...')
 
         const divRow = this.createDiv(['row'])
@@ -89,17 +89,17 @@ export default class TreeInputForm {
         return fieldset
     }
 
-    createFieldsetDetailsSlider() {
+    private createFieldsetDetailsSlider() {
         const fieldset = this.createFieldsetWithLegend('detailsFilter', 'WIP - Details Slider')
         return fieldset
     }
 
-    createFieldsetMethodsFilter() {
+    private createFieldsetMethodsFilter() {
         const fieldset = this.createFieldsetWithLegend('methodsFilter', 'WIP - Methods Filter')
         return fieldset
     }
 
-    createSubmitButton() {
+    private createSubmitButton() {
         const submitBtn = document.createElement('button')
         submitBtn.setAttribute('type', 'submit')
         submitBtn.classList.add('btn', 'btn-sm', 'btn-primary', 'm-2')
@@ -107,12 +107,12 @@ export default class TreeInputForm {
         return submitBtn
     }
 
-    createExtendTreeButton() {
+    private createExpandTreeButton() {
         const btn = document.createElement('button')
         btn.setAttribute('type', 'button')
-        btn.setAttribute('id', 'extend-tree-btn')
+        btn.setAttribute('id', 'expand-tree-btn')
         btn.classList.add('btn', 'btn-sm', 'btn-light', 'm-2')
-        btn.innerText = 'extend full tree'
+        btn.innerText = 'expand full tree'
         return btn
     }
 
@@ -120,7 +120,7 @@ export default class TreeInputForm {
     // ##### CREATE HTML ########################################################################################
     // ##########################################################################################################
 
-    createFieldsetWithLegend(id: string, legendText: string) {
+    private createFieldsetWithLegend(id: string, legendText: string) {
         const fieldset = document.createElement('fieldset')
         fieldset.setAttribute('id', id)
         fieldset.classList.add('border', 'p-2', 'w-auto')
@@ -131,7 +131,7 @@ export default class TreeInputForm {
         return fieldset
     }
 
-    createCheckboxLabelDiv(id: string, label: string, backgroundColor: string, checked: boolean) {
+    private createCheckboxLabelDiv(id: string, label: string, backgroundColor: string, checked: boolean) {
         const div = this.createDiv(['form-check', 'form-switch'], backgroundColor)
         div.appendChild(
             this.createCheckInput(
@@ -146,20 +146,20 @@ export default class TreeInputForm {
         return div
     }
 
-    createRadioLabelDiv(name: string, value: string, label: string, checked: boolean) {
+    private createRadioLabelDiv(name: string, value: string, label: string, checked: boolean) {
         const div = this.createDiv(['form-check'])
         div.appendChild(this.createCheckInput(name, value, checked, CheckInputType.RADIO))
         div.appendChild(this.createLabel(value, label))
         return div
     }
 
-    createLabelDiv(id: string, label: string, backgroundColor: string) {
+    private createLabelDiv(id: string, label: string, backgroundColor: string) {
         const div = this.createDiv([], backgroundColor)
         div.appendChild(this.createLabel(id, label))
         return div
     }
 
-    createDiv(classList?: string[], backgroundColor?: string) {
+    private createDiv(classList?: string[], backgroundColor?: string) {
         const div = document.createElement('div')
         div.classList.add(...classList)
         if (backgroundColor) div.style.backgroundColor = backgroundColor
@@ -167,7 +167,7 @@ export default class TreeInputForm {
         return div
     }
 
-    createCheckInput(name: string, value: string, checked: boolean, type: string, role?: string) {
+    private createCheckInput(name: string, value: string, checked: boolean, type: string, role?: string) {
         const checkEl = document.createElement('input')
         checkEl.classList.add('form-check-input')
         checkEl.setAttribute('id', value)
@@ -181,7 +181,7 @@ export default class TreeInputForm {
         return checkEl
     }
 
-    createLabel(id: string, label: string) {
+    private createLabel(id: string, label: string) {
         const labelEl = document.createElement('Label')
         labelEl.classList.add('form-check-label')
         labelEl.setAttribute('for', id)
@@ -189,7 +189,7 @@ export default class TreeInputForm {
         return labelEl
     }
 
-    createRadioGroupDiv(
+    private createRadioGroupDiv(
         options: string[],
         name: string,
         checkedOption: string,
