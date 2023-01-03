@@ -1,3 +1,3 @@
-interface Visualization {
+export default interface Visualization {
     generate(): void
 }

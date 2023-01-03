@@ -1,10 +1,21 @@
-// import * as d3 from 'd3'
-// import { parseUsedMethods, withSizes } from './parser'
+import { loadTextFile, parseToCleanedPackageHierarchy } from './BuildReportsParser'
+import HierarchyBubbles from './Visualizations/HierarchyBubbles'
 import { createTreeLineVisualization } from './Visualizations/TreeLineVisualization'
 import TreeVisualization from './Visualizations/TreeVisualization'
+import VennVisualization from './Visualizations/VennVisualization'
+
+export async function generateHierarchyBubbles(file: File): Promise<HierarchyBubbles> {
+    const inputString = await loadTextFile(file)
+    const hierarchy = parseToCleanedPackageHierarchy(inputString)
+
+    const visualization = new HierarchyBubbles(hierarchy)
+    visualization.generate()
+
+    return visualization
+}
 
 export function generateVenn() {
-    let venn = new TreeVisualization()
+    let venn = new VennVisualization()
     venn.generate()
 }
 
@@ -31,7 +42,10 @@ export async function generateTreeLine() {
     //         })
     //     )
     // )
+    console.log('Creating tree line')
     let tree = await createTreeLineVisualization()
+    console.log('Generating')
     tree.generate()
+    console.log('Generated tree line')
 }
 

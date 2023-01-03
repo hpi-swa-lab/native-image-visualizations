@@ -7,13 +7,20 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Tree Line</title>
 
-    <!-- <script src="../assets/js/dist/main.js"></script> -->
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+    </style>
+    <script src="../assets/js/dist/observatory.umd.js"></script>
 </head>
 
 <body>
     <script type="module">
-        import { generateTreeLine } from '../assets/js/dist/main.js'
-        const visualization = await generateTreeLine()
+        const visualization = Observatory.generateTreeLine()
+        // import { generateTreeLine } from '../assets/js/dist/main.js'
+        // const visualization = await generateTreeLine()
     </script>
 </body>
 

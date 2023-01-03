@@ -4,6 +4,7 @@ import {
     NodeType,
     NodeWithSize,
     NumberOfBytes,
+    UniverseCombination,
     UniverseName
 } from './data'
 import './utils'
@@ -67,11 +68,11 @@ type TemporaryMergedNode = Node & {
 /// respective tree.
 export function mergeUniverses(universes: Map<UniverseName, NodeWithSize>): MergedNodeWithSizes {
     const mergedChildren: TemporaryMergedNode[] = []
-    for (const [name, universe] of Object.entries(universes)) {
+    universes.forEach((universe, name) => {
         mergeTreeIntoChildren(universe, name, mergedChildren, Object.keys(universes))
-    }
+    })
     const root = mergedChildren[0] // There's only the single root child.
-    return withMoreSizeInformation(root, Object.keys(universes))
+    return withMoreSizeInformation(root, Array.from(universes.keys()))
 }
 
 function mergeTreeIntoChildren(
@@ -107,10 +108,10 @@ function withMoreSizeInformation(
     tree: TemporaryMergedNode,
     universeNames: UniverseName[]
 ): MergedNodeWithSizes {
-    let exclusiveSizes = new Map()
+    let exclusiveSizes: Map<UniverseCombination, number> = new Map()
     let children: MergedNodeWithSizes[] = []
 
-    if (tree.children.length == 0) {
+    if (tree.type == NodeType.Method) {
         const combination: string[] = []
         for (const name of universeNames) {
             if (tree.sizes.get(name) > 0) {
@@ -118,27 +119,24 @@ function withMoreSizeInformation(
             }
         }
 
-        exclusiveSizes.set(combination, 1) // TODO: Method size hardcoded to 1.
+        exclusiveSizes.set(combination.join(','), 1) // TODO: Method size hardcoded to 1.
     } else {
         children = tree.children.map((child: TemporaryMergedNode) =>
             withMoreSizeInformation(child, universeNames)
         )
 
         for (const child of children) {
-            for (const combination of Object.keys(child.exclusiveSizes)) {
+            child.exclusiveSizes.forEach((size, combination) => {
                 if (!exclusiveSizes.get(combination)) exclusiveSizes.set(combination, 0)
-                exclusiveSizes.set(
-                    combination,
-                    exclusiveSizes.get(combination) + child.exclusiveSizes.get(combination)
-                )
-            }
+                exclusiveSizes.set(combination, exclusiveSizes.get(combination) + size)
+            })
         }
     }
     return {
         ...tree,
         children: children,
         exclusiveSizes: exclusiveSizes,
-        unionedSize: Object.values(exclusiveSizes).reduce((a, b) => a + b, 0)
+        unionedSize: Array.from(exclusiveSizes.values()).reduce((a, b) => a + b, 0)
     }
 }
 
