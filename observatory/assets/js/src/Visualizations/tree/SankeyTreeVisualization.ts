@@ -8,7 +8,7 @@ import {
     markNodesModifiedFromLeaves,
     setNodeSizeFromLeaves,
     createApplyFilterEvent,
-    createExtendTreeEvent
+    createExpandTreeEvent
 } from './TreeUtils'
 import { Sankey, updateSankey } from './SankeyUtils'
 import {
@@ -31,7 +31,7 @@ import {
 } from './TreeTypes'
 import TreeInputForm from './TreeInputForm'
 
-export default class SankeyVisualization implements Visualization {
+export default class SankeyTreeVisualization implements Visualization {
     universesMetadata: Dictionary<UniverseProps>
     filter: TreeNodesFilter
 
@@ -136,10 +136,10 @@ export default class SankeyVisualization implements Visualization {
                 this.onSubmit(e, tree, svgSelections, this.universesMetadata)
             )
 
-            document.getElementById('extend-tree-btn').addEventListener('click', (e) => {
+            document.getElementById('expand-tree-btn').addEventListener('click', (e) => {
                 console.log(e)
                 updateSankey(
-                    createExtendTreeEvent(this.filter),
+                    createExpandTreeEvent(this.filter),
                     tree.root,
                     tree,
                     svgSelections,

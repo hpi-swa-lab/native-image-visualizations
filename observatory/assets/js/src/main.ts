@@ -1,5 +1,6 @@
 import VennVisualization from './Visualizations/VennVisualization'
-import SankeyVisualization from "./Visualizations/tree/SankeyVisualization";
+import SankeyTreeVisualization from "./Visualizations/tree/SankeyTreeVisualization";
+import TreeVisualization from "./Visualizations/tree/TreeVisualization";
 
 export function generateVenn() {
     let venn = new VennVisualization()
@@ -7,6 +8,11 @@ export function generateVenn() {
 }
 
 export function generateTree() {
-    let tree = new SankeyVisualization()
+    let tree = new TreeVisualization()
     tree.generate()
+}
+
+export function generateSankeyTree() {
+    let sankeyTree = new SankeyTreeVisualization()
+    sankeyTree.generate()
 }

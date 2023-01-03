@@ -81,7 +81,7 @@ export function updateSankey(
             }
 
             // extend full tree
-            if (event.detail.name === CustomEventName.EXTEND_TREE) {
+            if (event.detail.name === CustomEventName.EXPAND_TREE) {
                 console.log(event.detail.name, true)
                 tree.root.eachBefore((node: any) => {
                     if (!node._children) return
@@ -132,7 +132,7 @@ export function updateSankey(
     const nodeEnter = node
         .enter()
         .append('g')
-        .attr('transform', (d) => `translate(${sourceNode.y0},${sourceNode.x0})`)
+        .attr('transform', (d) => `translate(${sourceNode.y0 ?? 0},${sourceNode.x0 ?? 0})`)
         .attr('fill-opacity', 0)
         .attr('stroke-opacity', 0)
         .on('click', (evt, d: any) => {
@@ -164,15 +164,16 @@ export function updateSankey(
         svgSelections.tooltip.style('opacity', 1)
     }
     let mousemove = function (event: MouseEvent, d: HierarchyPointNode<MyNode>) {
+        const universesText = Array.from(d.data.universes).join('')
+            ? universePropsDict[Array.from(d.data.universes).join('')].name
+            : 'N/A'
         svgSelections.tooltip
             .html(
                 `**Node data:**
                             <br>codeSize: ${d.data.codeSize}
                             <br>isFiltered: ${d.data.isFiltered}
                             <br>isModified: ${d.data.isModified}
-                            <br>universes: ${
-                                universePropsDict[Array.from(d.data.universes).join('')].name
-                            }
+                            <br>universes: ${universesText}
                             <br>has children: ${d.children?.length || undefined}
                             <br>has _children: ${(d as any)._children?.length || undefined}
                             `
@@ -192,7 +193,8 @@ export function updateSankey(
     nodeEnter
         .append('text')
         .attr('dy', '0.31em')
-        .attr('x', (d: any) => (d._children ? -6 : 6))
+        // TODO set end-position relative to node-width
+        .attr('x', (d: any) => (d._children ? -6 : 26))
         .attr('text-anchor', (d: any) => (d._children ? 'end' : 'start'))
         .text((d) => d.data.name)
         .clone(true)
@@ -238,7 +240,27 @@ export function updateSankey(
         .attr('stroke-width', (d: any) => d.target.data.codeSize)
 
     // Transition links to their new position.
-    link.merge(linkEnter).transition(transition).attr('d', linkGenerator)
+    // TODO remove unused code
+    // link.merge(linkEnter).transition(transition).attr('d', linkGenerator)
+    link.merge(linkEnter).transition(transition).attr('d', (d:any) => {
+        const targetsIndex = d.source.children.indexOf(d.target)
+        let sourceX = d.source.children
+            .map((child:any, index:number) => {
+                if (index >= targetsIndex) return 0
+                return child.data ? child.data.codeSize : 0
+            })
+            .reduce((a:any,b:any,c:number) => {
+                // console.log('a', a)
+                // console.log('b', b)
+                // console.log('c', c)
+                return a+b
+            })
+        // console.log('sourceX', sourceX)
+        sourceX = d.source.x - (d.source.data.codeSize / 2) + sourceX
+        sourceX += d.target.data.codeSize / 2
+        const source = { x: sourceX, y:  d.source.y0 }
+        return linkGenerator({ source: source , target: d.target })
+    })
 
     // Transition exiting nodes to the parent's new position.
     link.exit()
