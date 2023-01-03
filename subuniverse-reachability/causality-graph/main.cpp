@@ -893,7 +893,7 @@ static void print_reachability_of_method(const Adjacency& adj, const vector<stri
         return;
     }
 
-    cout << indentation << method_names[m.id] << " (dist: " << (size_t)all.method_history[m.id] << ')' << endl;
+    cout << indentation << method_names[m.id] << endl;
 
     if(visited[m.id])
     {
