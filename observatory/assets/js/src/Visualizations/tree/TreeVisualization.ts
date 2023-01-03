@@ -9,7 +9,7 @@ import {
     markNodesModifiedFromLeaves,
     setNodeSizeFromLeaves,
     createApplyFilterEvent,
-    createExtendTreeEvent
+    createExpandTreeEvent
 } from './TreeUtils'
 import {
     COLOR_GREEN,
@@ -137,10 +137,10 @@ export default class TreeVisualization implements Visualization {
                 this.onSubmit(e, tree, svgSelections, this.universesMetadata)
             )
 
-            document.getElementById('extend-tree-btn').addEventListener('click', (e) => {
+            document.getElementById('expand-tree-btn').addEventListener('click', (e) => {
                 console.log(e)
                 updateTree(
-                    createExtendTreeEvent(this.filter),
+                    createExpandTreeEvent(this.filter),
                     tree.root,
                     tree,
                     svgSelections,

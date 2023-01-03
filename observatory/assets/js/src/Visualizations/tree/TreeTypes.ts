@@ -22,7 +22,7 @@ export enum SortingOrder {
 
 export enum CustomEventName {
     APPLY_FILTER = 'apply-filter',
-    EXTEND_TREE = 'extend-tree'
+    EXPAND_TREE = 'expand-tree'
 }
 
 export type CustomEventDetails = {

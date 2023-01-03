@@ -25,8 +25,8 @@ export function createApplyFilterEvent(filter: TreeNodesFilter) {
     return createCustomEventWithDetails(CustomEventName.APPLY_FILTER, filter)
 }
 
-export function createExtendTreeEvent(filter: TreeNodesFilter) {
-    return createCustomEventWithDetails(CustomEventName.EXTEND_TREE, filter)
+export function createExpandTreeEvent(filter: TreeNodesFilter) {
+    return createCustomEventWithDetails(CustomEventName.EXPAND_TREE, filter)
 }
 
 export function createCustomEventWithDetails(name: string, filter: TreeNodesFilter) {
@@ -213,8 +213,8 @@ export function updateTree(
                 })
             }
 
-            // extend full tree
-            if (event.detail.name === CustomEventName.EXTEND_TREE) {
+            // expand full tree
+            if (event.detail.name === CustomEventName.EXPAND_TREE) {
                 console.log(event.detail.name, true)
                 tree.root.eachBefore((node: any) => {
                     if (!node._children) return
@@ -223,7 +223,7 @@ export function updateTree(
                 })
             }
         } else {
-            // if you press alt / option key, then the collapse/extend animation is much slower :D
+            // if you press alt / option key, then the collapse/expand animation is much slower :D
             duration = event && event.altKey ? 2500 : 250
         }
     }
