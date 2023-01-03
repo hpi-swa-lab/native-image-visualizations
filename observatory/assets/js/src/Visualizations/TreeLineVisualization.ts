@@ -7,7 +7,8 @@ import {
     UniverseCombination,
     UniverseName
 } from '../data'
-import { mergeUniverses, parseUsedMethods, sortAlphabetically, withSizes } from '../parser'
+import { mergeUniverses, sortAlphabetically } from '../parser'
+import { powerSet } from '../utils'
 import Visualization from './Visualization'
 
 // async function loadUniverses() {
@@ -55,27 +56,6 @@ const textHorizontalPadding = 8
 const textVerticalPadding = 2
 const hierarchyGaps = 2 // used between boxes of the hierarchy
 
-export async function createTreeLineVisualization() {
-    let universes = new Map()
-    for (const example of ['micronaut', 'micronaut-no-log4j']) {
-        const text = await d3.text(`/data/used-methods-${example}.txt`)
-        universes.set(example, withSizes(parseUsedMethods(text)))
-    }
-
-    let tree = new TreeLineVisualization(
-        universes,
-        new Map(
-            Object.entries({
-                // 'helloworld': '#f28e2c',
-                micronaut: '#1b9e77',
-                // 'micronaut': '#ffdd00',
-                'micronaut-no-log4j': '#72286f'
-            })
-        )
-    )
-    return tree
-}
-
 export class TreeLineVisualization implements Visualization {
     mergedUniverses: MergedNodeWithSizes
     combinations: UniverseCombination[]
@@ -95,22 +75,7 @@ export class TreeLineVisualization implements Visualization {
         } else if (names.length == 2) {
             this.combinations = [`${names[0]}`, `${names[0]},${names[1]}`, `${names[1]}`]
         } else {
-            // From https://codereview.stackexchange.com/questions/139095/generate-powerset-in-js
-            const powerset = (l: string[]) => {
-                return (function ps(list): string[][] {
-                    if (list.length === 0) {
-                        return [[]]
-                    }
-                    var head = list.pop()
-                    var tailPS = ps(list)
-                    return tailPS.concat(
-                        tailPS.map(function (e) {
-                            return [head].concat(e)
-                        })
-                    )
-                })(l.slice())
-            }
-            for (const combination of powerset(names)) {
+            for (const combination of powerSet(names)) {
                 if (combination.length > 0) {
                     this.combinations.push(combinationFromNames(combination))
                 }

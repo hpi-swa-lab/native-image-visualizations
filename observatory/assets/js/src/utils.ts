@@ -15,3 +15,19 @@ Number.prototype.clamp = function (min, max) {
     return Math.min(Math.max(this, min), max)
 }
 
+// From https://codereview.stackexchange.com/questions/139095/generate-powerset-in-js
+export function powerSet(l: string[]) {
+    return (function ps(list): string[][] {
+        if (list.length === 0) {
+            return [[]]
+        }
+        var head = list.pop()
+        var tailPS = ps(list)
+        return tailPS.concat(
+            tailPS.map(function (e) {
+                return [head].concat(e)
+            })
+        )
+    })(l.slice())
+}
+
