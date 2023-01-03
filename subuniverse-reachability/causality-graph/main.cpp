@@ -9,6 +9,8 @@
 #include <cstring>
 #include <boost/dynamic_bitset.hpp>
 #include <ranges>
+#include <span>
+#include <thread>
 
 using namespace std;
 
@@ -301,20 +303,6 @@ struct Adjacency
 
     [[nodiscard]] TypeflowInfo& operator[](typeflow_id id) { return flows[(uint32_t)id]; }
     [[nodiscard]] const TypeflowInfo& operator[](typeflow_id id) const { return flows[(uint32_t)id]; }
-
-    void purge_method(method_id mid)
-    {
-        for(auto& m : methods)
-        {
-            erase(m.forward_edges, mid);
-        }
-
-        for(auto& f : flows)
-        {
-            if(f.method.reaching() == mid)
-                f.method = {};
-        }
-    }
 };
 
 struct __attribute__((aligned(64))) TypeflowHistory
@@ -399,7 +387,9 @@ public:
     vector<TypeflowHistory> typeflow_visited;
     vector<uint8_t> method_history;
 
-    explicit BFS(const Adjacency& adj)
+    explicit BFS(const Adjacency& adj) : BFS(adj, {}) {}
+
+    BFS(const Adjacency& adj, span<const method_id> purged_methods)
     : method_visited(adj.n_methods()),
       typeflow_visited(adj.n_typeflows()),
       method_history(adj.n_methods(), numeric_limits<uint8_t>::max())
@@ -409,6 +399,9 @@ public:
 
         method_visited[0] = true;
         method_history[0] = 0;
+
+        for(method_id purged : purged_methods)
+            method_visited[purged.id] = true;
 
         vector<method_id> method_worklist(1, 0);
         vector<method_id> next_method_worklist;
@@ -593,8 +586,13 @@ public:
             }
         }
 
+        for(method_id purged : purged_methods)
+            method_visited[purged.id] = false;
+
+#if !NDEBUG
         cerr << "n_worklist_added(" << n_worklist_added << ") ";
         cerr << "n_types_instantiated(" << allInstantiated.count() << '/' << allInstantiated.size() << ") ";
+#endif
     }
 };
 
@@ -714,14 +712,16 @@ static void remove_redundant(Adjacency& adj)
         }
     }
 
+#if !NDEBUG
     cerr << "Redundant typeflows: " << redundant_typeflows.count() << "/" << (adj.n_typeflows() - 1) << "=" << ((float) redundant_typeflows.count() / (adj.n_typeflows() - 1)) << endl;
+#endif
 }
 
 static void simulate_purge(Adjacency& adj, const vector<string>& method_names, const unordered_map<string, uint32_t>& method_ids_by_name, string_view command)
 {
     if(command == "purged")
     {
-        vector<uint32_t> purged_mids;
+        vector<method_id> purged_mids;
         string name;
 
         while(!cin.eof())
@@ -741,12 +741,7 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
 
         cerr << "Running DFS on purged graph...";
 
-        for(uint32_t mid: purged_mids)
-        {
-            adj.purge_method(mid);
-        }
-
-        BFS after_purge(adj);
+        BFS after_purge(adj, purged_mids);
 
         cerr << " " << std::count_if(after_purge.method_visited.begin(), after_purge.method_visited.end(), [](bool b) { return b; }) << " methods reachable!\n";
 
@@ -778,6 +773,44 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
                     cout << method_names[i] << endl;
             }
         }
+    }
+}
+
+static void bruteforce_purges__worker_method(const Adjacency& adj, const vector<string>& method_names, size_t n_reachable, atomic<size_t>* purged)
+{
+    size_t purged_method;
+    while((purged_method = (*purged)++) < adj.n_methods())
+    {
+        method_id purged_mid = purged_method;
+        BFS after_purge(adj, {&purged_mid, 1});
+        size_t n_reachable_purged = std::count_if(after_purge.method_visited.begin(), after_purge.method_visited.end(), [](bool b) { return b; });
+
+        stringstream outputline;
+        outputline << method_names[purged_method] << ": " << (n_reachable - n_reachable_purged) << endl;
+        cout << outputline.str(); // synchronized across threads
+    }
+}
+
+static void bruteforce_purges(const Adjacency& adj, const vector<string>& method_names)
+{
+    size_t n_reachable;
+
+    {
+        BFS all(adj);
+        n_reachable = std::count_if(all.method_visited.begin(), all.method_visited.end(), [](bool b){ return b; });
+    }
+
+    thread workers[8];
+    atomic<size_t> purged = 1;
+
+    for(thread& worker : workers)
+    {
+        worker = thread(bruteforce_purges__worker_method, adj, method_names, n_reachable, &purged);
+    }
+
+    for(thread& worker : workers)
+    {
+        worker.join();
     }
 }
 
@@ -1072,7 +1105,9 @@ int main(int argc, const char** argv)
     for(Bitset& typestate : typestates)
         max_typestate_size = max(max_typestate_size, typestate.count());
 
+#if !NDEBUG
     cerr << "All instantiated types: " << max_typestate_size << endl;
+#endif
 
     vector<Edge<typeflow_id>> interflows;
     read_buffer(interflows, "interflows.bin");
@@ -1101,6 +1136,10 @@ int main(int argc, const char** argv)
     if(command == "reachability")
     {
         print_reachability(adj, method_names, method_ids_by_name, type_names);
+    }
+    else if(command == "bruteforce_purges")
+    {
+        bruteforce_purges(adj, method_names);
     }
     else
     {
