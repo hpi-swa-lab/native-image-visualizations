@@ -1,5 +1,5 @@
 import HierarchyNode from './SharedInterfaces/HierarchyNode'
-import { parse } from 'papaparse'
+import { ParseResult, parse } from 'papaparse'
 import { NodeWithSize } from './SharedTypes/NodeWithSize'
 import { NodeType } from './SharedTypes/Node'
 
@@ -39,20 +39,54 @@ export function loadCSVFile(file: File): Promise<unknown[]> {
     })
 }
 
+export function loadBuildReport(file: File): Promise<unknown[]> {
+    return new Promise(async (resolve, reject) => {
+        let rawText: string = await loadTextFile(file)
+
+        const header =
+            'Code Size; Nodes Parsing; Nodes Before; Nodes After; Is Trivial; Deopt Target; Code Size; Nodes Parsing; Nodes Before; Nodes After; Deopt Entries; Deopt During Call; Entry Points; Direct Calls; Virtual Calls; Method'
+        const firstLineOutsideData = 'Size all methods'
+
+        rawText = rawText.slice(rawText.indexOf(header), rawText.indexOf(firstLineOutsideData))
+
+        rawText = rawText.replaceAll(' ', '')
+
+        let data = parse(rawText, { header: true, skipEmptyLines: true, dynamicTyping: true })
+
+        if (data.errors.length > 0) {
+            reject(data.errors)
+        } else {
+            resolve(data.data)
+        }
+    })
+}
+
 /**
  * @param {Record<string, any>[]} buildReport: A list of dictionaries. Each dictionary represents one line of the build reports.
- * The entries are extected to follow this format:
- *  
+ * The entries are expected to follow this format:
+ *
  * {
- *      'name': 'com.oracle.test$testSomething$testSomethingElse.toString():String',
- *      'size': 50
+ *      'CodeSize': <int>
+ *      'NodesParsing': <int>
+ *      'NodesBefore': <int>
+ *      'NodesAfter': <int>
+ *      'IsTrivial': <?>
+ *      'DeoptTarget': <?>
+ *      'DeoptEntries': <int>
+ *      'DeoptDuringCall': <int>
+ *      'EntryPoints': <int>
+ *      'DirectCalls': <int>
+ *      'VirtualCalls': <int>
+ *      'Method': <string>
  * }
- * 
- * The name is the full qualifier of a method. Packages are separated with dots, inner classes with a dollar sign and the Method then again with a dot.
- * 
+ *
+ * The 'Method' is the full qualifier of a method. Packages are separated with dots, inner classes with a dollar sign and the Method then again with a dot.
+ *
  * @returns {NodeWithSize} An artificially created root node under which the package hierarchy is appended. The children of the root node are the top-level packages
  */
-export function parseBuildReportToNodeWithSizeHierarchy(buildReport: Record<string, any>[]): NodeWithSize {
+export function parseBuildReportToNodeWithSizeHierarchy(
+    buildReport: Record<string, any>[]
+): NodeWithSize {
     const root: NodeWithSize = {
         name: 'root',
         type: NodeType.Package,
@@ -67,58 +101,60 @@ export function parseBuildReportToNodeWithSizeHierarchy(buildReport: Record<stri
         currentChildren = root.children
         parent = root
 
-        if (report.name) {
-            const packageList: string[] = _getPackageList(report.name)
-            const classList: string[] = _getClassList(report.name)
-            const method: string = _getMethodName(report.name)
+        const packageList: string[] = _getPackageList(report.Method)
+        const classList: string[] = _getClassList(report.Method)
+        const method: string = _getMethodName(report.Method)
 
-            packageList.forEach((packageName: string) => {
-                let packageNode: NodeWithSize = currentChildren.find((node: NodeWithSize) => node.name === packageName)
+        packageList.forEach((packageName: string) => {
+            let packageNode: NodeWithSize = currentChildren.find(
+                (node: NodeWithSize) => node.name === packageName
+            )
 
-                if (!packageNode) {
-                    packageNode = {
-                        name: packageName,
-                        type: NodeType.Package,
-                        children: [] as NodeWithSize[],
-                        size: 0
-                    }
-
-                    currentChildren.push(packageNode)
-                }
-
-                currentChildren = packageNode.children
-                parent = packageNode
-            })
-
-            classList.forEach((className: string) => {
-                let classNode: NodeWithSize = currentChildren.find((node: NodeWithSize) => node.name === className)
-
-                if (!classNode) {
-                    classNode = {
-                        name: className,
-                        type: NodeType.Class,
-                        children: [] as NodeWithSize[],
-                        size: 0
-                    }
-
-                    currentChildren.push(classNode)
-                }
-
-                currentChildren = classNode.children
-                parent = classNode
-            })
-
-            let methodNode = currentChildren.find((node: NodeWithSize) => node.name === method)
-            if (!methodNode) {
-                methodNode = {
-                    name: method,
-                    type: NodeType.Method,
+            if (!packageNode) {
+                packageNode = {
+                    name: packageName,
+                    type: NodeType.Package,
                     children: [] as NodeWithSize[],
-                    size: report.size ? report.size : 0
+                    size: 0
                 }
 
-                currentChildren.push(methodNode)
+                currentChildren.push(packageNode)
             }
+
+            currentChildren = packageNode.children
+            parent = packageNode
+        })
+
+        classList.forEach((className: string) => {
+            let classNode: NodeWithSize = currentChildren.find(
+                (node: NodeWithSize) => node.name === className
+            )
+
+            if (!classNode) {
+                classNode = {
+                    name: className,
+                    type: NodeType.Class,
+                    children: [] as NodeWithSize[],
+                    size: 0
+                }
+
+                currentChildren.push(classNode)
+            }
+
+            currentChildren = classNode.children
+            parent = classNode
+        })
+
+        let methodNode = currentChildren.find((node: NodeWithSize) => node.name === method)
+        if (!methodNode) {
+            methodNode = {
+                name: method,
+                type: NodeType.Method,
+                children: [] as NodeWithSize[],
+                size: report.CodeSize ? report.CodeSize : 0
+            }
+
+            currentChildren.push(methodNode)
         }
     })
 
@@ -127,14 +163,15 @@ export function parseBuildReportToNodeWithSizeHierarchy(buildReport: Record<stri
 
 function _getPackageList(name: string): string[] {
     name = _removeFunctionQualifier(name)
-    
+
     // check if it has a $ before the end, indicating an inner class
     if (name.match(/\$.*$/)) {
         // remove everything from the first $ on aka the inner classes
         name = name.replace(/\$.*$/, '')
-        // remove everything from the first dot on aka the first class
-        name = name.replace(/(\.[^.]*)$/, '')
     }
+
+    // remove everything from the last dot on aka the first class
+    name = name.replace(/(\.[^.]*)$/, '')
 
     return name.split('.')
 }
@@ -158,7 +195,7 @@ function _getMethodName(path: string): string {
         path = path.replace(/\(.*$/, '')
     }
 
-    return path.replace(/.*(?=\.)\./, '')    
+    return path.replace(/.*(?=\.)\./, '')
 }
 
 function _removeFunctionQualifier(path: string): string {
@@ -229,10 +266,10 @@ export function parseToCleanedPackageHierarchy(hierarchyString: string): Hierarc
     let counter: number = 1
 
     hierarchyString.split('\n').forEach((row: string) => {
-        // filters out any row that includes the substrings '.$' or '$$' 
+        // filters out any row that includes the substrings '.$' or '$$'
         // as these are elements generated by graal which we don't need for this visualization
         if (!row.match(/[\$\.]\$/)) {
-            // Classes within classes are denoted with a '$' but we want to handle them 
+            // Classes within classes are denoted with a '$' but we want to handle them
             // just like the rest of the package hierarchy
             row = row.replaceAll('$', '.')
 
