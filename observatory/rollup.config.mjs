@@ -12,6 +12,7 @@ export default [
             format: 'umd' // browser-friendly UMD build for both browsers and Node.js:
         },
         plugins: [
+            commonjs(),
             nodeResolve(), // so rollup can find node modules
             typescript(),
             commonjs()
