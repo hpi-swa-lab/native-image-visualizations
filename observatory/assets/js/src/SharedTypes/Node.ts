@@ -5,6 +5,7 @@ export type Node = {
 }
 
 export enum NodeType {
+    RootNode,
     Package,
     Class,
     Method

@@ -1,7 +1,7 @@
-import HierarchyNode from './SharedInterfaces/HierarchyNode'
+import { HierarchyNode } from './SharedTypes/HierarchyNode'
 import { ParseResult, parse } from 'papaparse'
-import { NodeWithSize } from './SharedTypes/NodeWithSize'
 import { NodeType } from './SharedTypes/Node'
+import { HierarchyNodeWithSize } from './SharedTypes/HierarchyNodeWithSize'
 
 export function loadTextFile(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -125,21 +125,26 @@ export function loadBuildReport(file: File): Promise<Record<string, any>[]> {
  * }
  *
  * ```
- *
- * @returns {NodeWithSize} An artificially created root node under which the package hierarchy is appended. The children of the root node are the top-level packages
+ * 
+ * @returns {HierarchyNodeWithSize} An artificially created root node under which the package hierarchy is appended. The children of the root node are the top-level packages
  */
 export function parseBuildReportToNodeWithSizeHierarchy(
     buildReportData: Record<string, any>[]
-): NodeWithSize {
-    const root: NodeWithSize = {
+): HierarchyNodeWithSize {
+    const root: HierarchyNodeWithSize = {
+        id: 0,
+        parent: null,
         name: 'root',
-        type: NodeType.Package,
-        children: [] as NodeWithSize[],
-        size: 0
+        fullPath: '',
+        children: [] as HierarchyNodeWithSize[],
+        size: 0,
+        subTreeSize: 0,
+        type: NodeType.RootNode,
     }
 
-    let currentChildren: NodeWithSize[]
-    let parent: NodeWithSize
+    let currentChildren: HierarchyNodeWithSize[]
+    let parent: HierarchyNodeWithSize
+    let counter = 1;
 
     buildReportData.forEach((report: Record<string, any>) => {
         currentChildren = root.children
@@ -150,16 +155,20 @@ export function parseBuildReportToNodeWithSizeHierarchy(
         const method: string = _getMethodName(report.Method)
 
         packageList.forEach((packageName: string) => {
-            let packageNode: NodeWithSize = currentChildren.find(
-                (node: NodeWithSize) => node.name === packageName
+            let packageNode: HierarchyNodeWithSize = currentChildren.find(
+                (node: HierarchyNodeWithSize) => node.name === packageName
             )
 
             if (!packageNode) {
                 packageNode = {
+                    id: counter++,
+                    parent: parent,
                     name: packageName,
+                    fullPath: ''/* TODO */,
+                    children: [] as HierarchyNodeWithSize[],
+                    size: 0,
+                    subTreeSize: 0,
                     type: NodeType.Package,
-                    children: [] as NodeWithSize[],
-                    size: 0
                 }
 
                 currentChildren.push(packageNode)
@@ -170,16 +179,20 @@ export function parseBuildReportToNodeWithSizeHierarchy(
         })
 
         classList.forEach((className: string) => {
-            let classNode: NodeWithSize = currentChildren.find(
-                (node: NodeWithSize) => node.name === className
+            let classNode: HierarchyNodeWithSize = currentChildren.find(
+                (node: HierarchyNodeWithSize) => node.name === className
             )
 
             if (!classNode) {
                 classNode = {
+                    id: counter++,
+                    parent: parent,
                     name: className,
+                    fullPath: '',
+                    children: [] as HierarchyNodeWithSize[],
+                    size: 0,
+                    subTreeSize: 0,
                     type: NodeType.Class,
-                    children: [] as NodeWithSize[],
-                    size: 0
                 }
 
                 currentChildren.push(classNode)
@@ -189,18 +202,24 @@ export function parseBuildReportToNodeWithSizeHierarchy(
             parent = classNode
         })
 
-        let methodNode = currentChildren.find((node: NodeWithSize) => node.name === method)
+        let methodNode = currentChildren.find((node: HierarchyNodeWithSize) => node.name === method)
         if (!methodNode) {
             methodNode = {
+                id: 0,
+                parent: null,
                 name: method,
+                fullPath: '',
+                children: [] as HierarchyNodeWithSize[],
+                size: report.CodeSize ? report.CodeSize : 0,
+                subTreeSize: 0,
                 type: NodeType.Method,
-                children: [] as NodeWithSize[],
-                size: report.CodeSize ? report.CodeSize : 0
             }
 
             currentChildren.push(methodNode)
         }
     })
+
+    _addSubTreeSizes(root)
 
     return root
 }
@@ -269,8 +288,9 @@ export function parseToPackageHierarchy(hierarchyString: string): HierarchyNode 
         parent: null,
         name: 'root',
         fullPath: '',
-        children: [],
-        subTreeSize: 0
+        children: [] as HierarchyNode[],
+        subTreeSize: 0,
+        type: NodeType.RootNode
     }
 
     let counter: number = 1
@@ -289,7 +309,7 @@ export function parseToPackageHierarchy(hierarchyString: string): HierarchyNode 
                     parent: parent,
                     name: pathSegment,
                     fullPath: splittedRow.slice(0, index + 1).join('.'),
-                    children: [],
+                    children: [] as HierarchyNode[],
                     subTreeSize: 0
                 }
                 currentChildren.push(child)
@@ -312,8 +332,9 @@ export function parseToCleanedPackageHierarchy(hierarchyString: string): Hierarc
         parent: null,
         name: 'root',
         fullPath: '',
-        children: [],
-        subTreeSize: 0
+        children: [] as HierarchyNode[],
+        subTreeSize: 0,
+        type: NodeType.RootNode
     }
 
     let counter: number = 1
@@ -341,7 +362,7 @@ export function parseToCleanedPackageHierarchy(hierarchyString: string): Hierarc
                         parent: parent,
                         name: pathSegment,
                         fullPath: splittedRow.slice(0, index + 1).join('.'),
-                        children: [],
+                        children: [] as HierarchyNode[],
                         subTreeSize: 0
                     }
                     currentChildren.push(child)
@@ -364,7 +385,7 @@ function _addSubTreeSizes(startingPoint: HierarchyNode): void {
     if (startingPoint.children.length === 0) {
         startingPoint.subTreeSize = 0
     } else {
-        startingPoint.children.forEach((child) => {
+        (startingPoint.children as HierarchyNode[]).forEach((child) => {
             _addSubTreeSizes(child)
         })
 
