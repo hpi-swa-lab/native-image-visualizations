@@ -20,6 +20,7 @@ export default class TreeInputForm {
         form.appendChild(this.createFieldsetSorting(filter))
         form.appendChild(this.createFieldsetDetailsSlider())
         form.appendChild(this.createFieldsetMethodsFilter())
+        form.appendChild(this.createShortcutText())
 
         form.appendChild(this.createSubmitButton())
         form.appendChild(this.createExpandTreeButton())
@@ -97,6 +98,24 @@ export default class TreeInputForm {
     private createFieldsetMethodsFilter() {
         const fieldset = this.createFieldsetWithLegend('methodsFilter', 'WIP - Methods Filter')
         return fieldset
+    }
+
+    private createShortcutText() {
+        const div = this.createDiv(['alert', 'alert-info', 'mt-3'])
+        div.setAttribute('role', 'alert')
+        const ul = document.createElement('ul')
+        ul.classList.add('list-unstyled')
+        const items = [
+            'shift+click on node expands branch'
+        ]
+        for (const item of items) {
+            const li = document.createElement('li')
+            li.innerText = item
+            ul.appendChild(li)
+        }
+
+        div.appendChild(ul)
+        return div
     }
 
     private createSubmitButton() {

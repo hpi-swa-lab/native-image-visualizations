@@ -27,10 +27,18 @@ export type Sankey = {
 // ##########################################################################################################
 
 // Toggle children.
-function toggle(d: any) {
+function toggle(d: any, doToggleBranch: boolean) {
+    if (!d._children) return
+
     d.children
         ? collapseChildren(d)
         : (d.children = d._children.filter((child: any) => child.data.isFiltered))
+
+    if (doToggleBranch) {
+        for(const child of d.children) {
+            toggle(child, doToggleBranch)
+        }
+    }
 }
 
 function filterDiffingUniverses(node: any) {
@@ -142,7 +150,7 @@ export function updateSankey(
         .attr('fill-opacity', 0)
         .attr('stroke-opacity', 0)
         .on('click', (evt, d: any) => {
-            toggle(d)
+            toggle(d, evt.shiftKey)
             updateSankey(evt, d, tree, svgSelections, universePropsDict)
         })
 
@@ -170,7 +178,7 @@ export function updateSankey(
         svgSelections.tooltip.style('opacity', 1)
     }
     let mousemove = function (event: MouseEvent, d: HierarchyPointNode<MyNode>) {
-        const universesText = Array.from(d.data.universes).join('')
+        const universesText = universePropsDict[Array.from(d.data.universes).join('')]
             ? universePropsDict[Array.from(d.data.universes).join('')].name
             : 'N/A'
         svgSelections.tooltip
