@@ -22,6 +22,19 @@ export function loadTextFile(file: File): Promise<string> {
     })
 }
 
+/**
+ * 
+ * Interprets the given file object as a csv file and uses parses it using papaparse.
+ * The following parameters of papaparse are set:
+ * 
+ *      worker: true
+ *      header: true
+ *      dynamicTypeing: true
+ *      skipEmptyLines: true
+ * 
+ * @param {File} file: the input file to parse
+ * @returns {Promise<unknown[]>} a promise which contains the parsed data if resolved
+ */
 export function loadCSVFile(file: File): Promise<unknown[]> {
     return new Promise((resolve, reject) => {
         parse(file, {
@@ -39,7 +52,16 @@ export function loadCSVFile(file: File): Promise<unknown[]> {
     })
 }
 
-export function loadBuildReport(file: File): Promise<unknown[]> {
+/**
+ * 
+ * Interprets the given file as a build report and parses the relevant data.
+ * A build report can be collected by using the build option `-H:+PrintMethodHistogram`. 
+ * It is then printed on the command line. After piping it to a file, this file can be inputted here.
+ * 
+ * @param {File} file: the input file to parse 
+ * @returns {Promise<Record<string, any>[]>} a promise which contains the parsed data if resolved
+ */
+export function loadBuildReport(file: File): Promise<Record<string, any>[]> {
     return new Promise(async (resolve, reject) => {
         let rawText: string = await loadTextFile(file)
 
@@ -86,30 +108,28 @@ export function loadBuildReport(file: File): Promise<unknown[]> {
 }
 
 /**
- * @param {Record<string, any>[]} buildReport: A list of dictionaries. Each dictionary represents one line of the build reports.
- * The entries are expected to follow this format:
+ * @param {Record<string, any>[]} buildReportData: A list of dictionaries. Each dictionary represents one line of the build reports.
+ * The entries are expected to follow this schema:
  *
- * {
- *      'CodeSize': <int>
- *      'NodesParsing': <int>
- *      'NodesBefore': <int>
- *      'NodesAfter': <int>
- *      'IsTrivial': <?>
- *      'DeoptTarget': <?>
- *      'DeoptEntries': <int>
- *      'DeoptDuringCall': <int>
- *      'EntryPoints': <int>
- *      'DirectCalls': <int>
- *      'VirtualCalls': <int>
- *      'Method': <string>
+ * ```json
+ * 
+ * { 
+ *     "CodeSize": {
+ *          "description": "The method's withing the generated binary. Packages are separated with dots, inner classes with a dollar sign and the Method then again with a dot",
+ *          "type": "int"
+ *      }, 
+ *      "Method": {
+ *          "description": "The method's full qualifier",
+ *          "type": "string"
+ *      }, 
  * }
- *
- * The 'Method' is the full qualifier of a method. Packages are separated with dots, inner classes with a dollar sign and the Method then again with a dot.
- *
+ * 
+ * ```
+ * 
  * @returns {NodeWithSize} An artificially created root node under which the package hierarchy is appended. The children of the root node are the top-level packages
  */
 export function parseBuildReportToNodeWithSizeHierarchy(
-    buildReport: Record<string, any>[]
+    buildReportData: Record<string, any>[]
 ): NodeWithSize {
     const root: NodeWithSize = {
         name: 'root',
@@ -121,7 +141,7 @@ export function parseBuildReportToNodeWithSizeHierarchy(
     let currentChildren: NodeWithSize[]
     let parent: NodeWithSize
 
-    buildReport.forEach((report: Record<string, any>) => {
+    buildReportData.forEach((report: Record<string, any>) => {
         currentChildren = root.children
         parent = root
 
