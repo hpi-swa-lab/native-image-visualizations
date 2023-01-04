@@ -29,7 +29,7 @@ export function loadTextFile(file: File): Promise<string> {
  * 
  *      worker: true
  *      header: true
- *      dynamicTypeing: true
+ *      dynamicTyping: true
  *      skipEmptyLines: true
  * 
  * @param {File} file: the input file to parse
@@ -115,7 +115,7 @@ export function loadBuildReport(file: File): Promise<Record<string, any>[]> {
  * 
  * { 
  *     "CodeSize": {
- *          "description": "The method's withing the generated binary. Packages are separated with dots, inner classes with a dollar sign and the Method then again with a dot",
+ *          "description": "The method's size within the generated binary. Packages are separated with dots, inner classes with a dollar sign, and the method then again with a dot",
  *          "type": "int"
  *      }, 
  *      "Method": {
