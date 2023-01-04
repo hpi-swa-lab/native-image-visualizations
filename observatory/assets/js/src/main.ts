@@ -28,6 +28,12 @@ export function testBuildReportParser() {
     let reports: Record<string, any>[] = [{
         'name': 'com.oracle.test$testSomething$testSomethingElse.toString():String',
         'size': 50
+    }, {
+        'name': 'com.oracle.test$testSomething$testSomethingElse.toInt():Int',
+        'size': 28
+    }, {
+        'name': 'com.oracle.test$testSomething.toString():String',
+        'size': 35
     }]
 
     return parseBuildReportToNodeWithSizeHierarchy(reports)

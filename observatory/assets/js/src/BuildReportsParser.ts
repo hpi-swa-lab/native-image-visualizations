@@ -39,6 +39,19 @@ export function loadCSVFile(file: File): Promise<unknown[]> {
     })
 }
 
+/**
+ * @param {Record<string, any>[]} buildReport: A list of dictionaries. Each dictionary represents one line of the build reports.
+ * The entries are extected to follow this format:
+ *  
+ * {
+ *      'name': 'com.oracle.test$testSomething$testSomethingElse.toString():String',
+ *      'size': 50
+ * }
+ * 
+ * The name is the full qualifier of a method. Packages are separated with dots, inner classes with a dollar sign and the Method then again with a dot.
+ * 
+ * @returns {NodeWithSize} An artificially created root node under which the package hierarchy is appended. The children of the root node are the top-level packages
+ */
 export function parseBuildReportToNodeWithSizeHierarchy(buildReport: Record<string, any>[]): NodeWithSize {
     const root: NodeWithSize = {
         name: 'root',
