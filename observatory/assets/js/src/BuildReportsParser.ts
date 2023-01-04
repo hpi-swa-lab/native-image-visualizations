@@ -51,15 +51,33 @@ export function loadBuildReport(file: File): Promise<unknown[]> {
 
         rawText = rawText.replaceAll(' ', '')
 
-        let data = parse(rawText, { header: true, skipEmptyLines: true, dynamicTyping: true })
+        const data = parse(rawText, { header: false, skipEmptyLines: true, dynamicTyping: true })
 
         if (data.errors.length > 0) {
             reject(data.errors)
         } else {
-            let result = data.data
-            
-            result.forEach((entry: Record<string, any>) => {
-                entry['IsTrivial'] = entry['IsTrivial'] === 'T'
+            const parsed_data = data.data
+
+            const tableHeader = parsed_data[0] as string[]
+            const body = parsed_data.slice(1)
+
+            const result: Record<string, any>[] = []
+
+            body.forEach((entry: any[]) => {
+                const resultEntry: Record<string, any> = {}
+
+                const indicesWithoutAnyConversion = [0, 1, 2, 3, 12, 13, 14, 15]
+                const indicesWithBooleanConversion = [4]
+
+                indicesWithoutAnyConversion.forEach((index) => {
+                    resultEntry[tableHeader[index]] = entry[index]
+                })
+
+                indicesWithBooleanConversion.forEach((index) => {
+                    resultEntry[tableHeader[index]] = Boolean(entry[index])
+                })
+
+                result.push(resultEntry)
             })
 
             resolve(result)
