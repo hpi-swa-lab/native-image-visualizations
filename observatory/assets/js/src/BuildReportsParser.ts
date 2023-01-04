@@ -1,5 +1,5 @@
 import HierarchyNode from './SharedInterfaces/HierarchyNode'
-import { parse } from 'papaparse'
+import { ParseResult, parse } from 'papaparse'
 import { NodeWithSize } from './SharedTypes/NodeWithSize'
 import { NodeType } from './SharedTypes/Node'
 
