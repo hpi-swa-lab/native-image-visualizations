@@ -30,5 +30,8 @@ export function generateTree() {
 
 export async function testBuildReportParser(file: File) {
     const reportData = await loadBuildReport(file)
-    return parseBuildReportToNodeWithSizeHierarchy(reportData)
+    console.log('Report data: ', reportData)
+
+    const parsedHierarchy = parseBuildReportToNodeWithSizeHierarchy(reportData)
+    console.log('Parsed hierarchy: ', parsedHierarchy)
 }

@@ -21,8 +21,7 @@
                     alert('missing the input file')
                 }
 
-                const result = await Observatory.testBuildReportParser(input.files[0])
-                console.log(result)
+                Observatory.testBuildReportParser(input.files[0])
             })
         </script>
     </body>
