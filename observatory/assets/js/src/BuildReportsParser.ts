@@ -56,7 +56,13 @@ export function loadBuildReport(file: File): Promise<unknown[]> {
         if (data.errors.length > 0) {
             reject(data.errors)
         } else {
-            resolve(data.data)
+            let result = data.data
+            
+            result.forEach((entry: Record<string, any>) => {
+                entry['IsTrivial'] = entry['IsTrivial'] === 'T'
+            })
+
+            resolve(result)
         }
     })
 }
