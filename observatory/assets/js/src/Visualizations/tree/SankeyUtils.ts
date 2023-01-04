@@ -101,6 +101,12 @@ export function updateSankey(
     const nodes = tree.root.descendants().reverse()
     const links = tree.root.links().filter((link) => link.target.data.isFiltered)
 
+    // Stash the old positions for transition.
+    tree.root.eachBefore((d: any) => {
+        d.x0 = d.x
+        d.y0 = d.y
+    })
+
     // TODO needed or can be removed?
     // console.debug(`${nodes.length} nodes, ${links.length} links visible`)
 
@@ -228,7 +234,6 @@ export function updateSankey(
     // Update the links…
     const link = svgSelections.gLink.selectAll('path').data(links, (d: any) => d.target.id)
 
-    console.log(sourceNode)
     // Enter any new links at the parent's previous position.
     const linkEnter = link
         .enter()
@@ -242,25 +247,22 @@ export function updateSankey(
     // Transition links to their new position.
     // TODO remove unused code
     // link.merge(linkEnter).transition(transition).attr('d', linkGenerator)
-    link.merge(linkEnter).transition(transition).attr('d', (d:any) => {
-        const targetsIndex = d.source.children.indexOf(d.target)
-        let sourceX = d.source.children
-            .map((child:any, index:number) => {
-                if (index >= targetsIndex) return 0
-                return child.data ? child.data.codeSize : 0
-            })
-            .reduce((a:any,b:any,c:number) => {
-                // console.log('a', a)
-                // console.log('b', b)
-                // console.log('c', c)
-                return a+b
-            })
-        // console.log('sourceX', sourceX)
-        sourceX = d.source.x - (d.source.data.codeSize / 2) + sourceX
-        sourceX += d.target.data.codeSize / 2
-        const source = { x: sourceX, y:  d.source.y0 }
-        return linkGenerator({ source: source , target: d.target })
-    })
+    link.merge(linkEnter).transition(transition)
+        .attr('d', (d:any) => {
+            const targetsIndex = d.source.children.indexOf(d.target)
+            let sourceX = d.source.children
+                .map((child:any, index:number) => {
+                    if (index >= targetsIndex) return 0
+                    return child.data ? child.data.codeSize : 0
+                })
+                .reduce((a:any,b:any,c:number) => {
+                    return a+b
+                })
+            sourceX += d.source.x - (d.source.data.codeSize / 2)
+            sourceX += d.target.data.codeSize / 2
+            const source = { x: sourceX, y:  d.source.y0 }
+            return linkGenerator({ source: source , target: d.target })
+        })
 
     // Transition exiting nodes to the parent's new position.
     link.exit()
@@ -270,10 +272,4 @@ export function updateSankey(
             const o = { x: sourceNode.x, y: sourceNode.y }
             return linkGenerator({ source: o, target: o })
         })
-
-    // Stash the old positions for transition.
-    tree.root.eachBefore((d: any) => {
-        d.x0 = d.x
-        d.y0 = d.y
-    })
 }

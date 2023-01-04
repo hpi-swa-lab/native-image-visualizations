@@ -34,7 +34,7 @@ export default class TreeInputForm {
     ) {
         const fieldset = this.createFieldsetWithLegend(
             'diffingFilter',
-            'Choose Universe(s) to be displayed'
+            'Display Universes...'
         )
         const keys = Object.keys(universesMetadata)
         const filteredKeys = keys.filter((key) => key.length == 1)
