@@ -5,7 +5,7 @@ import Edge from '../SharedInterfaces/Edge'
 import { uniqueColor } from '../utils'
 import Tooltip from '../Components/Tooltip'
 import { forceCollide, forceLink, forceSimulation } from 'd3'
-import { HierarchyNodeWithSize } from '../SharedTypes/HierarchyNodeWithSize'
+import HierarchyNodeWithSize from '../SharedInterfaces/HierarchyNodeWithSize'
 
 export default class HierarchyBubbles implements Visualization {
     hierarchy: HierarchyNodeWithSize
@@ -80,7 +80,7 @@ export default class HierarchyBubbles implements Visualization {
                     (Math.floor(index / columns) - 1) * padding,
                 color: color,
                 label: node.name,
-                radius: node.subTreeSize + 5,
+                radius: node.size + 5,
                 tooltip: node.fullPath
             }
 
