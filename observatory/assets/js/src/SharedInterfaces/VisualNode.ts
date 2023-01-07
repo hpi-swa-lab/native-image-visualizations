@@ -4,4 +4,5 @@ export default interface Node {
     color: string
     label: string
     tooltip: string
+    referenceToData: number | null
 }

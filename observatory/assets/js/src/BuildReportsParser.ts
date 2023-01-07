@@ -183,7 +183,7 @@ export function parseToPackageHierarchy(hierarchyString: string, clean: boolean 
         if (!methodNode) {
             methodNode = {
                 id: 0,
-                parent: null,
+                parent: parent,
                 name: method,
                 fullPath: packageList.concat(classList).concat(method).join('.'),
                 children: [],
@@ -308,7 +308,7 @@ export function parseBuildReportToNodeWithSizeHierarchy(
             const codeSize: number = report.CodeSize ? report.CodeSize : 0
             methodNode = {
                 id: 0,
-                parent: null,
+                parent: parent,
                 name: method,
                 fullPath: packageList.concat(classList).concat(method).join('.'),
                 children: [],
