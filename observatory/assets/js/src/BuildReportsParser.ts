@@ -208,12 +208,6 @@ export function parseBuildReportToNodeWithSizeHierarchy(
 function _getPackageList(name: string): string[] {
     name = _removeFunctionQualifier(name)
 
-    // check if it has a $ before the end, indicating an inner class
-    if (name.match(/\$.*$/)) {
-        // remove everything from the first $ on aka the inner classes
-        name = name.replace(/\$.*$/, '')
-    }
-
     // remove everything from the last dot on aka the first class
     name = name.replace(/(\.[^.]*)$/, '')
 
