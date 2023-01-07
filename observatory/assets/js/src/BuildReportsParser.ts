@@ -1,7 +1,7 @@
-import { HierarchyNode } from './SharedTypes/HierarchyNode'
-import { ParseResult, parse } from 'papaparse'
-import { NodeType } from './SharedTypes/Node'
-import { HierarchyNodeWithSize } from './SharedTypes/HierarchyNodeWithSize'
+import HierarchyNode from './SharedInterfaces/HierarchyNode'
+import { parse } from 'papaparse'
+import { NodeType } from './SharedInterfaces/Node'
+import HierarchyNodeWithSize from './SharedInterfaces/HierarchyNodeWithSize'
 
 export function loadTextFile(file: File): Promise<string> {
     return new Promise((resolve, reject) => {

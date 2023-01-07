@@ -1,6 +1,6 @@
-import { Node } from './Node'
+import Node from './Node'
 
-export type HierarchyNode = Node & {
+export default interface HierarchyNode extends Omit<Node, 'children'> {
     id: number
     parent: HierarchyNode | null
     children: HierarchyNode[]

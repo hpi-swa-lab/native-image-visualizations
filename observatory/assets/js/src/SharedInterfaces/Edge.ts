@@ -1,7 +1,7 @@
-import Node from './Node'
+import VisualNode from './VisualNode'
 
 export default interface Edge {
-    source: number
-    target: number
+    source: VisualNode
+    target: VisualNode
     weight: number
 }

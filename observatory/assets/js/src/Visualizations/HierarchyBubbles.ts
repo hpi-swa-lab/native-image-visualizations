@@ -1,15 +1,14 @@
 import * as d3 from 'd3'
 import Visualization from './Visualization'
 import CircleNode from '../SharedInterfaces/CircleNode'
-import HierarchyNode from '../SharedInterfaces/HierarchyNode'
 import Edge from '../SharedInterfaces/Edge'
-import { randomColor, randomInteger, uniqueColor } from '../utils'
+import { uniqueColor } from '../utils'
 import Tooltip from '../Components/Tooltip'
-import { color, forceCollide, forceLink, forceManyBody, forceSimulation } from 'd3'
-import { NodeWithSize } from '../SharedTypes/NodeWithSize'
+import { forceCollide, forceLink, forceSimulation } from 'd3'
+import { HierarchyNodeWithSize } from '../SharedTypes/HierarchyNodeWithSize'
 
 export default class HierarchyBubbles implements Visualization {
-    hierarchy: NodeWithSize
+    hierarchy: HierarchyNodeWithSize
 
     nodes: CircleNode[] = []
     nodesById: Record<number, CircleNode>
@@ -19,7 +18,7 @@ export default class HierarchyBubbles implements Visualization {
 
     simulation: d3.Simulation<CircleNode, undefined>
 
-    constructor(hierarchy: NodeWithSize) {
+    constructor(hierarchy: HierarchyNodeWithSize) {
         this.hierarchy = hierarchy
     }
 
@@ -50,7 +49,7 @@ export default class HierarchyBubbles implements Visualization {
         }, milliseconds)
     }
 
-    _constructNodes(hierarchy: NodeWithSize): [CircleNode[], Record<number, CircleNode>] {
+    _constructNodes(hierarchy: HierarchyNodeWithSize): [CircleNode[], Record<number, CircleNode>] {
         const result: CircleNode[] = []
         const resultIdMapping: Record<number, CircleNode> = {}
 
@@ -61,7 +60,7 @@ export default class HierarchyBubbles implements Visualization {
         const radius = 30
         const padding = 5
 
-        hierarchyNodes.forEach((node: NodeWithSize, index: number) => {
+        hierarchyNodes.forEach((node: HierarchyNodeWithSize, index: number) => {
             const colorIdentifyer: string = this._getColorIdentifyerForNode(node)
 
             let color: string
@@ -92,10 +91,10 @@ export default class HierarchyBubbles implements Visualization {
         return [result, resultIdMapping]
     }
 
-    _constructEdges(startingPoint: NodeWithSize): Edge[] {
+    _constructEdges(startingPoint: HierarchyNodeWithSize): Edge[] {
         let result: Edge[] = []
 
-        startingPoint.children.forEach((child: NodeWithSize) => {
+        startingPoint.children.forEach((child: HierarchyNodeWithSize) => {
             if (startingPoint !== this.hierarchy) {
                 result.push({
                     source: this.nodes.indexOf(this.nodesById[startingPoint.id]),
@@ -110,15 +109,15 @@ export default class HierarchyBubbles implements Visualization {
         return result
     }
 
-    _getColorIdentifyerForNode(node: NodeWithSize): string {
+    _getColorIdentifyerForNode(node: HierarchyNodeWithSize): string {
         if (node.parent === null) {
             return null
         }
         return node.parent.fullPath
     }
 
-    _getNodes(startingPoint: NodeWithSize): NodeWithSize[] {
-        let result: NodeWithSize[] = []
+    _getNodes(startingPoint: HierarchyNodeWithSize): HierarchyNodeWithSize[] {
+        let result: HierarchyNodeWithSize[] = []
 
         if (startingPoint !== this.hierarchy) {
             result.push(startingPoint)

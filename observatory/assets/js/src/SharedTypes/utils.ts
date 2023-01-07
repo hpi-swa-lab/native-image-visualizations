@@ -1,0 +1,1 @@
+export type NumberOfBytes = number
