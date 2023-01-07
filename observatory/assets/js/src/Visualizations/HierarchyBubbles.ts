@@ -189,9 +189,17 @@ export default class HierarchyBubbles implements Visualization {
                             return otherNode.color + '22'
                         }
                     })
+                
+                const dataNode = this.hierarchyById[node.referenceToData]
 
                 this.tooltip.title = node.label
-                this.tooltip.datapoints = this.hierarchyById[node.referenceToData]
+                this.tooltip.datapoints = {
+                    'label': dataNode.name,
+                    'full path': dataNode.fullPath,
+                    'Size': dataNode.accumulatedCodeSize,
+                    'Sib tree size': dataNode.subTreeSize,
+                    'Type': dataNode.type
+                }
                 this.tooltip.setVisible()
             })
             .on('mousemove', (event) => {
