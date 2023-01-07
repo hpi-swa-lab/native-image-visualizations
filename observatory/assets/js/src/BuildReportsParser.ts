@@ -23,15 +23,15 @@ export function loadTextFile(file: File): Promise<string> {
 }
 
 /**
- * 
+ *
  * Interprets the given file object as a csv file and uses parses it using papaparse.
  * The following parameters of papaparse are set:
- * 
+ *
  *      worker: true
  *      header: true
  *      dynamicTyping: true
  *      skipEmptyLines: true
- * 
+ *
  * @param {File} file: the input file to parse
  * @returns {Promise<unknown[]>} a promise which contains the parsed data if resolved
  */
@@ -53,12 +53,12 @@ export function loadCSVFile(file: File): Promise<unknown[]> {
 }
 
 /**
- * 
+ *
  * Interprets the given file as a build report and parses the relevant data.
- * A build report can be collected by using the build option `-H:+PrintMethodHistogram`. 
+ * A build report can be collected by using the build option `-H:+PrintMethodHistogram`.
  * It is then printed on the command line. After piping it to a file, this file can be inputted here.
- * 
- * @param {File} file: the input file to parse 
+ *
+ * @param {File} file: the input file to parse
  * @returns {Promise<Record<string, any>[]>} a promise which contains the parsed data if resolved
  */
 export function loadBuildReport(file: File): Promise<Record<string, any>[]> {
@@ -112,20 +112,20 @@ export function loadBuildReport(file: File): Promise<Record<string, any>[]> {
  * The entries are expected to follow this schema:
  *
  * ```json
- * 
- * { 
+ *
+ * {
  *     "CodeSize": {
  *          "description": "The method's size within the generated binary. Packages are separated with dots, inner classes with a dollar sign, and the method then again with a dot",
  *          "type": "int"
- *      }, 
+ *      },
  *      "Method": {
  *          "description": "The method's full qualifier",
  *          "type": "string"
- *      }, 
+ *      },
  * }
- * 
+ *
  * ```
- * 
+ *
  * @returns {NodeWithSize} An artificially created root node under which the package hierarchy is appended. The children of the root node are the top-level packages
  */
 export function parseBuildReportToNodeWithSizeHierarchy(
@@ -227,13 +227,28 @@ function _getClassList(name: string): string[] {
 }
 
 function _getMethodName(path: string): string {
-    // check if it has a ( before the end
-    if (path.match(/\(.*$/)) {
-        // remove everything from the first ( on aka the function parameters
-        path = path.replace(/\(.*$/, '')
+    let parameters: string = ''
+
+    // check if it has two paranthesis aka the method parameters and return type
+    if (path.match(/\(.*\).*$/)) {
+        // remove everything from the first ) on aka the return type.
+        path = path.replace(/\).*$/, '')
+        
+        // match everything from the first ( on, the method parameters
+        const parametersMatch: RegExpMatchArray = path.match(/\(.*$/)
+        if (parametersMatch.length > 1) {
+            console.warn(`Multiple parameter matches in path ${path}. Using only the first one`)
+        }
+        // store the parameters as we need them to distinguish function overloads
+        parameters = parametersMatch[0]
+        // remove parameters for now
+        path = path.replace(parameters, '')
     }
 
-    return path.replace(/.*(?=\.)\./, '')
+    // remove everything before the last dot aka the packages, class and inner classes
+    path = path.replace(/.*(?=\.)\./, '')
+
+    return path + parameters
 }
 
 function _removeFunctionQualifier(path: string): string {
