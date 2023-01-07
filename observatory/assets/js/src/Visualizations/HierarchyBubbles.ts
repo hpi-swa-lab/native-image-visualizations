@@ -6,9 +6,11 @@ import { uniqueColor } from '../utils'
 import Tooltip from '../Components/Tooltip'
 import { forceCollide, forceLink, forceSimulation } from 'd3'
 import HierarchyNodeWithSize from '../SharedInterfaces/HierarchyNodeWithSize'
+import { NodeType } from '../SharedInterfaces/Node'
 
 export default class HierarchyBubbles implements Visualization {
     hierarchy: HierarchyNodeWithSize
+    hierarchyById: Record<number, HierarchyNodeWithSize>
 
     nodes: CircleNode[] = []
     nodesById: Record<number, CircleNode>
@@ -19,8 +21,14 @@ export default class HierarchyBubbles implements Visualization {
     simulation: d3.Simulation<CircleNode, undefined>
 
     constructor(hierarchy: HierarchyNodeWithSize) {
-        this._removeMethodNodes(hierarchy)
+        this._extractPackages(hierarchy)
         this.hierarchy = hierarchy
+        
+        const nodes: HierarchyNodeWithSize[] = this._getNodes(this.hierarchy)
+        this.hierarchyById = {}
+        nodes.forEach(node => {
+            this.hierarchyById[node.id] = node
+        })
     }
 
     generate(): void {
@@ -50,13 +58,13 @@ export default class HierarchyBubbles implements Visualization {
         }, milliseconds)
     }
 
-    _removeMethodNodes(startingPoint: HierarchyNodeWithSize) {
-        if (startingPoint.subTreeSize === 1) {
-            const siblings = startingPoint.parent.children
+    _extractPackages(startingPoint: HierarchyNodeWithSize) {
+        if (startingPoint.type !== NodeType.Package && startingPoint.type !== NodeType.RootNode) {
+            let siblings = startingPoint.parent.children
             siblings.splice(siblings.indexOf(startingPoint))
         } else {
             startingPoint.children.forEach(child => {
-                this._removeMethodNodes(child)
+                this._extractPackages(child)
             })
         }
     }
@@ -92,8 +100,9 @@ export default class HierarchyBubbles implements Visualization {
                     (Math.floor(index / columns) - 1) * padding,
                 color: color,
                 label: node.name,
-                radius: node.size + 5,
-                tooltip: node.fullPath
+                radius: Math.floor(Math.sqrt(node.accumulatedCodeSize)) + 5,
+                tooltip: node.fullPath,
+                referenceToData: node.id
             }
 
             resultIdMapping[node.id] = newNode
@@ -182,9 +191,7 @@ export default class HierarchyBubbles implements Visualization {
                     })
 
                 this.tooltip.title = node.label
-                this.tooltip.datapoints = {
-                    'full package name': node.tooltip
-                }
+                this.tooltip.datapoints = this.hierarchyById[node.referenceToData]
                 this.tooltip.setVisible()
             })
             .on('mousemove', (event) => {
