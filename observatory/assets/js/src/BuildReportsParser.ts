@@ -232,6 +232,7 @@ export function parseBuildReportToNodeWithSizeHierarchy(
         children: [],
         size: 0,
         subTreeSize: 0,
+        accumulatedCodeSize: 0,
         type: NodeType.RootNode,
     }
 
@@ -261,6 +262,7 @@ export function parseBuildReportToNodeWithSizeHierarchy(
                     children: [],
                     size: 0,
                     subTreeSize: 0,
+                    accumulatedCodeSize: 0,
                     type: NodeType.Package,
                 }
 
@@ -285,6 +287,7 @@ export function parseBuildReportToNodeWithSizeHierarchy(
                     children: [],
                     size: 0,
                     subTreeSize: 0,
+                    accumulatedCodeSize: 0,
                     type: NodeType.Class,
                 }
 
@@ -297,14 +300,16 @@ export function parseBuildReportToNodeWithSizeHierarchy(
 
         let methodNode = currentChildren.find((node: HierarchyNodeWithSize) => node.name === method)
         if (!methodNode) {
+            const codeSize: number = report.CodeSize ? report.CodeSize : 0
             methodNode = {
                 id: 0,
                 parent: null,
                 name: method,
                 fullPath: packageList.concat(classList).concat(method).join('.'),
                 children: [],
-                size: report.CodeSize ? report.CodeSize : 0,
+                size: codeSize,
                 subTreeSize: 0,
+                accumulatedCodeSize: codeSize,
                 type: NodeType.Method,
             }
 
@@ -313,6 +318,7 @@ export function parseBuildReportToNodeWithSizeHierarchy(
     })
 
     _addSubTreeSizes(root)
+    _addAccumulatedCodeSize(root)
 
     return root
 }
@@ -403,6 +409,21 @@ function _addSubTreeSizes(startingPoint: HierarchyNode): void {
         startingPoint.subTreeSize = startingPoint.children.reduce(
             (sum: number, child: HierarchyNode) => sum + child.subTreeSize,
             1
+        )
+    }
+}
+
+function _addAccumulatedCodeSize(startingPoint: HierarchyNodeWithSize): void {
+    if (startingPoint.children.length === 0) {
+        startingPoint.accumulatedCodeSize = startingPoint.size
+    } else {
+        startingPoint.children.forEach((child) => {
+            _addAccumulatedCodeSize(child)
+        })
+
+        startingPoint.accumulatedCodeSize = startingPoint.children.reduce(
+            (sum: number, child: HierarchyNodeWithSize) => sum + child.accumulatedCodeSize,
+            0
         )
     }
 }

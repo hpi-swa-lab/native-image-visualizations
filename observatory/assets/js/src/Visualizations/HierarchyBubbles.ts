@@ -19,6 +19,7 @@ export default class HierarchyBubbles implements Visualization {
     simulation: d3.Simulation<CircleNode, undefined>
 
     constructor(hierarchy: HierarchyNodeWithSize) {
+        this._removeMethodNodes(hierarchy)
         this.hierarchy = hierarchy
     }
 
@@ -47,6 +48,17 @@ export default class HierarchyBubbles implements Visualization {
             this.simulation.stop()
             callback()
         }, milliseconds)
+    }
+
+    _removeMethodNodes(startingPoint: HierarchyNodeWithSize) {
+        if (startingPoint.subTreeSize === 1) {
+            const siblings = startingPoint.parent.children
+            siblings.splice(siblings.indexOf(startingPoint))
+        } else {
+            startingPoint.children.forEach(child => {
+                this._removeMethodNodes(child)
+            })
+        }
     }
 
     _constructNodes(hierarchy: HierarchyNodeWithSize): [CircleNode[], Record<number, CircleNode>] {
