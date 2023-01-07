@@ -2,9 +2,7 @@ import HierarchyBubbles from './Visualizations/HierarchyBubbles'
 import VennVisualization from './Visualizations/VennVisualization'
 import TreeVisualization from './Visualizations/TreeVisualization'
 import {
-    loadTextFile,
     loadBuildReport,
-    parseToCleanedPackageHierarchy,
     parseBuildReportToNodeWithSizeHierarchy
 } from './BuildReportsParser'
 

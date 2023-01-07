@@ -2,6 +2,7 @@ import HierarchyNode from './SharedInterfaces/HierarchyNode'
 import { parse } from 'papaparse'
 import { NodeType } from './SharedInterfaces/Node'
 import HierarchyNodeWithSize from './SharedInterfaces/HierarchyNodeWithSize'
+import { json } from 'd3'
 
 export function loadTextFile(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -105,6 +106,98 @@ export function loadBuildReport(file: File): Promise<Record<string, any>[]> {
             resolve(result)
         }
     })
+}
+
+export function parseToPackageHierarchy(hierarchyString: string, clean: boolean = false): HierarchyNode {
+    const data: HierarchyNode = {
+        id: 0,
+        parent: null,
+        name: 'root',
+        fullPath: '',
+        children: [] as HierarchyNode[],
+        subTreeSize: 0,
+        type: NodeType.RootNode
+    }
+
+    let currentChildren: HierarchyNode[] = data.children
+    let parent = data
+    let counter: number = 1
+
+    let methodIds = hierarchyString.split('\n')
+    
+    if (clean) {
+        methodIds = methodIds.filter((methodId: string) => !methodId.match(/[\$\.]\$/))
+    }
+
+    methodIds.forEach((methodId: string) => {
+        currentChildren = data.children
+        parent = data
+
+        const packageList: string[] = _getPackageList(methodId)
+        const classList: string[] = _getClassList(methodId)
+        const method: string = _getMethodName(methodId)
+
+        packageList.forEach((packageName: string) => {
+            let packageNode: HierarchyNode | undefined = currentChildren.find((node: HierarchyNode) => node.name === packageName)
+
+            if (!packageNode) {
+                packageNode = {
+                    id: counter++,
+                    parent: parent,
+                    name: packageName,
+                    fullPath: ''/* TODO */,
+                    children: [],
+                    subTreeSize: 0,
+                    type: NodeType.Package,
+                }
+
+                currentChildren.push(packageNode)
+            }
+
+            currentChildren = packageNode.children
+            parent = packageNode
+        })
+
+        classList.forEach((className: string) => {
+            let classNode: HierarchyNode | undefined = currentChildren.find((node: HierarchyNode) => node.name === className)
+
+            if (!classNode) {
+                classNode = {
+                    id: counter++,
+                    parent: parent,
+                    name: className,
+                    fullPath: '',
+                    children: [],
+                    subTreeSize: 0,
+                    type: NodeType.Class,
+                }
+
+                currentChildren.push(classNode)
+            }
+
+            currentChildren = classNode.children
+            parent = classNode
+        })
+
+        let methodNode: HierarchyNode | undefined = currentChildren.find((node: HierarchyNode) => node.name === method)
+        if (!methodNode) {
+            methodNode = {
+                id: 0,
+                parent: null,
+                name: method,
+                fullPath: '',
+                children: [],
+                subTreeSize: 0,
+                type: NodeType.Method,
+            }
+
+            currentChildren.push(methodNode)
+        }
+    })
+
+    _addSubTreeSizes(data)
+
+    return data
 }
 
 /**
@@ -280,105 +373,6 @@ function _removeFunctionQualifier(path: string): string {
     }
 
     return path
-}
-
-export function parseToPackageHierarchy(hierarchyString: string): HierarchyNode {
-    const data: HierarchyNode = {
-        id: 0,
-        parent: null,
-        name: 'root',
-        fullPath: '',
-        children: [] as HierarchyNode[],
-        subTreeSize: 0,
-        type: NodeType.RootNode
-    }
-
-    let counter: number = 1
-
-    hierarchyString.split('\n').forEach((row: string) => {
-        let currentChildren: HierarchyNode[] = data.children
-        let parent = data
-
-        let splittedRow = row.split('.')
-        splittedRow.forEach((pathSegment: string, index: number) => {
-            let child = currentChildren.find((child: HierarchyNode) => child.name === pathSegment)
-
-            if (!child) {
-                child = {
-                    id: counter,
-                    parent: parent,
-                    name: pathSegment,
-                    fullPath: splittedRow.slice(0, index + 1).join('.'),
-                    children: [] as HierarchyNode[],
-                    subTreeSize: 0
-                }
-                currentChildren.push(child)
-                counter++
-            }
-
-            currentChildren = child.children
-            parent = child
-        })
-    })
-
-    _addSubTreeSizes(data)
-
-    return data
-}
-
-export function parseToCleanedPackageHierarchy(hierarchyString: string): HierarchyNode {
-    const data: HierarchyNode = {
-        id: 0,
-        parent: null,
-        name: 'root',
-        fullPath: '',
-        children: [] as HierarchyNode[],
-        subTreeSize: 0,
-        type: NodeType.RootNode
-    }
-
-    let counter: number = 1
-
-    hierarchyString.split('\n').forEach((row: string) => {
-        // filters out any row that includes the substrings '.$' or '$$'
-        // as these are elements generated by graal which we don't need for this visualization
-        if (!row.match(/[\$\.]\$/)) {
-            // Classes within classes are denoted with a '$' but we want to handle them
-            // just like the rest of the package hierarchy
-            row = row.replaceAll('$', '.')
-
-            let currentChildren: HierarchyNode[] = data.children
-            let parent = data
-
-            let splittedRow = row.split('.')
-            splittedRow.forEach((pathSegment: string, index: number) => {
-                let child = currentChildren.find(
-                    (child: HierarchyNode) => child.name === pathSegment
-                )
-
-                if (!child) {
-                    child = {
-                        id: counter,
-                        parent: parent,
-                        name: pathSegment,
-                        fullPath: splittedRow.slice(0, index + 1).join('.'),
-                        children: [] as HierarchyNode[],
-                        subTreeSize: 0
-                    }
-                    currentChildren.push(child)
-                    counter++
-                }
-
-                currentChildren = child.children
-                parent = child
-            })
-        }
-    })
-
-    _addSubTreeSizes(data)
-    console.log(data)
-
-    return data
 }
 
 function _addSubTreeSizes(startingPoint: HierarchyNode): void {
