@@ -78,10 +78,10 @@ export function loadBuildReport(file: File): Promise<Record<string, any>[]> {
         if (data.errors.length > 0) {
             reject(data.errors)
         } else {
-            const parsed_data = data.data
+            const parsedData = data.data
 
-            const tableHeader = parsed_data[0] as string[]
-            const body = parsed_data.slice(1)
+            const tableHeader = parsedData[0] as string[]
+            const body = parsedData.slice(1)
 
             const result: Record<string, any>[] = []
 
