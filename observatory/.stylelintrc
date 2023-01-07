@@ -1,4 +1,3 @@
 {
-    "extends": "stylelint-config-twbs-bootstrap",
-    "tab": "4"
+    "extends": "stylelint-config-twbs-bootstrap"
 }
