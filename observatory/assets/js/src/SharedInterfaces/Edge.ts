@@ -1,7 +1,5 @@
-import VisualNode from './VisualNode'
-
 export default interface Edge {
-    source: VisualNode
-    target: VisualNode
+    source: number
+    target: number
     weight: number
 }
