@@ -20,17 +20,17 @@ $enable-shadows: true;
 // Customize some defaults
 $body-color: #333;
 $body-bg: #fff;
-$border-radius: 0.4rem;
+$border-radius: .4rem;
 $success: #7952b3;
 
 //
 // Includes
 //
 
-@import 'bootstrap/scss/bootstrap';
+@import "bootstrap/scss/bootstrap";
 
-@import 'zoomable_causality_graph';
-@import 'hierarchy_bubbles';
+@import "zoomable_causality_graph";
+@import "hierarchy_bubbles";
 
 //
 // Custom styles
@@ -38,11 +38,11 @@ $success: #7952b3;
 
 html,
 body {
-    margin: 0;
-    height: 100%;
-    width: 100%;
+  width: 100%;
+  height: 100%;
+  margin: 0;
 }
 
 body {
-    padding-top: 56px; // to fit the top bar component
+  padding-top: 56px; // to fit the top bar component
 }
