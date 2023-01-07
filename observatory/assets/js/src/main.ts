@@ -8,7 +8,7 @@ import {
 
 export async function generateHierarchyBubbles(file: File): Promise<HierarchyBubbles> {
     const reportData = await loadBuildReport(file)
-    const hierarchy = parseBuildReportToNodeWithSizeHierarchy(reportData)
+    const hierarchy = parseBuildReportToNodeWithSizeHierarchy(reportData, true)
 
     const visualization = new HierarchyBubbles(hierarchy)
     visualization.generate()

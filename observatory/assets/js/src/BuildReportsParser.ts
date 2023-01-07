@@ -222,7 +222,8 @@ export function parseToPackageHierarchy(hierarchyString: string, clean: boolean 
  * @returns {HierarchyNodeWithSize} An artificially created root node under which the package hierarchy is appended. The children of the root node are the top-level packages
  */
 export function parseBuildReportToNodeWithSizeHierarchy(
-    buildReportData: Record<string, any>[]
+    buildReportData: Record<string, any>[],
+    clean: boolean = false
 ): HierarchyNodeWithSize {
     const root: HierarchyNodeWithSize = {
         id: 0,
@@ -239,6 +240,10 @@ export function parseBuildReportToNodeWithSizeHierarchy(
     let currentChildren: HierarchyNodeWithSize[]
     let parent: HierarchyNodeWithSize
     let counter = 1;
+
+    if (clean) {
+        buildReportData = buildReportData.filter((report: Record<string, any>) => !report.Method.match(/[\$\.]\$/))
+    }
 
     buildReportData.forEach((report: Record<string, any>) => {
         currentChildren = root.children
