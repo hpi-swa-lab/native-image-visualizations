@@ -231,8 +231,8 @@ function _getMethodName(path: string): string {
 
     // check if it has two paranthesis aka the method parameters and return type
     if (path.match(/\(.*\).*$/)) {
-        // remove everything from the first ) on aka the return type.
-        path = path.replace(/\).*$/, '')
+        // remove everything after the first ) on aka the return type.
+        path = path.replace(/[^)]*$/, '')
         
         // match everything from the first ( on, the method parameters
         const parametersMatch: RegExpMatchArray = path.match(/\(.*$/)
