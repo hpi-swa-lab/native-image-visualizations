@@ -776,23 +776,33 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
     }
 }
 
-static void bruteforce_purges__worker_method(const Adjacency& adj, const vector<string>& method_names, size_t n_reachable, atomic<size_t>* purged)
+static void bruteforce_purges__worker_method(const Adjacency& adj, const vector<string>& type_names, const vector<vector<method_id>>& reasons_contained_in_types, size_t n_reachable, atomic<size_t>* purged)
 {
-    size_t purged_method;
-    while((purged_method = (*purged)++) < adj.n_methods())
+    size_t purged_type;
+    while((purged_type = (*purged)++) < adj.n_types())
     {
-        method_id purged_mid = purged_method;
-        BFS after_purge(adj, {&purged_mid, 1});
+        if(reasons_contained_in_types[purged_type].empty() || !type_names[purged_type].starts_with("io.micronaut."))
+            continue;
+
+        BFS after_purge(adj, reasons_contained_in_types[purged_type]);
         size_t n_reachable_purged = std::count_if(after_purge.method_visited.begin(), after_purge.method_visited.end(), [](bool b) { return b; });
 
         stringstream outputline;
-        outputline << method_names[purged_method] << ": " << (n_reachable - n_reachable_purged) << endl;
+        outputline << type_names[purged_type] << ": " << (n_reachable - n_reachable_purged) << endl;
         cout << outputline.str(); // synchronized across threads
     }
 }
 
-static void bruteforce_purges(const Adjacency& adj, const vector<string>& method_names)
+static void bruteforce_purges(const Adjacency& adj, const vector<string>& type_names, const vector<uint32_t>& declaring_types)
 {
+    vector<vector<method_id>> reasons_contained_in_types(adj.n_types());
+    for(size_t method = 1; method < adj.n_methods(); method++)
+    {
+        uint32_t t = declaring_types[method];
+        if(t != numeric_limits<uint32_t>::max())
+            reasons_contained_in_types.at(t).push_back(method);
+    }
+
     size_t n_reachable;
 
     {
@@ -801,11 +811,11 @@ static void bruteforce_purges(const Adjacency& adj, const vector<string>& method
     }
 
     thread workers[8];
-    atomic<size_t> purged = 1;
+    atomic<size_t> purged = 0;
 
     for(thread& worker : workers)
     {
-        worker = thread(bruteforce_purges__worker_method, adj, method_names, n_reachable, &purged);
+        worker = thread(bruteforce_purges__worker_method, adj, type_names, reasons_contained_in_types, n_reachable, &purged);
     }
 
     for(thread& worker : workers)
@@ -889,11 +899,13 @@ static void print_reachability_of_method(const Adjacency& adj, const vector<stri
 
     if(dist == 0)
     {
-        cout << indentation << "<Root>" << endl;
         return;
     }
 
-    cout << indentation << method_names[m.id] << endl;
+    cout << indentation << method_names[m.id];
+    if(dist == 1)
+        cout << " (Root)";
+    cout << endl;
 
     if(visited[m.id])
     {
@@ -1121,6 +1133,9 @@ int main(int argc, const char** argv)
     vector<uint32_t> typeflow_filters(1);
     read_buffer(typeflow_filters, "typeflow_filters.bin");
 
+    vector<uint32_t> declaring_types(1);
+    read_buffer(declaring_types, "declaring_types.bin");
+
     Adjacency adj(type_names.size(), method_names.size(), typeflow_names.size(), interflows, direct_invokes, typestates, typeflow_filters, std::move(typeflow_methods), typeflow_names);
 
     remove_redundant(adj);
@@ -1139,7 +1154,7 @@ int main(int argc, const char** argv)
     }
     else if(command == "bruteforce_purges")
     {
-        bruteforce_purges(adj, method_names);
+        bruteforce_purges(adj, type_names, declaring_types);
     }
     else
     {
