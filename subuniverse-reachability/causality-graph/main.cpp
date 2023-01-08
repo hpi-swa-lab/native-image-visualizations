@@ -776,7 +776,92 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
     }
 }
 
-static void bruteforce_purges__worker_method(const Adjacency& adj, const vector<string>& type_names, const vector<vector<method_id>>& reasons_contained_in_types, size_t n_reachable, atomic<size_t>* purged)
+static void bruteforce_purges__worker_method(const Adjacency& adj, const vector<string>& method_names, size_t n_reachable, atomic<size_t>* purged, vector<boost::dynamic_bitset<>>* purge_matrix)
+{
+    size_t purged_method;
+    while((purged_method = (*purged)++) < adj.n_methods())
+    {
+        method_id purged_mid = purged_method;
+        BFS after_purge(adj, {&purged_mid, 1});
+
+        size_t n_reachable_purged = std::count_if(after_purge.method_visited.begin(), after_purge.method_visited.end(), [](bool b) { return b; });
+
+        (*purge_matrix)[purged_method].resize(after_purge.method_visited.size());
+        for(size_t i = 0; i < after_purge.method_visited.size(); i++)
+            (*purge_matrix)[purged_method][i] = !after_purge.method_visited[i];
+
+        //stringstream outputline;
+        //outputline << method_names[purged_method] << ": " << (n_reachable - n_reachable_purged) << endl;
+        //cout << outputline.str(); // synchronized across threads
+    }
+}
+
+static void bruteforce_purges(const Adjacency& adj, const vector<string>& method_names)
+{
+    size_t n_reachable;
+    boost::dynamic_bitset<> all_reachable_bitset(adj.n_methods());
+
+    {
+        BFS all(adj);
+        n_reachable = std::count_if(all.method_visited.begin(), all.method_visited.end(), [](bool b){ return b; });
+
+        for(size_t i = 0; i < adj.n_methods(); i++)
+        {
+            all_reachable_bitset[i] = all.method_visited[i];
+        }
+    }
+
+    thread workers[8];
+    atomic<size_t> purged = 1;
+    vector<boost::dynamic_bitset<>> purge_matrix(adj.n_methods());
+    purge_matrix[0].resize(adj.n_methods());
+
+    for(thread& worker : workers)
+        worker = thread(bruteforce_purges__worker_method, adj, method_names, n_reachable, &purged, &purge_matrix);
+
+    for(thread& worker : workers)
+        worker.join();
+
+    for(auto& purged : purge_matrix)
+    {
+        purged &= all_reachable_bitset;
+    }
+
+    vector<method_id> methods_sorted_by_cutvalue(adj.n_methods());
+    for(size_t i = 0; i < adj.n_methods(); i++)
+        methods_sorted_by_cutvalue[i] = i;
+
+    std::sort(methods_sorted_by_cutvalue.begin(), methods_sorted_by_cutvalue.end(), [&](method_id a, method_id b) { return purge_matrix[a.id].count() > purge_matrix[b.id].count(); });
+
+    vector<vector<method_id>> purge_adj(adj.n_methods());
+
+    for(size_t i = 1; i < adj.n_methods(); i++)
+    {
+        cout << method_names[i] << ": ";
+        boost::dynamic_bitset<> remaining = purge_matrix[i];
+        remaining[i] = false;
+
+        for(method_id m : methods_sorted_by_cutvalue)
+        {
+            if(remaining[m.id])
+            {
+                if(!purge_matrix[m.id].is_subset_of(purge_matrix[i]))
+                {
+                    cout << "Assertion error\n";
+                    exit(1);
+                }
+
+                purge_adj[i].push_back(m);
+                remaining &=~ purge_matrix[m.id];
+                cout << method_names[m.id] << ", ";
+            }
+        }
+
+        cout << '\n';
+    }
+}
+
+static void bruteforce_purges_classes__worker_method(const Adjacency& adj, const vector<string>& type_names, const vector<vector<method_id>>& reasons_contained_in_types, size_t n_reachable, atomic<size_t>* purged)
 {
     size_t purged_type;
     while((purged_type = (*purged)++) < adj.n_types())
@@ -793,7 +878,7 @@ static void bruteforce_purges__worker_method(const Adjacency& adj, const vector<
     }
 }
 
-static void bruteforce_purges(const Adjacency& adj, const vector<string>& type_names, const vector<uint32_t>& declaring_types)
+static void bruteforce_purges_classes(const Adjacency& adj, const vector<string>& type_names, const vector<uint32_t>& declaring_types)
 {
     vector<vector<method_id>> reasons_contained_in_types(adj.n_types());
     for(size_t method = 1; method < adj.n_methods(); method++)
@@ -815,7 +900,7 @@ static void bruteforce_purges(const Adjacency& adj, const vector<string>& type_n
 
     for(thread& worker : workers)
     {
-        worker = thread(bruteforce_purges__worker_method, adj, type_names, reasons_contained_in_types, n_reachable, &purged);
+        worker = thread(bruteforce_purges_classes__worker_method, adj, type_names, reasons_contained_in_types, n_reachable, &purged);
     }
 
     for(thread& worker : workers)
@@ -1154,7 +1239,11 @@ int main(int argc, const char** argv)
     }
     else if(command == "bruteforce_purges")
     {
-        bruteforce_purges(adj, type_names, declaring_types);
+        bruteforce_purges(adj, method_names);
+    }
+    else if(command == "bruteforce_purges_classes")
+    {
+        bruteforce_purges_classes(adj, type_names, declaring_types);
     }
     else
     {
