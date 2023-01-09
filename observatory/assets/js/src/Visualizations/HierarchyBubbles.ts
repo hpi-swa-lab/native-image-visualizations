@@ -23,10 +23,10 @@ export default class HierarchyBubbles implements Visualization {
     constructor(hierarchy: HierarchyNodeWithSize) {
         this._extractPackages(hierarchy)
         this.hierarchy = hierarchy
-        
+
         const nodes: HierarchyNodeWithSize[] = this._getNodes(this.hierarchy)
         this.hierarchyById = {}
-        nodes.forEach(node => {
+        nodes.forEach((node) => {
             this.hierarchyById[node.id] = node
         })
     }
@@ -63,7 +63,7 @@ export default class HierarchyBubbles implements Visualization {
             let siblings = startingPoint.parent.children
             siblings.splice(siblings.indexOf(startingPoint))
         } else {
-            startingPoint.children.forEach(child => {
+            startingPoint.children.forEach((child) => {
                 this._extractPackages(child)
             })
         }
@@ -189,16 +189,16 @@ export default class HierarchyBubbles implements Visualization {
                             return otherNode.color + '22'
                         }
                     })
-                
+
                 const dataNode = this.hierarchyById[node.referenceToData]
 
                 this.tooltip.title = node.label
                 this.tooltip.datapoints = {
-                    'label': dataNode.name,
+                    label: dataNode.name,
                     'full path': dataNode.fullPath,
-                    'Size': dataNode.accumulatedCodeSize,
+                    Size: dataNode.accumulatedCodeSize,
                     'Sib tree size': dataNode.subTreeSize,
-                    'Type': dataNode.type
+                    Type: dataNode.type
                 }
                 this.tooltip.setVisible()
             })

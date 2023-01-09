@@ -108,7 +108,10 @@ export function loadBuildReport(file: File): Promise<Record<string, any>[]> {
     })
 }
 
-export function parseToPackageHierarchy(hierarchyString: string, clean: boolean = false): HierarchyNode {
+export function parseToPackageHierarchy(
+    hierarchyString: string,
+    clean: boolean = false
+): HierarchyNode {
     const data: HierarchyNode = {
         id: 0,
         parent: null,
@@ -124,7 +127,7 @@ export function parseToPackageHierarchy(hierarchyString: string, clean: boolean 
     let counter: number = 1
 
     let methodIds = hierarchyString.split('\n')
-    
+
     if (clean) {
         methodIds = methodIds.filter((methodId: string) => !methodId.match(/[\$\.]\$/))
     }
@@ -138,7 +141,9 @@ export function parseToPackageHierarchy(hierarchyString: string, clean: boolean 
         const method: string = _getMethodName(methodId)
 
         packageList.forEach((packageName: string, index: number) => {
-            let packageNode: HierarchyNode | undefined = currentChildren.find((node: HierarchyNode) => node.name === packageName)
+            let packageNode: HierarchyNode | undefined = currentChildren.find(
+                (node: HierarchyNode) => node.name === packageName
+            )
 
             if (!packageNode) {
                 packageNode = {
@@ -148,7 +153,7 @@ export function parseToPackageHierarchy(hierarchyString: string, clean: boolean 
                     fullPath: packageList.slice(0, index + 1).join('.'),
                     children: [],
                     subTreeSize: 0,
-                    type: NodeType.Package,
+                    type: NodeType.Package
                 }
 
                 currentChildren.push(packageNode)
@@ -159,7 +164,9 @@ export function parseToPackageHierarchy(hierarchyString: string, clean: boolean 
         })
 
         classList.forEach((className: string, index: number) => {
-            let classNode: HierarchyNode | undefined = currentChildren.find((node: HierarchyNode) => node.name === className)
+            let classNode: HierarchyNode | undefined = currentChildren.find(
+                (node: HierarchyNode) => node.name === className
+            )
 
             if (!classNode) {
                 classNode = {
@@ -169,7 +176,7 @@ export function parseToPackageHierarchy(hierarchyString: string, clean: boolean 
                     fullPath: packageList.concat(classList.slice(0, index + 1)).join('.'),
                     children: [],
                     subTreeSize: 0,
-                    type: NodeType.Class,
+                    type: NodeType.Class
                 }
 
                 currentChildren.push(classNode)
@@ -179,7 +186,9 @@ export function parseToPackageHierarchy(hierarchyString: string, clean: boolean 
             parent = classNode
         })
 
-        let methodNode: HierarchyNode | undefined = currentChildren.find((node: HierarchyNode) => node.name === method)
+        let methodNode: HierarchyNode | undefined = currentChildren.find(
+            (node: HierarchyNode) => node.name === method
+        )
         if (!methodNode) {
             methodNode = {
                 id: 0,
@@ -188,7 +197,7 @@ export function parseToPackageHierarchy(hierarchyString: string, clean: boolean 
                 fullPath: packageList.concat(classList).concat(method).join('.'),
                 children: [],
                 subTreeSize: 0,
-                type: NodeType.Method,
+                type: NodeType.Method
             }
 
             currentChildren.push(methodNode)
@@ -218,7 +227,7 @@ export function parseToPackageHierarchy(hierarchyString: string, clean: boolean 
  * }
  *
  * ```
- * 
+ *
  * @returns {HierarchyNodeWithSize} An artificially created root node under which the package hierarchy is appended. The children of the root node are the top-level packages
  */
 export function parseBuildReportToNodeWithSizeHierarchy(
@@ -234,15 +243,17 @@ export function parseBuildReportToNodeWithSizeHierarchy(
         size: 0,
         subTreeSize: 0,
         accumulatedCodeSize: 0,
-        type: NodeType.RootNode,
+        type: NodeType.RootNode
     }
 
     let currentChildren: HierarchyNodeWithSize[]
     let parent: HierarchyNodeWithSize
-    let counter = 1;
+    let counter = 1
 
     if (clean) {
-        buildReportData = buildReportData.filter((report: Record<string, any>) => !report.Method.match(/[\$\.]\$/))
+        buildReportData = buildReportData.filter(
+            (report: Record<string, any>) => !report.Method.match(/[\$\.]\$/)
+        )
     }
 
     buildReportData.forEach((report: Record<string, any>) => {
@@ -268,7 +279,7 @@ export function parseBuildReportToNodeWithSizeHierarchy(
                     size: 0,
                     subTreeSize: 0,
                     accumulatedCodeSize: 0,
-                    type: NodeType.Package,
+                    type: NodeType.Package
                 }
 
                 currentChildren.push(packageNode)
@@ -293,7 +304,7 @@ export function parseBuildReportToNodeWithSizeHierarchy(
                     size: 0,
                     subTreeSize: 0,
                     accumulatedCodeSize: 0,
-                    type: NodeType.Class,
+                    type: NodeType.Class
                 }
 
                 currentChildren.push(classNode)
@@ -315,7 +326,7 @@ export function parseBuildReportToNodeWithSizeHierarchy(
                 size: codeSize,
                 subTreeSize: 0,
                 accumulatedCodeSize: codeSize,
-                type: NodeType.Method,
+                type: NodeType.Method
             }
 
             currentChildren.push(methodNode)
@@ -373,7 +384,7 @@ function _getMethodName(path: string): string {
     if (path.match(/\(.*\).*$/)) {
         // remove everything after the first ) on aka the return type.
         path = path.replace(/[^)]*$/, '')
-        
+
         // match everything from the first ( on, the method parameters
         const parametersMatch: RegExpMatchArray = path.match(/\(.*$/)
         if (parametersMatch.length > 1) {
@@ -407,7 +418,7 @@ function _addSubTreeSizes(startingPoint: HierarchyNode): void {
     if (startingPoint.children.length === 0) {
         startingPoint.subTreeSize = 0
     } else {
-        (startingPoint.children).forEach((child) => {
+        startingPoint.children.forEach((child) => {
             _addSubTreeSizes(child)
         })
 

@@ -1,10 +1,7 @@
 import HierarchyBubbles from './Visualizations/HierarchyBubbles'
 import VennVisualization from './Visualizations/VennVisualization'
 import TreeVisualization from './Visualizations/TreeVisualization'
-import {
-    loadBuildReport,
-    parseBuildReportToNodeWithSizeHierarchy
-} from './BuildReportsParser'
+import { loadBuildReport, parseBuildReportToNodeWithSizeHierarchy } from './BuildReportsParser'
 
 export async function generateHierarchyBubbles(file: File): Promise<HierarchyBubbles> {
     const reportData = await loadBuildReport(file)
