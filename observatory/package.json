@@ -27,7 +27,7 @@
         "watch": "npm-run-all --parallel watch-ts watch-css",
         "watch-ts": "rollup -c -w",
         "watch-css": "nodemon -w 'assets/**/src/*' -e html,scss -x \"npm run css\"",
-        "test": "npm run eslint-check && npm run prettier-check && npm run css-lint && npm run css"
+        "test": "npm-run-all eslint-check prettier-check css-lint css"
     },
     "author": "",
     "license": "MIT",
