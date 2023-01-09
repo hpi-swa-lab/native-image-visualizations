@@ -196,9 +196,9 @@ export default class HierarchyBubbles implements Visualization {
                 this.tooltip.datapoints = {
                     label: dataNode.name,
                     'full path': dataNode.fullPath,
-                    Size: dataNode.accumulatedCodeSize,
-                    'Sib tree size': dataNode.subTreeSize,
-                    Type: dataNode.type
+                    size: dataNode.accumulatedCodeSize,
+                    'sub tree size': dataNode.subTreeSize,
+                    type: dataNode.type
                 }
                 this.tooltip.setVisible()
             })
