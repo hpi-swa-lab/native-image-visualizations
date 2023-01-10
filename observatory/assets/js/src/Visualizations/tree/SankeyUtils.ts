@@ -88,7 +88,7 @@ export function updateSankey(
                 })
             }
 
-            // extend full tree
+            // expand full tree
             if (event.detail.name === CustomEventName.EXPAND_TREE) {
                 console.log(event.detail.name, true)
                 tree.root.eachBefore((node: any) => {
@@ -251,6 +251,7 @@ export function updateSankey(
             return linkGenerator({ source: o, target: o })
         })
         .attr('stroke-width', (d: any) => d.target.data.codeSize)
+        .attr('stroke', (d: any) => d.target.data.isModified ? '#4989c5' : '#969696')
 
     // Transition links to their new position.
     // TODO remove unused code
