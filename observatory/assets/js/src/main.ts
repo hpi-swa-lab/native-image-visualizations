@@ -1,7 +1,7 @@
 import HierarchyBubbles from './Visualizations/HierarchyBubbles'
 import VennVisualization from './Visualizations/VennVisualization'
-import SankeyTreeVisualization from "./Visualizations/tree/SankeyTreeVisualization";
-import TreeVisualization from "./Visualizations/tree/TreeVisualization";
+import SankeyTreeVisualization from './Visualizations/tree/SankeyTreeVisualization'
+import TreeVisualization from './Visualizations/tree/TreeVisualization'
 import {
     loadTextFile,
     loadBuildReport,

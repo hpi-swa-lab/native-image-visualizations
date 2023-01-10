@@ -10,7 +10,7 @@ import {
     createApplyFilterEvent,
     createExpandTreeEvent
 } from './TreeUtils'
-import { Sankey, updateSankey } from './SankeyUtils'
+import { updateSankey } from './SankeyUtils'
 import {
     COLOR_GREEN,
     COLOR_MODIFIED,
@@ -26,10 +26,12 @@ import {
     SortingOption,
     SortingOrder,
     SvgSelections,
+    Tree,
     TreeNodesFilter,
     UniverseProps
 } from './TreeTypes'
 import TreeInputForm from './TreeInputForm'
+import Visualization from '../Visualization'
 
 export default class SankeyTreeVisualization implements Visualization {
     universesMetadata: Dictionary<UniverseProps>
@@ -53,7 +55,7 @@ export default class SankeyTreeVisualization implements Visualization {
     }
 
     generate(): void {
-        this.loadUniverses().then((tree: Sankey) => {
+        this.loadUniverses().then((tree: Tree) => {
             console.debug('Universes: ', tree)
 
             const inputForm = new TreeInputForm(this.universesMetadata, this.filter)
@@ -192,7 +194,7 @@ export default class SankeyTreeVisualization implements Visualization {
             createHierarchyFromPackages(i, text, treeData, leaves, sets)
         })
 
-        const tree: Sankey = {
+        const tree: Tree = {
             root: d3.hierarchy(treeData) as HierarchyPointNode<MyNode>,
             leaves: Array.from(leaves),
             sets: Array.from(sets),
@@ -236,7 +238,7 @@ export default class SankeyTreeVisualization implements Visualization {
 
     private onSubmit(
         e: SubmitEvent,
-        tree: Sankey,
+        tree: Tree,
         svgSelections: SvgSelections,
         universePropsDict: Dictionary<UniverseProps>
     ) {

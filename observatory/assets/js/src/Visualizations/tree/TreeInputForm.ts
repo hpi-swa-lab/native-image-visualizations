@@ -33,10 +33,7 @@ export default class TreeInputForm {
         universesMetadata: Dictionary<UniverseProps>,
         filter: TreeNodesFilter
     ) {
-        const fieldset = this.createFieldsetWithLegend(
-            'diffingFilter',
-            'Display Universes...'
-        )
+        const fieldset = this.createFieldsetWithLegend('diffingFilter', 'Display Universes...')
         const keys = Object.keys(universesMetadata)
         const filteredKeys = keys.filter((key) => key.length == 1)
 
@@ -105,9 +102,7 @@ export default class TreeInputForm {
         div.setAttribute('role', 'alert')
         const ul = document.createElement('ul')
         ul.classList.add('list-unstyled')
-        const items = [
-            'shift+click on node expands branch'
-        ]
+        const items = ['shift+click on node expands branch']
         for (const item of items) {
             const li = document.createElement('li')
             li.innerText = item
@@ -150,7 +145,12 @@ export default class TreeInputForm {
         return fieldset
     }
 
-    private createCheckboxLabelDiv(id: string, label: string, backgroundColor: string, checked: boolean) {
+    private createCheckboxLabelDiv(
+        id: string,
+        label: string,
+        backgroundColor: string,
+        checked: boolean
+    ) {
         const div = this.createDiv(['form-check', 'form-switch'], backgroundColor)
         div.appendChild(
             this.createCheckInput(
@@ -186,7 +186,13 @@ export default class TreeInputForm {
         return div
     }
 
-    private createCheckInput(name: string, value: string, checked: boolean, type: string, role?: string) {
+    private createCheckInput(
+        name: string,
+        value: string,
+        checked: boolean,
+        type: string,
+        role?: string
+    ) {
         const checkEl = document.createElement('input')
         checkEl.classList.add('form-check-input')
         checkEl.setAttribute('id', value)

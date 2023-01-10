@@ -233,7 +233,7 @@ function _getMethodName(path: string): string {
     if (path.match(/\(.*\).*$/)) {
         // remove everything after the first ) on aka the return type.
         path = path.replace(/[^)]*$/, '')
-        
+
         // match everything from the first ( on, the method parameters
         const parametersMatch: RegExpMatchArray = path.match(/\(.*$/)
         if (parametersMatch.length > 1) {

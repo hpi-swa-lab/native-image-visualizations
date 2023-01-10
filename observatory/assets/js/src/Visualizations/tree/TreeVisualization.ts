@@ -31,6 +31,7 @@ import {
     UniverseProps
 } from './TreeTypes'
 import TreeInputForm from './TreeInputForm'
+import Visualization from '../Visualization'
 
 export default class TreeVisualization implements Visualization {
     universesMetadata: Dictionary<UniverseProps>
