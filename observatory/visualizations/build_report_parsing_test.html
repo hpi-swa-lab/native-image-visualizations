@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Report Parsing Test</title>
+
+        <link rel="stylesheet" type="text/css" href="/assets/css/dist/main.css" />
+        <script src="../assets/js/dist/observatory.umd.js"></script>
+    </head>
+
+    <body>
+        <input type="file" id="input-file" accept=".txt" />
+        <button id="button-confirm" class="btn btn-primary">Go Test</button>
+
+        <script type="module">
+            const input = document.getElementById('input-file')
+            const buttonConfirm = document.getElementById('button-confirm')
+
+            buttonConfirm.addEventListener('click', async () => {
+                if (input.files.length === 0) {
+                    alert('missing the input file')
+                }
+
+                Observatory.testBuildReportParser(input.files[0])
+            })
+        </script>
+    </body>
+</html>

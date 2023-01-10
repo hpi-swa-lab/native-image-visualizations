@@ -30,6 +30,7 @@ $success: #7952b3;
 @import 'bootstrap/scss/bootstrap';
 
 @import 'zoomable_causality_graph';
+@import 'hierarchy_bubbles';
 @import 'tree';
 
 //
@@ -38,9 +39,9 @@ $success: #7952b3;
 
 html,
 body {
-    margin: 0;
-    height: 100%;
     width: 100%;
+    height: 100%;
+    margin: 0;
 }
 
 body {

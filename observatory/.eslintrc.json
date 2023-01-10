@@ -12,7 +12,7 @@
     "ignorePatterns": ["/node_modules", "/external"],
     "rules": {
         "no-console": ["error", { "allow": ["warn", "error"] }],
-        "camelcase": "off",
+        "camelcase": [1],
         "import/extensions": "off",
         "object-shorthand": "off",
         "no-underscore-dangle": [

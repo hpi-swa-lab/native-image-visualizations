@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Hierarchy Bubbles</title>
+
+        <link rel="stylesheet" type="text/css" href="/assets/css/dist/main.css" />
+        <script src="../assets/js/dist/observatory.umd.js"></script>
+    </head>
+
+    <body>
+        <div class="cb-control-container">
+            <h1>Hierarchy Bubbles</h1>
+
+            <label for="input-file">Input file:</label>
+            <input type="file" id="input-file" accept=".txt" />
+            <button id="button-confirm">Start Simulation</button>
+        </div>
+        <div id="container" class="cb-svg-container"></div>
+
+        <script type="module">
+            const input = document.getElementById('input-file')
+            const buttonConfirm = document.getElementById('button-confirm')
+            const container = document.getElementById('container')
+
+            let visualization = undefined
+
+            buttonConfirm.addEventListener('click', async () => {
+                buttonConfirm.disabled = true
+
+                if (visualization) {
+                    visualization.continueSimulation(() => {
+                        buttonConfirm.disabled = false
+                    })
+                } else {
+                    while (container.firstChild) {
+                        container.removeChild(container.lastChild)
+                    }
+
+                    if (input.files.length === 0) {
+                        errorMessages.push("I'm missing the input file.")
+                        return
+                    }
+
+                    visualization = await Observatory.generateHierarchyBubbles(input.files[0])
+                    visualization.continueSimulation(() => {
+                        buttonConfirm.disabled = false
+                    })
+
+                    buttonConfirm.innerHTML = 'Continue Simulation'
+                }
+            })
+        </script>
+    </body>
+</html>
