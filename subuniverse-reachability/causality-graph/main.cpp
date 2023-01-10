@@ -11,13 +11,21 @@
 #include <ranges>
 #include <span>
 #include <thread>
+#include <filesystem>
+#include <emscripten.h>
 
 using namespace std;
 
-static void read_lines(vector<string>& dst, const char* path)
+struct wrap_vector_as_istream : std::streambuf
 {
-    ifstream in(path);
+    wrap_vector_as_istream(span<const uint8_t> data)
+    {
+        this->setg((char*)&data[0], (char*)&data[0], (char*)&data[data.size()]);
+    }
+};
 
+static void read_lines(vector<string>& dst, istream& in)
+{
     do
     {
         dst.resize(dst.size() + 1);
@@ -25,6 +33,19 @@ static void read_lines(vector<string>& dst, const char* path)
     while(getline(in, dst.back()));
 
     dst.pop_back();
+}
+
+static void read_lines(vector<string>& dst, const char* path)
+{
+    ifstream in(path);
+    read_lines(dst, in);
+}
+
+static void read_lines(vector<string>& dst, const uint8_t* data, size_t len)
+{
+    wrap_vector_as_istream databuf(span<const uint8_t>(data, len));
+    std::istream in(&databuf);
+    read_lines(dst, in);
 }
 
 class Bitset
@@ -41,7 +62,7 @@ public:
 
     //explicit Bitset(const Bitset& b) : bitset(b.bitset) {}
 
-    void fill(ifstream& src)
+    void fill(istream& src)
     {
         size_t len = bitset.size();
         bitset.clear();
@@ -125,15 +146,9 @@ public:
     }
 };
 
-static void read_typestate_bitsets(size_t num_types, vector<Bitset>& typestates, const char* path)
+static void read_typestate_bitsets(size_t num_types, vector<Bitset>& typestates, istream& in, size_t inlen)
 {
     size_t bitset_len = (num_types + 7) / 8;
-    ifstream in(path);
-
-    in.seekg(0, ifstream::end);
-    size_t inlen = in.tellg();
-    in.seekg(0);
-
     size_t n = inlen / bitset_len;
     assert((inlen % bitset_len) == 0);
     typestates.reserve(n);
@@ -143,6 +158,22 @@ static void read_typestate_bitsets(size_t num_types, vector<Bitset>& typestates,
         typestates.emplace_back(num_types);
         typestates.back().fill(in);
     }
+}
+
+static void read_typestate_bitsets(size_t num_types, vector<Bitset>& typestates, const char* path)
+{
+    ifstream in(path);
+    in.seekg(0, ifstream::end);
+    size_t inlen = in.tellg();
+    in.seekg(0);
+    read_typestate_bitsets(num_types, typestates, in, inlen);
+}
+
+static void read_typestate_bitsets(size_t num_types, vector<Bitset>& typestates, const uint8_t* data, size_t len)
+{
+    wrap_vector_as_istream databuf(span<const uint8_t>(data, len));
+    std::istream in(&databuf);
+    read_typestate_bitsets(num_types, typestates, in, len);
 }
 
 struct method_id
@@ -215,6 +246,15 @@ static_assert(sizeof(ContainingMethod) == 4);
 
 
 
+template<typename T>
+static void read_buffer(vector<T>& dst, istream& in, size_t len)
+{
+    assert((len % sizeof(T)) == 0);
+
+    size_t prev_size = dst.size();
+    dst.resize(prev_size +  len / sizeof(T));
+    in.read((char*)&dst[prev_size], len);
+}
 
 template<typename T>
 static void read_buffer(vector<T>& dst, const char* path)
@@ -223,12 +263,15 @@ static void read_buffer(vector<T>& dst, const char* path)
     in.seekg(0, ifstream::end);
     streampos len = in.tellg();
     in.seekg(0);
+    read_buffer(dst, in, len);
+}
 
-    assert((len % sizeof(T)) == 0);
-
-    size_t prev_size = dst.size();
-    dst.resize(prev_size +  len / sizeof(T));
-    in.read((char*)&dst[prev_size], len);
+template<typename T>
+static void read_buffer(vector<T>& dst, const uint8_t* data, size_t len)
+{
+    wrap_vector_as_istream databuf(span<const uint8_t>(data, len));
+    std::istream in(&databuf);
+    read_buffer(dst, in, len);
 }
 
 struct Adjacency
@@ -307,20 +350,22 @@ struct Adjacency
 
 struct __attribute__((aligned(64))) TypeflowHistory
 {
-    uint16_t types[20];
-    uint8_t dists[20];
+    static constexpr size_t saturation_cutoff = 20;
+
+    uint16_t types[saturation_cutoff];
+    uint8_t dists[saturation_cutoff];
     uint8_t saturated_dist = numeric_limits<uint8_t>::max();
 
 public:
     TypeflowHistory()
     {
-        fill(types, types + 20, numeric_limits<uint16_t>::max());
-        fill(dists, dists + 20, numeric_limits<uint8_t>::max());
+        fill(types, types + saturation_cutoff, numeric_limits<uint16_t>::max());
+        fill(dists, dists + saturation_cutoff, numeric_limits<uint8_t>::max());
     }
 
     bool add_type(uint16_t type, uint8_t dist)
     {
-        for(size_t i = 0; i < 20; i++)
+        for(size_t i = 0; i < saturation_cutoff; i++)
         {
             if(types[i] == numeric_limits<uint16_t>::max())
             {
@@ -349,7 +394,7 @@ public:
 
         bool operator==(end_it e) const
         {
-            return pos == 20 || parent->types[pos] == numeric_limits<uint16_t>::max();
+            return pos == saturation_cutoff || parent->types[pos] == numeric_limits<uint16_t>::max();
         }
 
         pair<uint16_t, uint8_t> operator*() const
@@ -390,9 +435,9 @@ public:
     explicit BFS(const Adjacency& adj) : BFS(adj, {}) {}
 
     BFS(const Adjacency& adj, span<const method_id> purged_methods)
-    : method_visited(adj.n_methods()),
-      typeflow_visited(adj.n_typeflows()),
-      method_history(adj.n_methods(), numeric_limits<uint8_t>::max())
+            : method_visited(adj.n_methods()),
+              typeflow_visited(adj.n_typeflows()),
+              method_history(adj.n_methods(), numeric_limits<uint8_t>::max())
     {
         Bitset tmp(adj.n_types());
         Bitset allInstantiated(adj.n_types());
@@ -628,7 +673,7 @@ static bool is_redundant(const Adjacency& adj, typeflow_id typeflow)
             method_id M3 = adj[f.forward_edges[0]].method.dependent();
 
             if((M2 == M1 || M2 == M3 || M2 == 0)
-            && f.filter->is_superset(*adj[f.forward_edges[0]].filter))
+               && f.filter->is_superset(*adj[f.forward_edges[0]].filter))
                 return true;
         }
 
@@ -827,6 +872,12 @@ static void bruteforce_purges(const Adjacency& adj, const vector<string>& method
         purged &= all_reachable_bitset;
     }
 
+    size_t purge_matrix_ones = 0;
+    for(auto& row : purge_matrix)
+        purge_matrix_ones += row.count();
+
+    cout << "Purge Matrix Ones: " << purge_matrix_ones << endl;
+
     vector<method_id> methods_sorted_by_cutvalue(adj.n_methods());
     for(size_t i = 0; i < adj.n_methods(); i++)
         methods_sorted_by_cutvalue[i] = i;
@@ -835,6 +886,8 @@ static void bruteforce_purges(const Adjacency& adj, const vector<string>& method
 
     vector<vector<method_id>> purge_adj(adj.n_methods());
 
+
+    size_t adj_entries = 0;
     for(size_t i = 1; i < adj.n_methods(); i++)
     {
         cout << method_names[i] << ": ";
@@ -852,6 +905,7 @@ static void bruteforce_purges(const Adjacency& adj, const vector<string>& method
                 }
 
                 purge_adj[i].push_back(m);
+                adj_entries++;
                 remaining &=~ purge_matrix[m.id];
                 cout << method_names[m.id] << ", ";
             }
@@ -859,6 +913,8 @@ static void bruteforce_purges(const Adjacency& adj, const vector<string>& method
 
         cout << '\n';
     }
+
+    cout << "Adj-Entries: " << adj_entries << endl;
 }
 
 static void bruteforce_purges_classes__worker_method(const Adjacency& adj, const vector<string>& type_names, const vector<vector<method_id>>& reasons_contained_in_types, size_t n_reachable, atomic<size_t>* purged)
@@ -866,9 +922,6 @@ static void bruteforce_purges_classes__worker_method(const Adjacency& adj, const
     size_t purged_type;
     while((purged_type = (*purged)++) < adj.n_types())
     {
-        if(reasons_contained_in_types[purged_type].empty() || !type_names[purged_type].starts_with("io.micronaut."))
-            continue;
-
         BFS after_purge(adj, reasons_contained_in_types[purged_type]);
         size_t n_reachable_purged = std::count_if(after_purge.method_visited.begin(), after_purge.method_visited.end(), [](bool b) { return b; });
 
@@ -894,9 +947,10 @@ static void bruteforce_purges_classes(const Adjacency& adj, const vector<string>
         BFS all(adj);
         n_reachable = std::count_if(all.method_visited.begin(), all.method_visited.end(), [](bool b){ return b; });
     }
-
-    thread workers[8];
     atomic<size_t> purged = 0;
+
+#ifndef EMSCRIPTEN
+    thread workers[8];
 
     for(thread& worker : workers)
     {
@@ -907,6 +961,9 @@ static void bruteforce_purges_classes(const Adjacency& adj, const vector<string>
     {
         worker.join();
     }
+#else
+    bruteforce_purges_classes__worker_method(adj, type_names, reasons_contained_in_types, n_reachable, &purged);
+#endif
 }
 
 class TreeIndenter
@@ -1086,7 +1143,9 @@ static void print_reachability_of_method(const Adjacency& adj, const vector<stri
                     cout << indentation << "(Virtually called through " << type_names[flow_type] << ')' << endl;
 
                     size_t i = methods.size();
-                    for(method_id containing_method : views::reverse(methods))
+                    std::reverse(methods.begin(), methods.end());
+
+                    for(method_id containing_method : methods)
                     {
                         if(--i == 0) // last method
                             indentation.end_bars();
@@ -1132,7 +1191,7 @@ static void print_reachability_of_method(const Adjacency& adj, const vector<stri
     }
 }
 
-__attribute__((optimize("O0"))) static void print_reachability(const Adjacency& adj, const vector<string>& method_names, const unordered_map<string, uint32_t>& method_ids_by_name, const vector<string>& type_names)
+static void print_reachability(const Adjacency& adj, const vector<string>& method_names, const unordered_map<string, uint32_t>& method_ids_by_name, const vector<string>& type_names)
 {
     cerr << "Running DFS on original graph...";
 
@@ -1175,15 +1234,41 @@ __attribute__((optimize("O0"))) static void print_reachability(const Adjacency& 
     }
 }
 
+static std::optional<Adjacency> adj;
+
+static vector<string> type_names;
+static vector<string> method_names(1);
+static unordered_map<string, uint32_t> method_ids_by_name;
+static vector<string> typeflow_names(1);
+static vector<Bitset> typestates;
+static vector<Edge<typeflow_id>> interflows;
+static vector<Edge<method_id>> direct_invokes;
+static vector<ContainingMethod> typeflow_methods(1);
+static vector<uint32_t> typeflow_filters(1);
+static vector<uint32_t> declaring_types(1);
+
 int main(int argc, const char** argv)
 {
-    vector<string> type_names;
-    read_lines(type_names, "types.txt");
+    return 0;
+}
 
-    vector<string> method_names(1);
-    read_lines(method_names, "methods.txt");
+#ifndef EMSCRIPTEN
+#define EMSCRIPTEN_KEEPALIVE
+#endif
 
-    unordered_map<string, uint32_t> method_ids_by_name;
+extern "C" void EMSCRIPTEN_KEEPALIVE init(
+        const uint8_t* types_data, size_t types_len,
+        const uint8_t* methods_data, size_t methods_len,
+        const uint8_t* typeflows_data, size_t typeflows_len,
+        const uint8_t* typestates_data, size_t typestates_len,
+        const uint8_t* interflows_data, size_t interflows_len,
+        const uint8_t* direct_invokes_data, size_t direct_invokes_len,
+        const uint8_t* typeflow_methods_data, size_t typeflow_methods_len,
+        const uint8_t* typeflow_filters_data, size_t typeflow_filters_len,
+        const uint8_t* declaring_types_data, size_t declaring_types_len)
+{
+    read_lines(type_names, types_data, types_len);
+    read_lines(method_names, methods_data, methods_len);
 
     {
         size_t i = 0;
@@ -1191,11 +1276,11 @@ int main(int argc, const char** argv)
             method_ids_by_name[name] = i++;
     }
 
-    vector<string> typeflow_names(1);
-    read_lines(typeflow_names, "typeflows.txt");
+    cout << method_names[1] << endl;
 
-    vector<Bitset> typestates;
-    read_typestate_bitsets(type_names.size(), typestates, "typestates.bin");
+    read_lines(typeflow_names, typeflows_data, typeflows_len);
+
+    read_typestate_bitsets(type_names.size(), typestates, typestates_data, typestates_len);
 
     size_t max_typestate_size = 0;
 
@@ -1206,47 +1291,63 @@ int main(int argc, const char** argv)
     cerr << "All instantiated types: " << max_typestate_size << endl;
 #endif
 
-    vector<Edge<typeflow_id>> interflows;
-    read_buffer(interflows, "interflows.bin");
+    read_buffer(interflows, interflows_data, interflows_len);
 
-    vector<Edge<method_id>> direct_invokes;
-    read_buffer(direct_invokes, "direct_invokes.bin");
+    read_buffer(direct_invokes, direct_invokes_data, direct_invokes_len);
 
-    vector<ContainingMethod> typeflow_methods(1);
-    read_buffer(typeflow_methods, "typeflow_methods.bin");
+    read_buffer(typeflow_methods, typeflow_methods_data, typeflow_methods_len);
 
-    vector<uint32_t> typeflow_filters(1);
-    read_buffer(typeflow_filters, "typeflow_filters.bin");
+    read_buffer(typeflow_filters, typeflow_filters_data, typeflow_filters_len);
 
-    vector<uint32_t> declaring_types(1);
-    read_buffer(declaring_types, "declaring_types.bin");
+    read_buffer(declaring_types, declaring_types_data, declaring_types_len);
 
-    Adjacency adj(type_names.size(), method_names.size(), typeflow_names.size(), interflows, direct_invokes, typestates, typeflow_filters, std::move(typeflow_methods), typeflow_names);
+    adj.emplace(type_names.size(), method_names.size(), typeflow_names.size(), interflows, direct_invokes, typestates, typeflow_filters, std::move(typeflow_methods), typeflow_names);
 
-    remove_redundant(adj);
+    remove_redundant(*adj);
 
-    if(argc < 2)
+    cerr << "Ready!\n";
+}
+
+extern "C" char* EMSCRIPTEN_KEEPALIVE simulate_purge(const char* methods)
+{
+    vector<method_id> purged_mids;
+
     {
-        cerr << "Usage: " << argv[0] << " <command>" << endl;
-        return 1;
+        stringstream methods_stream(methods);
+        string method_name;
+
+        while(std::getline(methods_stream, method_name, '\n'))
+        {
+            auto it = method_ids_by_name.find(method_name);
+
+            if(it == method_ids_by_name.end())
+                return nullptr;
+
+            purged_mids.push_back(it->second);
+        }
     }
 
-    string_view command = argv[1];
+    cerr << "Running DFS on original graph...";
+    BFS all(*adj);
+    cerr << " " << std::count_if(all.method_visited.begin(), all.method_visited.end(), [](bool b) { return b; }) << " methods reachable!\n";
 
-    if(command == "reachability")
+    cerr << "Running DFS on purged graph...";
+
+    BFS after_purge(*adj, purged_mids);
+
+    cerr << " " << std::count_if(after_purge.method_visited.begin(), after_purge.method_visited.end(), [](bool b) { return b; }) << " methods reachable!\n";
+
+    stringstream output;
+
+    for(size_t i = 1; i < all.method_visited.size(); i++)
     {
-        print_reachability(adj, method_names, method_ids_by_name, type_names);
+        if(all.method_visited[i] && !after_purge.method_visited[i])
+            output << method_names[i] << endl;
     }
-    else if(command == "bruteforce_purges")
-    {
-        bruteforce_purges(adj, method_names);
-    }
-    else if(command == "bruteforce_purges_classes")
-    {
-        bruteforce_purges_classes(adj, type_names, declaring_types);
-    }
-    else
-    {
-        simulate_purge(adj, method_names, method_ids_by_name, command);
-    }
+
+    string s(output.str());
+    char* res = new char[s.size() + 1];
+    copy(s.begin(), s.end(), res);
+    res[s.size()] = 0;
+    return res;
 }

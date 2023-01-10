@@ -1,0 +1,86 @@
+<script src="main.js"></script>
+<script src="zip.min.js"></script>
+<script>
+    var simulate_purge = Module.cwrap("simulate_purge", "number", ["number"]);
+    var init = Module.cwrap("init", "number", ["number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number"]);
+
+    function pressBtn(str){
+        var ptr  = allocateUTF8(str)
+
+        var retPtr = simulate_purge(ptr)
+
+        var resValue = UTF8ToString(retPtr);
+
+        document.getElementById("Output").value = resValue
+
+        // dealloc memory
+        Module._free(ptr);
+        Module._free(retPtr);
+    }
+
+    const model = (() => {
+
+        return {
+            getEntries(file, options) {
+                return (new zip.ZipReader(new zip.BlobReader(file))).getEntries(options);
+            },
+            async getURL(entry, options) {
+                return URL.createObjectURL(await entry.getData(new zip.BlobWriter(), options));
+            }
+        };
+
+    })();
+
+    function doSomething(){
+        var fileInput = document.getElementById("file-input");
+        fileInput.dispatchEvent(new MouseEvent("click"));
+        fileInput.onchange = selectFile;
+    }
+
+    async function selectFile() {
+        try {
+            var fileInput = document.getElementById("file-input");
+            var selectedFile = fileInput.files[0];
+            await loadFiles(selectedFile, "utf-8");
+        } catch (error) {
+            alert(error);
+        }
+    }
+
+    async function loadFiles(selectedFile, filenameEncoding) {
+        var entries = await model.getEntries(selectedFile, { filenameEncoding });
+        if (entries && entries.length) {
+            filesAsByteArrays = {}
+
+            for (const entry of entries) {
+                const zipFileWriter = new zip.Uint8ArrayWriter()
+                const data = await entry.getData(zipFileWriter)
+                var input_ptr = Module._malloc(data.length);
+                Module.HEAPU8.set(data, input_ptr);
+
+                filesAsByteArrays[entry.filename] = { data: input_ptr, length: data.length }
+            }
+
+            init(filesAsByteArrays["types.txt"].data, filesAsByteArrays["types.txt"].length,
+                filesAsByteArrays["methods.txt"].data, filesAsByteArrays["methods.txt"].length,
+                filesAsByteArrays["typeflows.txt"].data, filesAsByteArrays["typeflows.txt"].length,
+                filesAsByteArrays["typestates.bin"].data, filesAsByteArrays["typestates.bin"].length,
+                filesAsByteArrays["interflows.bin"].data, filesAsByteArrays["interflows.bin"].length,
+                filesAsByteArrays["direct_invokes.bin"].data, filesAsByteArrays["direct_invokes.bin"].length,
+                filesAsByteArrays["typeflow_methods.bin"].data, filesAsByteArrays["typeflow_methods.bin"].length,
+                filesAsByteArrays["typeflow_filters.bin"].data, filesAsByteArrays["typeflow_filters.bin"].length,
+                filesAsByteArrays["declaring_types.bin"].data, filesAsByteArrays["declaring_types.bin"].length,
+            )
+        }
+    }
+</script>
+
+<button title="upload" onClick="doSomething()">Upload CausalityExport</button>
+<br/>
+<label>
+    <textarea id="Input" cols="40" rows="5" oninput="pressBtn(this.value)"></textarea>
+</label>
+<label>
+    <textarea id="Output" cols="40" rows="5"></textarea>
+</label>
+<input type="file" id="file-input" accept="application/zip" hidden>
