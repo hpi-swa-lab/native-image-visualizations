@@ -25,7 +25,7 @@ import {
 // ##### UPDATE TREE ########################################################################################
 // ##########################################################################################################
 
-export function updateSankey(
+export function updateSankeyTree(
     event: any | null,
     sourceNode: any /*HierarchyPointNode<MyNode>*/,
     tree: Tree,
@@ -80,7 +80,7 @@ export function updateSankey(
 
     const nodeEnter = enterNode(node, sourceNode, (evt: MouseEvent, d: any) => {
         toggle(d, evt.shiftKey)
-        updateSankey(evt, d, tree, svgSelections, universePropsDict)
+        updateSankeyTree(evt, d, tree, svgSelections, universePropsDict)
     })
     const nodeEnterRect = appendRectToNode(nodeEnter, universePropsDict)
     nodeEnterRect

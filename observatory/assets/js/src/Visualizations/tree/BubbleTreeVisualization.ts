@@ -31,13 +31,15 @@ import {
 } from './TreeTypes'
 import TreeInputForm from './TreeInputForm'
 import Visualization from '../Visualization'
-import { updateTree } from './TreeUtils'
+import { updateBubbleTree } from './BubbleUtils'
 
-export default class TreeVisualization implements Visualization {
+export default class BubbleTreeVisualization implements Visualization {
     universesMetadata: Dictionary<UniverseProps>
     filter: TreeNodesFilter
 
-    constructor() {
+    tree: Tree
+
+    constructor(universeTexts: string[], universeNames: string[]) {
         this.universesMetadata = {}
         this.filter = {
             diffing: {
@@ -52,131 +54,116 @@ export default class TreeVisualization implements Visualization {
                 order: SortingOrder.ASCENDING
             }
         }
+
+        this.tree = this.buildTree(universeTexts, universeNames)
     }
 
     generate(): void {
-        this.loadUniverses().then((tree: Tree) => {
-            console.debug('Universes: ', tree)
+        const inputForm = new TreeInputForm(this.universesMetadata, this.filter)
 
-            const inputForm = new TreeInputForm(this.universesMetadata, this.filter)
+        const svg = d3.select('body').append('svg')
 
-            const svg = d3.select('body').append('svg')
+        const width = document.body.clientWidth
+        const height = document.body.clientHeight
+        const innerWidth = width - MARGIN.left - MARGIN.right
+        const innerHeight = height - MARGIN.top - MARGIN.bottom
 
-            const width = document.body.clientWidth
-            const height = document.body.clientHeight
-            const innerWidth = width - MARGIN.left - MARGIN.right
-            const innerHeight = height - MARGIN.top - MARGIN.bottom
+        const defaultViewbox = [0, 0, innerWidth, innerHeight].join(' ')
 
-            const defaultViewbox = [0, 0, innerWidth, innerHeight].join(' ')
+        this.tree.root.descendants().forEach((d: any, i) => {
+            d.id = i
+            d._children = d.children
+            // FIXME ? only expand first level of children
+            // if (d.depth > 0) d.children = null; // only expand the first level of children
+        })
 
-            tree.root.descendants().forEach((d: any, i) => {
-                d.id = i
-                d._children = d.children
-                // FIXME ? only expand first level of children
-                // if (d.depth > 0) d.children = null; // only expand the first level of children
+        const dx = 20
+        const dy = innerWidth / 6
+
+        this.tree.layout = d3
+            .tree()
+            .nodeSize([dx, dy])
+            .separation(function (a, b) {
+                let totalWidth = countPrivateLeaves(a) / 2 + countPrivateLeaves(b) / 2
+                return totalWidth / dx + 1
             })
 
-            const dx = 20
-            const dy = innerWidth / 6
+        const zoomG = svg
+            .attr('width', innerWidth)
+            .attr('height', innerHeight)
+            .attr('viewBox', defaultViewbox)
+            .append('g')
+            .attr('id', 'zoomG')
+            .attr('width', innerWidth - MARGIN.left)
+            .attr('height', innerHeight * 0.5)
+            .attr('transform', `translate(${MARGIN.left}, ${innerHeight * 0.5})`)
 
-            tree.layout = d3
-                .tree()
-                .nodeSize([dx, dy])
-                .separation(function (a, b) {
-                    let totalWidth = countPrivateLeaves(a) / 2 + countPrivateLeaves(b) / 2
-                    return totalWidth / dx + 1
-                })
+        // TODO clean up, the rect is only for test reasons
+        // zoomG.append("rect")
+        //     .attr("width", "100%")
+        //     .attr("height", innerHeight * 0.5)
+        //     .attr("fill", "orange");
 
-            const zoomG = svg
-                .attr('width', innerWidth)
-                .attr('height', innerHeight)
-                .attr('viewBox', defaultViewbox)
+        // console.debug(svg.node(), '\n', zoomG.node())
+
+        const svgSelections: SvgSelections = {
+            svg: svg,
+            zoomG: zoomG,
+            gLink: zoomG
                 .append('g')
-                .attr('id', 'zoomG')
-                .attr('width', innerWidth - MARGIN.left)
-                .attr('height', innerHeight * 0.5)
-                .attr('transform', `translate(${MARGIN.left}, ${innerHeight * 0.5})`)
+                .attr('fill', 'none')
+                .attr('stroke', '#555')
+                .attr('stroke-opacity', 0.4)
+                .attr('stroke-width', 1.5),
+            gNode: zoomG.append('g').attr('cursor', 'pointer').attr('pointer-events', 'all'),
+            tooltip: d3
+                .select('body')
+                .append('div')
+                .style('opacity', 0)
+                .attr('class', 'tooltip')
+                .style('background-color', 'white')
+                .style('border', 'solid')
+                .style('border-width', '2px')
+                .style('border-radius', '5px')
+                .style('padding', '5px')
+                .style('position', 'absolute')
+        }
 
-            // TODO clean up, the rect is only for test reasons
-            // zoomG.append("rect")
-            //     .attr("width", "100%")
-            //     .attr("height", innerHeight * 0.5)
-            //     .attr("fill", "orange");
-
-            // console.debug(svg.node(), '\n', zoomG.node())
-
-            const svgSelections: SvgSelections = {
-                svg: svg,
-                zoomG: zoomG,
-                gLink: zoomG
-                    .append('g')
-                    .attr('fill', 'none')
-                    .attr('stroke', '#555')
-                    .attr('stroke-opacity', 0.4)
-                    .attr('stroke-width', 1.5),
-                gNode: zoomG.append('g').attr('cursor', 'pointer').attr('pointer-events', 'all'),
-                tooltip: d3
-                    .select('body')
-                    .append('div')
-                    .style('opacity', 0)
-                    .attr('class', 'tooltip')
-                    .style('background-color', 'white')
-                    .style('border', 'solid')
-                    .style('border-width', '2px')
-                    .style('border-radius', '5px')
-                    .style('padding', '5px')
-                    .style('position', 'absolute')
-            }
-
-            svg.call(
-                d3.zoom().on('zoom', (svgTransform) => {
-                    zoomG.attr('transform', svgTransform.transform)
-                })
-            )
-
-            inputForm.element.addEventListener('submit', (e) =>
-                this.onSubmit(e, tree, svgSelections, this.universesMetadata)
-            )
-
-            document.getElementById('expand-tree-btn').addEventListener('click', (e) => {
-                console.log(e)
-                updateTree(
-                    createExpandTreeEvent(this.filter),
-                    tree.root,
-                    tree,
-                    svgSelections,
-                    this.universesMetadata
-                )
+        svg.call(
+            d3.zoom().on('zoom', (svgTransform) => {
+                zoomG.attr('transform', svgTransform.transform)
             })
+        )
 
-            updateTree(
-                createApplyFilterEvent(this.filter),
-                tree.root,
-                tree,
+        inputForm.element.addEventListener('submit', (e) =>
+            this.onSubmit(e, this.tree, svgSelections, this.universesMetadata)
+        )
+
+        document.getElementById('expand-tree-btn').addEventListener('click', (e) => {
+            console.log(e)
+            updateBubbleTree(
+                createExpandTreeEvent(this.filter),
+                this.tree.root,
+                this.tree,
                 svgSelections,
                 this.universesMetadata
             )
         })
+
+        updateBubbleTree(
+            createApplyFilterEvent(this.filter),
+            this.tree.root,
+            this.tree,
+            svgSelections,
+            this.universesMetadata
+        )
     }
 
     // ##################################################################
     // ### BUILD TREE HELPER FUNCTIONS #############################################
     // ##################################################################
 
-    private async loadUniverses() {
-        const files = [
-            '../assets/data/used_methods_micronautguide.txt',
-            '../assets/data/used_methods_helloworld.txt'
-        ]
-
-        const universeNames = files.map((path) => {
-            const pathSegments = path.split('/')
-            const nameSegments = pathSegments[pathSegments.length - 1].split('_')
-            return nameSegments[nameSegments.length - 1].split('.')[0]
-        })
-
-        const texts = await Promise.all(files.map((file) => d3.text(file)))
-
+    private buildTree(texts: string[], universeNames: string[]): Tree {
         // build tree including universes
         let treeData: MyNode = {
             name: ROOT_NODE_NAME,
@@ -252,7 +239,7 @@ export default class TreeVisualization implements Visualization {
         removeDiffingFilterFromTree(tree.treeData)
         diffNodesFromLeaves(tree.leaves, this.filter)
 
-        updateTree(
+        updateBubbleTree(
             createApplyFilterEvent(this.filter),
             tree.root,
             tree,

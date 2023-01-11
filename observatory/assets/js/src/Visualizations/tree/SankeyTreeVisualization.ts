@@ -10,7 +10,7 @@ import {
     createApplyFilterEvent,
     createExpandTreeEvent
 } from './Utils'
-import { updateSankey } from './SankeyUtils'
+import { updateSankeyTree } from './SankeyUtils'
 import {
     COLOR_GREEN,
     COLOR_MODIFIED,
@@ -37,7 +37,9 @@ export default class SankeyTreeVisualization implements Visualization {
     universesMetadata: Dictionary<UniverseProps>
     filter: TreeNodesFilter
 
-    constructor() {
+    tree: Tree
+
+    constructor(universeTexts: string[], universeNames: string[]) {
         this.universesMetadata = {}
         this.filter = {
             diffing: {
@@ -52,11 +54,12 @@ export default class SankeyTreeVisualization implements Visualization {
                 order: SortingOrder.ASCENDING
             }
         }
+
+        this.tree = this.buildTree(universeTexts, universeNames)
     }
 
     generate(): void {
-        this.loadUniverses().then((tree: Tree) => {
-            console.debug('Universes: ', tree)
+            console.debug('Universes: ', this.tree)
 
             const inputForm = new TreeInputForm(this.universesMetadata, this.filter)
 
@@ -69,7 +72,7 @@ export default class SankeyTreeVisualization implements Visualization {
 
             const defaultViewbox = [0, 0, innerWidth, innerHeight].join(' ')
 
-            tree.root.descendants().forEach((d: any, i) => {
+        this.tree.root.descendants().forEach((d: any, i:number) => {
                 d.id = i
                 d._children = d.children
                 // FIXME ? only expand first level of children
@@ -79,7 +82,7 @@ export default class SankeyTreeVisualization implements Visualization {
             const dx = 20
             const dy = innerWidth / 6
 
-            tree.layout = d3
+        this.tree.layout = d3
                 .tree()
                 .nodeSize([dx, dy])
                 .separation(function (a, b) {
@@ -135,48 +138,35 @@ export default class SankeyTreeVisualization implements Visualization {
             )
 
             inputForm.element.addEventListener('submit', (e) =>
-                this.onSubmit(e, tree, svgSelections, this.universesMetadata)
+                this.onSubmit(e, this.tree, svgSelections, this.universesMetadata)
             )
 
             document.getElementById('expand-tree-btn').addEventListener('click', (e) => {
                 console.log(e)
-                updateSankey(
+                updateSankeyTree(
                     createExpandTreeEvent(this.filter),
-                    tree.root,
-                    tree,
+                    this.tree.root,
+                    this.tree,
                     svgSelections,
                     this.universesMetadata
                 )
             })
 
-            updateSankey(
+            updateSankeyTree(
                 createApplyFilterEvent(this.filter),
-                tree.root,
-                tree,
+                this.tree.root,
+                this.tree,
                 svgSelections,
                 this.universesMetadata
             )
-        })
+        // })
     }
 
     // ##################################################################
     // ### BUILD TREE HELPER FUNCTIONS #############################################
     // ##################################################################
 
-    private async loadUniverses() {
-        const files = [
-            '../assets/data/used_methods_micronautguide.txt',
-            '../assets/data/used_methods_helloworld.txt'
-        ]
-
-        const universeNames = files.map((path) => {
-            const pathSegments = path.split('/')
-            const nameSegments = pathSegments[pathSegments.length - 1].split('_')
-            return nameSegments[nameSegments.length - 1].split('.')[0]
-        })
-
-        const texts = await Promise.all(files.map((file) => d3.text(file)))
-
+    private buildTree(texts: string[], universeNames: string[]): Tree {
         // build tree including universes
         let treeData: MyNode = {
             name: ROOT_NODE_NAME,
@@ -252,7 +242,7 @@ export default class SankeyTreeVisualization implements Visualization {
         removeDiffingFilterFromTree(tree.treeData)
         diffNodesFromLeaves(tree.leaves, this.filter)
 
-        updateSankey(
+        updateSankeyTree(
             createApplyFilterEvent(this.filter),
             tree.root,
             tree,

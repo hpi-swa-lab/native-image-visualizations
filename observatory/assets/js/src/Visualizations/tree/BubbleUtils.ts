@@ -24,7 +24,7 @@ import {
 // ##### UPDATE TREE ########################################################################################
 // ##########################################################################################################
 
-export function updateTree(
+export function updateBubbleTree(
     event: any | null,
     sourceNode: any /*HierarchyPointNode<MyNode>*/,
     tree: Tree,
@@ -74,7 +74,7 @@ export function updateTree(
     // Enter any new nodes at the parent's previous position.
     const nodeEnter = enterNode(node, sourceNode, (evt: MouseEvent, d: any) => {
         toggle(d, evt.shiftKey)
-        updateTree(evt, d, tree, svgSelections, universePropsDict)
+        updateBubbleTree(evt, d, tree, svgSelections, universePropsDict)
     })
 
     let nodeEnterCircle = nodeEnter
