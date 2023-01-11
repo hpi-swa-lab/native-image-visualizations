@@ -1,0 +1,32 @@
+{
+    "env": {
+        "browser": true,
+        "es2021": true
+    },
+    "extends": ["airbnb-base", "prettier"],
+    "parserOptions": {
+        "ecmaVersion": 12,
+        "sourceType": "module"
+    },
+    "plugins": ["only-warn"],
+    "ignorePatterns": ["/node_modules", "/external"],
+    "rules": {
+        "no-console": ["error", { "allow": ["warn", "error"] }],
+        "camelcase": [1],
+        "import/extensions": "off",
+        "object-shorthand": "off",
+        "no-underscore-dangle": [
+            2,
+            {
+                "allowAfterThis": true,
+                "allowAfterSuper": true
+            }
+        ],
+        "no-plusplus": [
+            2,
+            {
+                "allowForLoopAfterthoughts": true
+            }
+        ]
+    }
+}
