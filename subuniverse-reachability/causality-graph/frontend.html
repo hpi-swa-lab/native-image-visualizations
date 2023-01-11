@@ -71,16 +71,18 @@
                 filesAsByteArrays["typeflow_filters.bin"].data, filesAsByteArrays["typeflow_filters.bin"].length,
                 filesAsByteArrays["declaring_types.bin"].data, filesAsByteArrays["declaring_types.bin"].length,
             )
+
+            for (const span of Object.values(filesAsByteArrays))
+            {
+                Module._free(span.ptr)
+            }
         }
     }
 </script>
 
 <button title="upload" onClick="doSomething()">Upload CausalityExport</button>
 <br/>
-<label>
-    <textarea id="Input" cols="40" rows="5" oninput="pressBtn(this.value)"></textarea>
-</label>
-<label>
-    <textarea id="Output" cols="40" rows="5"></textarea>
-</label>
+<label for="Input"></label><textarea id="Input" cols="100" rows="5" spellcheck="false" oninput="pressBtn(this.value)"></textarea>
+<br/>
+<label for="Output"></label><textarea id="Output" cols="100" spellcheck="false" rows="20"></textarea>
 <input type="file" id="file-input" accept="application/zip" hidden>

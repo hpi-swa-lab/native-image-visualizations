@@ -1247,6 +1247,8 @@ static vector<ContainingMethod> typeflow_methods(1);
 static vector<uint32_t> typeflow_filters(1);
 static vector<uint32_t> declaring_types(1);
 
+static vector<bool> all_methods_visited;
+
 int main(int argc, const char** argv)
 {
     return 0;
@@ -1267,6 +1269,18 @@ extern "C" void EMSCRIPTEN_KEEPALIVE init(
         const uint8_t* typeflow_filters_data, size_t typeflow_filters_len,
         const uint8_t* declaring_types_data, size_t declaring_types_len)
 {
+    /*
+    type_names.clear();
+    method_names.clear();
+    typeflow_names.clear();
+    typestates.clear();
+    interflows.clear();
+    direct_invokes.clear();
+    typeflow_methods.clear();
+    typeflow_filters.clear();
+    declaring_types.clear();
+    */
+
     read_lines(type_names, types_data, types_len);
     read_lines(method_names, methods_data, methods_len);
 
@@ -1275,8 +1289,6 @@ extern "C" void EMSCRIPTEN_KEEPALIVE init(
         for(const auto &name: method_names)
             method_ids_by_name[name] = i++;
     }
-
-    cout << method_names[1] << endl;
 
     read_lines(typeflow_names, typeflows_data, typeflows_len);
 
@@ -1305,7 +1317,13 @@ extern "C" void EMSCRIPTEN_KEEPALIVE init(
 
     remove_redundant(*adj);
 
-    cerr << "Ready!\n";
+    cerr << "Ready!" << endl;
+
+    cerr << "Running DFS on original graph...";
+    BFS all(*adj);
+    cerr << " " << std::count_if(all.method_visited.begin(), all.method_visited.end(), [](bool b) { return b; }) << " methods reachable!\n";
+
+    all_methods_visited = all.method_visited;
 }
 
 extern "C" char* EMSCRIPTEN_KEEPALIVE simulate_purge(const char* methods)
@@ -1327,9 +1345,8 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE simulate_purge(const char* methods)
         }
     }
 
-    cerr << "Running DFS on original graph...";
-    BFS all(*adj);
-    cerr << " " << std::count_if(all.method_visited.begin(), all.method_visited.end(), [](bool b) { return b; }) << " methods reachable!\n";
+    if(purged_mids.empty())
+        return nullptr;
 
     cerr << "Running DFS on purged graph...";
 
@@ -1339,9 +1356,9 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE simulate_purge(const char* methods)
 
     stringstream output;
 
-    for(size_t i = 1; i < all.method_visited.size(); i++)
+    for(size_t i = 1; i < all_methods_visited.size(); i++)
     {
-        if(all.method_visited[i] && !after_purge.method_visited[i])
+        if(all_methods_visited[i] && !after_purge.method_visited[i])
             output << method_names[i] << endl;
     }
 
