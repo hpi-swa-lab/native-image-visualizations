@@ -326,7 +326,7 @@ export function parseBuildReportToNodeWithSizeHierarchy(
 
         let methodNode = currentChildren.find((node: HierarchyNodeWithSize) => node.name === method)
         if (!methodNode) {
-            const codeSize: number = report.CodeSize ? report.CodeSize : 0
+            const codeSize: number = report.CodeSize ?? 0
             methodNode = {
                 id: 0,
                 parent: parent,

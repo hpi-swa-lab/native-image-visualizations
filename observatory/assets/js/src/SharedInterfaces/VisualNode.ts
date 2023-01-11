@@ -1,4 +1,4 @@
-export default interface Node {
+export default interface VisualNode {
     x: number
     y: number
     color: string
