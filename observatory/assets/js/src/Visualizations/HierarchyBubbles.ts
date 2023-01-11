@@ -105,7 +105,7 @@ export default class HierarchyBubbles implements Visualization {
                     (Math.floor(index / columns) - 1) * padding,
                 color: color,
                 label: node.name,
-                radius:  radius,
+                radius: radius,
                 tooltip: node.fullPath,
                 referenceToData: node.id
             }
