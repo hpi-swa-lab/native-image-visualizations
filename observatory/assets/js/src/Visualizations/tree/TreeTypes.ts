@@ -81,3 +81,8 @@ export type NodesSortingFilter = {
     option: string
     order: string
 }
+
+export type NodeTextPositionOffset = {
+    start: number,
+    end: number
+}
