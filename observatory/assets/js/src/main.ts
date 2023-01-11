@@ -59,8 +59,9 @@ export async function generateSankeyTree(fileList: FileList) {
     if (fileList.length < 2) {
         // TODO remove later when not needed
         const filePaths = [
-            '../assets/data/used_methods_micronautguide.txt',
-            '../assets/data/used_methods_helloworld.txt'
+            '../assets/data/used_methods_micronautguide-empty.txt',
+            '../assets/data/used_methods_micronautguide-conference.txt'
+            // '../assets/data/used_methods_helloworld.txt'
         ]
 
         texts = await Promise.all(filePaths.map((file) => d3.text(file)))
