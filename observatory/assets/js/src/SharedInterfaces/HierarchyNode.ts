@@ -1,8 +1,9 @@
-export default interface HierarchyNode {
+import Node from './Node'
+
+export default interface HierarchyNode extends Omit<Node, 'children'> {
     id: number
     parent: HierarchyNode | null
-    fullPath: string
-    name: string
     children: HierarchyNode[]
+    fullPath: string
     subTreeSize: number
 }

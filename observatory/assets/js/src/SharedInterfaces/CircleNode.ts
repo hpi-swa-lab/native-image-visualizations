@@ -1,5 +1,5 @@
-import Node from './Node'
+import VisualNode from './VisualNode'
 
-export default interface CircleNode extends Node {
+export default interface CircleNode extends VisualNode {
     radius: number
 }

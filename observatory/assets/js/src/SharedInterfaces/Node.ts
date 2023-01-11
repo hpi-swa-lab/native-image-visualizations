@@ -1,7 +1,12 @@
 export default interface Node {
-    x: number
-    y: number
-    color: string
-    label: string
-    tooltip: string
+    name: string
+    type: NodeType
+    children: Node[]
+}
+
+export enum NodeType {
+    RootNode,
+    Package,
+    Class,
+    Method
 }
