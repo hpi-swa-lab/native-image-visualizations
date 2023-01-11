@@ -2,8 +2,12 @@ import HierarchyBubbles from './Visualizations/HierarchyBubbles'
 import VennVisualization from './Visualizations/VennVisualization'
 import SankeyTreeVisualization from './Visualizations/tree/SankeyTreeVisualization'
 import BubbleTreeVisualization from './Visualizations/tree/BubbleTreeVisualization'
-import {loadBuildReport, loadCSVFile, loadTextFile, parseBuildReportToNodeWithSizeHierarchy} from './BuildReportsParser'
-import * as d3 from "d3";
+import {
+    loadBuildReport,
+    loadTextFile,
+    parseBuildReportToNodeWithSizeHierarchy
+} from './BuildReportsParser'
+import * as d3 from 'd3'
 
 export async function generateHierarchyBubbles(file: File): Promise<HierarchyBubbles> {
     const reportData = await loadBuildReport(file)
@@ -23,7 +27,7 @@ export function generateVenn() {
 export async function generateBubbleTree(fileList: FileList) {
     let texts: string[]
     let universeNames: string[]
-    if(fileList.length < 2) {
+    if (fileList.length < 2) {
         // TODO remove later when not needed
         const filePaths = [
             '../assets/data/used_methods_micronautguide.txt',
@@ -32,11 +36,10 @@ export async function generateBubbleTree(fileList: FileList) {
 
         texts = await Promise.all(filePaths.map((file) => d3.text(file)))
         universeNames = filePaths.map((path) => {
-            const pathSegments = path.split('/');
+            const pathSegments = path.split('/')
             const nameSegments = pathSegments[pathSegments.length - 1].split('_')
             return nameSegments[nameSegments.length - 1].split('.')[0]
         })
-
     } else {
         const files = Array.from(fileList)
         texts = await Promise.all(files.map((file) => loadTextFile(file)))
@@ -53,7 +56,7 @@ export async function generateBubbleTree(fileList: FileList) {
 export async function generateSankeyTree(fileList: FileList) {
     let texts: string[]
     let universeNames: string[]
-    if(fileList.length < 2) {
+    if (fileList.length < 2) {
         // TODO remove later when not needed
         const filePaths = [
             '../assets/data/used_methods_micronautguide.txt',
@@ -62,11 +65,10 @@ export async function generateSankeyTree(fileList: FileList) {
 
         texts = await Promise.all(filePaths.map((file) => d3.text(file)))
         universeNames = filePaths.map((path) => {
-            const pathSegments = path.split('/');
+            const pathSegments = path.split('/')
             const nameSegments = pathSegments[pathSegments.length - 1].split('_')
             return nameSegments[nameSegments.length - 1].split('.')[0]
         })
-
     } else {
         const files = Array.from(fileList)
         texts = await Promise.all(files.map((file) => loadTextFile(file)))

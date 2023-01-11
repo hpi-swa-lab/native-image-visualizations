@@ -15,34 +15,34 @@
         <script src="../assets/js/dist/observatory.umd.js"></script>
     </head>
     <body>
-    <div class="cb-control-container">
-        <h1>Bubble Tree</h1>
+        <div class="cb-control-container">
+            <h1>Bubble Tree</h1>
 
-        <label for="input-file">Input files:</label>
-        <input type="file" id="input-file" accept=".txt" multiple/>
+            <label for="input-file">Input files:</label>
+            <input type="file" id="input-file" accept=".txt" multiple />
 
-        <button id="button-confirm">Generate Graph</button>
-    </div>
+            <button id="button-confirm">Generate Graph</button>
+        </div>
 
-    <script type="module">
-        const input = document.getElementById('input-file')
-        const buttonConfirm = document.getElementById('button-confirm')
-        const container = document.getElementById('container')
+        <script type="module">
+            const input = document.getElementById('input-file')
+            const buttonConfirm = document.getElementById('button-confirm')
+            const container = document.getElementById('container')
 
-        buttonConfirm.addEventListener('click', async () => {
-            // TODO comment in for final version
-            /*if (input.files.length < 2 ) {
+            buttonConfirm.addEventListener('click', async () => {
+                // TODO comment in for final version
+                /*if (input.files.length < 2 ) {
                 errorMessages.push("I'm missing the input file.")
                 return
-            } else*/ if (input.files.length > 2 ) {
-                errorMessages.push("Too many file, I only need 2 input files.")
-                return
-            }
+            } else*/ if (input.files.length > 2) {
+                    errorMessages.push('Too many file, I only need 2 input files.')
+                    return
+                }
 
-            await Observatory.generateBubbleTree(input.files)
+                await Observatory.generateBubbleTree(input.files)
 
-            buttonConfirm.innerHTML = 'Continue Simulation'
-        })
-    </script>
+                buttonConfirm.innerHTML = 'Continue Simulation'
+            })
+        </script>
     </body>
 </html>

@@ -83,6 +83,6 @@ export type NodesSortingFilter = {
 }
 
 export type NodeTextPositionOffset = {
-    start: number,
+    start: number
     end: number
 }

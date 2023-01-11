@@ -1,28 +1,42 @@
-import Visualization from "../Visualization";
+import Visualization from '../Visualization'
 import {
     CustomEventName,
-    Dictionary, MyNode, NodeTextPositionOffset,
+    Dictionary,
+    MyNode,
+    NodeTextPositionOffset,
     SortingOption,
     SortingOrder,
     SvgSelections,
     Tree,
     TreeNodesFilter,
     UniverseProps
-} from "./TreeTypes";
-import TreeInputForm from "./TreeInputForm";
-import * as d3 from "d3";
-import {COLOR_GREEN, COLOR_MODIFIED, COLOR_RED, MARGIN, MODIFIED, ROOT_NODE_NAME, UNMODIFIED} from "./TreeConstants";
+} from './TreeTypes'
+import TreeInputForm from './TreeInputForm'
+import * as d3 from 'd3'
+import {
+    COLOR_GREEN,
+    COLOR_MODIFIED,
+    COLOR_RED,
+    MARGIN,
+    MODIFIED,
+    ROOT_NODE_NAME,
+    UNMODIFIED
+} from './TreeConstants'
 import {
     createApplyFilterEvent,
     createExpandTreeEvent,
     createHierarchyFromPackages,
     diffNodesFromLeaves,
     handleCustomTreeEvent,
-    markNodesModifiedFromLeaves, mousemove, mouseout, mouseover,
+    markNodesModifiedFromLeaves,
+    mousemove,
+    mouseout,
+    mouseover,
     removeDiffingFilterFromTree,
-    setNodeSizeFromLeaves, toggle
-} from "./TreeUtils";
-import {HierarchyPointNode, Transition} from "d3";
+    setNodeSizeFromLeaves,
+    toggle
+} from './TreeUtils'
+import { HierarchyPointNode, Transition } from 'd3'
 
 export default class TreeVisualization implements Visualization {
     universesMetadata: Dictionary<UniverseProps>
@@ -66,7 +80,7 @@ export default class TreeVisualization implements Visualization {
 
         const defaultViewbox = [0, 0, innerWidth, innerHeight].join(' ')
 
-        this.tree.root.descendants().forEach((d: any, i:number) => {
+        this.tree.root.descendants().forEach((d: any, i: number) => {
             d.id = i
             d._children = d.children
             // FIXME ? only expand first level of children
@@ -372,10 +386,7 @@ export default class TreeVisualization implements Visualization {
         return nodeEnter.append('rect')
     }
 
-    appendTextToNode(
-        node: any
-    ) {
-
+    appendTextToNode(node: any) {
         const positionOffset = this.getNodeTextPositionOffset()
         return node
             .append('text')
@@ -450,7 +461,7 @@ export default class TreeVisualization implements Visualization {
     }
 
     getNodeSeparation(a: HierarchyPointNode<unknown>, b: HierarchyPointNode<unknown>, dx: number) {
-        return 0;
+        return 0
     }
 
     getNodeTextPositionOffset(): NodeTextPositionOffset {

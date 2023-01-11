@@ -265,5 +265,3 @@ function getSortingValue(node: any, filter: NodesSortingFilter) {
             return node.data.codeSize
     }
 }
-
-
