@@ -1,18 +1,25 @@
-import { HierarchyPointNode, Transition } from 'd3'
+import { Transition } from 'd3'
 import * as d3 from 'd3'
-import { COLOR_UNMODIFIED, MARGIN, MODIFIED } from './TreeConstants'
+import { COLOR_BLUE, COLOR_GREY, COLOR_UNMODIFIED, MODIFIED } from './TreeConstants'
 import {
     CustomEventName,
     Dictionary,
-    MyNode,
-    NodesSortingFilter,
     Tree,
-    SortingOption,
-    SortingOrder,
     SvgSelections,
     UniverseProps
 } from './TreeTypes'
-import { collapseChildren } from './TreeUtils'
+import {
+    appendTextToNode,
+    enterNode,
+    exitLink,
+    exitNode,
+    handleCustomTreeEvent,
+    mousemove,
+    mouseout,
+    mouseover,
+    toggle,
+    updateNode
+} from './Utils'
 
 // ##########################################################################################################
 // ##### UPDATE TREE ########################################################################################
@@ -82,7 +89,8 @@ export function updateSankey(
             mousemove(event, d, svgSelections, universePropsDict)
         )
         .on('mouseout', (event: MouseEvent, d: any) => mouseout(event, d, svgSelections))
-    appendTextToNode(nodeEnter)
+
+    appendTextToNode(nodeEnter, -6, 26)
 
     updateNode(node, nodeEnter, transition)
 
@@ -104,21 +112,8 @@ export function updateSankey(
 }
 
 // ##########################################################################################################
-// ##### UPDATE TREE UTILS ##################################################################################
+// ##### UPDATE SANKEY UTILS ################################################################################
 // ##########################################################################################################
-
-function enterNode(node: any, sourceNode: any, onClickCallback: Function) {
-    // Enter any new nodes at the parent's previous position.
-    return node
-        .enter()
-        .append('g')
-        .attr('transform', () => `translate(${sourceNode.y0 ?? 0},${sourceNode.x0 ?? 0})`)
-        .attr('fill-opacity', 0)
-        .attr('stroke-opacity', 0)
-        .on('click', (evt: MouseEvent, d: any) => {
-            onClickCallback(evt, d)
-        })
-}
 
 function appendRectToNode(nodeEnter: any, universePropsDict: Dictionary<UniverseProps>) {
     const minSize = 20
@@ -140,52 +135,6 @@ function appendRectToNode(nodeEnter: any, universePropsDict: Dictionary<Universe
         })
 }
 
-function appendTextToNode(node: any) {
-    return (
-        node
-            .append('text')
-            .attr('dy', '0.31em')
-            // TODO set end-position relative to node-width
-            .attr('x', (d: any) => (d._children ? -6 : 26))
-            .attr('text-anchor', (d: any) => (d._children ? 'end' : 'start'))
-            .text((d: any) => d.data.name)
-            .clone(true)
-            .lower()
-            .attr('stroke-linejoin', 'round')
-            .attr('stroke-width', 3)
-            .attr('stroke', 'white')
-    )
-}
-
-function updateNode(
-    node: any,
-    nodeEnter: any,
-    transition: Transition<SVGGElement, unknown, HTMLElement, any>
-) {
-    // Transition nodes to their new position.
-    return node
-        .merge(nodeEnter)
-        .transition(transition)
-        .attr('transform', (d: any) => `translate(${d.y},${d.x})`)
-        .attr('fill-opacity', 1)
-        .attr('stroke-opacity', 1)
-}
-
-function exitNode(
-    node: any,
-    sourceNode: any /*HierarchyPointNode<MyNode>*/,
-    transition: Transition<SVGGElement, unknown, HTMLElement, any>
-) {
-    // Transition exiting nodes to the parent's new position.
-    return node
-        .exit()
-        .transition(transition)
-        .remove()
-        .attr('transform', () => `translate(${sourceNode.y},${sourceNode.x})`)
-        .attr('fill-opacity', 0)
-        .attr('stroke-opacity', 0)
-}
-
 function enterLink(
     link: any,
     linkGenerator: d3.Link<any, any, any>,
@@ -200,7 +149,9 @@ function enterLink(
             return linkGenerator({ source: o, target: o })
         })
         .attr('stroke-width', (d: any) => d.target.data.codeSize)
-        .attr('stroke', (d: any) => (d.target.data.isModified ? '#4989c5' : '#969696'))
+        .attr('stroke', (d: any) =>
+            d.target.data.isModified ? COLOR_BLUE.toString() : COLOR_GREY.toString()
+        )
 }
 
 function updateLink(
@@ -228,116 +179,4 @@ function updateLink(
             const source = { x: sourceX, y: d.source.y0 }
             return linkGenerator({ source: source, target: d.target })
         })
-}
-
-function exitLink(
-    link: any,
-    linkGenerator: d3.Link<any, any, any>,
-    sourceNode: any /*HierarchyPointNode<MyNode>*/,
-    transition: Transition<SVGGElement, unknown, HTMLElement, any>
-) {
-    // Transition exiting nodes to the parent's new position.
-    return link
-        .exit()
-        .transition(transition)
-        .remove()
-        .attr('d', (d: any) => {
-            const o = { x: sourceNode.x, y: sourceNode.y }
-            return linkGenerator({ source: o, target: o })
-        })
-}
-
-// see source code: https://d3-graph-gallery.com/graph/interactivity_tooltip.html
-// Three function that change the tooltip when user hover / move / leave a cell
-function mouseover(event: MouseEvent, d: HierarchyPointNode<MyNode>, svgSelections: SvgSelections) {
-    svgSelections.tooltip.style('opacity', 1)
-}
-function mousemove(
-    event: MouseEvent,
-    d: HierarchyPointNode<MyNode>,
-    svgSelections: SvgSelections,
-    universePropsDict: Dictionary<UniverseProps>
-) {
-    const universesText = universePropsDict[Array.from(d.data.universes).join('')]
-        ? universePropsDict[Array.from(d.data.universes).join('')].name
-        : 'N/A'
-    svgSelections.tooltip
-        .html(
-            `**Node data:**
-                            <br>codeSize: ${d.data.codeSize}
-                            <br>isFiltered: ${d.data.isFiltered}
-                            <br>isModified: ${d.data.isModified}
-                            <br>universes: ${universesText}
-                            <br>has children: ${d.children?.length || undefined}
-                            <br>has _children: ${(d as any)._children?.length || undefined}
-                            `
-        )
-        .style('left', event.x + 20 + 'px')
-        .style('top', event.y + 'px')
-}
-function mouseout(event: MouseEvent, d: HierarchyPointNode<MyNode>, svgSelections: SvgSelections) {
-    svgSelections.tooltip.style('opacity', 0)
-}
-
-// Toggle children.
-function toggle(d: any, doToggleBranch: boolean) {
-    if (!d._children) return
-
-    d.children
-        ? collapseChildren(d)
-        : (d.children = d._children.filter((child: any) => child.data.isFiltered))
-
-    if (doToggleBranch) {
-        for (const child of d.children) {
-            toggle(child, doToggleBranch)
-        }
-    }
-}
-
-function handleCustomTreeEvent(event: any, tree: Tree) {
-    if (event.detail.name === CustomEventName.APPLY_FILTER) {
-        console.log(event.detail.name, true)
-        tree.root.eachBefore((node: any) => {
-            if (!node._children) return
-            sortChildren(node, event.detail.filter.sorting)
-            if (node.children) node.children = filterDiffingUniverses(node)
-        })
-    }
-
-    // expand full tree
-    if (event.detail.name === CustomEventName.EXPAND_TREE) {
-        console.log(event.detail.name, true)
-        tree.root.eachBefore((node: any) => {
-            if (!node._children) return
-            sortChildren(node, event.detail.filter.sorting)
-            node.children = filterDiffingUniverses(node)
-        })
-    }
-}
-
-function filterDiffingUniverses(node: any) {
-    if (!node._children) return
-    return node._children.filter((child: any) => child.data.isFiltered)
-}
-
-function sortChildren(node: any, filter: NodesSortingFilter) {
-    return node._children.sort((a: any, b: any) => {
-        const valueA = getSortingValue(a, filter)
-        const valueB = getSortingValue(b, filter)
-        if (filter.option !== SortingOption.NAME && valueA === valueB) {
-            // sort alphabetically ascending
-            // FIXME it's magically alphabetically reversed sometimes ò.ó
-            return a.name > b.name
-        }
-        return filter.order == SortingOrder.ASCENDING ? valueA > valueB : valueA < valueB
-    })
-}
-
-function getSortingValue(node: any, filter: NodesSortingFilter) {
-    switch (filter.option) {
-        case SortingOption.NAME:
-            return node.data.name
-        case SortingOption.SIZE:
-            return node.data.codeSize
-    }
 }

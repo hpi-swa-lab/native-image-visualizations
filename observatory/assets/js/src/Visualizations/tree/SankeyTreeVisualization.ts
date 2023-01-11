@@ -9,7 +9,7 @@ import {
     setNodeSizeFromLeaves,
     createApplyFilterEvent,
     createExpandTreeEvent
-} from './TreeUtils'
+} from './Utils'
 import { updateSankey } from './SankeyUtils'
 import {
     COLOR_GREEN,

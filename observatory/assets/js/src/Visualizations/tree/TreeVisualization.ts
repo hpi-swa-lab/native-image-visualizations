@@ -5,12 +5,11 @@ import {
     createHierarchyFromPackages,
     removeDiffingFilterFromTree,
     diffNodesFromLeaves,
-    updateTree,
     markNodesModifiedFromLeaves,
     setNodeSizeFromLeaves,
     createApplyFilterEvent,
     createExpandTreeEvent
-} from './TreeUtils'
+} from './Utils'
 import {
     COLOR_GREEN,
     COLOR_MODIFIED,
@@ -32,6 +31,7 @@ import {
 } from './TreeTypes'
 import TreeInputForm from './TreeInputForm'
 import Visualization from '../Visualization'
+import { updateTree } from './TreeUtils'
 
 export default class TreeVisualization implements Visualization {
     universesMetadata: Dictionary<UniverseProps>
