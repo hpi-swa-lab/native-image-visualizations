@@ -91,6 +91,11 @@ export default class HierarchyBubbles implements Visualization {
                 colorMapping[colorIdentifyer] = color
             }
 
+            const radius = node.children
+                .filter((child: HierarchyNodeWithSize) => child.type !== NodeType.Package)
+                .map((child: HierarchyNodeWithSize) => child.accumulatedCodeSize)
+                .reduce((sum: number, current: number) => sum + current, 5)
+
             const newNode: CircleNode = {
                 x:
                     Math.floor(index % columns) * radius * 2 +
@@ -100,7 +105,7 @@ export default class HierarchyBubbles implements Visualization {
                     (Math.floor(index / columns) - 1) * padding,
                 color: color,
                 label: node.name,
-                radius: Math.floor(Math.sqrt(node.accumulatedCodeSize)) + 5,
+                radius: radius,
                 tooltip: node.fullPath,
                 referenceToData: node.id
             }
