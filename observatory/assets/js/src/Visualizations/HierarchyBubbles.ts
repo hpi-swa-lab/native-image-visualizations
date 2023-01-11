@@ -91,14 +91,10 @@ export default class HierarchyBubbles implements Visualization {
                 colorMapping[colorIdentifyer] = color
             }
 
-            let radius = 5
-            if (
-                node.children.every(
-                    (child: HierarchyNodeWithSize) => child.type !== NodeType.Package
-                )
-            ) {
-                radius += Math.sqrt(node.accumulatedCodeSize / Math.PI)
-            }
+            const radius = node.children
+                .filter((child: HierarchyNodeWithSize) => child.type !== NodeType.Package)
+                .map((child: HierarchyNodeWithSize) => child.accumulatedCodeSize)
+                .reduce((sum: number, current: number) => sum + current, 5)
 
             const newNode: CircleNode = {
                 x:
