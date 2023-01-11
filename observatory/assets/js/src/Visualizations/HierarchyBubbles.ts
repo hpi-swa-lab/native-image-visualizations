@@ -92,7 +92,11 @@ export default class HierarchyBubbles implements Visualization {
             }
 
             let radius = 5
-            if (node.children.every((child: HierarchyNodeWithSize) => child.type !== NodeType.Package)) {
+            if (
+                node.children.every(
+                    (child: HierarchyNodeWithSize) => child.type !== NodeType.Package
+                )
+            ) {
                 radius += Math.sqrt(node.accumulatedCodeSize / Math.PI)
             }
 
