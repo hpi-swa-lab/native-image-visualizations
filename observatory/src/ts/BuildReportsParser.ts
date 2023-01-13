@@ -1,7 +1,7 @@
-import HierarchyNode from './SharedInterfaces/HierarchyNode'
+import HierarchyNode from './interfaces/HierarchyNode'
 import { parse } from 'papaparse'
-import { NodeType } from './SharedInterfaces/Node'
-import HierarchyNodeWithSize from './SharedInterfaces/HierarchyNodeWithSize'
+import { NodeType } from './interfaces/Node'
+import HierarchyNodeWithSize from './interfaces/HierarchyNodeWithSize'
 import { json } from 'd3'
 
 export function loadTextFile(file: File): Promise<string> {

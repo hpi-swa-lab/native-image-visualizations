@@ -1,6 +1,6 @@
 import Node from './Node'
-import { NumberOfBytes } from '../SharedTypes/utils'
-import { UniverseCombination, UniverseName } from '../SharedTypes/Universe'
+import { NumberOfBytes } from '../types/utils'
+import { UniverseCombination, UniverseName } from '../types/Universe'
 
 export default interface MergedNodeWithSizes extends Omit<Node, 'children'> {
     sizes: Map<UniverseName, NumberOfBytes>
