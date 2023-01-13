@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { VisualizationType } from '../ts/types/visualizationType.js'
 
-const emit = defineEmits(['visualization-change'])
+const emit = defineEmits(['visualization-change', 'data-change'])
 </script>
 
 <template>
@@ -23,8 +23,8 @@ const emit = defineEmits(['visualization-change'])
                 Zoomable Causality Graph
             </option>
         </select>
-        <hr>
+        <hr />
         <h2>Visualization-Specific Options</h2>
-        <slot/>
+        <slot />
     </div>
 </template>

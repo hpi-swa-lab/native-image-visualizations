@@ -11,7 +11,7 @@
         "esModuleInterop": true,
         "lib": ["ES2020", "DOM", "ES2021.String"],
         "skipLibCheck": true,
-        "noEmit": true,
+        "noEmit": true
     },
     "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"],
     "references": [{ "path": "./tsconfig.node.json" }]
