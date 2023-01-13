@@ -22,3 +22,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# TODO: check what we need here:
+node_modules/
+.idea/
+.vscode/
+assets/*/dist/
+!assets/css/dist/.gitkeep
+!assets/js/dist/.gitkeep
+

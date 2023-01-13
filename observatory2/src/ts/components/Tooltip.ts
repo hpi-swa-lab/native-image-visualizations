@@ -1,4 +1,4 @@
-import { removeChildren } from '../utils'
+import { removeChildren } from '../../../../observatory/assets/js/src/utils'
 
 export default class Tooltip {
     _title: string = ''

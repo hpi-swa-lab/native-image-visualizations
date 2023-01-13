@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import Sidebar from './components/Sidebar.vue'
-import { VisualizationType } from './types/visualizationType';
+import { VisualizationType } from './ts/types/visualizationType';
 
 
 function changeVisualization(newVis: VisualizationType) {
