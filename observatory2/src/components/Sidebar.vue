@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { VisualizationType } from '../types/visualizationType'
+import { VisualizationType } from '../types/visualizationType.ts'
 
 const emit = defineEmits(['visualization-change'])
 </script>

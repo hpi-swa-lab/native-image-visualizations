@@ -1,9 +1,9 @@
 {
     "compilerOptions": {
-        "target": "ES6",
+        "target": "ES5",
         "useDefineForClassFields": true,
         "module": "ES2015",
-        "moduleResolution": "NodeNext",
+        "moduleResolution": "Node",
         "strict": true,
         "jsx": "preserve",
         "resolveJsonModule": true,
@@ -11,7 +11,7 @@
         "esModuleInterop": true,
         "lib": ["ES2020", "DOM", "ES2021.String"],
         "skipLibCheck": true,
-        "noEmit": true
+        "noEmit": true,
     },
     "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"],
     "references": [{ "path": "./tsconfig.node.json" }]
