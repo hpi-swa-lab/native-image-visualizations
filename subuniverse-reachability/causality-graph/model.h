@@ -596,7 +596,7 @@ public:
         typeflow_names(std::move(data.typeflow_names)),
         typestates(std::move(data.typestates)),
         declaring_types(std::move(data.declaring_types)),
-        adj(type_names.size(), method_names.size(), typeflow_names.size(), data.interflows, data.direct_invokes, this->typestates, data.typeflow_filters, data.containing_methods, data.typeflow_names)
+        adj(type_names.size(), method_names.size(), typeflow_names.size(), data.interflows, data.direct_invokes, this->typestates, data.typeflow_filters, data.containing_methods, typeflow_names)
     {
         {
             size_t i = 0;
