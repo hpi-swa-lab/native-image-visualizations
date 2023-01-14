@@ -44,13 +44,15 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
             purged_mids.push_back(mid);
         }
 
+        BFS bfs(adj);
+
         cerr << "Running DFS on original graph...";
-        BFS all(adj);
+        BFS::Result all = bfs.run<false>();
         cerr << " " << std::count_if(all.method_visited.begin(), all.method_visited.end(), [](bool b) { return b; }) << " methods reachable!\n";
 
         cerr << "Running DFS on purged graph...";
 
-        BFS after_purge(adj, purged_mids);
+        BFS::Result after_purge = bfs.run<false>(purged_mids);
 
         cerr << " " << std::count_if(after_purge.method_visited.begin(), after_purge.method_visited.end(), [](bool b) { return b; }) << " methods reachable!\n";
 
@@ -60,18 +62,86 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
                 cout << method_names[i] << endl;
         }
     }
+    else if(command == "benchmark")
+    {
+        constexpr int times = 20;
+
+        BFS bfs(adj);
+
+        auto start = std::chrono::system_clock::now();
+
+        for(size_t i = 0; i < times; i++)
+        {
+            bfs.run<false>();
+        }
+
+        auto end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end-start;
+        cout << (elapsed_seconds.count() / times) << " s" << endl;
+    }
     else
     {
         cerr << "Running DFS on original graph...";
-        BFS all(adj);
+        BFS bfs(adj);
+        BFS::Result all = bfs.run<false>();
         cerr << " " << std::count_if(all.method_visited.begin(), all.method_visited.end(), [](bool b) { return b; }) << " methods reachable!\n";
+        auto n_visited_typeflows = std::count_if(all.typeflow_visited.begin(), all.typeflow_visited.end(), [](const auto& history){ return history.any(); });
+        cerr << "typeflows visited: " << n_visited_typeflows << " / " << all.typeflow_visited.size() << endl;
 
+        if(command == "all_methods")
+        {
+            cout << adj.n_methods() << '\n';
+            for(size_t i = 0; i < adj.n_methods(); i++)
+                cout << (all.method_visited[i] + '0') << '\n';
+        }
         if(command == "all")
         {
-            for(size_t i = 1; i < all.method_visited.size(); i++)
+            cout << adj.n_methods() << ' ' << adj.n_typeflows() << '\n';
+            for(size_t i = 0; i < adj.n_methods(); i++)
+                cout << (all.method_visited[i] + '0') << '\n';
+
+            vector<uint16_t> types;
+
+            for(size_t i = 0; i < adj.n_typeflows(); i++)
             {
-                if(all.method_visited[i])
-                    cout << method_names[i] << endl;
+                if(all.typeflow_visited[i].is_saturated())
+                    cout << "-1\n";
+                else
+                {
+                    for(auto [t, h] : all.typeflow_visited[i])
+                        types.push_back(t);
+                    std::sort(types.begin(), types.end());
+                    cout << types.size();
+                    for(auto t : types)
+                        cout << ' ' << t;
+                    cout << '\n';
+                    types.clear();
+                }
+            }
+        }
+        else if(command == "all_hist")
+        {
+            cout << adj.n_methods() << ' ' << adj.n_typeflows() << '\n';
+            for(size_t i = 0; i < adj.n_methods(); i++)
+                cout << (all.method_visited[i] + '0') << '\n';
+
+            vector<pair<uint16_t, uint8_t>> types;
+
+            for(size_t i = 0; i < adj.n_typeflows(); i++)
+            {
+                if(all.typeflow_visited[i].is_saturated())
+                    cout << "- " << all.typeflow_visited[i].saturated_dist << '\n';
+                else
+                {
+                    for(auto p : all.typeflow_visited[i])
+                        types.push_back(p);
+                    std::sort(types.begin(), types.end(), [](auto a, auto b){ return a.first < b.first; });
+                    cout << types.size();
+                    for(auto [t, h] : types)
+                        cout << ' ' << t << ' ' << h;
+                    cout << '\n';
+                    types.clear();
+                }
             }
         }
         else if(command == "missing")
@@ -85,13 +155,13 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
     }
 }
 
-static void bruteforce_purges__worker_method(const Adjacency& adj, const vector<string>& method_names, size_t n_reachable, atomic<size_t>* purged, vector<boost::dynamic_bitset<>>* purge_matrix)
+static void bruteforce_purges__worker_method(const BFS& bfs, const vector<string>& method_names, size_t n_reachable, atomic<size_t>* purged, vector<boost::dynamic_bitset<>>* purge_matrix)
 {
     size_t purged_method;
-    while((purged_method = (*purged)++) < adj.n_methods())
+    while((purged_method = (*purged)++) < bfs.adj.n_methods())
     {
         method_id purged_mid = purged_method;
-        BFS after_purge(adj, {&purged_mid, 1});
+        BFS::Result after_purge = bfs.run<false>({&purged_mid, 1});
 
         size_t n_reachable_purged = std::count_if(after_purge.method_visited.begin(), after_purge.method_visited.end(), [](bool b) { return b; });
 
@@ -110,8 +180,10 @@ static void bruteforce_purges(const Adjacency& adj, const vector<string>& method
     size_t n_reachable;
     boost::dynamic_bitset<> all_reachable_bitset(adj.n_methods());
 
+    BFS bfs(adj);
+
     {
-        BFS all(adj);
+        BFS::Result all = bfs.run<false>();
         n_reachable = std::count_if(all.method_visited.begin(), all.method_visited.end(), [](bool b){ return b; });
 
         for(size_t i = 0; i < adj.n_methods(); i++)
@@ -126,7 +198,7 @@ static void bruteforce_purges(const Adjacency& adj, const vector<string>& method
     purge_matrix[0].resize(adj.n_methods());
 
     for(thread& worker : workers)
-        worker = thread(bruteforce_purges__worker_method, adj, method_names, n_reachable, &purged, &purge_matrix);
+        worker = thread(bruteforce_purges__worker_method, bfs, method_names, n_reachable, &purged, &purge_matrix);
 
     for(thread& worker : workers)
         worker.join();
@@ -181,12 +253,12 @@ static void bruteforce_purges(const Adjacency& adj, const vector<string>& method
     cout << "Adj-Entries: " << adj_entries << endl;
 }
 
-static void bruteforce_purges_classes__worker_method(const Adjacency& adj, const vector<string>& type_names, const vector<vector<method_id>>& reasons_contained_in_types, size_t n_reachable, atomic<size_t>* purged)
+static void bruteforce_purges_classes__worker_method(const BFS& bfs, const vector<string>& type_names, const vector<vector<method_id>>& reasons_contained_in_types, size_t n_reachable, atomic<size_t>* purged)
 {
     size_t purged_type;
-    while((purged_type = (*purged)++) < adj.n_types())
+    while((purged_type = (*purged)++) < bfs.adj.n_types())
     {
-        BFS after_purge(adj, reasons_contained_in_types[purged_type]);
+        BFS::Result after_purge = bfs.run<false>(reasons_contained_in_types[purged_type]);
         size_t n_reachable_purged = std::count_if(after_purge.method_visited.begin(), after_purge.method_visited.end(), [](bool b) { return b; });
 
         stringstream outputline;
@@ -207,8 +279,10 @@ static void bruteforce_purges_classes(const Adjacency& adj, const vector<string>
 
     size_t n_reachable;
 
+    BFS bfs(adj);
+
     {
-        BFS all(adj);
+        BFS::Result all = bfs.run<false>();
         n_reachable = std::count_if(all.method_visited.begin(), all.method_visited.end(), [](bool b){ return b; });
     }
     atomic<size_t> purged = 0;
@@ -218,7 +292,7 @@ static void bruteforce_purges_classes(const Adjacency& adj, const vector<string>
 
     for(thread& worker : workers)
     {
-        worker = thread(bruteforce_purges_classes__worker_method, adj, type_names, reasons_contained_in_types, n_reachable, &purged);
+        worker = thread(bruteforce_purges_classes__worker_method, bfs, type_names, reasons_contained_in_types, n_reachable, &purged);
     }
 
     for(thread& worker : workers)
@@ -299,7 +373,7 @@ static ostream& operator<<(ostream& out, const TreeIndenter& indentation)
     return out;
 }
 
-static void print_reachability_of_method(const Adjacency& adj, const vector<string>& method_names, const vector<string>& type_names, const BFS& all, method_id m, vector<bool>& visited, TreeIndenter& indentation)
+static void print_reachability_of_method(const Adjacency& adj, const vector<string>& method_names, const vector<string>& type_names, const BFS::Result& all, method_id m, vector<bool>& visited, TreeIndenter& indentation)
 {
     size_t dist = all.method_history[m.id];
 
@@ -459,7 +533,8 @@ static void print_reachability(const Adjacency& adj, const vector<string>& metho
 {
     cerr << "Running DFS on original graph...";
 
-    BFS all(adj);
+    BFS bfs(adj);
+    BFS::Result all = bfs.run();
 
     cerr << " " << std::count_if(all.method_visited.begin(), all.method_visited.end(), [](bool visited) { return visited; }) << " methods reachable!\n";
 
@@ -530,7 +605,6 @@ int main(int argc, const char** argv)
     }
     else
     {
-        for(size_t i = 0; i < 10; i++)
-            simulate_purge(m.adj, m.method_names, m.method_ids_by_name, command);
+        simulate_purge(m.adj, m.method_names, m.method_ids_by_name, command);
     }
 }

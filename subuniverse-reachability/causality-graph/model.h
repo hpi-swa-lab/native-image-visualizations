@@ -13,6 +13,8 @@
 
 using namespace std;
 
+using type_t = uint16_t;
+
 struct method_id
 {
     uint32_t id;
@@ -250,6 +252,17 @@ static void remove_redundant(Adjacency& adj)
             f.forward_edges.clear();
             f.backward_edges.clear();
 
+            if(f.method.dependent())
+            {
+                auto& dmv = adj[f.method.dependent()].dependent_typeflows;
+                erase(dmv, typeflow);
+            }
+            else if(f.method.reaching())
+            {
+                auto& rmv = adj[f.method.reaching()].virtual_invocation_sources;
+                erase(rmv, typeflow);
+            }
+
             useless_iterations = 0;
         }
         else
@@ -261,6 +274,70 @@ static void remove_redundant(Adjacency& adj)
 #if !NDEBUG
     cerr << "Redundant typeflows: " << redundant_typeflows.count() << "/" << (adj.n_typeflows() - 1) << "=" << ((float) redundant_typeflows.count() / (adj.n_typeflows() - 1)) << endl;
 #endif
+
+    assert(!redundant_typeflows[0]);
+
+    // --- Compact typeflows ---
+
+    vector<int> typeflow_remapping(adj.n_typeflows(), -1);
+
+    {
+        size_t id = 0;
+        size_t i = 0;
+        for(auto& new_id: typeflow_remapping)
+        {
+            if(redundant_typeflows[i++])
+                continue;
+
+            new_id = id++;
+        }
+    }
+
+    auto remap = [&](typeflow_id& f)
+    {
+        auto new_id = typeflow_remapping[f.id];
+        if(new_id == -1)
+            exit(1);
+        f.id = new_id;
+    };
+
+    for(auto& m : adj.methods)
+    {
+        for(auto& f : m.dependent_typeflows)
+            remap(f);
+
+        for(auto& f : m.virtual_invocation_sources)
+            remap(f);
+    }
+
+    remap(adj.allInstantiated);
+
+    for(auto& f0 : adj.flows)
+    {
+        for(auto& f : f0.forward_edges)
+            remap(f);
+
+        for(auto& f : f0.backward_edges)
+            remap(f);
+    }
+
+    vector<Adjacency::TypeflowInfo> new_flows(redundant_typeflows.size() - redundant_typeflows.count());
+
+    for(size_t i = 0; i < adj.n_typeflows(); i++)
+    {
+        if(redundant_typeflows[i])
+            continue;
+
+        typeflow_id f = i;
+        remap(f);
+
+        if(new_flows[f.id].filter)
+            exit(1);
+
+        new_flows[f.id] = adj.flows[i];
+    }
+
+    swap(adj.flows, new_flows);
 }
 
 struct model_data
@@ -316,8 +393,6 @@ public:
 #endif
 
         remove_redundant(adj);
-
-        cerr << "Ready!" << endl;
     }
 };
 

@@ -9,6 +9,7 @@
 
 
 static std::optional<model> purge_model;
+static std::optional<BFS> bfs;
 static vector<bool> all_methods_visited;
 
 extern "C" void EMSCRIPTEN_KEEPALIVE init(
@@ -22,42 +23,35 @@ extern "C" void EMSCRIPTEN_KEEPALIVE init(
         const uint8_t* typeflow_filters_data, size_t typeflow_filters_len,
         const uint8_t* declaring_types_data, size_t declaring_types_len)
 {
+    cerr << "Data reading starts." << endl;
+    auto start = std::chrono::system_clock::now();
+
     model_data data;
 
     read_lines(data.type_names, types_data, types_len);
     read_lines(data.method_names, methods_data, methods_len);
-
     read_lines(data.typeflow_names, typeflows_data, typeflows_len);
-
     read_typestate_bitsets(data.type_names.size(), data.typestates, typestates_data, typestates_len);
-
-    size_t max_typestate_size = 0;
-
-    for(Bitset& typestate : data.typestates)
-        max_typestate_size = max(max_typestate_size, typestate.count());
-
-#if !NDEBUG
-    cerr << "All instantiated types: " << max_typestate_size << endl;
-#endif
-
     read_buffer(data.interflows, interflows_data, interflows_len);
-
     read_buffer(data.direct_invokes, direct_invokes_data, direct_invokes_len);
-
     read_buffer(data.containing_methods, typeflow_methods_data, typeflow_methods_len);
-
     read_buffer(data.typeflow_filters, typeflow_filters_data, typeflow_filters_len);
-
     read_buffer(data.declaring_types, declaring_types_data, declaring_types_len);
 
     purge_model.emplace(std::move(data));
+    bfs.emplace(purge_model->adj);
+
+    auto end = std::chrono::system_clock::now();
+    auto elapsed_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    cerr << "Data reading ended. " << (elapsed_milliseconds.count() / 1000.0f) << "s elapsed" << endl;
 
     cerr << "Running DFS on original graph...";
 
-    BFS all(purge_model->adj);
-    cerr << " " << std::count_if(all.method_visited.begin(), all.method_visited.end(), [](bool b) { return b; }) << " methods reachable!\n";
+    BFS::Result all = bfs->run<false>();
 
-    all_methods_visited = all.method_visited;
+    cerr << " " << std::count(all.method_visited.begin(), all.method_visited.end(), true) << " methods reachable!\n";
+
+    all_methods_visited = std::move(all.method_visited);
 }
 
 extern "C" char* EMSCRIPTEN_KEEPALIVE simulate_purge(const char* methods)
@@ -71,16 +65,29 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE simulate_purge(const char* methods)
 
     {
         stringstream methods_stream(methods);
-        string method_name;
+        string line;
 
-        while(std::getline(methods_stream, method_name, '\n'))
+        while(std::getline(methods_stream, line, '\n'))
         {
-            auto it = m.method_ids_by_name.find(method_name);
+            if(line.ends_with('*'))
+            {
+                string_view prefix = string_view(line).substr(0, line.size() - 1);
 
-            if(it == m.method_ids_by_name.end())
-                return nullptr;
+                for(size_t i = 1; i < m.method_names.size(); i++)
+                {
+                    if(m.method_names[i].starts_with(prefix))
+                        purged_mids.push_back(i);
+                }
+            }
+            else
+            {
+                auto it = m.method_ids_by_name.find(line);
 
-            purged_mids.push_back(it->second);
+                if(it == m.method_ids_by_name.end())
+                    return nullptr;
+
+                purged_mids.push_back(it->second);
+            }
         }
     }
 
@@ -89,17 +96,28 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE simulate_purge(const char* methods)
 
     cerr << "Running DFS on purged graph...";
 
-    BFS after_purge(m.adj, purged_mids);
+    auto start = std::chrono::system_clock::now();
 
-    cerr << " " << std::count_if(after_purge.method_visited.begin(), after_purge.method_visited.end(), [](bool b) { return b; }) << " methods reachable!\n";
+    BFS::Result after_purge = bfs->run<false>(purged_mids);
+
+    auto end = std::chrono::system_clock::now();
+    auto elapsed_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    cerr << ' ' << (elapsed_milliseconds.count()) << "ms elapsed - ";
 
     stringstream output;
+
+    size_t n_purged = 0;
 
     for(size_t i = 1; i < all_methods_visited.size(); i++)
     {
         if(all_methods_visited[i] && !after_purge.method_visited[i])
+        {
+            n_purged++;
             output << m.method_names[i] << endl;
+        }
     }
+
+    cerr << n_purged << " method nodes purged!" << endl;
 
     string s(output.str());
     char* res = new char[s.size() + 1];
