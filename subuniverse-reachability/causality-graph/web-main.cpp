@@ -5,7 +5,7 @@
 #include "Bitset.h"
 #include "model.h"
 #include "input.h"
-
+#include "analysis.h"
 
 
 static std::optional<model> purge_model;

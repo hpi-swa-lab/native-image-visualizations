@@ -9,6 +9,7 @@
 #include <thread>
 #include "model.h"
 #include "input.h"
+#include "analysis.h"
 
 using namespace std;
 
