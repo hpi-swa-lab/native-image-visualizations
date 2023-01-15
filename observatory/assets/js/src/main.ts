@@ -69,24 +69,11 @@ export async function generateBubbleTree(fileList: FileList) {
     let universeNames: string[]
     if (fileList.length < 2) {
         // TODO remove later when not needed
-        const filePaths = [
-            '../assets/data/used_methods_micronautguide.txt',
-            '../assets/data/used_methods_helloworld.txt'
-        ]
-
-        texts = await Promise.all(filePaths.map((file) => d3.text(file)))
-        universeNames = filePaths.map((path) => {
-            const pathSegments = path.split('/')
-            const nameSegments = pathSegments[pathSegments.length - 1].split('_')
-            return nameSegments[nameSegments.length - 1].split('.')[0]
-        })
+        [texts, universeNames] = await getLocalTreeTexts()
     } else {
         const files = Array.from(fileList)
         texts = await Promise.all(files.map((file) => loadTextFile(file)))
-        universeNames = files.map((file) => {
-            const nameSegments = file.name.split('_')
-            return nameSegments[nameSegments.length - 1].split('.')[0]
-        })
+        universeNames = getUniverseNames(files)
     }
 
     let tree = new BubbleTreeVisualization(texts, universeNames)
@@ -98,32 +85,43 @@ export async function generateSankeyTree(fileList: FileList) {
     let universeNames: string[]
     if (fileList.length < 2) {
         // TODO remove later when not needed
-        console.log('fetch')
-        const filePaths = [
-            '../assets/data/used_methods_micronautguide-empty.txt',
-            '../assets/data/used_methods_micronautguide-conference.txt'
-            // '../assets/data/used_methods_helloworld.txt'
-        ]
-
-        console.log('filePaths')
-        texts = await Promise.all(filePaths.map((file) => d3.text(file)))
-        console.log('texts')
-        universeNames = filePaths.map((path) => {
-            const pathSegments = path.split('/')
-            const nameSegments = pathSegments[pathSegments.length - 1].split('_')
-            return nameSegments[nameSegments.length - 1].split('.')[0]
-        })
+        [texts, universeNames] = await getLocalTreeTexts()
     } else {
         const files = Array.from(fileList)
         texts = await Promise.all(files.map((file) => loadTextFile(file)))
-        universeNames = files.map((file) => {
-            const nameSegments = file.name.split('_')
-            return nameSegments[nameSegments.length - 1].split('.')[0]
-        })
+        universeNames = getUniverseNames(files)
     }
 
     let sankeyTree = new SankeyTreeVisualization(texts, universeNames)
     sankeyTree.generate()
+}
+
+async function getLocalTreeTexts(): Promise<[string[], string[]]>{
+    console.log('fetch')
+    const filePaths = [
+        '../assets/data/used_methods_micronautguide-empty.txt',
+        '../assets/data/used_methods_micronautguide-conference.txt'
+        // '../assets/data/used_methods_micronautguide.txt',
+        // '../assets/data/used_methods_helloworld.txt'
+    ]
+
+    console.log('filePaths')
+    const texts: string[] = await Promise.all(filePaths.map((file) => d3.text(file)))
+    console.log('texts')
+    let universeNames: string[] = filePaths.map((path) => {
+        const pathSegments = path.split('/')
+        const nameSegments = pathSegments[pathSegments.length - 1].split('_')
+        return nameSegments[nameSegments.length - 1].split('.')[0]
+    })
+
+    return [texts, universeNames]
+}
+
+function getUniverseNames(files: File[]) {
+    return files.map((file) => {
+        const nameSegments = file.name.split('_')
+        return nameSegments[nameSegments.length - 1].split('.')[0]
+    })
 }
 
 export async function testBuildReportParser(file: File) {

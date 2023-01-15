@@ -25,26 +25,7 @@
 <!--        </div>-->
 
         <script type="module">
-            FileInput.create()
-
-            const input = document.getElementById('input-file')
-            const buttonConfirm = document.getElementById('button-confirm')
-            const container = document.getElementById('container')
-
-            buttonConfirm.addEventListener('click', async () => {
-                // TODO comment in for final version
-                /*if (input.files.length < 2 ) {
-                errorMessages.push("I'm missing the input file.")
-                return
-            } else*/ if (input.files.length > 2) {
-                    errorMessages.push('Too many file, I only need 2 input files.')
-                    return
-                }
-
-                await Observatory.generateBubbleTree(input.files)
-
-                buttonConfirm.innerHTML = 'Continue Simulation'
-            })
+            Observatory.appendFileInput((files) => Observatory.generateBubbleTree(files))
         </script>
     </body>
 </html>
