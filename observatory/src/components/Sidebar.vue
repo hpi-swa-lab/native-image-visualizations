@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { VisualizationType } from '../ts/types/visualizationType.js'
+import DataInput from './DataInput.vue';
 
 const emit = defineEmits(['visualization-change', 'data-change'])
 </script>
@@ -7,6 +8,9 @@ const emit = defineEmits(['visualization-change', 'data-change'])
 <template>
     <div class="sticky-top">
         <h2>Global Options</h2>
+        <DataInput></DataInput>
+        <hr />
+        <label for="select-visualization">Select a visualization:</label>
         <select
             @change="(event: Event) => {
                 emit('visualization-change', parseInt((event.target as HTMLSelectElement).selectedOptions[0].value))
