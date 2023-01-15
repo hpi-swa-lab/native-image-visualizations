@@ -15,16 +15,18 @@
         <script src="../assets/js/dist/observatory.umd.js"></script>
     </head>
     <body>
-        <div class="cb-control-container">
-            <h1>Bubble Tree</h1>
+<!--        <div class="cb-control-container">-->
+<!--            <h1>Bubble Tree</h1>-->
 
-            <label for="input-file">Input files:</label>
-            <input type="file" id="input-file" accept=".txt" multiple />
+<!--            <label for="input-file">Input files:</label>-->
+<!--            <input type="file" id="input-file" accept=".txt" multiple />-->
 
-            <button id="button-confirm">Generate Graph</button>
-        </div>
+<!--            <button id="button-confirm">Generate Graph</button>-->
+<!--        </div>-->
 
         <script type="module">
+            FileInput.create()
+
             const input = document.getElementById('input-file')
             const buttonConfirm = document.getElementById('button-confirm')
             const container = document.getElementById('container')

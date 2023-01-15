@@ -160,7 +160,7 @@ export default class HierarchyBubbles implements Visualization {
 
     _prepareSVG(): void {
         let svg = d3
-            .select('#container')
+            .select('body')
             .append('svg')
             .attr('width', '100%')
             .attr('height', '100%')

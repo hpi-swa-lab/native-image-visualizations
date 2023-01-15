@@ -1,0 +1,37 @@
+
+.input-container {
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.2);
+    z-index: 1;
+    position: absolute;
+    background-color: white;
+}
+
+#cb-control-container {
+    top: 0px;
+    left: 0px;
+}
+
+#cb-control-container form {
+    width: 300px;
+    height: 150px;
+}
+
+
+
+/* ################################################  */
+/* ### TREE SETTINGS ##############################  */
+/* ################################################  */
+
+.settings-container {
+    background-color: white;
+    top: 170px;
+}
+
+#tree-settings-form {
+    width: 300px;
+    background-color: white;
+}
+
+#tree-settings-form fieldset {
+    border-radius: 10px;
+}

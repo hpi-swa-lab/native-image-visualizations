@@ -13,19 +13,30 @@ export default class TreeInputForm {
     element: HTMLFormElement
 
     constructor(universesMetadata: Dictionary<UniverseProps>, filter: TreeNodesFilter) {
+        const div = document.createElement('div')
+        div.classList.add('input-container', 'settings-container', 'p-3')
+
         const form = document.createElement('form')
-        form.classList.add('border', 'p-2', 'rounded')
+        form.setAttribute('id', 'tree-settings-form')
+        // form.classList.add('border', 'rounded')
+
+        const title = document.createElement('h3')
+        title.innerText = 'Settings'
+
+        form.appendChild(title)
 
         form.appendChild(this.createFieldsetDiffingFilter(universesMetadata, filter))
         form.appendChild(this.createFieldsetSorting(filter))
-        form.appendChild(this.createFieldsetDetailsSlider())
-        form.appendChild(this.createFieldsetMethodsFilter())
-        form.appendChild(this.createShortcutText())
+        // form.appendChild(this.createFieldsetDetailsSlider())
+        // form.appendChild(this.createFieldsetMethodsFilter())
 
         form.appendChild(this.createSubmitButton())
         form.appendChild(this.createExpandTreeButton())
 
-        document.body.appendChild(form)
+        form.appendChild(this.createShortcutText())
+
+        div.appendChild(form)
+        document.body.appendChild(div)
         this.element = form
     }
 
@@ -100,6 +111,10 @@ export default class TreeInputForm {
     private createShortcutText() {
         const div = this.createDiv(['alert', 'alert-info', 'mt-3'])
         div.setAttribute('role', 'alert')
+
+        const title = document.createElement('h4')
+        title.innerText = 'Shortcuts'
+
         const ul = document.createElement('ul')
         ul.classList.add('list-unstyled')
         const items = ['shift+click on node expands branch']
@@ -109,6 +124,7 @@ export default class TreeInputForm {
             ul.appendChild(li)
         }
 
+        div.appendChild(title)
         div.appendChild(ul)
         return div
     }

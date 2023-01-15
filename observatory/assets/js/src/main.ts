@@ -10,6 +10,11 @@ import {
 } from './BuildReportsParser'
 import * as d3 from 'd3'
 import {parseUsedMethods, withSizes} from "./parser";
+import FileInput, {FileInputContainer} from "./Components/FileInput";
+
+export function appendFileInput(visualizationCallback: Function, browsingDisabled: boolean = false): FileInputContainer {
+    return new FileInput().create(visualizationCallback, browsingDisabled)
+}
 
 export async function generateHierarchyBubbles(file: File|null|undefined): Promise<HierarchyBubbles> {
     console.log(file)
@@ -93,13 +98,16 @@ export async function generateSankeyTree(fileList: FileList) {
     let universeNames: string[]
     if (fileList.length < 2) {
         // TODO remove later when not needed
+        console.log('fetch')
         const filePaths = [
             '../assets/data/used_methods_micronautguide-empty.txt',
             '../assets/data/used_methods_micronautguide-conference.txt'
             // '../assets/data/used_methods_helloworld.txt'
         ]
 
+        console.log('filePaths')
         texts = await Promise.all(filePaths.map((file) => d3.text(file)))
+        console.log('texts')
         universeNames = filePaths.map((path) => {
             const pathSegments = path.split('/')
             const nameSegments = pathSegments[pathSegments.length - 1].split('_')

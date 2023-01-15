@@ -104,20 +104,22 @@ export default class Tooltip {
     }
 
     _buildDataContainerContent() {
-        removeChildren(this._dataElement)
+        // removeChildren(this._dataElement)
+        this._dataElement.innerHTML = '';
         Object.keys(this.datapoints).forEach((name: string) => {
-            const element = document.createElement('div')
+            this._dataElement.innerHTML += `<b>${name}:</b> ${this.datapoints[name]}<br>`
+            // const element = document.createElement('div')
+            //
+            // const title = document.createElement('p')
+            // title.innerHTML = name + ': '
+            //
+            // const data = document.createElement('p')
+            // data.innerHTML = this.datapoints[name]
 
-            const title = document.createElement('p')
-            title.innerHTML = name + ': '
+            // element.appendChild(title)
+            // element.appendChild(data)
 
-            const data = document.createElement('p')
-            data.innerHTML = this.datapoints[name]
-
-            element.appendChild(title)
-            element.appendChild(data)
-
-            this._dataElement.appendChild(element)
+            // this._dataElement.appendChild(element)
         })
     }
 }
