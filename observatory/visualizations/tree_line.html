@@ -50,15 +50,10 @@
                 return
             }
 
-            await Observatory.generateSankeyTree()
+            await Observatory.generateTreeLine()
 
             buttonConfirm.innerHTML = 'Continue Simulation'
         })
-    </script>
-
-
-    <script type="module">
-        await Observatory.generateTreeLine()
     </script>
 </body>
 

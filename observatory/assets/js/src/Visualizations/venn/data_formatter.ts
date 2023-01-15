@@ -1,29 +1,29 @@
-interface Venn_Set {
+export interface Venn_Set {
   sets: string[];
   label?: string;
   size: number;
 }
 
-interface Universe {
+export interface Universe {
   name: string;
   packages: Package[];
 }
 
-interface Package {
+export interface Package {
   id: number;
   name: string;
 }
 
-const SEPARATOR = ",";
+export const SEPARATOR = ",";
 
-function get_universe_intersections(universes: Universe[]) {
+export function get_universe_intersections(universes: Universe[]) {
   return universe_intersections(
     universes_to_exclusive_packages(package_to_universes(universes), universes),
     universes
   );
 }
 
-function universes_to_venn_sets(universes: Universe[]) {
+export function universes_to_venn_sets(universes: Universe[]) {
   const intersected_universes = get_universe_intersections(universes);
   const venn_intersections = intersected_universes
     .map(universe_to_venn_set)
@@ -31,14 +31,14 @@ function universes_to_venn_sets(universes: Universe[]) {
   return universes.map(universe_to_venn_set).concat(venn_intersections);
 }
 
-function package_to_universes(universes: Universe[]) {
+export function package_to_universes(universes: Universe[]) {
   const package_to_universes: Map<string, Array<string>> = new Map();
   universes.forEach((universe) => {
-    universe.packages.forEach((package) => {
-      if (package_to_universes.has(package.name)) {
-        package_to_universes.get(package.name).push(universe.name);
+    universe.packages.forEach((pkg) => {
+      if (package_to_universes.has(pkg.name)) {
+        package_to_universes.get(pkg.name).push(universe.name);
       } else {
-        package_to_universes.set(package.name, [universe.name]);
+        package_to_universes.set(pkg.name, [universe.name]);
       }
     });
   });
@@ -46,7 +46,7 @@ function package_to_universes(universes: Universe[]) {
 }
 
 // Exclusive sets, meaning each package will only be in one intersection
-function universes_to_exclusive_packages(
+export function universes_to_exclusive_packages(
   package_to_universes: Map<string, Array<string>>,
   base_universes: readonly Universe[]
 ) {
@@ -95,7 +95,7 @@ function universes_to_exclusive_packages(
   return universes_to_exclusive_packages;
 }
 
-function exclusive_to_inclusive_packages(
+export function exclusive_to_inclusive_packages(
   universes_to_exclusive_packages: Map<string, Array<string>>
 ) {
   let base_universes = [];
@@ -132,14 +132,14 @@ function exclusive_to_inclusive_packages(
   });
 }
 
-function universe_to_venn_set(universe: Universe) {
+export function universe_to_venn_set(universe: Universe) {
   return {
     sets: universe.name.split(SEPARATOR),
     size: universe.packages.length,
   } as Venn_Set;
 }
 
-function universe_intersections(
+export function universe_intersections(
   universes_to_packages: Map<string, Array<string>>,
   universes: Universe[]
 ) {
@@ -158,7 +158,7 @@ function universe_intersections(
   );
 }
 
-function package_name_to_package_object(
+export function package_name_to_package_object(
   package_name: string,
   belonging_universe_name: string,
   universes: Universe[]
@@ -167,10 +167,10 @@ function package_name_to_package_object(
     .find(
       (universe) => universe.name.localeCompare(belonging_universe_name) == 0
     )
-    .packages.find((package) => package.name.localeCompare(package_name) === 0);
+    .packages.find((pkg) => pkg.name.localeCompare(package_name) === 0);
 }
 
-function intersections_between(universes: Universe[]): Universe[] {
+export function intersections_between(universes: Universe[]): Universe[] {
   const powerset: Universe[][] = subsets(universes).filter(
     (subset: Universe[]) => subset.length > 0
   );
@@ -181,7 +181,7 @@ function intersections_between(universes: Universe[]): Universe[] {
     universe_name = subset.map((universe) => universe.name).join(SEPARATOR);
 
     packages = subset.map((universe) =>
-      universe.packages.map((package) => package.name)
+      universe.packages.map((pkg) => pkg.name)
     );
     shared = intersection(packages).map((name) =>
       package_name_to_package_object(name, subset[0].name, subset)
@@ -192,14 +192,14 @@ function intersections_between(universes: Universe[]): Universe[] {
 }
 
 // helper functions
-function subsets(array: Array<any>): Array<Array<any>> {
+export function subsets(array: Array<any>): Array<Array<any>> {
   return array.reduce(
     (subsets, value) => subsets.concat(subsets.map((set:any) => [value, ...set])),
     [[]]
   );
 }
 
-function sameMembers(arr1: string[], arr2: string[]) {
+export function sameMembers(arr1: string[], arr2: string[]) {
   const set1 = new Set(arr1);
   const set2 = new Set(arr2);
   return (
@@ -207,7 +207,7 @@ function sameMembers(arr1: string[], arr2: string[]) {
   );
 }
 
-function intersection(lists: any[][]) {
+export function intersection(lists: any[][]) {
   var result = [];
 
   for (var i = 0; i < lists.length; i++) {
