@@ -1,35 +1,44 @@
 import * as d3 from 'd3'
 import Visualization from './Visualization'
-import CircleNode from '../interfaces/CircleNode'
-import Edge from '../interfaces/Edge'
+import CircleNode from '../SharedInterfaces/CircleNode'
+import Edge from '../SharedInterfaces/Edge'
 import { uniqueColor } from '../utils'
-import Tooltip from '../components/Tooltip.js'
+import Tooltip from '../Components/Tooltip'
 import { forceCollide, forceLink, forceSimulation } from 'd3'
-import HierarchyNodeWithSize from '../interfaces/HierarchyNodeWithSize'
-import { NodeType } from '../interfaces/Node'
+import HierarchyNodeWithSize from '../SharedInterfaces/HierarchyNodeWithSize'
+import { NodeType } from '../SharedInterfaces/Node'
 
 export default class HierarchyBubbles implements Visualization {
-    container: HTMLElement
-
     hierarchy: HierarchyNodeWithSize
-    hierarchyById: Record<number, HierarchyNodeWithSize> = {}
+    hierarchyById: Record<number, HierarchyNodeWithSize>
 
     nodes: CircleNode[] = []
     nodesById: Record<number, CircleNode> = {}
     edges: Edge[] = []
 
-    tooltip: Tooltip
+    tooltip: Tooltip = new Tooltip()
 
-    simulation: d3.Simulation<CircleNode, undefined>
+    simulation: d3.Simulation<CircleNode, undefined> = forceSimulation<CircleNode>([])
 
-    constructor(container: HTMLElement, data: HierarchyNodeWithSize) {
-        this.container = container
-        this.tooltip = new Tooltip()
+    constructor(hierarchy: HierarchyNodeWithSize) {
+        this._extractPackages(hierarchy)
+        this.hierarchy = hierarchy
 
-        this.container.appendChild(this.tooltip.widget)
+        const nodes: HierarchyNodeWithSize[] = this._getNodes(this.hierarchy)
+        this.hierarchyById = {}
+        nodes.forEach((node) => {
+            this.hierarchyById[node.id] = node
+        })
+    }
+
+    generate(): void {
+        document.body.appendChild(this.tooltip.widget)
+        ;[this.nodes, this.nodesById] = this._constructNodes(this.hierarchy)
+        this.edges = this._constructEdges(this.hierarchy)
+
         this._prepareSVG()
 
-        this.simulation = forceSimulation(this.nodes)
+        this.simulation = forceSimulation<CircleNode>(this.nodes)
             .force('link', forceLink(this.edges))
             .force(
                 'collision',
@@ -38,28 +47,7 @@ export default class HierarchyBubbles implements Visualization {
             .on('tick', () => this._tick())
 
         this.simulation.stop()
-
-        // just so that ts does not cry. This get overriden in the setter next line
-        this.hierarchy = data
-        this.data = data
     }
-
-    public set data(newData: HierarchyNodeWithSize) {
-        this._extractPackages(newData)
-        this.hierarchy = newData
-
-        const nodes: HierarchyNodeWithSize[] = this._getNodes(this.hierarchy)
-        this.hierarchyById = {}
-        nodes.forEach((node) => {
-            this.hierarchyById[node.id] = node
-        })
-        ;[this.nodes, this.nodesById] = this._constructNodes(this.hierarchy)
-        this.edges = this._constructEdges(this.hierarchy)
-
-        this.simulation.nodes(this.nodes).force('link', forceLink(this.edges))
-    }
-
-    generate(): void {}
 
     continueSimulation(callback: () => void = () => {}, milliseconds: number = 5000) {
         this.simulation.restart()
@@ -70,13 +58,11 @@ export default class HierarchyBubbles implements Visualization {
     }
 
     _extractPackages(startingPoint: HierarchyNodeWithSize) {
-        if (
-            startingPoint.type !== NodeType.Package &&
-            startingPoint.type !== NodeType.RootNode &&
-            startingPoint.parent !== null
-        ) {
-            let siblings = startingPoint.parent.children
-            siblings.splice(siblings.indexOf(startingPoint))
+        if (startingPoint.type !== NodeType.Package && startingPoint.type !== NodeType.RootNode) {
+            if (startingPoint.parent) {
+                let siblings = startingPoint.parent.children
+                siblings.splice(siblings.indexOf(startingPoint))
+            }
         } else {
             startingPoint.children.forEach((child) => {
                 this._extractPackages(child)
@@ -175,12 +161,12 @@ export default class HierarchyBubbles implements Visualization {
 
     _prepareSVG(): void {
         let svg = d3
-            .select(this.container)
+            .select('#container')
             .append('svg')
             .attr('width', '100%')
             .attr('height', '100%')
-            .call(() =>
-                d3.zoom().on('zoom', (event) => {
+            .call(
+                d3.zoom().on('zoom', function (event) {
                     svg.attr('transform', event.transform)
                 })
             )
@@ -210,19 +196,17 @@ export default class HierarchyBubbles implements Visualization {
                         }
                     })
 
-                if (node.referenceToData) {
-                    const dataNode = this.hierarchyById[node.referenceToData]
+                const dataNode = this.hierarchyById[node.referenceToData]
 
-                    this.tooltip.title = node.label
-                    this.tooltip.datapoints = {
-                        label: dataNode.name,
-                        'full path': dataNode.fullPath,
-                        size: dataNode.accumulatedCodeSize,
-                        'sub tree size': dataNode.subTreeSize,
-                        type: dataNode.type
-                    }
-                    this.tooltip.setVisible()
+                this.tooltip.title = node.label
+                this.tooltip.datapoints = {
+                    label: dataNode.name,
+                    'full path': dataNode.fullPath,
+                    size: dataNode.accumulatedCodeSize,
+                    'sub tree size': dataNode.subTreeSize,
+                    type: dataNode.type
                 }
+                this.tooltip.setVisible()
             })
             .on('mousemove', (event) => {
                 this.tooltip.moveToCoordinates(event.pageY - 10, event.pageX + 10)

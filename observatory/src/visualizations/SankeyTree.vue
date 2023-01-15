@@ -1,10 +1,12 @@
 <script setup lang="ts">
-// import VennVisualization from '../ts/Visualizations/VennVisualization'
-//
-// const visualization = new VennVisualization(this.$container)
-// visualization.generate()
+import MainLayout from '../components/MainLayout.vue';
+
 </script>
 
 <template>
-    <div id="container"></div>
+    <MainLayout>
+        <template #controls ></template>
+
+        <div id="container"></div>
+   </MainLayout>
 </template>

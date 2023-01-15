@@ -1,26 +1,29 @@
 <script setup lang="ts">
-import { watch } from 'vue'
-import HierarchyNodeWithSize from '../ts/interfaces/HierarchyNodeWithSize'
+import MainLayout from '../components/MainLayout.vue'
 import HierarchyBubbles from '../ts/Visualizations/HierarchyBubbles'
+import { loadBuildReport, parseBuildReportToNodeWithSizeHierarchy } from '../ts/BuildReportsParser';
 
-interface Props {
-    data: HierarchyNodeWithSize
+async function onFileChanged(e: Event) {
+    const inputElement = e.currentTarget as HTMLInputElement
+
+    if (inputElement && inputElement.files && inputElement.files[0]) {
+        const rawData = await loadBuildReport(inputElement.files[0])
+        const data = parseBuildReportToNodeWithSizeHierarchy(rawData)
+
+        const visualization = new HierarchyBubbles(data)
+        visualization.generate()
+    }
 }
 
-const props = defineProps<Props>()
-
-const visualization = new HierarchyBubbles(this.$container)
-
-watch(props.data, (data: HierarchyNodeWithSize) => {
-    visualization.data = data
-    visualization.generate()
-})
-
-visualization.data = props.data
-
-// TODO: add the custom controls to start and continue the simulation
 </script>
 
 <template>
-    <div id="container"></div>
+   <MainLayout>
+        <template #controls >
+            <label for=""></label>
+            <input id="input-build-report" type="file" accept=".txt" @change="onFileChanged">
+        </template>
+
+        <div id="container"></div>
+   </MainLayout>
 </template>

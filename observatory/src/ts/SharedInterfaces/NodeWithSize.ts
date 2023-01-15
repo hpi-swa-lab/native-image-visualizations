@@ -1,5 +1,5 @@
 import Node from './Node'
-import { NumberOfBytes } from '../types/utils'
+import { NumberOfBytes } from '../SharedTypes/utils'
 
 export default interface NodeWithSize extends Omit<Node, 'children'> {
     size: NumberOfBytes
