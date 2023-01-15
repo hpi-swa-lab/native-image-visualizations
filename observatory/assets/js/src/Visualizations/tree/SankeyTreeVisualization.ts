@@ -18,24 +18,8 @@ import TreeVisualization from "./TreeVisualization";
 
 export default class SankeyTreeVisualization extends TreeVisualization {
 
-
     constructor(universeTexts: string[], universeNames: string[]) {
-        this.universesMetadata = {}
-        this.filter = {
-            diffing: {
-                universes: new Set(['0', '1']),
-                // universes: new Set(
-                //     Object.keys(this.universesMetadata).filter((key) => key.length == 1)
-                // ),
-                showUnmodified: false
-            },
-            sorting: {
-                option: SortingOption.NAME,
-                order: SortingOrder.ASCENDING
-            }
-        }
-
-        this.tree = this.buildTree(universeTexts, universeNames)
+        super(universeTexts, universeNames)
     }
 
     // #############################################################################

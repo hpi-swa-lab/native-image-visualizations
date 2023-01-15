@@ -1,5 +1,5 @@
 import HierarchyBubbles from './Visualizations/HierarchyBubbles'
-import VennVisualization from './Visualizations/VennVisualization'
+import VennVisualization from './Visualizations/venn/VennVisualization'
 import SankeyTreeVisualization from './Visualizations/tree/SankeyTreeVisualization'
 import BubbleTreeVisualization from './Visualizations/tree/BubbleTreeVisualization'
 import {

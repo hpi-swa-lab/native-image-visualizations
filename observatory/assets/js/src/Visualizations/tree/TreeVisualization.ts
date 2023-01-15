@@ -47,9 +47,6 @@ export default class TreeVisualization implements Visualization {
     constructor(universeTexts: string[], universeNames: string[]) {
         this.universesMetadata = {}
         this.filter = {
-            settings: {
-                displayChangeBreakdown: true
-            },
             diffing: {
                 universes: new Set(['0', '1']),
                 // universes: new Set(

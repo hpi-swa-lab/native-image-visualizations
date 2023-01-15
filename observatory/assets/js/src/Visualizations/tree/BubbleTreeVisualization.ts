@@ -7,6 +7,7 @@ import { COLOR_UNMODIFIED, MODIFIED } from './TreeConstants'
 import { Transition } from 'd3'
 
 export default class BubbleTreeVisualization extends TreeVisualization {
+
     constructor(universeTexts: string[], universeNames: string[]) {
         super(universeTexts, universeNames)
     }
