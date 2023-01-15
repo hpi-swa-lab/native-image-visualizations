@@ -130,8 +130,6 @@ export default class HierarchyBubbles implements Visualization {
             result = result.concat(this._constructEdges(child))
         })
 
-        debugger
-
         return result
     }
 
