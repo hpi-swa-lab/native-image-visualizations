@@ -3,6 +3,7 @@
 <script src="zip.min.js"></script>
 <script>
     var simulate_purge = Module.cwrap("simulate_purge", "number", ["number"]);
+    var show_reachability = Module.cwrap("show_reachability", "number", ["number"]);
     var init = Module.cwrap("init", "number", ["number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number"]);
 
     function pressBtn(str){
@@ -13,6 +14,22 @@
         var resValue = UTF8ToString(retPtr);
 
         document.getElementById("Output").value = resValue
+
+        // dealloc memory
+        Module._free(ptr);
+        Module._free(retPtr);
+
+        printReachability(document.getElementById("Input_reachability").value)
+    }
+
+    function printReachability(str){
+        var ptr  = allocateUTF8(str)
+
+        var retPtr = show_reachability(ptr)
+
+        var resValue = UTF8ToString(retPtr);
+
+        document.getElementById("Output_reachability").value = resValue
 
         // dealloc memory
         Module._free(ptr);
@@ -84,6 +101,8 @@
 <button title="upload" onClick="doSomething()">Upload CausalityExport</button>
 <br/>
 <label for="Input"></label><textarea id="Input" cols="100" rows="5" spellcheck="false" oninput="pressBtn(this.value)"></textarea>
+<label for="Input"></label><textarea id="Input_reachability" cols="100" rows="5" spellcheck="false" oninput="printReachability(this.value)"></textarea>
 <br/>
 <label for="Output"></label><textarea id="Output" cols="100" spellcheck="false" rows="20"></textarea>
+<label for="Output"></label><textarea id="Output_reachability" cols="100" spellcheck="false" rows="20"></textarea>
 <input type="file" id="file-input" accept="application/zip" hidden>

@@ -6,11 +6,14 @@
 #include "model.h"
 #include "input.h"
 #include "analysis.h"
+#include "reachability.h"
 
 
 static std::optional<model> purge_model;
 static std::optional<BFS> bfs;
-static vector<bool> all_methods_visited;
+static std::optional<BFS::Result> all;
+
+static std::optional<BFS::Result> current_purged_result;
 
 extern "C" void EMSCRIPTEN_KEEPALIVE init(
         const uint8_t* types_data, size_t types_len,
@@ -47,17 +50,19 @@ extern "C" void EMSCRIPTEN_KEEPALIVE init(
 
     cerr << "Running DFS on original graph...";
 
-    BFS::Result all = bfs->run<false>();
+    BFS::Result all = bfs->run<true>();
 
     cerr << " " << std::count(all.method_visited.begin(), all.method_visited.end(), true) << " methods reachable!\n";
 
-    all_methods_visited = std::move(all.method_visited);
+    ::all.emplace(std::move(all));
 }
 
 extern "C" char* EMSCRIPTEN_KEEPALIVE simulate_purge(const char* methods)
 {
     if(!purge_model)
+    {
         return nullptr;
+    }
 
     auto& m = *purge_model;
 
@@ -84,7 +89,9 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE simulate_purge(const char* methods)
                 auto it = m.method_ids_by_name.find(line);
 
                 if(it == m.method_ids_by_name.end())
+                {
                     return nullptr;
+                }
 
                 purged_mids.push_back(it->second);
             }
@@ -92,13 +99,16 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE simulate_purge(const char* methods)
     }
 
     if(purged_mids.empty())
+    {
+        current_purged_result.reset();
         return nullptr;
+    }
 
     cerr << "Running DFS on purged graph...";
 
     auto start = std::chrono::system_clock::now();
 
-    BFS::Result after_purge = bfs->run<false>(purged_mids);
+    BFS::Result after_purge = bfs->run<true>(purged_mids);
 
     auto end = std::chrono::system_clock::now();
     auto elapsed_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
@@ -108,16 +118,41 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE simulate_purge(const char* methods)
 
     size_t n_purged = 0;
 
-    for(size_t i = 1; i < all_methods_visited.size(); i++)
+    for(size_t i = 1; i < all->method_visited.size(); i++)
     {
-        if(all_methods_visited[i] && !after_purge.method_visited[i])
+        if(all->method_visited[i] && !after_purge.method_visited[i])
         {
             n_purged++;
             output << m.method_names[i] << endl;
         }
     }
 
+    current_purged_result.emplace(std::move(after_purge));
+
     cerr << n_purged << " method nodes purged!" << endl;
+
+    string s(output.str());
+    char* res = new char[s.size() + 1];
+    copy(s.begin(), s.end(), res);
+    res[s.size()] = 0;
+    return res;
+}
+
+extern "C" char* EMSCRIPTEN_KEEPALIVE show_reachability(const char* method)
+{
+    BFS::Result* bfsresult = current_purged_result ? &*current_purged_result : &*all;
+
+    auto& m = *purge_model;
+
+    auto it = m.method_ids_by_name.find(method);
+
+    if(it == m.method_ids_by_name.end())
+        return nullptr;
+
+    method_id mid = it->second;
+
+    stringstream output;
+    print_reachability(output, m.adj, *bfsresult, m.method_names, m.type_names, mid);
 
     string s(output.str());
     char* res = new char[s.size() + 1];
