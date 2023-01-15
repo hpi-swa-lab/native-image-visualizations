@@ -37,10 +37,10 @@
                         container.removeChild(container.lastChild)
                     }
 
-                    if (input.files.length === 0) {
-                        errorMessages.push("I'm missing the input file.")
-                        return
-                    }
+                    // if (input.files.length === 0) {
+                    //     errorMessages.push("I'm missing the input file.")
+                    //     return
+                    // }
 
                     visualization = await Observatory.generateHierarchyBubbles(input.files[0])
                     visualization.continueSimulation(() => {

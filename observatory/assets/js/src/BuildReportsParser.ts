@@ -62,10 +62,13 @@ export function loadCSVFile(file: File): Promise<unknown[]> {
  * @param {File} file: the input file to parse
  * @returns {Promise<Record<string, any>[]>} a promise which contains the parsed data if resolved
  */
-export function loadBuildReport(file: File): Promise<Record<string, any>[]> {
-    return new Promise(async (resolve, reject) => {
-        let rawText: string = await loadTextFile(file)
+export async function loadBuildReport(file: File): Promise<Record<string, any>[]> {
+    let rawText: string = await loadTextFile(file)
+    return loadBuildReportFromString(rawText)
+}
 
+export function loadBuildReportFromString(rawText: string): Promise<Record<string, any>[]> {
+    return new Promise(async (resolve, reject) => {
         const header =
             'Code Size; Nodes Parsing; Nodes Before; Nodes After; Is Trivial; Deopt Target; Code Size; Nodes Parsing; Nodes Before; Nodes After; Deopt Entries; Deopt During Call; Entry Points; Direct Calls; Virtual Calls; Method'
         const firstLineOutsideData = 'Size all methods'

@@ -3,14 +3,24 @@ import VennVisualization from './Visualizations/venn/VennVisualization'
 import SankeyTreeVisualization from './Visualizations/tree/SankeyTreeVisualization'
 import BubbleTreeVisualization from './Visualizations/tree/BubbleTreeVisualization'
 import {
-    loadBuildReport,
+    loadBuildReport, loadBuildReportFromString,
     loadTextFile,
     parseBuildReportToNodeWithSizeHierarchy
 } from './BuildReportsParser'
 import * as d3 from 'd3'
 
-export async function generateHierarchyBubbles(file: File): Promise<HierarchyBubbles> {
-    const reportData = await loadBuildReport(file)
+export async function generateHierarchyBubbles(file: File|null|undefined): Promise<HierarchyBubbles> {
+    console.log(file)
+    let text: string
+    if (!file) {
+        // TODO remove later when not needed
+        const filePath = '../assets/data/method_histogram_micronaut.txt'
+        text = await d3.text(filePath)
+        console.log("fetched hard-coded file")
+    } else {
+        text = await loadTextFile(file)
+    }
+    const reportData = await loadBuildReportFromString(text)
     const hierarchy = parseBuildReportToNodeWithSizeHierarchy(reportData, true)
 
     const visualization = new HierarchyBubbles(hierarchy)
