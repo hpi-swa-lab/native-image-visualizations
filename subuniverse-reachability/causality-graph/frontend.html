@@ -19,7 +19,8 @@
         Module._free(ptr);
         Module._free(retPtr);
 
-        printReachability(document.getElementById("Input_reachability").value)
+        if(retPtr)
+            printReachability(document.getElementById("Input_reachability").value)
     }
 
     function printReachability(str){
@@ -103,6 +104,6 @@
 <label for="Input"></label><textarea id="Input" cols="100" rows="5" spellcheck="false" oninput="pressBtn(this.value)"></textarea>
 <label for="Input"></label><textarea id="Input_reachability" cols="100" rows="5" spellcheck="false" oninput="printReachability(this.value)"></textarea>
 <br/>
-<label for="Output"></label><textarea id="Output" cols="100" spellcheck="false" rows="20"></textarea>
-<label for="Output"></label><textarea id="Output_reachability" cols="100" spellcheck="false" rows="20"></textarea>
+<label for="Output"></label><textarea id="Output" cols="100" spellcheck="false" rows="20" readonly="readonly"></textarea>
+<label for="Output"></label><textarea id="Output_reachability" cols="100" spellcheck="false" rows="20" readonly="readonly"></textarea>
 <input type="file" id="file-input" accept="application/zip" hidden>

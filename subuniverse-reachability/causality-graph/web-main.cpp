@@ -57,52 +57,59 @@ extern "C" void EMSCRIPTEN_KEEPALIVE init(
     ::all.emplace(std::move(all));
 }
 
+static vector<method_id> parse_methods(const model& m, const char* methods)
+{
+    vector<method_id> purged_mids;
+
+    stringstream methods_stream(methods);
+    string line;
+
+    while(std::getline(methods_stream, line, '\n'))
+    {
+        if(line.ends_with('*'))
+        {
+            string_view prefix = string_view(line).substr(0, line.size() - 1);
+
+            for(size_t i = 1; i < m.method_names.size(); i++)
+            {
+                if(m.method_names[i].starts_with(prefix))
+                    purged_mids.push_back(i);
+            }
+        }
+        else
+        {
+            auto it = m.method_ids_by_name.find(line);
+
+            if(it == m.method_ids_by_name.end())
+            {
+                purged_mids.clear();
+                return purged_mids;
+            }
+
+            purged_mids.push_back(it->second);
+        }
+    }
+
+    return purged_mids;
+}
+
 extern "C" char* EMSCRIPTEN_KEEPALIVE simulate_purge(const char* methods)
 {
     if(!purge_model)
+        return nullptr;
+
+    if(string_view(methods).empty())
     {
+        current_purged_result.reset();
         return nullptr;
     }
 
     auto& m = *purge_model;
 
-    vector<method_id> purged_mids;
+    vector<method_id> purged_mids = parse_methods(m, methods);
 
-    {
-        stringstream methods_stream(methods);
-        string line;
-
-        while(std::getline(methods_stream, line, '\n'))
-        {
-            if(line.ends_with('*'))
-            {
-                string_view prefix = string_view(line).substr(0, line.size() - 1);
-
-                for(size_t i = 1; i < m.method_names.size(); i++)
-                {
-                    if(m.method_names[i].starts_with(prefix))
-                        purged_mids.push_back(i);
-                }
-            }
-            else
-            {
-                auto it = m.method_ids_by_name.find(line);
-
-                if(it == m.method_ids_by_name.end())
-                {
-                    return nullptr;
-                }
-
-                purged_mids.push_back(it->second);
-            }
-        }
-    }
-
-    if(purged_mids.empty())
-    {
-        current_purged_result.reset();
+    if(purged_mids.empty()) // Parsing error
         return nullptr;
-    }
 
     cerr << "Running DFS on purged graph...";
 
@@ -138,21 +145,34 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE simulate_purge(const char* methods)
     return res;
 }
 
-extern "C" char* EMSCRIPTEN_KEEPALIVE show_reachability(const char* method)
+extern "C" char* EMSCRIPTEN_KEEPALIVE show_reachability(const char* methods)
 {
     BFS::Result* bfsresult = current_purged_result ? &*current_purged_result : &*all;
 
     auto& m = *purge_model;
 
-    auto it = m.method_ids_by_name.find(method);
+    vector<method_id> purged_mids = parse_methods(m, methods);
 
-    if(it == m.method_ids_by_name.end())
+    if(purged_mids.empty())
         return nullptr;
 
-    method_id mid = it->second;
-
     stringstream output;
-    print_reachability(output, m.adj, *bfsresult, m.method_names, m.type_names, mid);
+
+    vector<bool> visited(m.adj.n_methods());
+    bool any_reachable = false;
+
+    for(method_id mid : purged_mids)
+    {
+        if(!bfsresult->method_visited[mid.id])
+            continue;
+
+        any_reachable = true;
+        TreeIndenter indentation;
+        print_reachability_of_method(output, m.adj, m.method_names, m.type_names, *bfsresult, mid, visited, indentation);
+    }
+
+    if(!any_reachable)
+        output << "Not reachable" << endl;
 
     string s(output.str());
     char* res = new char[s.size() + 1];
