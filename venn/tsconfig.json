@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "module": "system",
+    "removeComments": true,
+    "preserveConstEnums": true,
+    "outFile": "./build/tsc.js",
+    "sourceMap": true
+  },
+  "include": ["src/*"],
+}
