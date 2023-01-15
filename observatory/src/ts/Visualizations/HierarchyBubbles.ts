@@ -9,6 +9,8 @@ import HierarchyNodeWithSize from '../SharedInterfaces/HierarchyNodeWithSize'
 import { NodeType } from '../SharedInterfaces/Node'
 
 export default class HierarchyBubbles implements Visualization {
+    container: HTMLElement | null
+
     hierarchy: HierarchyNodeWithSize
     hierarchyById: Record<number, HierarchyNodeWithSize>
 
@@ -21,6 +23,8 @@ export default class HierarchyBubbles implements Visualization {
     simulation: d3.Simulation<CircleNode, undefined> = forceSimulation<CircleNode>([])
 
     constructor(hierarchy: HierarchyNodeWithSize) {
+        this.container = document.getElementById('hierarchy-bubbles-container')
+
         this._extractPackages(hierarchy)
         this.hierarchy = hierarchy
 
@@ -32,7 +36,9 @@ export default class HierarchyBubbles implements Visualization {
     }
 
     generate(): void {
-        document.body.appendChild(this.tooltip.widget)
+        if (!this.container) return
+
+        this.container.appendChild(this.tooltip.widget)
         ;[this.nodes, this.nodesById] = this._constructNodes(this.hierarchy)
         this.edges = this._constructEdges(this.hierarchy)
 
@@ -161,7 +167,7 @@ export default class HierarchyBubbles implements Visualization {
 
     _prepareSVG(): void {
         let svg = d3
-            .select('#container')
+            .select(this.container)
             .append('svg')
             .attr('width', '100%')
             .attr('height', '100%')
