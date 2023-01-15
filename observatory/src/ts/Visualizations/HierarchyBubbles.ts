@@ -125,7 +125,6 @@ export default class HierarchyBubbles implements Visualization {
                         weight: 1
                     })
                 }
-                
             }
 
             result = result.concat(this._constructEdges(child))

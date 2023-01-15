@@ -9,7 +9,7 @@
         "sourceType": "module"
     },
     "plugins": ["only-warn"],
-    "ignorePatterns": ["/node_modules", "/external"],
+    "ignorePatterns": ["/node_modules"],
     "rules": {
         "no-console": ["error", { "allow": ["warn", "error"] }],
         "camelcase": [1],

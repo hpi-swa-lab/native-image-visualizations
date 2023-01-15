@@ -6,21 +6,20 @@ import { loadBuildReport, parseBuildReportToNodeWithSizeHierarchy } from '../ts/
 import { removeChildren } from '../ts/utils'
 import HierarchyNodeWithSize from '../ts/SharedInterfaces/HierarchyNodeWithSize'
 
+const inputBuildReport = ref<HTMLInputElement>()
 const container = ref<HTMLDivElement>()
 
 let data: HierarchyNodeWithSize | undefined
 let visualization: HierarchyBubbles | undefined
 
-async function onFileChanged(e: Event) {
-    const inputElement = e.currentTarget as HTMLInputElement
+async function startSimulation() {
+    const inputElement = inputBuildReport.value
 
     if (inputElement && inputElement.files && inputElement.files[0]) {
         const rawData = await loadBuildReport(inputElement.files[0])
         data = parseBuildReportToNodeWithSizeHierarchy(rawData)
     }
-}
 
-function startSimulation() {
     if (!data) return
 
     if (container.value !== undefined) {
@@ -31,6 +30,7 @@ function startSimulation() {
         visualization = new HierarchyBubbles(data)
         visualization.generate()
     }
+
     visualization?.continueSimulation()
 }
 </script>
@@ -39,7 +39,7 @@ function startSimulation() {
     <MainLayout>
         <template #controls>
             <label for=""></label>
-            <input id="input-build-report" type="file" accept=".txt" @change="onFileChanged" />
+            <input id="inputBuildReport" type="file" accept=".txt" />
             <button class="btn btn-primary" @click="startSimulation">Start</button>
         </template>
 
