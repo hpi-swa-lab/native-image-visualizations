@@ -37,9 +37,7 @@ async function startSimulation() {
 
 <template>
     <MainLayout>
-        <template #title>
-            Hierarchy Bubbles
-        </template>
+        <template #title> Hierarchy Bubbles </template>
         <template #controls>
             <label for=""></label>
             <input ref="inputBuildReport" type="file" accept=".txt" />
