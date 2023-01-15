@@ -7,6 +7,13 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Tree Line</title>
 
+    <link
+            rel="icon"
+            type="image/x-icon"
+            href="../assets/images/graphic_bars_14042.ico"
+    />
+
+    <link rel="stylesheet" type="text/css" href="/assets/css/dist/main.css" />
     <style>
         body {
             margin: 0;
@@ -17,8 +24,41 @@
 </head>
 
 <body>
+    <div class="cb-control-container">
+
+        <h1>Tree Line</h1>
+
+        <label for="input-file">Input files:</label>
+        <input type="file" id="input-file" accept=".txt" multiple disabled/>
+
+        <button id="button-confirm">Generate Graph</button>
+    </div>
+
     <script type="module">
-        const visualization = Observatory.generateTreeLine()
+        const input = document.getElementById('input-file')
+        const buttonConfirm = document.getElementById('button-confirm')
+        const container = document.getElementById('container')
+
+        buttonConfirm.addEventListener('click', async () => {
+            // TODO comment in for final version
+            /*if (input.files.length < 2 ) {
+                    errorMessages.push("I'm missing the input file.")
+                    return
+                } else*/
+            if (input.files.length > 2) {
+                errorMessages.push('Too many file, I only need 2 input files.')
+                return
+            }
+
+            await Observatory.generateSankeyTree()
+
+            buttonConfirm.innerHTML = 'Continue Simulation'
+        })
+    </script>
+
+
+    <script type="module">
+        await Observatory.generateTreeLine()
     </script>
 </body>
 

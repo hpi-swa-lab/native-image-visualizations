@@ -36,6 +36,29 @@ export function generateVenn() {
     venn.generate()
 }
 
+export async function generateTreeLine() {
+    let universes = new Map()
+    for (const example of ['micronautguide-empty', 'micronautguide-conference']) {
+        const text = await d3.text(`../assets/data/used_methods_${example}.txt`)
+        universes.set(example, withSizes(parseUsedMethods(text)))
+    }
+
+    console.log('Creating tree line visualization')
+    let tree = new TreeLineVisualization(
+        universes,
+        new Map(
+            Object.entries({
+                // 'helloworld': '#f28e2c',
+                'micronautguide-empty': '#1b9e77',
+                // 'micronaut': '#ffdd00',
+                'micronautguide-conference': '#72286f'
+            })
+        )
+    )
+    console.log('Generating visualization')
+    tree.generate()
+}
+
 export async function generateBubbleTree(fileList: FileList) {
     let texts: string[]
     let universeNames: string[]
@@ -64,30 +87,6 @@ export async function generateBubbleTree(fileList: FileList) {
     let tree = new BubbleTreeVisualization(texts, universeNames)
     tree.generate()
 }
-
-export async function generateTreeLine() {
-    let universes = new Map()
-    for (const example of ['micronaut', 'micronaut-no-log4j']) {
-        const text = await d3.text(`/data/used-methods-${example}.txt`)
-        universes.set(example, withSizes(parseUsedMethods(text)))
-    }
-
-    console.log('Creating tree line visualization')
-    let tree = new TreeLineVisualization(
-        universes,
-        new Map(
-            Object.entries({
-                // 'helloworld': '#f28e2c',
-                micronaut: '#1b9e77',
-                // 'micronaut': '#ffdd00',
-                'micronaut-no-log4j': '#72286f'
-            })
-        )
-    )
-    console.log('Generating visualization')
-    tree.generate()
-}
-
 
 export async function generateSankeyTree(fileList: FileList) {
     let texts: string[]
