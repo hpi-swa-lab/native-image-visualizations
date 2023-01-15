@@ -1,5 +1,9 @@
 import { Color } from 'd3'
 
+export function deepCopy(obj: any): any {
+    return JSON.parse(JSON.stringify(obj))
+}
+
 export function randomColor(): string {
     let color = '#'
 
@@ -29,7 +33,7 @@ export function randomInteger(min: number, max: number): number {
 }
 
 export function removeChildren(widget: HTMLElement) {
-    while (widget.firstChild) {
+    while (widget.lastChild) {
         widget.removeChild(widget.lastChild)
     }
 }

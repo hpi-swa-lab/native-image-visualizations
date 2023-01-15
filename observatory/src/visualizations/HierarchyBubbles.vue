@@ -2,10 +2,9 @@
 import { ref } from 'vue'
 import MainLayout from '../components/MainLayout.vue'
 import HierarchyBubbles from '../ts/Visualizations/HierarchyBubbles'
-import { loadBuildReport, parseBuildReportToNodeWithSizeHierarchy } from '../ts/BuildReportsParser';
-import { removeChildren } from '../ts/utils';
-import HierarchyNodeWithSize from '../ts/SharedInterfaces/HierarchyNodeWithSize';
-
+import { loadBuildReport, parseBuildReportToNodeWithSizeHierarchy } from '../ts/BuildReportsParser'
+import { removeChildren } from '../ts/utils'
+import HierarchyNodeWithSize from '../ts/SharedInterfaces/HierarchyNodeWithSize'
 
 const container = ref<HTMLDivElement>()
 
@@ -22,29 +21,28 @@ async function onFileChanged(e: Event) {
 }
 
 function startSimulation() {
-    if (!data) return;
+    if (!data) return
 
     if (container.value !== undefined) {
         removeChildren(container.value)
     }
-    
+
     if (!visualization) {
         visualization = new HierarchyBubbles(data)
         visualization.generate()
     }
     visualization?.continueSimulation()
 }
-
 </script>
 
 <template>
-   <MainLayout>
-        <template #controls >
+    <MainLayout>
+        <template #controls>
             <label for=""></label>
-            <input id="input-build-report" type="file" accept=".txt" @change="onFileChanged">
+            <input id="input-build-report" type="file" accept=".txt" @change="onFileChanged" />
             <button class="btn btn-primary" @click="startSimulation">Start</button>
         </template>
 
         <div class="w-full h-full" id="hierarchy-bubbles-container"></div>
-   </MainLayout>
+    </MainLayout>
 </template>
