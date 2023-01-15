@@ -52,7 +52,7 @@ interface Number {
     // `3.clamp(4, 6)` returns 4.
     clamp(min: number, max: number): number
 }
-Number.prototype.clamp = function (min, max) {
+Number.prototype.clamp = function (min:number, max:number) {
     return Math.min(Math.max(this, min), max)
 }
 

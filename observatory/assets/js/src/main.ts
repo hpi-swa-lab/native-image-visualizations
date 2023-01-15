@@ -9,6 +9,7 @@ import {
     parseBuildReportToNodeWithSizeHierarchy
 } from './BuildReportsParser'
 import * as d3 from 'd3'
+import {parseUsedMethods, withSizes} from "./parser";
 
 export async function generateHierarchyBubbles(file: File|null|undefined): Promise<HierarchyBubbles> {
     console.log(file)
