@@ -8,7 +8,8 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-dist
+dist/*
+!dist/.gitkeep
 dist-ssr
 *.local
 
@@ -22,12 +23,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
-# TODO: check what we need here:
-node_modules/
-.idea/
-.vscode/
-assets/*/dist/
-!assets/css/dist/.gitkeep
-!assets/js/dist/.gitkeep
-
