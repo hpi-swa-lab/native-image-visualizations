@@ -5,39 +5,36 @@ The observatory is a collection of tools designed to inspect GraalVM Native Imag
 ## Setup
 
 1. Install Node & npm ( see https://docs.npmjs.com/downloading-and-installing-node-js-and-npm )
-2. Go to the root directory of the project containing `package.json` and install dependencies: `npm install`
+2. Go to the root directory of the project containing `package.json` and install dependencies: `npm ci`
+3. You're good to go
+
+## IDE Setup
+
+For VSCode the extensions [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin) are recommended by vite.
 
 ## Development
 
-<!-- TODO: update available commands -->
+As we use vite for development, there is some conveniance that comes with it. Have a look at [this stackoverflow thread](https://stackoverflow.com/questions/71703933/what-is-the-difference-between-vite-and-vite-preview) for more information. In short:
 
-There are some conveniance scripts for development. Use them to you advantage:
+- `npm run dev` sstarts a local web server with hot module reloading for development.
+- `npm run build` builds the project and outputs it to the folder ./dist
+- `npm run preview` starts a local webserver that serves the version in ./dist
 
--   `npm run build` is a convenience command that runs `bundle` and `css`
--   `npm run clean-build` runs `clean` before `build`
--   `npm run bundle` transpiles and bundles typescript files to [assets/js/dist/observatory.umd.js](./assets/js/dist/observatory.umd.js)
--   `npm run css` compiles the scss sources into a css file and writes it to [assets/css/dist/main.css](./assets/css/dist/main.css)
--   `npm run clean` removes `assets/css/dist`, `assets/js/dist` and any containing files
--   `npm run eslint-{check|autofix}` runs eslint (a js linter) on all source code files. Either the problems are marked or fixed directly
--   `npm run prettier-{check|autofix}` runs prettier (a code formatter) on all source code files. Either the problems are marked or fixed directly
--   `npm run server` starts a development server on [localhost:8080](localhost:8080)
--   `npm run watch` watches for code changes and builds automatically on any css, html, js or ts changes in `assets/**/src/*`
--   `npm run start` is a convenience command that runs `watch` and `server` in parallel
--   `npm run test` uses the check methods for eslint and prettier as tests
+For linting and prettifying there also also commands:
 
----
+- `npm run eslint-{check|autofix}` runs eslint with the project configuration. If autofix is used, it will try to solve the problems itself.
+- `npm run prettier-{check|autofix}` runs prettier with the project configuration. If autofix is used, it will reformat all files managed by prettier.
+- `npm run test` is a conveniance script that runs both `eslint-check` and `prettier-check`. Mainly used in CI-Pipelines
 
-<!-- TODO: check what we need here: -->
+## Other information
 
-# Vue 3 + TypeScript + Vite
+### Vite
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+If you did not work with vite before, have a look at the [documentation](https://vitejs.dev/) and the [getting started guide](https://vitejs.dev/guide/).
 
-## Recommended IDE Setup
+### Type Support For `.vue` Imports in TS
 
--   [VS Code](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
-
-## Type Support For `.vue` Imports in TS
+(from the vite project template)
 
 TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin) to make the TypeScript language service aware of `.vue` types.
 
