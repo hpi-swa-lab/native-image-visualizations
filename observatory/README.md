@@ -16,15 +16,15 @@ For VSCode the extensions [Volar](https://marketplace.visualstudio.com/items?ite
 
 As we use vite for development, there is some conveniance that comes with it. Have a look at [this stackoverflow thread](https://stackoverflow.com/questions/71703933/what-is-the-difference-between-vite-and-vite-preview) for more information. In short:
 
-- `npm run dev` sstarts a local web server with hot module reloading for development.
-- `npm run build` builds the project and outputs it to the folder ./dist
-- `npm run preview` starts a local webserver that serves the version in ./dist
+-   `npm run dev` sstarts a local web server with hot module reloading for development.
+-   `npm run build` builds the project and outputs it to the folder ./dist
+-   `npm run preview` starts a local webserver that serves the version in ./dist
 
 For linting and prettifying there also also commands:
 
-- `npm run eslint-{check|autofix}` runs eslint with the project configuration. If autofix is used, it will try to solve the problems itself.
-- `npm run prettier-{check|autofix}` runs prettier with the project configuration. If autofix is used, it will reformat all files managed by prettier.
-- `npm run test` is a conveniance script that runs both `eslint-check` and `prettier-check`. Mainly used in CI-Pipelines
+-   `npm run eslint-{check|autofix}` runs eslint with the project configuration. If autofix is used, it will try to solve the problems itself.
+-   `npm run prettier-{check|autofix}` runs prettier with the project configuration. If autofix is used, it will reformat all files managed by prettier.
+-   `npm run test` is a conveniance script that runs both `eslint-check` and `prettier-check`. Mainly used in CI-Pipelines
 
 ## Other information
 
