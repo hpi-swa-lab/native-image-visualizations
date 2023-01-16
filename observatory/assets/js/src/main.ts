@@ -12,6 +12,11 @@ import * as d3 from 'd3'
 import {parseUsedMethods, withSizes} from "./parser";
 import FileInput, {FileInputContainer} from "./Components/FileInput";
 
+export const FILE_NAME_1 = 'micronautguide-empty';
+export const FILE_NAME_2 = 'micronaut-mushop-carts-app';
+const HISTOGRAM_FILE_NAME = 'method_histogram_micronaut';
+
+
 export function appendFileInput(visualizationCallback: Function, browsingDisabled: boolean = false): FileInputContainer {
     return new FileInput().create(visualizationCallback, browsingDisabled)
 }
@@ -21,7 +26,7 @@ export async function generateHierarchyBubbles(file: File|null|undefined): Promi
     let text: string
     if (!file) {
         // TODO remove later when not needed
-        const filePath = '../assets/data/method_histogram_micronaut.txt'
+        const filePath = `../assets/data/${HISTOGRAM_FILE_NAME}.txt`
         text = await d3.text(filePath)
         console.log("fetched hard-coded file")
     } else {
@@ -43,7 +48,7 @@ export function generateVenn() {
 
 export async function generateTreeLine() {
     let universes = new Map()
-    for (const example of ['micronautguide-empty', 'micronautguide-conference']) {
+    for (const example of [FILE_NAME_1, FILE_NAME_2]) {
         const text = await d3.text(`../assets/data/used_methods_${example}.txt`)
         universes.set(example, withSizes(parseUsedMethods(text)))
     }
@@ -54,9 +59,9 @@ export async function generateTreeLine() {
         new Map(
             Object.entries({
                 // 'helloworld': '#f28e2c',
-                'micronautguide-empty': '#1b9e77',
+                FILE_1: '#1b9e77',
                 // 'micronaut': '#ffdd00',
-                'micronautguide-conference': '#72286f'
+                FILE_2: '#72286f'
             })
         )
     )
@@ -99,8 +104,8 @@ export async function generateSankeyTree(fileList: FileList) {
 async function getLocalTreeTexts(): Promise<[string[], string[]]>{
     console.log('fetch')
     const filePaths = [
-        '../assets/data/used_methods_micronautguide-empty.txt',
-        '../assets/data/used_methods_micronautguide-conference.txt'
+        `../assets/data/used_methods_${FILE_NAME_1}.txt`,
+        `../assets/data/used_methods_${FILE_NAME_2}.txt`
         // '../assets/data/used_methods_micronautguide.txt',
         // '../assets/data/used_methods_helloworld.txt'
     ]

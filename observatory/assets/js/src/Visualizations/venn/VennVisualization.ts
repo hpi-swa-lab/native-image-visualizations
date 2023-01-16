@@ -2,18 +2,22 @@ import Visualization from '../Visualization'
 import * as d3 from 'd3'
 import * as venn from 'venn.js'
 import {get_universe_intersections, intersections_between, universe_to_venn_set, sameMembers,  SEPARATOR} from "./data_formatter";
+import {FILE_NAME_1, FILE_NAME_2} from "../../main";
 
 export default class VennVisualization implements Visualization {
     constructor() {}
 
     generate(): void {
         Promise.all([
-            d3.csv("../assets/data/venn/HW.csv"),
-            d3.csv("../assets/data/venn/MB.csv"),
-            d3.csv("../assets/data/venn/MB4j.csv"),
+            d3.csv(`../assets/data/venn/used_packages_${FILE_NAME_1}.csv`),
+            d3.csv(`../assets/data/venn/used_packages_${FILE_NAME_2}.csv`),
+            // d3.csv("../assets/data/venn/HW.csv"),
+            // d3.csv("../assets/data/venn/MB.csv"),
+            // d3.csv("../assets/data/venn/MB4j.csv"),
         ]).then(function(files) {
             // Files to universes
-            const names = ['Hello World', 'Micronaut Basic', 'Micronaut w/ log4j'];
+            const names = [FILE_NAME_1, FILE_NAME_2];
+            // const names = ['Hello World', 'Micronaut Basic', 'Micronaut w/ log4j'];
             const universes = files.map((file, index) =>
                 Object.create({}, {
                     name: {value: names[index]},
