@@ -4,8 +4,8 @@ import MainLayout from '../components/MainLayout.vue'
 
 <template>
     <MainLayout>
-        <template #controls></template>
+        <template #controls />
 
-        <div id="container"></div>
+        <div id="container" />
     </MainLayout>
 </template>

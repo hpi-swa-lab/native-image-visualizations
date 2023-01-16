@@ -1,8 +1,8 @@
-import HierarchyNode from './SharedInterfaces/HierarchyNode'
 import { parse } from 'papaparse'
+import { json } from 'd3'
+import HierarchyNode from './SharedInterfaces/HierarchyNode'
 import { NodeType } from './SharedInterfaces/Node'
 import HierarchyNodeWithSize from './SharedInterfaces/HierarchyNodeWithSize'
-import { json } from 'd3'
 
 export function loadTextFile(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -116,10 +116,7 @@ export function loadBuildReport(file: File): Promise<Record<string, any>[]> {
  *
  * @returns {HierarchyNode} The parsed package hierarchy's root node
  */
-export function parseToPackageHierarchy(
-    hierarchyString: string,
-    clean: boolean = false
-): HierarchyNode {
+export function parseToPackageHierarchy(hierarchyString: string, clean = false): HierarchyNode {
     const data: HierarchyNode = {
         id: 0,
         parent: null,
@@ -132,7 +129,7 @@ export function parseToPackageHierarchy(
 
     let currentChildren: HierarchyNode[] = data.children
     let parent = data
-    let counter: number = 1
+    let counter = 1
 
     let methodIds = hierarchyString.split('\n')
 
@@ -242,7 +239,7 @@ export function parseToPackageHierarchy(
  */
 export function parseBuildReportToNodeWithSizeHierarchy(
     buildReportData: Record<string, any>[],
-    clean: boolean = false
+    clean = false
 ): HierarchyNodeWithSize {
     const root: HierarchyNodeWithSize = {
         id: 0,
@@ -388,7 +385,7 @@ function _getClassList(name: string): string[] {
 }
 
 function _getMethodName(path: string): string {
-    let parameters: string = ''
+    let parameters = ''
 
     // check if it has two paranthesis aka the method parameters and return type
     if (path.match(/\(.*\).*$/)) {

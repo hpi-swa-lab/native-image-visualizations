@@ -1,10 +1,10 @@
 import * as d3 from 'd3'
+import { forceCollide, forceLink, forceSimulation } from 'd3'
 import Visualization from './Visualization'
 import CircleNode from '../SharedInterfaces/CircleNode'
 import Edge from '../SharedInterfaces/Edge'
 import { uniqueColor, deepCopy } from '../utils'
 import Tooltip from '../Components/Tooltip'
-import { forceCollide, forceLink, forceSimulation } from 'd3'
 import HierarchyNodeWithSize from '../SharedInterfaces/HierarchyNodeWithSize'
 import { NodeType } from '../SharedInterfaces/Node'
 
@@ -12,10 +12,13 @@ export default class HierarchyBubbles implements Visualization {
     container: HTMLElement | null
 
     hierarchy: HierarchyNodeWithSize
+
     hierarchyById: Record<number, HierarchyNodeWithSize>
 
     nodes: CircleNode[] = []
+
     nodesById: Record<number, CircleNode> = {}
+
     edges: Edge[] = []
 
     tooltip: Tooltip = new Tooltip()
@@ -52,7 +55,7 @@ export default class HierarchyBubbles implements Visualization {
         this.simulation.stop()
     }
 
-    continueSimulation(callback: () => void = () => {}, milliseconds: number = 5000) {
+    continueSimulation(callback: () => void = () => {}, milliseconds = 5000) {
         this.simulation.restart()
         setTimeout(() => {
             this.simulation.stop()
@@ -147,10 +150,8 @@ export default class HierarchyBubbles implements Visualization {
             if (startingPoint !== this.hierarchy && startingPoint.type === NodeType.Package) {
                 result.push(startingPoint)
             }
-        } else {
-            if (startingPoint !== this.hierarchy) {
-                result.push(startingPoint)
-            }
+        } else if (startingPoint !== this.hierarchy) {
+            result.push(startingPoint)
         }
 
         if (startingPoint.children.length > 0) {
@@ -163,13 +164,13 @@ export default class HierarchyBubbles implements Visualization {
     }
 
     _prepareSVG(): void {
-        let svg = d3
+        const svg = d3
             .select(this.container)
             .append('svg')
             .attr('width', '100%')
             .attr('height', '100%')
             .call(
-                d3.zoom<SVGSVGElement, unknown>().on('zoom', function (event) {
+                d3.zoom<SVGSVGElement, unknown>().on('zoom', (event) => {
                     svg.attr('transform', event.transform)
                 })
             )
@@ -194,9 +195,8 @@ export default class HierarchyBubbles implements Visualization {
                     .style('fill', (otherNode: CircleNode) => {
                         if (otherNode.color === node.color) {
                             return otherNode.color
-                        } else {
-                            return otherNode.color + '22'
                         }
+                        return `${otherNode.color}22`
                     })
 
                 if (node.referenceToData) {
@@ -232,7 +232,7 @@ export default class HierarchyBubbles implements Visualization {
             .data(this.nodes)
             .join('text')
             .text((node: CircleNode) => node.label)
-            .attr('font-size', (node: CircleNode) => node.radius / 2 + 'px')
+            .attr('font-size', (node: CircleNode) => `${node.radius / 2}px`)
             .attr('text-anchor', 'middle')
             .attr('alignment-baseline', 'central')
             .attr('x', (node: CircleNode) => node.x)

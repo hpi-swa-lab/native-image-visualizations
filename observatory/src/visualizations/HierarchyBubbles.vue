@@ -39,11 +39,11 @@ async function startSimulation() {
     <MainLayout>
         <template #title> Hierarchy Bubbles </template>
         <template #controls>
-            <label for=""></label>
+            <label for="" />
             <input ref="inputBuildReport" type="file" accept=".txt" />
             <button class="btn btn-primary" @click="startSimulation">Start</button>
         </template>
 
-        <div ref="container" class="w-full h-full" id="hierarchy-bubbles-container"></div>
+        <div id="hierarchy-bubbles-container" ref="container" class="w-full h-full" />
     </MainLayout>
 </template>

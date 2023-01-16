@@ -1,7 +1,7 @@
 import { createApp } from 'vue'
 import './style.css'
-import App from './App.vue'
 import { createRouter, createWebHashHistory } from 'vue-router'
+import App from './App.vue'
 
 import HierarchyBubblesVue from './visualizations/HierarchyBubbles.vue'
 import SankeyTreeVue from './visualizations/SankeyTree.vue'

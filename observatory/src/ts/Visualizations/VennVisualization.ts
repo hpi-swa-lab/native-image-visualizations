@@ -1,5 +1,5 @@
-import Visualization from './Visualization'
 import * as d3 from 'd3'
+import Visualization from './Visualization'
 
 export default class VennVisualization implements Visualization {
     container: HTMLElement
@@ -10,7 +10,7 @@ export default class VennVisualization implements Visualization {
 
     generate(): void {
         console.log('This will soon be a nice Venn')
-        var svg = d3.select(this.container).append('svg').attr('width', 200).attr('height', 200)
+        const svg = d3.select(this.container).append('svg').attr('width', 200).attr('height', 200)
 
         svg.append('circle')
             .attr('cx', 100)
