@@ -54,16 +54,21 @@ export async function generateTreeLine() {
     }
 
     console.log('Creating tree line visualization')
+    let map = new Map();
+    map.set(`${FILE_NAME_1}`, '#1b9e77')
+    map.set(`${FILE_NAME_2}`, '#72286f')
+
     let tree = new TreeLineVisualization(
         universes,
-        new Map(
-            Object.entries({
-                // 'helloworld': '#f28e2c',
-                FILE_1: '#1b9e77',
-                // 'micronaut': '#ffdd00',
-                FILE_2: '#72286f'
-            })
-        )
+        map
+        // new Map(
+        //     Object.entries({
+        //         // 'helloworld': '#f28e2c',
+        //         `${FILE_NAME_1}`: '#1b9e77',
+        //         // 'micronaut': '#ffdd00',
+        //         `${FILE_NAME_2}`: '#72286f'
+        //     })
+        // )
     )
     console.log('Generating visualization')
     tree.generate()
