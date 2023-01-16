@@ -718,9 +718,7 @@ static void JNICALL onClassFileLoad(
     cerr << "ClassLoad: " << name << endl;
 #endif
 
-    if(string_view(name) == HOOK_CLASS_NAME // Do not replace our own hooks, logically
-    || string_view(name) == "org/graalvm/compiler/nodes/cfg/ControlFlowGraph" // Crashes during classloading
-    || string_view(name) == "com/oracle/svm/core/jni/functions/JNIFunctionTables") // Crashes during late compile phase
+    if(string_view(name) == HOOK_CLASS_NAME) // Do not replace our own hooks, logically
         return;
 
     add_clinit_hook(jvmti_env, class_data, class_data_len, new_class_data, new_class_data_len);
