@@ -4,9 +4,8 @@
 #include <cassert>
 
 #define LOG 0
-#define PRINT_CLINIT_HEAP_WRITES 1
-
-#define SHOW_EXISTING 2
+#define PRINT_CLINIT_HEAP_WRITES 0
+//#define SHOW_EXISTING /* 0 to only show non-existing query results, 1 to only show existing query results
 
 
 #define REWRITE_ENABLE 1

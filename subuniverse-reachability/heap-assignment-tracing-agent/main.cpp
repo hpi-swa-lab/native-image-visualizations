@@ -608,31 +608,15 @@ static void onFieldModification(
     char* field_generic;
     check(jvmti_env->GetFieldName(field_klass, field, &field_name, &field_signature, &field_generic));
 
-    char class_name[1024];
-    get_class_name(jvmti_env, field_klass, {class_name, class_name + 1024});
-
     if(!new_value.l)
         return;
 
-    jclass new_value_class = jni_env->GetObjectClass(new_value.l);
-
-    char new_value_class_name[1024];
-    get_class_name(jvmti_env, new_value_class, new_value_class_name);
-
     AgentThreadContext* tc = AgentThreadContext::from_thread(jvmti_env, thread);
-
-    char cause_class_name[1024];
 
     assert(!tc->clinit_empty());
 
-    if(tc->clinit_empty())
+    if(!tc->clinit_empty())
     {
-        cause_class_name[0] = 0;
-    }
-    else
-    {
-        get_class_name(jvmti_env, tc->clinit_top(), cause_class_name);
-
         ObjectContext* val_oc = ObjectContext::get_or_create(jvmti_env, jni_env, new_value.l, tc->clinit_top());
 
         if(object)
@@ -647,8 +631,21 @@ static void onFieldModification(
         }
     }
 
-
 #if LOG || PRINT_CLINIT_HEAP_WRITES
+    char class_name[1024];
+    get_class_name(jvmti_env, field_klass, {class_name, class_name + 1024});
+
+    char new_value_class_name[1024];
+    jclass new_value_class = jni_env->GetObjectClass(new_value.l);
+    get_class_name(jvmti_env, new_value_class, new_value_class_name);
+
+    char cause_class_name[1024];
+
+    if(tc->clinit_empty())
+        cause_class_name[0] = 0;
+    else
+        get_class_name(jvmti_env, tc->clinit_top(), cause_class_name);
+
     if(string_view(new_value_class_name) == "java.lang.String")
     {
         const char* str_val = jni_env->GetStringUTFChars((jstring)new_value.l, nullptr);
@@ -682,17 +679,16 @@ static void JNICALL onFramePop(
 
     tc->clinit_pop(jni_env);
 
+#if BREAKPOINTS_ENABLE
     if(tc->clinit_empty())
     {
-#if BREAKPOINTS_ENABLE
         check(jvmti_env->SetEventNotificationMode(JVMTI_DISABLE, JVMTI_EVENT_FIELD_MODIFICATION, thread));
-#endif
     }
-
-    char inner_clinit_name[1024];
-    get_class_name(jvmti_env, type, inner_clinit_name);
+#endif
 
 #if LOG
+    char inner_clinit_name[1024];
+    get_class_name(jvmti_env, type, inner_clinit_name);
     cerr << inner_clinit_name << ".<clinit>() ENDED\n";
 #endif
 }
@@ -750,24 +746,24 @@ extern "C" JNIEXPORT void JNICALL Java_HeapAssignmentTracingHooks_onClinitStart(
     jclass type;
     check(_jvmti_env->GetMethodDeclaringClass(method, &type));
 
+#if BREAKPOINTS_ENABLE
+    if(tc->clinit_empty())
+    {
+        check(_jvmti_env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_FIELD_MODIFICATION, thread));
+    }
+#endif
+
+#if LOG || PRINT_CLINIT_HEAP_WRITES
     char inner_clinit_name[1024];
     get_class_name(_jvmti_env, type, inner_clinit_name);
 
     char outer_clinit_name[1024];
+
     if(tc->clinit_empty())
-    {
-#if BREAKPOINTS_ENABLE
-        check(_jvmti_env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_FIELD_MODIFICATION, thread));
-#endif
-
         outer_clinit_name[0] = 0;
-    }
     else
-    {
         get_class_name(_jvmti_env, tc->clinit_top(), outer_clinit_name);
-    }
 
-#if LOG || PRINT_CLINIT_HEAP_WRITES
     if(LOG || (strcmp(inner_clinit_name, outer_clinit_name) != 0))
     {
         cerr << outer_clinit_name << ": " << inner_clinit_name << ".<clinit>()\n";
@@ -809,13 +805,18 @@ extern "C" JNIEXPORT void JNICALL Java_HeapAssignmentTracingHooks_notifyArrayWri
     if(tc->clinit_empty())
         return;
 
+    if(val)
+    {
+        ObjectContext* val_oc = ObjectContext::get_or_create(_jvmti_env, env, val, tc->clinit_top());
+        ObjectContext* arr_oc = ObjectContext::get_or_create(_jvmti_env, env, arr, tc->clinit_top());
+        ((ArrayObjectContext*)arr_oc)->registerWrite(index, val_oc, tc->clinit_top());
+    }
 
+#if LOG || PRINT_CLINIT_HEAP_WRITES
     jclass arr_class = env->GetObjectClass(arr);
 
     char class_name[1024];
     get_class_name(_jvmti_env, arr_class, {class_name, class_name + 1024});
-
-    class_name[strlen(class_name) - 2] = 0; // Cut off last "[]"
 
     char new_value_class_name[1024];
     if(!val)
@@ -831,29 +832,18 @@ extern "C" JNIEXPORT void JNICALL Java_HeapAssignmentTracingHooks_notifyArrayWri
     char cause_class_name[1024];
 
     if(tc->clinit_empty())
-    {
         cause_class_name[0] = 0;
-    }
     else
-    {
         get_class_name(_jvmti_env, tc->clinit_top(), cause_class_name);
 
-        if(val)
-        {
-            ObjectContext* val_oc = ObjectContext::get_or_create(_jvmti_env, env, val, tc->clinit_top());
-            ObjectContext* arr_oc = ObjectContext::get_or_create(_jvmti_env, env, arr, tc->clinit_top());
-            ((ArrayObjectContext*)arr_oc)->registerWrite(index, val_oc, tc->clinit_top());
-        }
-    }
-
-
-#if LOG || PRINT_CLINIT_HEAP_WRITES
+    class_name[strlen(class_name) - 2] = 0; // Cut off last "[]"
     cerr << cause_class_name << ": " << class_name << '[' << index << ']' << " = " << new_value_class_name << '\n';
 #endif
 }
 
 extern "C" JNIEXPORT void JNICALL Java_HeapAssignmentTracingHooks_onThreadStart(JNIEnv* env, jobject self, jthread newThread)
 {
+#if LOG || PRINT_CLINIT_HEAP_WRITES
     jvmtiPhase phase;
     check(_jvmti_env->GetPhase(&phase));
 
@@ -874,7 +864,6 @@ extern "C" JNIEXPORT void JNICALL Java_HeapAssignmentTracingHooks_onThreadStart(
     jvmtiThreadInfo info;
     check(_jvmti_env->GetThreadInfo(newThread, &info));
 
-#if LOG || PRINT_CLINIT_HEAP_WRITES
     cerr << outer_clinit_name << ": " << "Thread.start(): \"" << info.name << "\"\n";
 #endif
 }
@@ -896,10 +885,6 @@ extern "C" JNIEXPORT jclass JNICALL Java_com_oracle_graal_pointsto_reports_HeapA
 
     jfieldID fieldID = env->FromReflectedField(field);
 
-    char receiver_class_name[1024];
-    get_class_name(_jvmti_env, env->GetObjectClass(receiver), receiver_class_name);
-    char val_class_name[1024];
-    get_class_name(_jvmti_env, env->GetObjectClass(val), val_class_name);
     char *name, *signature, *generic;
     jvmtiError error = _jvmti_env->GetFieldName(env->GetObjectClass(receiver), fieldID, &name, &signature, &generic);
 
@@ -921,12 +906,19 @@ extern "C" JNIEXPORT jclass JNICALL Java_com_oracle_graal_pointsto_reports_HeapA
         res = receiver_oc->getWriteReason(env->FromReflectedField(field), val_oc);
     }
 
+#ifdef SHOW_EXISTING
     if(bool(res) == SHOW_EXISTING)
     {
+        char receiver_class_name[1024];
+        get_class_name(_jvmti_env, env->GetObjectClass(receiver), receiver_class_name);
+        char val_class_name[1024];
+        get_class_name(_jvmti_env, env->GetObjectClass(val), val_class_name);
+
         stringstream s;
         s << receiver_class_name << '.' << name << '=' << val_class_name << endl;
         cerr << s.str();
     }
+#endif
 
     return res;
 }
@@ -945,6 +937,7 @@ extern "C" JNIEXPORT jclass JNICALL Java_com_oracle_graal_pointsto_reports_HeapA
         res = declaring_cc->getFieldReason(env->FromReflectedField(field), val_oc);
     }
 
+#ifdef SHOW_EXISTING
     char declaring_class_name[1024];
     get_class_name(_jvmti_env, declaring, declaring_class_name);
     char val_class_name[1024];
@@ -952,13 +945,13 @@ extern "C" JNIEXPORT jclass JNICALL Java_com_oracle_graal_pointsto_reports_HeapA
     char *field_name, *signature, *generic;
     check(_jvmti_env->GetFieldName(declaring, fieldID, &field_name, &signature, &generic));
 
-
     if(bool(res) == SHOW_EXISTING)
     {
         stringstream s;
         s << declaring_class_name << '.' << field_name << '=' << val_class_name << endl;
         cerr << s.str();
     }
+#endif
 
     return res;
 }
@@ -975,17 +968,19 @@ extern "C" JNIEXPORT jclass JNICALL Java_com_oracle_graal_pointsto_reports_HeapA
         res = array_oc->getWriteReason(index, val_oc);
     }
 
-    char array_class_name[1024];
-    get_class_name(_jvmti_env, env->GetObjectClass(array), array_class_name);
-    char val_class_name[1024];
-    get_class_name(_jvmti_env, env->GetObjectClass(val), val_class_name);
-
+#ifdef SHOW_EXISTING
     if(bool(res) == SHOW_EXISTING)
     {
+        char array_class_name[1024];
+        get_class_name(_jvmti_env, env->GetObjectClass(array), array_class_name);
+        char val_class_name[1024];
+        get_class_name(_jvmti_env, env->GetObjectClass(val), val_class_name);
+
         stringstream s;
         s << array_class_name << '=' << val_class_name << endl;
         cerr << s.str();
     }
+#endif
 
     return res;
 }

@@ -8,6 +8,7 @@
 #include "settings.h"
 #include <algorithm>
 #include <numeric>
+#include <iostream>
 
 using namespace std;
 
@@ -1627,7 +1628,7 @@ bool add_clinit_hook(jvmtiEnv* jvmti_env, const unsigned char* src_start, jint s
 #if LOG
         if(insert_clinit_callback)
         {
-            cerr << "Found <clinit> of " << class_name << '\n';
+            cerr << "Found <clinit> of " << name << '\n';
         }
 #endif
 
