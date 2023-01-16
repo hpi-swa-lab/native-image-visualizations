@@ -15,8 +15,10 @@
     </head>
 
     <body>
+        <div style="width: 100%; height:100%" id="hierarchy-bubbles-container"></div>
 
         <script type="module">
+            const container = document.getElementById('hierarchy-bubbles-container')
             let visualization = undefined
 
             const form = Observatory.appendFileInput(async (files) => {
