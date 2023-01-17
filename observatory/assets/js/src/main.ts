@@ -56,7 +56,7 @@ export async function generateTreeLine() {
     console.log('Creating tree line visualization')
     let map = new Map();
     map.set(`${FILE_NAME_1}`, '#1b9e77')
-    map.set(`${FILE_NAME_2}`, '#72286f')
+    map.set(`${FILE_NAME_2}`, '#fd7e14')
 
     let tree = new TreeLineVisualization(
         universes,
