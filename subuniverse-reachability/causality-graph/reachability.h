@@ -122,6 +122,17 @@ static void print_reachability_of_method(ostream& out, const Adjacency& adj, con
         for(typeflow_id flow : adj[m].virtual_invocation_sources)
         {
             const TypeflowHistory& history = all.typeflow_visited[flow.id];
+
+            for(auto pair : history)
+            {
+                if(pair.second < flow_type_dist)
+                {
+                    flow_type = pair.first;
+                    flow_type_dist = pair.second;
+                    start_flow = flow;
+                }
+            }
+
             if(history.is_saturated())
             {
                 if(history.saturated_dist < flow_type_dist)
@@ -131,18 +142,6 @@ static void print_reachability_of_method(ostream& out, const Adjacency& adj, con
                     start_flow = flow;
                 }
             }
-            else
-            {
-                for(auto pair : history)
-                {
-                    if(pair.second < flow_type_dist)
-                    {
-                        flow_type = pair.first;
-                        flow_type_dist = pair.second;
-                        start_flow = flow;
-                    }
-                }
-            }
         }
 
         assert(flow_type_dist <= dist);
@@ -150,6 +149,11 @@ static void print_reachability_of_method(ostream& out, const Adjacency& adj, con
 
         for(;;)
         {
+            if(worklist.empty())
+            {
+                out << indentation << "(Virtually called through " << type_names[flow_type] << "), but dunno where..." << endl;
+                return;
+            }
             assert(!worklist.empty());
 
             typeflow_id flow = worklist.front();
