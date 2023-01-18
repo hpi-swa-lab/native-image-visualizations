@@ -3,13 +3,20 @@
         "browser": true,
         "es2021": true
     },
-    "extends": ["airbnb-base", "prettier"],
+    "extends": [
+        "airbnb-base",
+        "plugin:vue/vue3-recommended",
+        "plugin:@typescript-eslint/recommended",
+        "prettier"
+    ],
+    "parser": "vue-eslint-parser",
     "parserOptions": {
+        "parser": "@typescript-eslint/parser",
         "ecmaVersion": 12,
         "sourceType": "module"
     },
-    "plugins": ["only-warn"],
-    "ignorePatterns": ["/node_modules", "/external"],
+    "plugins": ["only-warn", "@typescript-eslint", "prettier"],
+    "ignorePatterns": ["/node_modules"],
     "rules": {
         "no-console": ["error", { "allow": ["warn", "error"] }],
         "camelcase": [1],

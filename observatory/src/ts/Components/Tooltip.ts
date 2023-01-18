@@ -1,11 +1,19 @@
 import { removeChildren } from '../utils'
 
 export default class Tooltip {
-    _title: string = ''
+    // @ts-ignore
+    _title: string
+
+    // @ts-ignore
     _datapoints: Record<string, any>
 
+    // @ts-ignore
     _container: HTMLDivElement
+
+    // @ts-ignore
     _titleElement: HTMLElement
+
+    // @ts-ignore
     _dataElement: HTMLElement
 
     constructor(
@@ -56,8 +64,8 @@ export default class Tooltip {
     }
 
     moveToCoordinates(top: number, left: number) {
-        this.widget.style.top = top + 'px'
-        this.widget.style.left = left + 'px'
+        this.widget.style.top = `${top}px`
+        this.widget.style.left = `${left}px`
     }
 
     _build() {
@@ -109,7 +117,7 @@ export default class Tooltip {
             const element = document.createElement('div')
 
             const title = document.createElement('p')
-            title.innerHTML = name + ': '
+            title.innerHTML = `${name}: `
 
             const data = document.createElement('p')
             data.innerHTML = this.datapoints[name]
