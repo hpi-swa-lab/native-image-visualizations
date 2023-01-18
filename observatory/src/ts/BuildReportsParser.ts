@@ -393,9 +393,9 @@ function _getMethodName(path: string): string {
         path = path.replace(/[^)]*$/, '')
 
         // match everything from the first ( on, the method parameters
-        const parametersMatch: RegExpMatchArray|null =  path.match(/\(.*$/)
+        const parametersMatch: RegExpMatchArray | null = path.match(/\(.*$/)
 
-        if(!parametersMatch) {
+        if (!parametersMatch) {
             console.error(`Method name does not have needed parenthesis in path ${path}.`)
             return ''
         }

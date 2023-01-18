@@ -10,23 +10,22 @@ import { NodeType } from '../SharedInterfaces/Node'
 
 export default class HierarchyBubbles implements Visualization {
     container: HTMLElement | null
-
     hierarchy: HierarchyNodeWithSize
-
     hierarchyById: Record<number, HierarchyNodeWithSize>
-
-    nodes: CircleNode[] = []
-
-    nodesById: Record<number, CircleNode> = {}
-
-    edges: Edge[] = []
-
-    tooltip: Tooltip = new Tooltip()
-
-    simulation: d3.Simulation<CircleNode, undefined> = forceSimulation<CircleNode>([])
+    nodes: CircleNode[]
+    nodesById: Record<number, CircleNode>
+    edges: Edge[]
+    tooltip: Tooltip
+    simulation: d3.Simulation<CircleNode, undefined>
 
     constructor(hierarchy: HierarchyNodeWithSize) {
         this.container = document.getElementById('hierarchy-bubbles-container')
+
+        this.nodes = []
+        this.nodesById = {}
+        this.edges = []
+        this.tooltip = new Tooltip()
+        this.simulation = forceSimulation<CircleNode>([])
 
         this.hierarchy = hierarchy
         this.hierarchyById = {}
