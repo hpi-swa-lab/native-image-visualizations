@@ -149,21 +149,15 @@ static void print_reachability_of_method(ostream& out, const Adjacency& adj, con
 
         for(;;)
         {
-            if(worklist.empty())
-            {
-                out << indentation << "(Virtually called through " << type_names[flow_type] << "), but dunno where..." << endl;
-                return;
-            }
             assert(!worklist.empty());
 
             typeflow_id flow = worklist.front();
             worklist.pop();
 
-            if(flow != adj.allInstantiated && all.typeflow_visited[flow.id].is_saturated())
+            if(flow != adj.allInstantiated && all.typeflow_visited[flow.id].is_saturated() && all.typeflow_visited[flow.id].saturated_dist <= dist)
             {
                 parent[adj.allInstantiated.id] = flow;
                 worklist.emplace(adj.allInstantiated);
-                continue;
             }
 
             for(typeflow_id prev : adj[flow].backward_edges)
@@ -215,7 +209,7 @@ static void print_reachability_of_method(ostream& out, const Adjacency& adj, con
                 if(adj[prev].method.dependent().id && all.method_history[adj[prev].method.dependent().id] >= dist)
                     continue;
 
-                if(all.typeflow_visited[prev.id].is_saturated())
+                if(all.typeflow_visited[prev.id].is_saturated() && all.typeflow_visited[prev.id].saturated_dist <= dist)
                 {
                     parent[prev.id] = flow;
                     worklist.emplace(prev);
@@ -224,7 +218,7 @@ static void print_reachability_of_method(ostream& out, const Adjacency& adj, con
                 {
                     for(auto t2 : all.typeflow_visited[prev.id])
                     {
-                        if(flow_type == t2.first)
+                        if(flow_type == t2.first && t2.second <= dist)
                         {
                             parent[prev.id] = flow;
                             worklist.emplace(prev);
