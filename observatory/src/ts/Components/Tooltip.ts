@@ -1,7 +1,8 @@
 import { removeChildren } from '../utils'
 
 export default class Tooltip {
-    _title = ''
+    // @ts-ignore
+    _title: string
 
     // @ts-ignore
     _datapoints: Record<string, any>
@@ -15,7 +16,11 @@ export default class Tooltip {
     // @ts-ignore
     _dataElement: HTMLElement
 
-    constructor(title = '', datapoints: Record<string, any> = {}, visible = false) {
+    constructor(
+        title: string = '',
+        datapoints: Record<string, any> = {},
+        visible: boolean = false
+    ) {
         this._build()
 
         this.title = title
