@@ -101,7 +101,9 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE simulate_purge(const char* methods)
     if(string_view(methods).empty())
     {
         current_purged_result.reset();
-        return nullptr;
+        char* empty = new char[1];
+        empty[0] = 0;
+        return empty;
     }
 
     auto& m = *purge_model;
