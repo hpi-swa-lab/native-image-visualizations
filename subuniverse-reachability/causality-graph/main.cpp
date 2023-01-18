@@ -421,39 +421,70 @@ static void bruteforce_purges_classes(const Adjacency& adj, const vector<string>
     }
 }
 
-static void print_reachability(const Adjacency& adj, const vector<string>& method_names, const unordered_map<string, uint32_t>& method_ids_by_name, const vector<string>& type_names)
+static vector<method_id> parse_methods(const model& m, const char* methods)
 {
-    cerr << "Running DFS on original graph...";
+    vector<method_id> purged_mids;
 
-    BFS bfs(adj);
-    BFS::Result all = bfs.run();
+    stringstream methods_stream(methods);
+    string line;
 
-    cerr << " " << std::count_if(all.method_visited.begin(), all.method_visited.end(), [](bool visited) { return visited; }) << " methods reachable!\n";
-
-    string name;
-
-    while(!cin.eof())
+    while(std::getline(methods_stream, line, '\n'))
     {
-        getline(cin, name);
-
-        if(name.length() == 0)
-            break;
-
-        uint32_t mid;
+        if(line.ends_with('*'))
         {
-            auto it = method_ids_by_name.find(name);
+            string_view prefix = string_view(line).substr(0, line.size() - 1);
 
-            if(it == method_ids_by_name.end())
+            for(size_t i = 1; i < m.method_names.size(); i++)
             {
-                cerr << "Method " << name << " doesn't exist!" << endl;
-                continue;
+                if(m.method_names[i].starts_with(prefix))
+                    purged_mids.push_back(i);
+            }
+        }
+        else
+        {
+            auto it = m.method_ids_by_name.find(line);
+
+            if(it == m.method_ids_by_name.end())
+            {
+                purged_mids.clear();
+                return purged_mids;
             }
 
-            mid = it->second;
+            purged_mids.push_back(it->second);
         }
-
-        print_reachability(cout, adj, all, method_names, type_names, mid);
     }
+
+    return purged_mids;
+}
+
+static void print_reachability(const model& m)
+{
+    BFS bfs(m.adj);
+    BFS::Result bfsresult = bfs.run();
+
+    string input;
+    getline(cin, input);
+
+    vector<method_id> purged_mids = parse_methods(m, input.c_str());
+
+    if(purged_mids.empty())
+        return;
+
+    vector<bool> visited(m.adj.n_methods());
+    bool any_reachable = false;
+
+    for(method_id mid : purged_mids)
+    {
+        if(!bfsresult.method_visited[mid.id])
+            continue;
+
+        any_reachable = true;
+        TreeIndenter indentation;
+        print_reachability_of_method(cout, m.adj, m.method_names, m.type_names, bfsresult, mid, visited, indentation);
+    }
+
+    if(!any_reachable)
+        cout << "Not reachable" << endl;
 }
 
 int main(int argc, const char** argv)
@@ -476,7 +507,7 @@ int main(int argc, const char** argv)
 
     if(command == "reachability")
     {
-        print_reachability(m.adj, m.method_names, m.method_ids_by_name, m.type_names);
+        print_reachability(m);
     }
     else if(command == "bruteforce_purges")
     {
