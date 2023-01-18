@@ -3,12 +3,16 @@ import { removeChildren } from '../utils'
 export default class Tooltip {
     _title = ''
 
+    // @ts-ignore
     _datapoints: Record<string, any>
 
+    // @ts-ignore
     _container: HTMLDivElement
 
+    // @ts-ignore
     _titleElement: HTMLElement
 
+    // @ts-ignore
     _dataElement: HTMLElement
 
     constructor(title = '', datapoints: Record<string, any> = {}, visible = false) {
