@@ -91,4 +91,3 @@ export function _sortAlphabetically(tree: Node) {
     tree.children.forEach(_sortAlphabetically)
     tree.children.sort((a, b) => a.name.localeCompare(b.name))
 }
-

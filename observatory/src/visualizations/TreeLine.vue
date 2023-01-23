@@ -26,23 +26,26 @@ async function generateTreeLine() {
             console.log(data)
         }
     }
-    
+
     if (universes.size == 0) {
-        return;
+        return
     }
 
     if (container.value !== undefined) {
         removeChildren(container.value)
     }
 
-    visualization = new TreeLine(universes, new Map(
-        Object.entries({
-            'build-0': '#1b9e77',
-            'build-1': '#72286f'
-            // 'helloworld': '#f28e2c',
-            // 'micronaut': '#ffdd00',
-        })
-    ))
+    visualization = new TreeLine(
+        universes,
+        new Map(
+            Object.entries({
+                'build-0': '#1b9e77',
+                'build-1': '#72286f'
+                // 'helloworld': '#f28e2c',
+                // 'micronaut': '#ffdd00',
+            })
+        )
+    )
     visualization.generate()
 }
 </script>

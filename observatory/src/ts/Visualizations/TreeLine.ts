@@ -269,4 +269,3 @@ function lightenColor(color: string): string {
 
     return `#${rrr}${ggg}${bbb}`
 }
-
