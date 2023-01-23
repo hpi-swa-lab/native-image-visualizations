@@ -5,7 +5,12 @@
                 <h2>
                     <slot name="title"> Title </slot>
                 </h2>
+                <slot name="data-manager"> Data Manager</slot>
                 <hr />
+
+                <VisualizationNavigation></VisualizationNavigation>
+                <hr />
+
                 <ul class="space-y-2">
                     <slot name="controls"> Controls </slot>
                 </ul>
