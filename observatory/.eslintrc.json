@@ -1,7 +1,8 @@
 {
     "env": {
         "browser": true,
-        "es2021": true
+        "es2021": true,
+        "node": true
     },
     "extends": [
         "airbnb-base",
@@ -15,7 +16,7 @@
         "ecmaVersion": 12,
         "sourceType": "module"
     },
-    "plugins": ["only-warn", "@typescript-eslint", "prettier"],
+    "plugins": ["@typescript-eslint", "prettier"],
     "ignorePatterns": ["/node_modules"],
     "rules": {
         "no-console": ["error", { "allow": ["warn", "error"] }],
@@ -29,11 +30,7 @@
                 "allowAfterSuper": true
             }
         ],
-        "no-plusplus": [
-            2,
-            {
-                "allowForLoopAfterthoughts": true
-            }
-        ]
+        "quotes": ["error", "single"],
+        "no-multi-spaces": ["error"]
     }
 }

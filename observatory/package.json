@@ -2,7 +2,7 @@
     "name": "observatory",
     "private": true,
     "version": "1.0.0",
-    "type": "module",
+    "type": "commonjs",
     "scripts": {
         "dev": "vite",
         "build": "vue-tsc && vite build",
@@ -11,7 +11,8 @@
         "eslint-autofix": "eslint --fix --config .eslintrc.json --ext .vue,.js,.ts,.jsx,.tsx src",
         "prettier-check": "prettier --check --config .prettierrc.json .",
         "prettier-autofix": "prettier --write --config .prettierrc.json .",
-        "test": "npm-run-all eslint-check prettier-check"
+        "jest": "jest",
+        "test": "npm-run-all eslint-check prettier-check jest"
     },
     "dependencies": {
         "d3": "^7.8.1",
@@ -22,6 +23,7 @@
     },
     "devDependencies": {
         "@types/d3": "^7.4.0",
+        "@types/jest": "^29.2.6",
         "@types/papaparse": "^5.3.7",
         "@typescript-eslint/eslint-plugin": "^5.48.1",
         "@typescript-eslint/parser": "^5.48.1",
@@ -40,6 +42,7 @@
         "sass": "^1.57.1",
         "stylelint": "^14.16.1",
         "stylelint-config-twbs-bootstrap": "^7.0.0",
+        "ts-jest": "^29.0.5",
         "tslib": "^2.4.1",
         "typescript": "^4.9.4",
         "vite": "^4.0.0",

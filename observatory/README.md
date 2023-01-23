@@ -16,7 +16,7 @@ For VSCode the extensions [Volar](https://marketplace.visualstudio.com/items?ite
 
 As we use vite for development, there is some convenience that comes with it. Have a look at [this stackoverflow thread](https://stackoverflow.com/questions/71703933/what-is-the-difference-between-vite-and-vite-preview) for more information. In short:
 
--   `npm run dev` sstarts a local web server with hot module reloading for development.
+-   `npm run dev` starts a local web server with hot module reloading for development.
 -   `npm run build` builds the project and outputs it to the folder ./dist
 -   `npm run preview` starts a local webserver that serves the version in ./dist
 
