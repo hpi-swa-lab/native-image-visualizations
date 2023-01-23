@@ -402,6 +402,7 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
     cap.can_generate_object_free_events = true;
     cap.can_retransform_classes = true;
     cap.can_retransform_any_class = true;
+    cap.can_generate_all_class_hook_events = true;
 #if BREAKPOINTS_ENABLE
     cap.can_generate_breakpoint_events = true;
     cap.can_generate_field_modification_events = true;
@@ -494,11 +495,6 @@ static void processClass(jvmtiEnv* jvmti_env, jclass klass)
             }
         }
     }
-
-    if(string_view(class_signature) == "Ljava/util/ArrayList;")
-    {
-        check(jvmti_env->RetransformClasses(1, &klass));
-    }
 }
 
 static jniNativeInterface* original_jni;
@@ -571,16 +567,12 @@ static void JNICALL onVMInit(jvmtiEnv *jvmti_env, JNIEnv* jni_env, jthread threa
 
     for(jclass clazz : classes)
     {
-        jint status;
-        check(jvmti_env->GetClassStatus(clazz, &status));
-
-        if(status & JVMTI_CLASS_STATUS_PREPARED)
-            processClass(jvmti_env, clazz);
+        jboolean is_modifiable;
+        check(jvmti_env->IsModifiableClass(clazz, &is_modifiable));
+        if(is_modifiable)
+            check(jvmti_env->RetransformClasses(1, &clazz));
     }
 #endif // BREAKPOINTS_ENABLE
-
-    jclass threadclass = jni_env->FindClass("java/lang/Thread");
-    check(jvmti_env->RetransformClasses(1, &threadclass));
 
 
 
