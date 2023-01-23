@@ -3,11 +3,11 @@ import './style.css'
 import { createRouter, createWebHashHistory } from 'vue-router'
 import App from './App.vue'
 
-import HierarchyBubblesVue from './visualizations/HierarchyBubbles.vue'
-import SankeyTreeVue from './visualizations/SankeyTree.vue'
-import TreeLineVue from './visualizations/TreeLine.vue'
-import VennVue from './visualizations/Venn.vue'
-import ZoomableCausalityGraphVue from './visualizations/ZoomableCausalityGraph.vue'
+import HierarchyBubblesVue from './components/visualizations/HierarchyBubbles.vue'
+import SankeyTreeVue from './components/visualizations/SankeyTree.vue'
+import TreeLineVue from './components/visualizations/TreeLine.vue'
+import VennVue from './components/visualizations/Venn.vue'
+import ZoomableCausalityGraphVue from './components/visualizations/ZoomableCausalityGraph.vue'
 import Home from './Home.vue'
 
 const routes = [
