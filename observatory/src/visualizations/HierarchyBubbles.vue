@@ -1,3 +1,15 @@
+<template>
+  <MainLayout title="Hierarchy Bubbles">
+    <template #controls>
+      <label for="" />
+      <input ref="inputBuildReport" type="file" accept=".txt"/>
+      <button class="btn btn-primary" @click="startSimulation">Start</button>
+    </template>
+
+    <div id="hierarchy-bubbles-container" ref="container" class="w-full h-full" />
+  </MainLayout>
+</template>
+
 <script setup lang="ts">
 import { ref } from 'vue'
 import MainLayout from '../components/MainLayout.vue'
@@ -34,16 +46,3 @@ async function startSimulation() {
     visualization?.continueSimulation()
 }
 </script>
-
-<template>
-    <MainLayout>
-        <template #title> Hierarchy Bubbles </template>
-        <template #controls>
-            <label for="" />
-            <input ref="inputBuildReport" type="file" accept=".txt" />
-            <button class="btn btn-primary" @click="startSimulation">Start</button>
-        </template>
-
-        <div id="hierarchy-bubbles-container" ref="container" class="w-full h-full" />
-    </MainLayout>
-</template>

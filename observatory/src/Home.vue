@@ -1,10 +1,9 @@
-<script setup lang="ts">
-import MainLayout from './components/MainLayout.vue'
-</script>
-
 <template>
-    <MainLayout>
-        <template #title> Home </template>
+    <MainLayout title="Home">
         <template #controls></template>
     </MainLayout>
 </template>
+
+<script setup lang="ts">
+import MainLayout from './components/MainLayout.vue'
+</script>
