@@ -3,7 +3,7 @@ import { mergeUniverses, _sortAlphabetically } from '../mergeUniverses'
 import MergedNodeWithSizes from '../SharedInterfaces/MergedNodeWithSizes'
 import NodeWithSize from '../SharedInterfaces/NodeWithSize'
 import { combinationFromNames, UniverseCombination, UniverseName } from '../SharedTypes/Universe'
-import { powerSet } from '../utils'
+import { clamp, lightenColor, powerSet } from '../utils'
 import Visualization from './Visualization'
 
 const mixAlpha = 0.4
@@ -109,7 +109,7 @@ export default class TreeLineVisualization implements Visualization {
 
         const lightenedColors: Map<UniverseName, string> = new Map()
         this.colors.forEach((color, name) => {
-            lightenedColors.set(name, lightenColor(color))
+            lightenedColors.set(name, lightenColor(color, mixAlpha))
         })
 
         for (const combination of this.combinations) {
@@ -235,12 +235,13 @@ export default class TreeLineVisualization implements Visualization {
         this.context.fillRect(left, top, boxWidth, height - hierarchyGaps)
 
         // console.log('todo')
-        const visibleStart = top.clamp(0, this.canvas.height)
-        const visibleEnd = (top + height).clamp(0, this.canvas.height)
+        const visibleStart = clamp(top, 0, this.canvas.height)
+        const visibleEnd = clamp(top + height, 0, this.canvas.height)
 
         if (height >= fontSize + 2 * textVerticalPadding) {
             const textRadius = fontSize / 2
-            const textCenterY = ((visibleStart + visibleEnd) / 2).clamp(
+            const textCenterY = clamp(
+                (visibleStart + visibleEnd) / 2,
                 top + textRadius + textVerticalPadding,
                 top + height - textRadius - textVerticalPadding
             )
@@ -252,20 +253,4 @@ export default class TreeLineVisualization implements Visualization {
 
         return boxWidth
     }
-}
-
-function lightenColor(color: string): string {
-    let r = parseInt(color.substring(1, 3), 16)
-    let g = parseInt(color.substring(3, 5), 16)
-    let b = parseInt(color.substring(5, 7), 16)
-
-    const rr = Math.round(r * mixAlpha + 255 * (1 - mixAlpha))
-    const gg = Math.round(g * mixAlpha + 255 * (1 - mixAlpha))
-    const bb = Math.round(b * mixAlpha + 255 * (1 - mixAlpha))
-
-    const rrr = rr.toString(16).length === 1 ? `0${rr.toString(16)}` : rr.toString(16)
-    const ggg = gg.toString(16).length === 1 ? `0${gg.toString(16)}` : gg.toString(16)
-    const bbb = bb.toString(16).length === 1 ? `0${bb.toString(16)}` : bb.toString(16)
-
-    return `#${rrr}${ggg}${bbb}`
 }
