@@ -22,6 +22,8 @@ async function generateTreeLine() {
             const rawData = await loadBuildReport(file)
             data = parseBuildReportToNodeWithSizeHierarchy(rawData)
             universes.set(`build-${i}`, data)
+            console.log(`Build ${i}:`)
+            console.log(data)
         }
     }
     
@@ -49,9 +51,9 @@ async function generateTreeLine() {
     <MainLayout>
         <template #title>Tree Line</template>
         <template #controls>
-            <label for="" />
-            <input ref="inputBuildReport" type="file" accept=".txt" />
-            <button class="btn btn-primary" @click="generateTreeLine">Start</button>
+            <label for="">Upload multiple build reports</label>
+            <input ref="inputBuildReport" type="file" accept=".txt" multiple />
+            <button class="btn btn-primary" @click="generateTreeLine">Diff</button>
         </template>
 
         <div id="tree-line-container" ref="container" class="w-full h-full" />

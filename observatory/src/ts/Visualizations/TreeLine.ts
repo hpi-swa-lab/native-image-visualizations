@@ -1,49 +1,10 @@
 import * as d3 from 'd3'
-import '../data'
-import {
-    combinationFromNames,
-    MergedNodeWithSizes,
-    NodeWithSize,
-    UniverseCombination,
-    UniverseName
-} from '../data'
-import { mergeUniverses, sortAlphabetically } from '../parser'
+import { mergeUniverses, _sortAlphabetically } from '../mergeUniverses'
+import MergedNodeWithSizes from '../SharedInterfaces/MergedNodeWithSizes'
+import NodeWithSize from '../SharedInterfaces/NodeWithSize'
+import { combinationFromNames, UniverseCombination, UniverseName } from '../SharedTypes/Universe'
 import { powerSet } from '../utils'
 import Visualization from './Visualization'
-
-// async function loadUniverses() {
-//     const texts = await Promise.all([
-//         d3.text('used-methods-helloworld.txt'),
-//         d3.text('used-methods-micronaut.txt'),
-//         d3.text('used-methods-micronaut-no-log4j.txt')
-//     ])
-//     const parsed = texts.map(parseUsedMethods).map(withSizes)
-//     let merged = mergeUniverses(
-//         new Map(
-//             Object.entries({
-//                 // 'helloworld': parsed[0],
-//                 micronaut: parsed[1],
-//                 'no-log4j': parsed[2]
-//             })
-//         )
-//     )
-//     sortAlphabetically(merged)
-//     return merged
-// }
-// const universes = await loadUniverses()
-// console.debug('Universes:')
-// console.debug(universes)
-
-// Constants that determine how the visualization looks.
-
-// const colors = new Map(
-//     Object.entries({
-//         helloworld: '#f28e2c',
-//         micronaut: '#1b9e77',
-//         // 'micronaut': '#ffdd00',
-//         'no-log4j': '#72286f'
-//     })
-// )
 
 const mixAlpha = 0.4
 const explosionThreshold = 100 // at this height, entities explode into children
@@ -67,7 +28,8 @@ export default class TreeLineVisualization implements Visualization {
 
     constructor(universes: Map<UniverseName, NodeWithSize>, colors: Map<UniverseName, string>) {
         this.mergedUniverses = mergeUniverses(universes)
-        sortAlphabetically(this.mergedUniverses)
+        _sortAlphabetically(this.mergedUniverses)
+        console.log(this.mergedUniverses)
 
         const names: UniverseName[] = Array.from(universes.keys())
         if (names.length == 1) {
@@ -168,10 +130,6 @@ export default class TreeLineVisualization implements Visualization {
                 const d = (1 / numSteps) * i
                 gradient.addColorStop(d, gradientColors[i % gradientColors.length]!)
                 if (d + 0.001 <= 1) {
-                    console.log(
-                        `i = ${i}, gradientColors = ${gradientColors} (len ${gradientColors.length})`
-                    )
-                    console.log(gradientColors[(i + 1) % gradientColors.length])
                     gradient.addColorStop(
                         d + 0.001,
                         gradientColors[(i + 1) % gradientColors.length]!
