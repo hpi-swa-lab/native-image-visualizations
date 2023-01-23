@@ -69,7 +69,12 @@ static void JNICALL onObjectFree(
         jvmtiEnv *jvmti_env,
         jlong tag);
 
-
+static void JNICALL onBreakpoint(
+        jvmtiEnv *jvmti_env,
+        JNIEnv* jni_env,
+        jthread thread,
+        jmethodID method,
+        jlocation location);
 
 static jvmtiEnv* _jvmti_env;
 
@@ -273,6 +278,8 @@ public:
     {
         return nonstatic_field_indices.size();
     }
+
+    jclass made_reachable_by = nullptr;
 };
 
 struct NonArrayObjectContext : public ObjectContext
@@ -394,6 +401,7 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
     cap.can_tag_objects = true;
     cap.can_generate_object_free_events = true;
     cap.can_retransform_classes = true;
+    cap.can_retransform_any_class = true;
 #if BREAKPOINTS_ENABLE
     cap.can_generate_breakpoint_events = true;
     cap.can_generate_field_modification_events = true;
@@ -410,6 +418,7 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
     callbacks.ThreadStart = onThreadStart;
     callbacks.ThreadEnd = onThreadEnd;
     callbacks.ObjectFree = onObjectFree;
+    callbacks.Breakpoint = onBreakpoint;
     check_code(1, env->SetEventCallbacks(&callbacks, sizeof(callbacks)));
     check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_VM_INIT, nullptr));
     check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_FRAME_POP, nullptr));
@@ -419,6 +428,7 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
 #if REWRITE_ENABLE
     check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_FILE_LOAD_HOOK, nullptr));
 #endif
+    //check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_BREAKPOINT, nullptr));
 
     return 0;
 }
@@ -460,7 +470,7 @@ static void processClass(jvmtiEnv* jvmti_env, jclass klass)
 #endif
     }
 
-    if(strcmp(class_signature, "L" HOOK_CLASS_NAME ";") == 0)
+    if(string_view(class_signature) == "L" "com/sun/org/apache/xerces/internal/impl/xpath/regex/Token$CharToken" ";")
     {
         span<jmethodID> methods;
         {
@@ -470,8 +480,6 @@ static void processClass(jvmtiEnv* jvmti_env, jclass klass)
             methods = {methods_ptr, (size_t)method_count};
         }
 
-        jmethodID constructor = nullptr;
-
         for(jmethodID m : methods)
         {
             char* name;
@@ -479,12 +487,74 @@ static void processClass(jvmtiEnv* jvmti_env, jclass klass)
             char* generic;
             check(jvmti_env->GetMethodName(m, &name, &signature, &generic));
 
-            if(std::strcmp(name, "Dummy") == 0)
+            if(string_view(name) == "<init>")
             {
                 check(jvmti_env->SetBreakpoint(m, 0));
+                cerr << "Found constructor" << endl;
             }
         }
     }
+
+    if(string_view(class_signature) == "Ljava/util/ArrayList;")
+    {
+        check(jvmti_env->RetransformClasses(1, &klass));
+    }
+}
+
+static jniNativeInterface* original_jni;
+static void get_class_name(jvmtiEnv *jvmti_env, jclass clazz, span<char> buffer);
+
+static void logArrayWrite(JNIEnv* env, jobjectArray arr, jsize index, jobject val)
+{
+
+    jthread thread;
+    check(_jvmti_env->GetCurrentThread(&thread));
+
+    AgentThreadContext* tc = AgentThreadContext::from_thread(_jvmti_env, thread);
+
+    if(tc->clinit_empty())
+        return;
+
+    if(val)
+    {
+        ObjectContext* val_oc = ObjectContext::get_or_create(_jvmti_env, env, val, tc->clinit_top());
+        ObjectContext* arr_oc = ObjectContext::get_or_create(_jvmti_env, env, arr, tc->clinit_top());
+        ((ArrayObjectContext*)arr_oc)->registerWrite(index, val_oc, tc->clinit_top());
+    }
+
+#if LOG || PRINT_CLINIT_HEAP_WRITES
+    jclass arr_class = env->GetObjectClass(arr);
+
+    char class_name[1024];
+    get_class_name(_jvmti_env, arr_class, class_name);
+
+    char new_value_class_name[1024];
+    if(!val)
+    {
+        strcpy(new_value_class_name, "null");
+    }
+    else
+    {
+        jclass new_value_class = env->GetObjectClass(val);
+        get_class_name(_jvmti_env, new_value_class, new_value_class_name);
+    }
+
+    char cause_class_name[1024];
+
+    if(tc->clinit_empty())
+        cause_class_name[0] = 0;
+    else
+        get_class_name(_jvmti_env, tc->clinit_top(), cause_class_name);
+
+    class_name[strlen(class_name) - 2] = 0; // Cut off last "[]"
+    cerr << cause_class_name << ": " << class_name << '[' << index << ']' << " = " << new_value_class_name << '\n';
+#endif
+}
+
+static void JNICALL setObjectArrayElement(JNIEnv *env, jobjectArray array, jsize index, jobject val)
+{
+    logArrayWrite(env, array, index, val);
+    original_jni->SetObjectArrayElement(env, array, index, val);
 }
 
 static void JNICALL onVMInit(jvmtiEnv *jvmti_env, JNIEnv* jni_env, jthread thread)
@@ -511,6 +581,14 @@ static void JNICALL onVMInit(jvmtiEnv *jvmti_env, JNIEnv* jni_env, jthread threa
 
     jclass threadclass = jni_env->FindClass("java/lang/Thread");
     check(jvmti_env->RetransformClasses(1, &threadclass));
+
+
+
+    jniNativeInterface* redirected_jni;
+    check(jvmti_env->GetJNIFunctionTable(&original_jni));
+    check(jvmti_env->GetJNIFunctionTable(&redirected_jni));
+    redirected_jni->SetObjectArrayElement = setObjectArrayElement;
+    check(jvmti_env->SetJNIFunctionTable(redirected_jni));
 }
 
 static void get_class_name(jvmtiEnv *jvmti_env, jclass clazz, span<char> buffer)
@@ -721,6 +799,12 @@ static void JNICALL onClassFileLoad(
     if(string_view(name) == HOOK_CLASS_NAME) // Do not replace our own hooks, logically
         return;
 
+    if(string_view(name) == "java/util/ArrayList")
+    {
+        ofstream classfile("ArrayList.class");
+        classfile.write((const char*)class_data, class_data_len);
+    }
+
     add_clinit_hook(jvmti_env, class_data, class_data_len, new_class_data, new_class_data_len);
 }
 
@@ -768,7 +852,21 @@ extern "C" JNIEXPORT void JNICALL Java_HeapAssignmentTracingHooks_onClinitStart(
     }
 #endif
 
+    jclass made_reachable_by = tc->clinit_empty() ? nullptr : tc->clinit_top();
     tc->clinit_push(env, type);
+
+    if(made_reachable_by)
+    {
+        // Use tc->clinit_top because thats a global ref now...
+        ClassContext* cc = ClassContext::get_or_create(_jvmti_env, env, tc->clinit_top());
+        if(cc->made_reachable_by)
+        {
+            cerr << "FAILURE" << endl;
+            exit(1);
+        }
+        cc->made_reachable_by = made_reachable_by;
+    }
+
     check(_jvmti_env->NotifyFramePop(thread, 1));
 }
 
@@ -793,50 +891,9 @@ void onObjectFree(jvmtiEnv *jvmti_env, jlong tag)
     delete oc;
 }
 
-extern "C" JNIEXPORT void JNICALL Java_HeapAssignmentTracingHooks_notifyArrayWrite(JNIEnv* env, jobject self, jarray arr, jint index, jobject val)
+extern "C" JNIEXPORT void JNICALL Java_HeapAssignmentTracingHooks_notifyArrayWrite(JNIEnv* env, jobject self, jobjectArray arr, jint index, jobject val)
 {
-    jthread thread;
-    check(_jvmti_env->GetCurrentThread(&thread));
-
-    AgentThreadContext* tc = AgentThreadContext::from_thread(_jvmti_env, thread);
-
-    if(tc->clinit_empty())
-        return;
-
-    if(val)
-    {
-        ObjectContext* val_oc = ObjectContext::get_or_create(_jvmti_env, env, val, tc->clinit_top());
-        ObjectContext* arr_oc = ObjectContext::get_or_create(_jvmti_env, env, arr, tc->clinit_top());
-        ((ArrayObjectContext*)arr_oc)->registerWrite(index, val_oc, tc->clinit_top());
-    }
-
-#if LOG || PRINT_CLINIT_HEAP_WRITES
-    jclass arr_class = env->GetObjectClass(arr);
-
-    char class_name[1024];
-    get_class_name(_jvmti_env, arr_class, {class_name, class_name + 1024});
-
-    char new_value_class_name[1024];
-    if(!val)
-    {
-        strcpy(new_value_class_name, "null");
-    }
-    else
-    {
-        jclass new_value_class = env->GetObjectClass(val);
-        get_class_name(_jvmti_env, new_value_class, new_value_class_name);
-    }
-
-    char cause_class_name[1024];
-
-    if(tc->clinit_empty())
-        cause_class_name[0] = 0;
-    else
-        get_class_name(_jvmti_env, tc->clinit_top(), cause_class_name);
-
-    class_name[strlen(class_name) - 2] = 0; // Cut off last "[]"
-    cerr << cause_class_name << ": " << class_name << '[' << index << ']' << " = " << new_value_class_name << '\n';
-#endif
+    logArrayWrite(env, arr, index, val);
 }
 
 extern "C" JNIEXPORT void JNICALL Java_HeapAssignmentTracingHooks_onThreadStart(JNIEnv* env, jobject self, jthread newThread)
@@ -889,8 +946,10 @@ extern "C" JNIEXPORT jclass JNICALL Java_com_oracle_graal_pointsto_reports_HeapA
     if(error == JVMTI_ERROR_INVALID_FIELDID)
     {
         // May happen when the field of a substitution is accessed
+#ifdef SHOW_EXISTING
 #if SHOW_EXISTING == 0
         cerr << "Invalid Field!\n";
+#endif
 #endif
         return nullptr;
     }
@@ -925,6 +984,17 @@ extern "C" JNIEXPORT jclass JNICALL Java_com_oracle_graal_pointsto_reports_HeapA
 {
     auto declaring_cc = ClassContext::get_or_create(_jvmti_env, env, declaring);
     auto val_oc = (NonArrayObjectContext*)ObjectContext::get(_jvmti_env, val);
+
+    jint class_status;
+    check(_jvmti_env->GetClassStatus(declaring, &class_status));
+
+    if(!(class_status & JVMTI_CLASS_STATUS_INITIALIZED))
+    {
+        char class_name[1024];
+        get_class_name(_jvmti_env, declaring, class_name);
+        cerr << "Class not initialized yet field being asked for: " << class_name << endl;
+        return nullptr;
+    }
 
     jfieldID fieldID = env->FromReflectedField(field);
 
@@ -981,4 +1051,46 @@ extern "C" JNIEXPORT jclass JNICALL Java_com_oracle_graal_pointsto_reports_HeapA
 #endif
 
     return res;
+}
+
+extern "C" JNIEXPORT jclass JNICALL Java_com_oracle_graal_pointsto_reports_HeapAssignmentTracing_00024NativeImpl_getBuildTimeClinitResponsibleForBuildTimeClinit(JNIEnv* env, jobject thisClass, jclass clazz)
+{
+    ClassContext* cc = ClassContext::get_or_create(_jvmti_env, env, clazz);
+    return cc->made_reachable_by;
+}
+
+static void JNICALL onBreakpoint(
+        jvmtiEnv *jvmti_env,
+        JNIEnv* jni_env,
+        jthread thread,
+        jmethodID method,
+        jlocation location)
+{
+    AgentThreadContext* tc = AgentThreadContext::from_thread(jvmti_env, thread);
+
+    if(tc->clinit_empty())
+        cerr << "Allocated Token$CharToken" << endl;
+    else
+    {
+        char cname[1024];
+        get_class_name(jvmti_env, tc->clinit_top(), cname);
+        cerr << "Allocated Token$CharToken in " << cname << endl;
+
+        jvmtiFrameInfo frames[100];
+        jint frames_len;
+        check(jvmti_env->GetStackTrace(thread, 0, 100, frames, &frames_len));
+
+        for(size_t i = 0; i < frames_len; i++)
+        {
+            char *name, *signature, *generic;
+            jclass declaring_class;
+            check(jvmti_env->GetMethodDeclaringClass(frames[i].method, &declaring_class));
+
+            char declaring_class_name[1024];
+            get_class_name(jvmti_env, declaring_class, declaring_class_name);
+
+            check(jvmti_env->GetMethodName(frames[i].method, &name, &signature, &generic));
+            cerr << "at " << declaring_class_name << '.' << name << endl;
+        }
+    }
 }
