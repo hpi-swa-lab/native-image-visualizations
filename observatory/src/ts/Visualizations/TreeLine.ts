@@ -56,14 +56,14 @@ const textHorizontalPadding = 8
 const textVerticalPadding = 2
 const hierarchyGaps = 2 // used between boxes of the hierarchy
 
-export class TreeLineVisualization implements Visualization {
+export default class TreeLineVisualization implements Visualization {
     mergedUniverses: MergedNodeWithSizes
     combinations: UniverseCombination[]
     colors: Map<UniverseName, string>
 
     fillStyles: Map<UniverseCombination, string | CanvasGradient> = new Map()
-    canvas: HTMLCanvasElement
-    context: CanvasRenderingContext2D
+    canvas: HTMLCanvasElement | null = null
+    context: CanvasRenderingContext2D | null = null
 
     constructor(universes: Map<UniverseName, NodeWithSize>, colors: Map<UniverseName, string>) {
         this.mergedUniverses = mergeUniverses(universes)
@@ -75,6 +75,7 @@ export class TreeLineVisualization implements Visualization {
         } else if (names.length == 2) {
             this.combinations = [`${names[0]}`, `${names[0]},${names[1]}`, `${names[1]}`]
         } else {
+            this.combinations = []
             for (const combination of powerSet(names)) {
                 if (combination.length > 0) {
                     this.combinations.push(combinationFromNames(combination))
@@ -86,11 +87,17 @@ export class TreeLineVisualization implements Visualization {
     }
 
     generate(): void {
+        const container = document.getElementById('tree-line-container')!
+
         this.canvas = document.createElement('canvas') as HTMLCanvasElement
-        document.body.appendChild(this.canvas)
+        container.appendChild(this.canvas)
         this.context = this.canvas.getContext('2d', { alpha: false })
 
         const fitToScreen = () => {
+            if (!this.canvas) {
+                return
+            }
+
             const targetWidth = window.innerWidth
             const targetHeight = window.innerHeight
 
@@ -109,6 +116,10 @@ export class TreeLineVisualization implements Visualization {
         const mergedUniverses = this.mergedUniverses
         const redraw = (event: any | undefined) => {
             console.log('redrawing')
+            if (!this.canvas || !this.context) {
+                throw "Canvas doesn't exist yet."
+            }
+
             const transform = event?.transform ?? { x: 0, y: 0, k: 1 }
 
             fitToScreen()
@@ -130,15 +141,19 @@ export class TreeLineVisualization implements Visualization {
     }
 
     buildFillStyles() {
+        if (!this.canvas || !this.context) {
+            throw "Canvas doesn't exist yet."
+        }
+
         const lightenedColors: Map<UniverseName, string> = new Map()
         this.colors.forEach((color, name) => {
             lightenedColors.set(name, lightenColor(color))
         })
 
         for (const combination of this.combinations) {
-            // console.log(`Creating fill style for ${combination}`)
+            console.log(`Creating fill style for ${combination}`)
             if (!combination.includes(',')) {
-                this.fillStyles.set(combination, this.colors.get(combination))
+                this.fillStyles.set(combination, this.colors.get(combination)!)
                 continue
             }
 
@@ -151,15 +166,15 @@ export class TreeLineVisualization implements Visualization {
 
             for (let i = 0; i < numSteps; i += 1) {
                 const d = (1 / numSteps) * i
-                gradient.addColorStop(d, gradientColors[i % gradientColors.length])
+                gradient.addColorStop(d, gradientColors[i % gradientColors.length]!)
                 if (d + 0.001 <= 1) {
-                    // console.log(
-                    //     `i = ${i}, gradientColors = ${gradientColors} (len ${gradientColors.length})`
-                    // )
-                    // console.log(gradientColors[(i + 1) % gradientColors.length])
+                    console.log(
+                        `i = ${i}, gradientColors = ${gradientColors} (len ${gradientColors.length})`
+                    )
+                    console.log(gradientColors[(i + 1) % gradientColors.length])
                     gradient.addColorStop(
                         d + 0.001,
-                        gradientColors[(i + 1) % gradientColors.length]
+                        gradientColors[(i + 1) % gradientColors.length]!
                     )
                 }
             }
@@ -175,6 +190,10 @@ export class TreeLineVisualization implements Visualization {
         path: string[],
         leftOfHierarchy: number
     ) {
+        if (!this.canvas || !this.context) {
+            throw "Canvas doesn't exist yet."
+        }
+
         // console.log('Drawing diagram of tree')
         // console.log(tree)
         const height = tree.unionedSize * pixelsPerByte
@@ -223,14 +242,13 @@ export class TreeLineVisualization implements Visualization {
             for (const combination of this.combinations) {
                 const size = tree.exclusiveSizes.get(combination) ?? 0
                 const width = (lineWidth * size) / tree.unionedSize
-                this.context.fillStyle = this.colors.get(combination)
+
                 // Note: Floating point calculations are never accurate, so
                 // `floor` and `ceil` are used to avoid the background
                 // peeking through the gaps.
-                this.context.fillStyle = this.fillStyles.get(combination)
+                this.context.fillStyle = this.fillStyles.get(combination)!
                 this.context.fillRect(offsetFromLeft, Math.floor(top), width, Math.ceil(height))
 
-                // this.context.fillRect(offsetFromLeft, Math.floor(top), width, Math.ceil(height))
                 offsetFromLeft += width
             }
         }
@@ -242,7 +260,11 @@ export class TreeLineVisualization implements Visualization {
         height: number,
         text: string,
         containingCombinations: UniverseCombination[]
-    ) {
+    ): number {
+        if (!this.canvas || !this.context) {
+            throw "Canvas doesn't exist yet."
+        }
+
         this.context.font = `${fontSize}px sans-serif`
 
         const textWidth = this.context.measureText(text).width
@@ -250,7 +272,7 @@ export class TreeLineVisualization implements Visualization {
 
         this.context.fillStyle =
             containingCombinations.length == 1
-                ? this.fillStyles.get(containingCombinations[0])
+                ? this.fillStyles.get(containingCombinations[0])!
                 : '#cccccc'
         this.context.fillRect(left, top, boxWidth, height - hierarchyGaps)
 
