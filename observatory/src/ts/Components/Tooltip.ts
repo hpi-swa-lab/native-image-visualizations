@@ -1,30 +1,19 @@
-import { removeChildren } from '../utils'
-
 export default class Tooltip {
-    // @ts-ignore
-    _title: string
+    _title = ''
 
-    // @ts-ignore
-    _datapoints: Record<string, any>
+    _datapoints: Record<string, string> = {}
 
-    // @ts-ignore
-    _container: HTMLDivElement
+    _container: HTMLDivElement = this._buildContainer()
 
-    // @ts-ignore
-    _titleElement: HTMLElement
+    _titleElement: HTMLElement = this._buildTitle()
 
-    // @ts-ignore
-    _dataElement: HTMLElement
+    _dataElement: HTMLElement = this._buildDataContainer()
 
-    constructor(
-        title: string = '',
-        datapoints: Record<string, any> = {},
-        visible: boolean = false
-    ) {
+    constructor(title: string, datapoints: Record<string, string>, visible = false) {
         this._build()
 
-        this.title = title
-        this.datapoints = datapoints
+        this._title = title
+        this._datapoints = datapoints
 
         if (visible) {
             this.setVisible()
@@ -43,14 +32,14 @@ export default class Tooltip {
 
     set title(newValue: string) {
         this._title = newValue
-        this._buildTitleContent()
+        this._titleElement.innerHTML = newValue
     }
 
     get datapoints() {
         return this._datapoints
     }
 
-    set datapoints(newValues: Record<string, any>) {
+    set datapoints(newValues: Record<string, string>) {
         this._datapoints = newValues
         this._buildDataContainerContent()
     }
@@ -107,12 +96,10 @@ export default class Tooltip {
         return result
     }
 
-    _buildTitleContent() {
-        this._titleElement.innerHTML = this.title
-    }
-
     _buildDataContainerContent() {
-        removeChildren(this._dataElement)
+        while (this._dataElement.lastChild) {
+            this._dataElement.removeChild(this._dataElement.lastChild)
+        }
         Object.keys(this.datapoints).forEach((name: string) => {
             const element = document.createElement('div')
 
