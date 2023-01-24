@@ -6,7 +6,7 @@ import App from './App.vue'
 import SankeyTreeVue from './visualizations/SankeyTree.vue'
 import TreeLineVue from './visualizations/TreeLine.vue'
 import VennVue from './visualizations/VennSets.vue'
-import ZoomableCausalityGraphVue from './visualizations/ZoomableCausalityGraph.vue'
+import CausalityGraphVue from './visualizations/CausalityGraph.vue'
 import Home from './Home.vue'
 
 const routes = [
@@ -14,7 +14,7 @@ const routes = [
     { path: '/sankey-tree', component: SankeyTreeVue },
     { path: '/tree-line', component: TreeLineVue },
     { path: '/venn', component: VennVue },
-    { path: '/zoomable-causality-graph', component: ZoomableCausalityGraphVue }
+    { path: '/causality-graph', component: CausalityGraphVue }
 ]
 
 const router = createRouter({
