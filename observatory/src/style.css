@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 .btn {
-    @apply font-bold py-2 px-4 rounded;
+    @apply py-2 px-4 rounded;
 }
 
 .btn-primary {
@@ -12,4 +12,16 @@
 
 .btn-primary:hover {
     @apply bg-blue-700;
+}
+
+h1 {
+    @apply text-4xl;
+}
+
+h2 {
+    @apply text-3xl;
+}
+
+h3 {
+    @apply text-2xl;
 }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import VisualizationNavigation from './navigation/VisualizationNagivation.vue'
+import UniverseSelectionList from './controls/UniverseSelectionList.vue'
 
 defineProps({
     title: String,
@@ -21,16 +22,21 @@ function handleChangeViz(value: number) {
         <div class="px-3 py-4 overflow-y-auto rounded bg-gray-50 space-y-4">
             <h2>{{ title }}</h2>
             <hr />
-            <!-- TODO button that redirect to datamanager-->
 
-            <div><button type="button">WIP: Data Manager</button></div>
+            <div>
+                <button type="button" class="btn btn-primary btn-primary:hover">
+                    WIP: Data Manager
+                </button>
+            </div>
             <hr />
 
-            <!-- TODO auflistung der files, die im local storage liegen -->
             <VisualizationNavigation
                 :selected="visualizationType"
                 @change-viz="handleChangeViz"
             ></VisualizationNavigation>
+            <hr />
+
+            <UniverseSelectionList></UniverseSelectionList>
             <hr />
 
             <ul class="space-y-2">
