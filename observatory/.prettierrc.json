@@ -1,7 +1,7 @@
 {
     "tabWidth": 4,
     "bracketSpacing": true,
-    "endOfLine": "crlf",
+    "endOfLine": "lf",
     "jsxSingleQuote": true,
     "semi": false,
     "singleQuote": true,
