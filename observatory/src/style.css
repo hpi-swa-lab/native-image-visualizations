@@ -25,3 +25,10 @@ h2 {
 h3 {
     @apply text-2xl;
 }
+
+.dropdown {
+    @apply border text-sm rounded-lg p-2.5
+}
+.dropdown-white {
+    @apply bg-white border-gray-300 text-gray-900 focus:ring-blue-500 focus:border-blue-500
+}

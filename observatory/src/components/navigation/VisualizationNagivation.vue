@@ -27,7 +27,7 @@ export default defineComponent({
             id="visualization-dropdown"
             name="Visualization"
             :value="selected"
-            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+            class="dropdown dropdown-white block w-full"
             @change="$emit('change-viz', parseInt($event.target.value))"
         >
             <option :value="none" disabled>Choose Visualization</option>
