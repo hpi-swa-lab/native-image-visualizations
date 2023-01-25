@@ -6,12 +6,10 @@ import TreeLine from './components/visualizations/TreeLine.vue'
 import Venn from './components/visualizations/Venn.vue'
 import CausalityGraph from './components/visualizations/CausalityGraph.vue'
 import Home from './Home.vue'
-import HierarchyBubbles from './components/visualizations/HierarchyBubbles.vue'
 
 export default defineComponent({
     components: {
-        HierarchyBubbles,
-        CausalityGraph: CausalityGraph,
+        CausalityGraph,
         TreeLine,
         SankeyTree,
         Venn,
@@ -35,7 +33,6 @@ export default defineComponent({
             sankeyTree: VisualizationType.SankeyTree,
             treeLine: VisualizationType.TreeLine,
             causalityGraph: VisualizationType.CausalityGraph,
-            hierarchyBubbles: VisualizationType.HierarchyBubbles
         }
     }
 })
@@ -55,9 +52,5 @@ export default defineComponent({
         v-else-if="currentVisualization === causalityGraph"
         @change-viz="handleChangeViz"
     ></CausalityGraph>
-    <HierarchyBubbles
-        v-else-if="currentVisualization === hierarchyBubbles"
-        @change-viz="handleChangeViz"
-    ></HierarchyBubbles>
     <Home v-else @change-viz="handleChangeViz"></Home>
 </template>

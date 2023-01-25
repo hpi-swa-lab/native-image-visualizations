@@ -6,8 +6,9 @@
 
 <script setup lang="ts">
 import MainLayout from './components/MainLayout.vue'
+import {VisualizationType} from "./ts/SharedTypes/visualizationType";
 
-const vt = -1
+const vt = VisualizationType.None
 
 const emit = defineEmits<{
     (e: 'change-viz', value: number): void

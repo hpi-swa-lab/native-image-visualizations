@@ -3,5 +3,5 @@ export enum VisualizationType {
     SankeyTree,
     TreeLine,
     CausalityGraph,
-    HierarchyBubbles
+    None
 }

@@ -12,7 +12,7 @@ export default defineComponent({
             sankeyTree: VisualizationType.SankeyTree,
             treeLine: VisualizationType.TreeLine,
             causalityGraph: VisualizationType.CausalityGraph,
-            hierarchyBubbles: VisualizationType.HierarchyBubbles
+            none: VisualizationType.None,
         }
     }
 })
@@ -30,12 +30,11 @@ export default defineComponent({
             class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
             @change="$emit('change-viz', parseInt($event.target.value))"
         >
-            <option value="-1">Choose Visualization</option>
+            <option :value="none" disabled>Choose Visualization</option>
             <option :value="venn">Venn</option>
             <option :value="sankeyTree">Sankey Tree</option>
             <option :value="treeLine">Tree Line</option>
             <option :value="causalityGraph">Causality Graph</option>
-            <option :value="hierarchyBubbles">Hierarchy Bubbles</option>
         </select>
     </div>
 </template>
