@@ -9,8 +9,7 @@ on:
       - main
 
 jobs:
-  linting:
-    name: Linting and Prettifying
+  formatting:
     runs-on: ubuntu-latest
     defaults:
       run:
