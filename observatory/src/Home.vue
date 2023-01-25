@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import MainLayout from './components/MainLayout.vue'
-import {VisualizationType} from "./ts/SharedTypes/visualizationType";
+import { VisualizationType } from './ts/SharedTypes/visualizationType'
 
 const vt = VisualizationType.None
 
 const emit = defineEmits<{
-  (e: 'change-viz', value: number): void
+    (e: 'change-viz', value: number): void
 }>()
 
 function handleChangeViz(value: number) {
-  console.log('sankey', value, typeof value)
-  emit('change-viz', value)
+    console.log('sankey', value, typeof value)
+    emit('change-viz', value)
 }
 </script>
 

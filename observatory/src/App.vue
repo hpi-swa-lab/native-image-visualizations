@@ -15,25 +15,21 @@ export default defineComponent({
         Venn,
         Home
     },
-    setup() {
-        const currentVisualization = ref<number>()
-
-        const handleVizSwitch = (value: number) => {
-            // `evt` will be of type `any`
-            console.log('App', value)
-            currentVisualization.value = value
-
-            console.log('currentVisualization', currentVisualization.value)
-        }
-        return { currentVisualization, handleChangeViz: handleVizSwitch }
-    },
     data() {
         return {
             vennSets: VisualizationType.VennSets,
             sankeyTree: VisualizationType.SankeyTree,
             treeLine: VisualizationType.TreeLine,
-            causalityGraph: VisualizationType.CausalityGraph,
+            causalityGraph: VisualizationType.CausalityGraph
         }
+    },
+    setup() {
+        const currentVisualization = ref<number>()
+
+        const handleChangeViz = (value: number) => {
+            currentVisualization.value = value
+        }
+        return { currentVisualization, handleChangeViz }
     }
 })
 </script>

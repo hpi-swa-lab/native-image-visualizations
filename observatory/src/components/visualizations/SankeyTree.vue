@@ -1,11 +1,3 @@
-<template>
-    <MainLayout title="Sankey Tree" :visualization-type="vt" @change-viz="handleChangeViz">
-        <template #controls />
-
-        <div id="container" />
-    </MainLayout>
-</template>
-
 <script setup lang="ts">
 import MainLayout from '../MainLayout.vue'
 import { VisualizationType } from '../../ts/SharedTypes/visualizationType'
@@ -21,3 +13,11 @@ function handleChangeViz(value: number) {
     emit('change-viz', value)
 }
 </script>
+
+<template>
+    <MainLayout title="Sankey Tree" :visualization-type="vt" @change-viz="handleChangeViz">
+        <template #controls />
+
+        <div id="container" />
+    </MainLayout>
+</template>

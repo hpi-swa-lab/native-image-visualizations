@@ -1,5 +1,5 @@
 <script lang="ts">
-import { defineComponent, ref } from 'vue'
+import { defineComponent } from 'vue'
 import { VisualizationType } from '../../ts/SharedTypes/visualizationType'
 
 export default defineComponent({
@@ -12,7 +12,7 @@ export default defineComponent({
             sankeyTree: VisualizationType.SankeyTree,
             treeLine: VisualizationType.TreeLine,
             causalityGraph: VisualizationType.CausalityGraph,
-            none: VisualizationType.None,
+            none: VisualizationType.None
         }
     }
 })
