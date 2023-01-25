@@ -24,7 +24,7 @@ For linting and prettifying there are also commands:
 
 -   `npm run eslint-{check|autofix}` runs eslint with the project configuration. If autofix is used, it will try to solve the problems itself.
 -   `npm run prettier-{check|autofix}` runs prettier with the project configuration. If autofix is used, it will reformat all files managed by prettier.
--   `npm run test` runs all CI actions: `eslint-check`, `prettier-check` and `jest`.
+-   `npm run test` runs all CI actions: `eslint-check`, `prettier-check`, and `jest`.
 
 ## Other information
 
