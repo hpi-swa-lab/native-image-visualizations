@@ -31,7 +31,7 @@ export default defineComponent({
             @change="$emit('change-viz', parseInt($event.target.value))"
         >
             <option :value="none" disabled>Choose Visualization</option>
-            <option :value="vennSets">Venn</option>
+            <option :value="vennSets">Venn Sets</option>
             <option :value="sankeyTree">Sankey Tree</option>
             <option :value="treeLine">Tree Line</option>
             <option :value="causalityGraph">Causality Graph</option>

@@ -15,14 +15,6 @@ export default defineComponent({
         Venn,
         Home
     },
-    data() {
-        return {
-            vennSets: VisualizationType.VennSets,
-            sankeyTree: VisualizationType.SankeyTree,
-            treeLine: VisualizationType.TreeLine,
-            causalityGraph: VisualizationType.CausalityGraph
-        }
-    },
     setup() {
         const currentVisualization = ref<number>()
 
@@ -30,6 +22,14 @@ export default defineComponent({
             currentVisualization.value = value
         }
         return { currentVisualization, handleChangeViz }
+    },
+    data() {
+        return {
+            vennSets: VisualizationType.VennSets,
+            sankeyTree: VisualizationType.SankeyTree,
+            treeLine: VisualizationType.TreeLine,
+            causalityGraph: VisualizationType.CausalityGraph
+        }
     }
 })
 </script>
