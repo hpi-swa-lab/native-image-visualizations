@@ -60,19 +60,19 @@ export class Star implements Universe {
             this.name === another.name &&
             this.codeSize === another.codeSize &&
             this.detailFlag === another.detailFlag &&
-            this.parent === another.parent
+            this.parent === another.parent &&
+            this.initKind === another.initKind
         )
     }
 
     public identifier(): string {
-        // eslint-disable-next-line @typescript-eslint/no-this-alias
-        let root: Universe | undefined = this
-        let path = ''
+        let path = this.name
+        let root: Universe | undefined = this.parent
         while (root != undefined) {
             path = root.name + SEPARATOR + path
             root = root.parent
         }
-        return path.substring(0, path.length - 1)
+        return path
     }
 
     public isInline(): boolean {

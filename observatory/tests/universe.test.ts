@@ -34,11 +34,11 @@ describe('Universe', () => {
         packageA.append(classAB)
         packageB.append(classBA)
         classAA.append(new Star('MethodAAA', classAA, 10, 0, InitKind.BUILD_TIME))
-        classAB.append(new Star('classABA', classAB, 7, 1, InitKind.BUILD_TIME))
-        classAB.append(new Star('classABB', classAB, 5, 3, InitKind.RERUN))
-        classBA.append(new Star('classBAA', classBA, 20, 7, InitKind.BUILD_TIME))
-        classBA.append(new Star('classBAB', classBA, 0, 5, InitKind.BUILD_TIME))
-        classBA.append(new Star('classBAC', classBA, 10, 10, InitKind.BUILD_TIME))
+        classAB.append(new Star('MethodABA', classAB, 7, 1, InitKind.BUILD_TIME))
+        classAB.append(new Star('MethodABB', classAB, 5, 3, InitKind.RERUN))
+        classBA.append(new Star('MethodBAA', classBA, 20, 7, InitKind.BUILD_TIME))
+        classBA.append(new Star('MethodBAB', classBA, 0, 5, InitKind.BUILD_TIME))
+        classBA.append(new Star('MethodBAC', classBA, 10, 10, InitKind.BUILD_TIME))
     })
 
     test('sum for childless root should be 0', () => {
