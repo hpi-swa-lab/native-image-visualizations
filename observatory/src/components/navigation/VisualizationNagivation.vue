@@ -1,26 +1,41 @@
-<template>
-  <div>
-      <VisualizationLink v-for="link in links" :router-link="link.routerLink" :name="link.name"></VisualizationLink>
-  </div>
-</template>
+<script lang="ts">
+import { defineComponent, ref } from 'vue'
+import { VisualizationType } from '../../ts/SharedTypes/visualizationType'
 
-<script setup lang="ts">
-import VisualizationLink from "./VisualizationLink.vue";
-
-interface Link {
-  routerLink: string,
-  name: string
-}
-
-const links: Link[] = [
-  {routerLink: "/zoomable-causality-graph", name: "Zoomable Causality Graph"},
-  {routerLink: "/tree-line", name: "Tree Line"},
-  {routerLink: "/sankey-tree", name: "Sankey Tree"},
-  {routerLink: "/venn", name: "Venn"},
-  {routerLink: "/hierarchy-bubbles", name: "Hierarchy Bubbles"},
-]
-
+export default defineComponent({
+    props: {
+        selected: Number
+    },
+    data() {
+        return {
+            venn: VisualizationType.Venn,
+            sankeyTree: VisualizationType.SankeyTree,
+            treeLine: VisualizationType.TreeLine,
+            causalityGraph: VisualizationType.CausalityGraph,
+            hierarchyBubbles: VisualizationType.HierarchyBubbles
+        }
+    }
+})
 </script>
 
-<style scoped>
-</style>
+<template>
+    <div>
+        <label for="visualization-dropdown" class="block mb-2 text-sm font-medium"
+            >Choose Visualization:</label
+        >
+        <select
+            id="visualization-dropdown"
+            name="Visualization"
+            :value="selected"
+            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+            @change="$emit('change-viz', parseInt($event.target.value))"
+        >
+            <option value="-1">Choose Visualization</option>
+            <option :value="venn">Venn</option>
+            <option :value="sankeyTree">Sankey Tree</option>
+            <option :value="treeLine">Tree Line</option>
+            <option :value="causalityGraph">Causality Graph</option>
+            <option :value="hierarchyBubbles">Hierarchy Bubbles</option>
+        </select>
+    </div>
+</template>

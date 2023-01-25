@@ -7,7 +7,7 @@ import HierarchyBubblesVue from './components/visualizations/HierarchyBubbles.vu
 import SankeyTreeVue from './components/visualizations/SankeyTree.vue'
 import TreeLineVue from './components/visualizations/TreeLine.vue'
 import VennVue from './components/visualizations/Venn.vue'
-import ZoomableCausalityGraphVue from './components/visualizations/ZoomableCausalityGraph.vue'
+import CausalityGraphVue from './components/visualizations/CausalityGraph.vue'
 import Home from './Home.vue'
 
 const routes = [
@@ -16,7 +16,7 @@ const routes = [
     { path: '/sankey-tree', component: SankeyTreeVue },
     { path: '/tree-line', component: TreeLineVue },
     { path: '/venn', component: VennVue },
-    { path: '/zoomable-causality-graph', component: ZoomableCausalityGraphVue }
+    { path: '/causality-graph', component: CausalityGraphVue }
 ]
 
 const router = createRouter({
@@ -25,5 +25,5 @@ const router = createRouter({
 })
 
 const app = createApp(App)
-app.use(router)
+// app.use(router)
 app.mount('#app')

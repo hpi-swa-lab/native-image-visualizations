@@ -1,5 +1,5 @@
 <template>
-    <MainLayout title="Venn" :visualization-type="vt">
+    <MainLayout title="WIP: Causality Graph" :visualization-type="vt">
         <template #controls />
 
         <div id="container" />
@@ -10,5 +10,5 @@
 import MainLayout from '../MainLayout.vue'
 import { VisualizationType } from '../../ts/SharedTypes/visualizationType'
 
-const vt = VisualizationType.Venn
+const vt = VisualizationType.CausalityGraph
 </script>
