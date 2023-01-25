@@ -1,44 +1,49 @@
 import { describe, expect, test } from '@jest/globals'
-import { Multiverse } from '../src/ts/UniverseTypes/Multiverse'
-import { InitKind, Star } from '../src/ts/UniverseTypes/Star'
+import { Node } from '../src/ts/UniverseTypes/Node'
+import { InitKind, Leaf } from '../src/ts/UniverseTypes/Leaf'
 import { HIERARCHY_NAME_SEPARATOR } from '../src/ts/globals'
 
 describe('Universe', () => {
-    let childlessRoot: Multiverse
-    let method: Star
-    let simpleTree: Multiverse
-    let layeredTree: Multiverse
+    let childlessRoot: Node
+    let method: Leaf
+    let simpleTree: Node
+    let layeredTree: Node
 
     beforeEach(() => {
-        childlessRoot = new Multiverse('Native Image', undefined, [])
+        childlessRoot = new Node('Native Image', undefined, [])
 
-        method = new Star('method', undefined, 10, 5, InitKind.BUILD_TIME)
+        method = new Leaf('method', undefined, 10, InitKind.BUILD_TIME)
 
-        simpleTree = new Multiverse('Class', undefined, [])
-        simpleTree.append(new Star('methodA', simpleTree, 10, 0, InitKind.BUILD_TIME))
-        simpleTree.append(new Star('methodB', simpleTree, 7, 1, InitKind.BUILD_TIME))
-        simpleTree.append(new Star('methodC', simpleTree, 5, 3, InitKind.RERUN))
-        simpleTree.append(new Star('methodD', simpleTree, 20, 7, InitKind.BUILD_TIME))
-        simpleTree.append(new Star('methodE', simpleTree, 0, 5, InitKind.BUILD_TIME))
-        simpleTree.append(new Star('methodF', simpleTree, 10, 10, InitKind.BUILD_TIME))
+        simpleTree = new Node('Class', undefined, [])
+        simpleTree.append(
+            new Leaf('methodA', simpleTree, 10, InitKind.BUILD_TIME),
+            new Leaf('methodB', simpleTree, 7, InitKind.BUILD_TIME),
+            new Leaf('methodC', simpleTree, 5, InitKind.RERUN),
+            new Leaf('methodD', simpleTree, 20, InitKind.BUILD_TIME),
+            new Leaf('methodE', simpleTree, 0, InitKind.BUILD_TIME),
+            new Leaf('methodF', simpleTree, 10, InitKind.BUILD_TIME)
+        )
 
-        layeredTree = new Multiverse('module', undefined, [])
-        const packageA = new Multiverse('packageA', layeredTree, [])
-        const packageB = new Multiverse('packageB', layeredTree, [])
-        layeredTree.append(packageA)
-        layeredTree.append(packageB)
-        const classAA = new Multiverse('ClassAA', packageA, [])
-        const classAB = new Multiverse('ClassAB', packageA, [])
-        const classBA = new Multiverse('ClassBA', packageB, [])
-        packageA.append(classAA)
-        packageA.append(classAB)
-        packageB.append(classBA)
-        classAA.append(new Star('methodAAA', classAA, 10, 0, InitKind.BUILD_TIME))
-        classAB.append(new Star('methodABA', classAB, 7, 1, InitKind.BUILD_TIME))
-        classAB.append(new Star('methodABB', classAB, 5, 3, InitKind.RERUN))
-        classBA.append(new Star('methodBAA', classBA, 20, 7, InitKind.BUILD_TIME))
-        classBA.append(new Star('methodBAB', classBA, 0, 5, InitKind.BUILD_TIME))
-        classBA.append(new Star('methodBAC', classBA, 10, 10, InitKind.BUILD_TIME))
+        layeredTree = new Node('module', undefined, [])
+        layeredTree.append(
+            new Node('packageA', layeredTree, []),
+            new Node('packageB', layeredTree, [])
+        )
+        const classAA = new Node('ClassAA', layeredTree.children[0], [])
+        const classAB = new Node('ClassAB', layeredTree.children[0], [])
+        const classBA = new Node('ClassBA', layeredTree.children[1], [])
+        layeredTree.children[0].append(classAA, classAB)
+        layeredTree.children[1].append(classBA)
+        classAA.append(new Leaf('methodAAA', classAA, 10, InitKind.BUILD_TIME))
+        classAB.append(
+            new Leaf('methodABA', classAB, 7, InitKind.BUILD_TIME),
+            new Leaf('methodABB', classAB, 5, InitKind.RERUN)
+        )
+        classBA.append(
+            new Leaf('methodBAA', classBA, 20, InitKind.BUILD_TIME),
+            new Leaf('methodBAB', classBA, 0, InitKind.BUILD_TIME),
+            new Leaf('methodBAC', classBA, 10, InitKind.BUILD_TIME)
+        )
     })
 
     test('sum for childless root should be 0', () => {
@@ -58,70 +63,35 @@ describe('Universe', () => {
     })
 
     test('childless root should be inline', () => {
-        expect(childlessRoot.isInline()).toBeTruthy()
+        expect(childlessRoot.inline).toBeTruthy()
     })
 
     test('leaf with positive code size is not considered inlined', () => {
-        expect(method.isInline()).toBeFalsy()
+        expect(method.inline).toBeFalsy()
     })
 
     test('leaf with 0 code size is inlined', () => {
-        expect(new Star('Method', undefined, 0, 5, InitKind.BUILD_TIME).isInline()).toBeTruthy()
+        expect(new Leaf('Method', undefined, 0, InitKind.BUILD_TIME).inline).toBeTruthy()
     })
 
     test('simple tree should not be inlined as at least one children is not inlined', () => {
-        expect(simpleTree.isInline()).toBeFalsy()
+        expect(simpleTree.inline).toBeFalsy()
     })
 
     test('complex tree should not be inlined as at least one children is not inlined', () => {
-        expect(layeredTree.isInline()).toBeFalsy()
-    })
-
-    test('detail flag 0 is neither reflective, jni, or synthetic', () => {
-        const nothing = new Star('method', undefined, 10, 0, InitKind.BUILD_TIME)
-        expect(nothing.isReflective()).toBeFalsy()
-        expect(nothing.isJNI()).toBeFalsy()
-        expect(nothing.isSynthetic()).toBeFalsy()
-    })
-
-    test('detail flag 1 is reflective, but neither jni, or synthetic', () => {
-        const nothing = new Star('method', undefined, 10, 1, InitKind.BUILD_TIME)
-        expect(nothing.isReflective()).toBeTruthy()
-        expect(nothing.isJNI()).toBeFalsy()
-        expect(nothing.isSynthetic()).toBeFalsy()
-    })
-
-    test('detail flag 2 is jni, but neither reflective, or synthetic', () => {
-        const nothing = new Star('Method', undefined, 10, 2, InitKind.BUILD_TIME)
-        expect(nothing.isReflective()).toBeFalsy()
-        expect(nothing.isJNI()).toBeTruthy()
-        expect(nothing.isSynthetic()).toBeFalsy()
-    })
-
-    test('detail flag 4 is synthetic, but neither reflective, or jni', () => {
-        const nothing = new Star('method', undefined, 10, 4, InitKind.BUILD_TIME)
-        expect(nothing.isReflective()).toBeFalsy()
-        expect(nothing.isJNI()).toBeFalsy()
-        expect(nothing.isSynthetic()).toBeTruthy()
-    })
-
-    test('detail flag 7 is synthetic, reflective, and jni', () => {
-        const nothing = new Star('method', undefined, 10, 7, InitKind.BUILD_TIME)
-        expect(nothing.isReflective()).toBeTruthy()
-        expect(nothing.isJNI()).toBeTruthy()
-        expect(nothing.isSynthetic()).toBeTruthy()
+        expect(layeredTree.inline).toBeFalsy()
     })
 
     test('childless root returns its name for identifier', () => {
-        expect(childlessRoot.identifier()).toEqual(childlessRoot.name)
+        expect(childlessRoot.identifier).toEqual(childlessRoot.name)
     })
 
     test('leaf returns its name for identifier', () => {
-        expect(method.identifier()).toEqual(method.name)
+        expect(method.identifier).toEqual(method.name)
     })
 
     test('leaf of complex tree returns path to it as identifier', () => {
-        expect(layeredTree.universes[0].universes[0].universes[0].identifier()).toEqual(
+        expect(layeredTree.children[0].children[0].children[0].identifier).toEqual(
             `module${HIERARCHY_NAME_SEPARATOR}packageA${HIERARCHY_NAME_SEPARATOR}ClassAA${HIERARCHY_NAME_SEPARATOR}methodAAA`
         )
     })
