@@ -8,7 +8,7 @@ export enum InitKind {
 }
 
 // Reason for exclude: Knowing whether a method is reflective, JNI,
-// or synthetic is encoded as individual bits which we need | for
+// or synthetic is encoded as individual bits which we need & for
 /* eslint-disable no-bitwise */
 export class Star implements Universe {
     private _name = ''
