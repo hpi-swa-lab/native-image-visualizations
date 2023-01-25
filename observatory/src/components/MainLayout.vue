@@ -1,20 +1,25 @@
-<script setup lang="ts">
+<script lang="ts">
 import VisualizationNavigation from './navigation/VisualizationNagivation.vue'
 import UniverseSelectionList from './controls/UniverseSelectionList.vue'
+import {defineComponent} from "vue";
 
-defineProps({
+export default defineComponent({
+  components: {
+    VisualizationNavigation,
+    UniverseSelectionList
+  },
+  props: {
     title: String,
     visualizationType: Number
+  },
+  emit: ['change-viz'],
+  setup(props, {emit}) {
+    const handleChangeViz = (value:number) => {
+      emit('change-viz', value)
+    }
+    return {handleChangeViz}
+  }
 })
-
-const emit = defineEmits<{
-    (e: 'change-viz', value: number): void
-}>()
-
-function handleChangeViz(value: number) {
-    console.log('mainLayout', value, typeof value)
-    emit('change-viz', value)
-}
 </script>
 
 <template>
