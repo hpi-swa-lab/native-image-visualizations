@@ -3,20 +3,18 @@ import './style.css'
 import { createRouter, createWebHashHistory } from 'vue-router'
 import App from './App.vue'
 
-import HierarchyBubblesVue from './visualizations/HierarchyBubbles.vue'
 import SankeyTreeVue from './visualizations/SankeyTree.vue'
 import TreeLineVue from './visualizations/TreeLine.vue'
-import VennVue from './visualizations/Venn.vue'
-import ZoomableCausalityGraphVue from './visualizations/ZoomableCausalityGraph.vue'
+import VennVue from './visualizations/VennSets.vue'
+import CausalityGraphVue from './visualizations/CausalityGraph.vue'
 import Home from './Home.vue'
 
 const routes = [
     { path: '/', component: Home },
-    { path: '/hierarchy-bubbles', component: HierarchyBubblesVue },
     { path: '/sankey-tree', component: SankeyTreeVue },
     { path: '/tree-line', component: TreeLineVue },
     { path: '/venn', component: VennVue },
-    { path: '/zoomable-causality-graph', component: ZoomableCausalityGraphVue }
+    { path: '/causality-graph', component: CausalityGraphVue }
 ]
 
 const router = createRouter({
