@@ -1,3 +1,5 @@
+import { Universe } from '../UniverseTypes/Universe'
+
 export default interface Visualization {
-    generate(): void
+    visualize(universe: Universe): void
 }

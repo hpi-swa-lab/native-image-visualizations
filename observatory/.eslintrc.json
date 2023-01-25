@@ -5,7 +5,7 @@
         "node": true
     },
     "extends": [
-        "airbnb-base",
+        "google",
         "plugin:vue/vue3-recommended",
         "plugin:@typescript-eslint/recommended",
         "prettier"
@@ -19,12 +19,7 @@
     "plugins": ["@typescript-eslint", "prettier", "import"],
     "ignorePatterns": ["/node_modules"],
     "rules": {
-        "no-plusplus": [
-            2,
-            {
-                "allowForLoopAfterthoughts": true
-            }
-        ],
+        "@typescript-eslint/member-ordering": ["error"],
         "import/no-unresolved": "error",
         "vue/multi-word-component-names": [
             "error",
@@ -32,17 +27,32 @@
                 "ignores": ["Home", "App"]
             }
         ],
-        "no-console": ["error", { "allow": ["warn", "error"] }],
-        "camelcase": [1],
-        "import/extensions": "off",
-        "object-shorthand": "off",
-        "no-underscore-dangle": [
-            2,
+        "require-jsdoc": "off",
+        "vue/max-len": [
+            "error",
             {
-                "allowAfterThis": true,
-                "allowAfterSuper": true
+                "code": 100,
+                "template": 120,
+                "tabWidth": 4,
+                "comments": 100,
+                "ignoreComments": false,
+                "ignoreTrailingComments": false,
+                "ignoreUrls": true,
+                "ignoreStrings": true,
+                "ignoreTemplateLiterals": true,
+                "ignoreRegExpLiterals": true,
+                "ignoreHTMLAttributeValues": true,
+                "ignoreHTMLTextContents": true
             }
         ],
+        "no-plusplus": [
+            2,
+            {
+                "allowForLoopAfterthoughts": true
+            }
+        ],
+        "no-console": ["error", { "allow": ["warn", "error"] }],
+        "camelcase": [1],
         "quotes": ["error", "single"],
         "no-multi-spaces": ["error"],
         "class-methods-use-this": "off"
