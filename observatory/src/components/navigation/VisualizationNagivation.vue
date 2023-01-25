@@ -1,10 +1,13 @@
 <script lang="ts">
 import { defineComponent } from 'vue'
-import { VisualizationType } from '../../ts/SharedTypes/visualizationType'
+import { VisualizationType } from '../../ts/enums/VisualizationType'
 
 export default defineComponent({
     props: {
-        selected: Number
+        selected: {
+            type: Number,
+            default: -1
+        }
     },
     emits: ['change-viz'],
     data() {

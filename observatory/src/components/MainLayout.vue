@@ -1,24 +1,31 @@
 <script lang="ts">
 import VisualizationNavigation from './navigation/VisualizationNagivation.vue'
 import UniverseSelectionList from './controls/UniverseSelectionList.vue'
-import {defineComponent} from "vue";
+import { defineComponent } from 'vue'
+import { Emit } from '../ts/enums/Emit'
 
 export default defineComponent({
-  components: {
-    VisualizationNavigation,
-    UniverseSelectionList
-  },
-  props: {
-    title: String,
-    visualizationType: Number
-  },
-  emit: ['change-viz'],
-  setup(props, {emit}) {
-    const handleChangeViz = (value:number) => {
-      emit('change-viz', value)
+    components: {
+        VisualizationNavigation,
+        UniverseSelectionList
+    },
+    props: {
+        title: {
+            type: String,
+            default: ''
+        },
+        visualizationType: {
+            type: Number,
+            default: -1
+        }
+    },
+    emits: [Emit.CHANGE_VIZ],
+    setup(props, { emit }) {
+        const handleChangeViz = (value: number) => {
+            emit(Emit.CHANGE_VIZ, value)
+        }
+        return { handleChangeViz }
     }
-    return {handleChangeViz}
-  }
 })
 </script>
 

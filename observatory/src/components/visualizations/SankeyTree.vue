@@ -1,8 +1,18 @@
-<script setup lang="ts">
+<script lang="ts">
+import { VisualizationType } from '../../ts/enums/VisualizationType'
+import { defineComponent } from 'vue'
 import MainLayout from '../MainLayout.vue'
-import { VisualizationType } from '../../ts/SharedTypes/visualizationType'
 
-const vt = VisualizationType.SankeyTree
+export default defineComponent({
+    components: {
+        MainLayout
+    },
+    data() {
+        return {
+            vt: VisualizationType.SankeyTree
+        }
+    }
+})
 </script>
 
 <template>

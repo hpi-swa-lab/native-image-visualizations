@@ -1,7 +1,7 @@
 <script lang="ts">
 import { defineComponent, ref } from 'vue'
 import SankeyTree from './components/visualizations/SankeyTree.vue'
-import { VisualizationType } from './ts/SharedTypes/visualizationType'
+import { VisualizationType } from './ts/enums/VisualizationType'
 import TreeLine from './components/visualizations/TreeLine.vue'
 import Venn from './components/visualizations/VennSets.vue'
 import CausalityGraph from './components/visualizations/CausalityGraph.vue'

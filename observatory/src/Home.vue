@@ -1,8 +1,18 @@
-<script setup lang="ts">
+<script lang="ts">
 import MainLayout from './components/MainLayout.vue'
-import { VisualizationType } from './ts/SharedTypes/visualizationType'
+import { VisualizationType } from './ts/enums/VisualizationType'
+import { defineComponent } from 'vue'
 
-const vt = VisualizationType.None
+export default defineComponent({
+    components: {
+        MainLayout
+    },
+    data() {
+        return {
+            vt: VisualizationType.None
+        }
+    }
+})
 </script>
 
 <template>
