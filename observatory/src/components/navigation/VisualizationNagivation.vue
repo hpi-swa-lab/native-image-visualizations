@@ -6,6 +6,7 @@ export default defineComponent({
     props: {
         selected: Number
     },
+    emits: ['change-viz'],
     data() {
         return {
             vennSets: VisualizationType.VennSets,
