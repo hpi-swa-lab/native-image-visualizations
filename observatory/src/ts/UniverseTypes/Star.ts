@@ -1,4 +1,4 @@
-import { SEPARATOR } from '../globals'
+import { HIERARCHY_NAME_SEPARATOR } from '../globals'
 import { Universe } from './Universe'
 
 export enum InitKind {
@@ -69,7 +69,7 @@ export class Star implements Universe {
         let path = this.name
         let root: Universe | undefined = this.parent
         while (root != undefined) {
-            path = root.name + SEPARATOR + path
+            path = root.name + HIERARCHY_NAME_SEPARATOR + path
             root = root.parent
         }
         return path

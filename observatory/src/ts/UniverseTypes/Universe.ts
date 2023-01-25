@@ -1,4 +1,4 @@
-import { MegaBytes } from '../SharedTypes/Size'
+import { Bytes } from '../SharedTypes/Size'
 
 export interface Universe {
     identifier(): string
@@ -6,5 +6,5 @@ export interface Universe {
     get universes(): Universe[]
     get parent(): Universe | undefined
     get name(): string
-    get codeSize(): MegaBytes
+    get codeSize(): Bytes
 }

@@ -1,5 +1,5 @@
 import { Universe } from './Universe'
-import { SEPARATOR } from '../globals'
+import { HIERARCHY_NAME_SEPARATOR } from '../globals'
 
 export class Multiverse implements Universe {
     private _name = ''
@@ -44,7 +44,7 @@ export class Multiverse implements Universe {
         let path = this.name
         let root: Universe | undefined = this.parent
         while (root != undefined) {
-            path = root.name + SEPARATOR + path
+            path = root.name + HIERARCHY_NAME_SEPARATOR + path
             root = root.parent
         }
         return path

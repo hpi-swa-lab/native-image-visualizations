@@ -1,1 +1,1 @@
-export const SEPARATOR = '.'
+export const HIERARCHY_NAME_SEPARATOR = '.'

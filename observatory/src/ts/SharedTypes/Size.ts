@@ -1,1 +1,1 @@
-export type MegaBytes = number
+export type Bytes = number
