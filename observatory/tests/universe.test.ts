@@ -7,7 +7,7 @@ describe('Universe', () => {
     let childlessRoot: Multiverse
     let method: Star
     let simpleTree: Multiverse
-    let complexTree: Multiverse
+    let layeredTree: Multiverse
 
     beforeEach(() => {
         childlessRoot = new Multiverse('Native Image', undefined, [])
@@ -22,11 +22,11 @@ describe('Universe', () => {
         simpleTree.append(new Star('MethodE', simpleTree, 0, 5, InitKind.BUILD_TIME))
         simpleTree.append(new Star('MethodF', simpleTree, 10, 10, InitKind.BUILD_TIME))
 
-        complexTree = new Multiverse('Module', undefined, [])
-        const packageA = new Multiverse('PackageA', complexTree, [])
-        const packageB = new Multiverse('PackageB', complexTree, [])
-        complexTree.append(packageA)
-        complexTree.append(packageB)
+        layeredTree = new Multiverse('Module', undefined, [])
+        const packageA = new Multiverse('PackageA', layeredTree, [])
+        const packageB = new Multiverse('PackageB', layeredTree, [])
+        layeredTree.append(packageA)
+        layeredTree.append(packageB)
         const classAA = new Multiverse('ClassAA', packageA, [])
         const classAB = new Multiverse('ClassAB', packageA, [])
         const classBA = new Multiverse('ClassBA', packageB, [])
@@ -54,7 +54,7 @@ describe('Universe', () => {
     })
 
     test('sum for complex tree should be sum of children in deeper layers', () => {
-        expect(complexTree.codeSize).toEqual(52)
+        expect(layeredTree.codeSize).toEqual(52)
     })
 
     test('childless root should be inline', () => {
@@ -74,39 +74,39 @@ describe('Universe', () => {
     })
 
     test('complex tree should not be inlined as at least one children is not inlined', () => {
-        expect(complexTree.isInline()).toBeFalsy()
+        expect(layeredTree.isInline()).toBeFalsy()
     })
 
     test('detail flag 0 is neither reflective, jni, or synthetic', () => {
-        const nothing = new Star('Method', undefined, 0, 5, InitKind.BUILD_TIME)
+        const nothing = new Star('Method', undefined, 10, 0, InitKind.BUILD_TIME)
         expect(nothing.isReflective()).toBeFalsy()
         expect(nothing.isJNI()).toBeFalsy()
         expect(nothing.isSynthetic()).toBeFalsy()
     })
 
     test('detail flag 1 is reflective, but neither jni, or synthetic', () => {
-        const nothing = new Star('Method', undefined, 1, 5, InitKind.BUILD_TIME)
+        const nothing = new Star('Method', undefined, 10, 1, InitKind.BUILD_TIME)
         expect(nothing.isReflective()).toBeTruthy()
         expect(nothing.isJNI()).toBeFalsy()
         expect(nothing.isSynthetic()).toBeFalsy()
     })
 
     test('detail flag 2 is jni, but neither reflective, or synthetic', () => {
-        const nothing = new Star('Method', undefined, 2, 5, InitKind.BUILD_TIME)
+        const nothing = new Star('Method', undefined, 10, 2, InitKind.BUILD_TIME)
         expect(nothing.isReflective()).toBeFalsy()
         expect(nothing.isJNI()).toBeTruthy()
         expect(nothing.isSynthetic()).toBeFalsy()
     })
 
     test('detail flag 4 is synthetic, but neither reflective, or jni', () => {
-        const nothing = new Star('Method', undefined, 4, 5, InitKind.BUILD_TIME)
+        const nothing = new Star('Method', undefined, 10, 4, InitKind.BUILD_TIME)
         expect(nothing.isReflective()).toBeFalsy()
         expect(nothing.isJNI()).toBeFalsy()
         expect(nothing.isSynthetic()).toBeTruthy()
     })
 
     test('detail flag 7 is synthetic, reflective, and jni', () => {
-        const nothing = new Star('Method', undefined, 7, 5, InitKind.BUILD_TIME)
+        const nothing = new Star('Method', undefined, 10, 7, InitKind.BUILD_TIME)
         expect(nothing.isReflective()).toBeTruthy()
         expect(nothing.isJNI()).toBeTruthy()
         expect(nothing.isSynthetic()).toBeTruthy()
@@ -121,7 +121,7 @@ describe('Universe', () => {
     })
 
     test('leaf of complex tree returns path to it as identifier', () => {
-        expect(complexTree.universes[0].universes[0].universes[0].identifier()).toEqual(
+        expect(layeredTree.universes[0].universes[0].universes[0].identifier()).toEqual(
             `Module${SEPARATOR}PackageA${SEPARATOR}ClassAA${SEPARATOR}MethodAAA`
         )
     })

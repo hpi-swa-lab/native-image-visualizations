@@ -80,14 +80,14 @@ export class Star implements Universe {
     }
 
     public isReflective(): boolean {
-        return ((this.detailFlag >> 0) & 0x1) === 1
+        return (this.detailFlag & (1 << 0)) != 0
     }
 
     public isJNI(): boolean {
-        return ((this.detailFlag >> 1) & 0x1) === 1
+        return (this.detailFlag & (1 << 1)) != 0
     }
 
     public isSynthetic(): boolean {
-        return ((this.detailFlag >> 2) & 0x1) === 1
+        return (this.detailFlag & (1 << 2)) != 0
     }
 }
