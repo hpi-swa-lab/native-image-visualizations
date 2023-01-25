@@ -1,5 +1,5 @@
 export enum VisualizationType {
-    Venn,
+    VennSets,
     SankeyTree,
     TreeLine,
     CausalityGraph,

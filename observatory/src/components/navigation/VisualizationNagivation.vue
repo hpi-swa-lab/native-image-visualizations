@@ -8,7 +8,7 @@ export default defineComponent({
     },
     data() {
         return {
-            venn: VisualizationType.Venn,
+            vennSets: VisualizationType.VennSets,
             sankeyTree: VisualizationType.SankeyTree,
             treeLine: VisualizationType.TreeLine,
             causalityGraph: VisualizationType.CausalityGraph,
@@ -31,7 +31,7 @@ export default defineComponent({
             @change="$emit('change-viz', parseInt($event.target.value))"
         >
             <option :value="none" disabled>Choose Visualization</option>
-            <option :value="venn">Venn</option>
+            <option :value="vennSets">Venn</option>
             <option :value="sankeyTree">Sankey Tree</option>
             <option :value="treeLine">Tree Line</option>
             <option :value="causalityGraph">Causality Graph</option>
