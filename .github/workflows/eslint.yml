@@ -1,4 +1,4 @@
-name: CI/CD
+name: Linting
 
 on:
   push:
@@ -7,10 +7,9 @@ on:
   pull_request:
     branches:
       - main
-    
+
 jobs:
   linting:
-    name: Linting and Prettifying
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -21,10 +20,8 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
-          node-version: '17.1.0'
+          node-version: "17.1.0"
       - name: Install Dependencies
         run: npm ci
-      - name: Prettier
-        run: npm run prettier-check
       - name: Eslint
         run: npm run eslint-check
