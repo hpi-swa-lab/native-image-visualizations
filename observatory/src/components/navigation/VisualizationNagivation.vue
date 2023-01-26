@@ -1,18 +1,20 @@
 <script lang="ts">
 import { defineComponent } from 'vue'
 import { VisualizationType } from '../../ts/enums/VisualizationType'
+import {Emit} from "../../ts/enums/Emit";
 
 export default defineComponent({
     props: {
         selected: {
             type: Number,
-            default: -1
+            default: VisualizationType.None
         }
     },
-    emits: ['change-viz'],
+    emits: [Emit.CHANGE_VIZ],
     data() {
         return {
-            VisualizationType
+            VisualizationType,
+            Emit
         }
     }
 })
@@ -28,7 +30,7 @@ export default defineComponent({
             name="Visualization"
             :value="selected"
             class="dropdown dropdown-white block w-full"
-            @change="$emit('change-viz', parseInt($event.target.value))"
+            @change="$emit(Emit.CHANGE_VIZ, parseInt($event.target.value))"
         >
             <option :value="VisualizationType.None" disabled>Choose Visualization</option>
             <option :value="VisualizationType.VennSets">Venn Sets</option>
