@@ -1,7 +1,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue'
 import { VisualizationType } from '../../ts/enums/VisualizationType'
-import {Emit} from "../../ts/enums/Emit";
+import { Emit } from '../../ts/enums/Emit'
 
 export default defineComponent({
     props: {

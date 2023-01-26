@@ -3,7 +3,7 @@ import VisualizationNavigation from './navigation/VisualizationNagivation.vue'
 import UniverseSelectionList from './controls/UniverseSelectionList.vue'
 import { defineComponent } from 'vue'
 import { Emit } from '../ts/enums/Emit'
-import {VisualizationType} from "../ts/enums/VisualizationType";
+import { VisualizationType } from '../ts/enums/VisualizationType'
 
 export default defineComponent({
     components: {
@@ -18,12 +18,12 @@ export default defineComponent({
         visualizationType: {
             type: Number,
             default: VisualizationType.None
-        },
+        }
     },
     emits: [Emit.CHANGE_VIZ],
     data() {
         return { Emit }
-    },
+    }
 })
 </script>
 
