@@ -9,14 +9,14 @@ export default defineComponent({
     },
     data() {
         return {
-            vt: VisualizationType.VennSets
+            VisualizationType
         }
     }
 })
 </script>
 
 <template>
-    <MainLayout title="VennSets" :visualization-type="vt">
+    <MainLayout title="VennSets" :visualization-type="VisualizationType.VennSets">
         <template #controls />
 
         <div id="container" />

@@ -5,7 +5,7 @@ import { VisualizationType } from './ts/enums/VisualizationType'
 import TreeLine from './components/visualizations/TreeLine.vue'
 import Venn from './components/visualizations/VennSets.vue'
 import CausalityGraph from './components/visualizations/CausalityGraph.vue'
-import Home from './Home.vue'
+import Home from './components/Home.vue'
 
 export default defineComponent({
     components: {
@@ -25,27 +25,27 @@ export default defineComponent({
     },
     data() {
         return {
-            vennSets: VisualizationType.VennSets,
-            sankeyTree: VisualizationType.SankeyTree,
-            treeLine: VisualizationType.TreeLine,
-            causalityGraph: VisualizationType.CausalityGraph
+            VisualizationType
         }
     }
 })
 </script>
 
 <template>
-    <Venn v-if="currentVisualization === vennSets" @change-viz="handleChangeViz"></Venn>
+    <Venn
+        v-if="currentVisualization === VisualizationType.VennSets"
+        @change-viz="handleChangeViz"
+    ></Venn>
     <SankeyTree
-        v-else-if="currentVisualization === sankeyTree"
+        v-else-if="currentVisualization === VisualizationType.SankeyTree"
         @change-viz="handleChangeViz"
     ></SankeyTree>
     <TreeLine
-        v-else-if="currentVisualization === treeLine"
+        v-else-if="currentVisualization === VisualizationType.TreeLine"
         @change-viz="handleChangeViz"
     ></TreeLine>
     <CausalityGraph
-        v-else-if="currentVisualization === causalityGraph"
+        v-else-if="currentVisualization === VisualizationType.CausalityGraph"
         @change-viz="handleChangeViz"
     ></CausalityGraph>
     <Home v-else @change-viz="handleChangeViz"></Home>

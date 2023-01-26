@@ -9,14 +9,14 @@ export default defineComponent({
     },
     data() {
         return {
-            vt: VisualizationType.TreeLine
+            VisualizationType
         }
     }
 })
 </script>
 
 <template>
-    <MainLayout title="Tree Line" :visualization-type="vt">
+    <MainLayout title="Tree Line" :visualization-type="VisualizationType.TreeLine">
         <template #controls />
 
         <div id="container" />

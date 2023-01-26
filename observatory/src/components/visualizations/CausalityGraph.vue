@@ -9,14 +9,14 @@ export default defineComponent({
     },
     data() {
         return {
-            vt: VisualizationType.CausalityGraph
+            VisualizationType
         }
     }
 })
 </script>
 
 <template>
-    <MainLayout title="WIP: Causality Graph" :visualization-type="vt">
+    <MainLayout title="WIP: Causality Graph" :visualization-type="VisualizationType.CausalityGraph">
         <template #controls />
 
         <div id="container" />

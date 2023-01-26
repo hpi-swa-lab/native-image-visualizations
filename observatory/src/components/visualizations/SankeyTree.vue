@@ -9,14 +9,14 @@ export default defineComponent({
     },
     data() {
         return {
-            vt: VisualizationType.SankeyTree
+            VisualizationType
         }
     }
 })
 </script>
 
 <template>
-    <MainLayout title="Sankey Tree" :visualization-type="vt">
+    <MainLayout title="Sankey Tree" :visualization-type="VisualizationType.SankeyTree">
         <template #controls />
 
         <div id="container" />

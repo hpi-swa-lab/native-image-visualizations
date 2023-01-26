@@ -12,11 +12,7 @@ export default defineComponent({
     emits: ['change-viz'],
     data() {
         return {
-            vennSets: VisualizationType.VennSets,
-            sankeyTree: VisualizationType.SankeyTree,
-            treeLine: VisualizationType.TreeLine,
-            causalityGraph: VisualizationType.CausalityGraph,
-            none: VisualizationType.None
+            VisualizationType
         }
     }
 })
@@ -34,11 +30,11 @@ export default defineComponent({
             class="dropdown dropdown-white block w-full"
             @change="$emit('change-viz', parseInt($event.target.value))"
         >
-            <option :value="none" disabled>Choose Visualization</option>
-            <option :value="vennSets">Venn Sets</option>
-            <option :value="sankeyTree">Sankey Tree</option>
-            <option :value="treeLine">Tree Line</option>
-            <option :value="causalityGraph">Causality Graph</option>
+            <option :value="VisualizationType.None" disabled>Choose Visualization</option>
+            <option :value="VisualizationType.VennSets">Venn Sets</option>
+            <option :value="VisualizationType.SankeyTree">Sankey Tree</option>
+            <option :value="VisualizationType.TreeLine">Tree Line</option>
+            <option :value="VisualizationType.CausalityGraph">Causality Graph</option>
         </select>
     </div>
 </template>
