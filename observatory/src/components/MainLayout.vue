@@ -2,7 +2,7 @@
 import VisualizationNavigation from './navigation/VisualizationNagivation.vue'
 import UniverseSelectionList from './controls/UniverseSelectionList.vue'
 import { defineComponent } from 'vue'
-import { Emit } from '../ts/enums/Emit'
+import { Event } from '../ts/enums/Event'
 import { VisualizationType } from '../ts/enums/VisualizationType'
 
 export default defineComponent({
@@ -20,9 +20,11 @@ export default defineComponent({
             default: VisualizationType.None
         }
     },
-    emits: [Emit.CHANGE_VIZ],
+    emits: [Event.CHANGE_VIZ],
     data() {
-        return { Emit }
+        return {
+            Event
+        }
     }
 })
 </script>
@@ -42,7 +44,7 @@ export default defineComponent({
 
             <VisualizationNavigation
                 :selected="visualizationType"
-                @change-viz="$emit(Emit.CHANGE_VIZ, $event)"
+                @change-viz="$emit(Event.CHANGE_VIZ, $event)"
             ></VisualizationNavigation>
             <hr />
 
