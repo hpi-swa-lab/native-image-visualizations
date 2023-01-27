@@ -6,16 +6,16 @@ import { combinationFromNames, UniverseCombination, UniverseName } from '../Shar
 import { clamp, lightenColor, powerSet } from '../utils'
 import Visualization from './Visualization'
 
-const mixAlpha = 0.4
-const explosionThreshold = 100 // at this height, entities explode into children
+const MIX_ALPHA = 0.4
+const EXPLOSION_THRESHOLD = 100 // at this height, entities explode into children
 
-const lineWidth = 256
-const linePadding = 16
+const LINE_WIDTH = 256
+const LINE_PADDING = 16
 
-const fontSize = 16
-const textHorizontalPadding = 8
-const textVerticalPadding = 2
-const hierarchyGaps = 2 // used between boxes of the hierarchy
+const FONT_SIZE = 16
+const TEXT_HORIZONTAL_PADDING = 8
+const TEXT_VERTICAL_PADDING = 2
+const HIERARCHY_GAPS = 2 // used between boxes of the hierarchy
 
 export default class TreeLineVisualization implements Visualization {
     mergedUniverses: MergedNodeWithSizes
@@ -71,9 +71,9 @@ export default class TreeLineVisualization implements Visualization {
         }
         fitToScreen()
 
-        let initialBarHeight = this.canvas.height - linePadding * 2
+        let initialBarHeight = this.canvas.height - LINE_PADDING * 2
         let initialPixelsPerByte = initialBarHeight / this.mergedUniverses.unionedSize
-        let initialTop = linePadding
+        let initialTop = LINE_PADDING
 
         const mergedUniverses = this.mergedUniverses
         const redraw = (event: any | undefined) => {
@@ -92,7 +92,7 @@ export default class TreeLineVisualization implements Visualization {
             const top = initialTop + transform.y
             const pixelsPerByte = initialPixelsPerByte * transform.k
 
-            const leftOfHierarchy = linePadding + lineWidth + linePadding
+            const leftOfHierarchy = LINE_PADDING + LINE_WIDTH + LINE_PADDING
 
             this.drawDiagram(mergedUniverses, top, pixelsPerByte, [], leftOfHierarchy)
         }
@@ -109,7 +109,7 @@ export default class TreeLineVisualization implements Visualization {
 
         const lightenedColors: Map<UniverseName, string> = new Map()
         this.colors.forEach((color, name) => {
-            lightenedColors.set(name, lightenColor(color, mixAlpha))
+            lightenedColors.set(name, lightenColor(color, MIX_ALPHA))
         })
 
         for (const combination of this.combinations) {
@@ -176,11 +176,11 @@ export default class TreeLineVisualization implements Visualization {
                 path[path.length - 1],
                 containingCombinations
             )
-            leftOfSubHierarchy = leftOfHierarchy + widthOfBox + hierarchyGaps
+            leftOfSubHierarchy = leftOfHierarchy + widthOfBox + HIERARCHY_GAPS
         }
 
         const shouldExplode =
-            tree.children.length == 1 || (height >= explosionThreshold && tree.children.length > 0)
+            tree.children.length == 1 || (height >= EXPLOSION_THRESHOLD && tree.children.length > 0)
         if (shouldExplode) {
             let childOffsetFromTop = top
             for (const child of tree.children) {
@@ -196,10 +196,10 @@ export default class TreeLineVisualization implements Visualization {
                 childOffsetFromTop += child.unionedSize * pixelsPerByte
             }
         } else {
-            let offsetFromLeft = linePadding
+            let offsetFromLeft = LINE_PADDING
             for (const combination of this.combinations) {
                 const size = tree.exclusiveSizes.get(combination) ?? 0
-                const width = (lineWidth * size) / tree.unionedSize
+                const width = (LINE_WIDTH * size) / tree.unionedSize
 
                 // Note: Floating point calculations are never accurate, so
                 // `floor` and `ceil` are used to avoid the background
@@ -223,32 +223,32 @@ export default class TreeLineVisualization implements Visualization {
             throw "Canvas doesn't exist yet."
         }
 
-        this.context.font = `${fontSize}px sans-serif`
+        this.context.font = `${FONT_SIZE}px sans-serif`
 
         const textWidth = this.context.measureText(text).width
-        const boxWidth = textWidth + 2 * textHorizontalPadding
+        const boxWidth = textWidth + 2 * TEXT_HORIZONTAL_PADDING
 
         this.context.fillStyle =
             containingCombinations.length == 1
                 ? this.fillStyles.get(containingCombinations[0])!
                 : '#cccccc'
-        this.context.fillRect(left, top, boxWidth, height - hierarchyGaps)
+        this.context.fillRect(left, top, boxWidth, height - HIERARCHY_GAPS)
 
         // console.log('todo')
         const visibleStart = clamp(top, 0, this.canvas.height)
         const visibleEnd = clamp(top + height, 0, this.canvas.height)
 
-        if (height >= fontSize + 2 * textVerticalPadding) {
-            const textRadius = fontSize / 2
+        if (height >= FONT_SIZE + 2 * TEXT_VERTICAL_PADDING) {
+            const textRadius = FONT_SIZE / 2
             const textCenterY = clamp(
                 (visibleStart + visibleEnd) / 2,
-                top + textRadius + textVerticalPadding,
-                top + height - textRadius - textVerticalPadding
+                top + textRadius + TEXT_VERTICAL_PADDING,
+                top + height - textRadius - TEXT_VERTICAL_PADDING
             )
 
             this.context.fillStyle = 'black'
             this.context.textBaseline = 'middle'
-            this.context.fillText(text, left + textHorizontalPadding, textCenterY)
+            this.context.fillText(text, left + TEXT_HORIZONTAL_PADDING, textCenterY)
         }
 
         return boxWidth
