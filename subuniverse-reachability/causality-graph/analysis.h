@@ -275,8 +275,8 @@ public:
         vector<TypeflowHistory> typeflow_visited;
         vector<uint8_t> method_history;
         vector<bool> method_visited;
-        Bitset allInstantiated;
-        vector<list<typeflow_id>> saturation_uses_by_filter;
+        boost::dynamic_bitset<> allInstantiated;
+        vector<vector<typeflow_id>> saturation_uses_by_filter;
         vector<bool> included_in_saturation_uses;
 
         Result(size_t n_methods, size_t n_typeflows, size_t n_types, size_t n_filters) :
@@ -389,8 +389,8 @@ public:
         vector<bool> method_visited(std::move(r.method_visited));
         vector<uint8_t> method_history(std::move(r.method_history));
         vector<TypeflowHistory> typeflow_visited(std::move(r.typeflow_visited));
-        Bitset& allInstantiated = r.allInstantiated;
-        vector<list<typeflow_id>>& saturation_uses_by_filter = r.saturation_uses_by_filter;
+        boost::dynamic_bitset<>& allInstantiated = r.allInstantiated;
+        vector<vector<typeflow_id>>& saturation_uses_by_filter = r.saturation_uses_by_filter;
         vector<bool>& included_in_saturation_uses = r.included_in_saturation_uses;
 
         vector<method_id> visited_method_log;
@@ -621,21 +621,14 @@ public:
                     if(saturation_uses.empty())
                         continue;
 
-                    for(auto it = saturation_uses.begin(); it != saturation_uses.end();)
+                    if(track_changes)
                     {
-                        typeflow_id v = *it;
-
-                        if(typeflow_visited[v.id].is_saturated())
-                        {
-                            it = saturation_uses.erase(it);
-                            if(track_changes)
+                        for(typeflow_id v : saturation_uses)
+                            if(typeflow_visited[v.id].is_saturated())
                                 saturation_uses_by_filter_removed_log.push_back(v);
-                        }
-                        else
-                        {
-                            it++;
-                        }
                     }
+
+                    erase_if(saturation_uses, [&typeflow_visited](typeflow_id v){ return typeflow_visited[v.id].is_saturated(); });
 
                     if(saturation_uses.empty())
                         continue;

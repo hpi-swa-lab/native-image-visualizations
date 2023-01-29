@@ -8,8 +8,9 @@
 class Bitset
 {
     boost::dynamic_bitset<> bitset;
+    size_t _count;
 
-    Bitset(boost::dynamic_bitset<>&& bitset) : bitset(std::move(bitset)) {}
+    Bitset(boost::dynamic_bitset<>&& bitset) : bitset(std::move(bitset)), _count(this->bitset.count()) {}
 
 public:
     Bitset(size_t len) : bitset(len)
@@ -25,29 +26,12 @@ public:
         src.read((char*)data.data(), (len + 7) / 8);
         bitset.init_from_block_range(data.begin(), data.end());
         bitset.resize(len);
-    }
-
-    void fill(bool val)
-    {
-        if(val)
-            bitset.set();
-        else
-            bitset.reset();
+        _count = bitset.count();
     }
 
     bool operator[](size_t i) const
     {
         return bitset[i];
-    }
-
-    void operator|=(const Bitset& other)
-    {
-        bitset |= other.bitset;
-    }
-
-    void operator&=(const Bitset& other)
-    {
-        bitset &= other.bitset;
     }
 
     [[nodiscard]] bool is_superset(const Bitset& other) const
@@ -77,7 +61,7 @@ public:
 
     [[nodiscard]] size_t count() const
     {
-        return bitset.count();
+        return _count;
     }
 
     [[nodiscard]] size_t first() const
@@ -88,11 +72,6 @@ public:
     [[nodiscard]] size_t next(size_t pos) const
     {
         return bitset.find_next(pos);
-    }
-
-    auto operator[](size_t i)
-    {
-        return bitset[i];
     }
 
     size_t size() const

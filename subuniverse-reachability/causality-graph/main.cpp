@@ -25,14 +25,12 @@ static uint32_t resolve_method(const unordered_map<string, uint32_t>& method_ids
     return it->second;
 }
 
-static vector<bool> gvisited;
-
 static void assert_reachability_equals(const BFS::Result& r1, const BFS::Result& r2)
 {
     if(!(r1.allInstantiated == r2.allInstantiated))
     {
         cerr << "All Idiot!" << endl;
-        cerr << r2.allInstantiated.operator&(r1.allInstantiated.operator~()).first() << endl;
+        cerr << (r2.allInstantiated & ~r1.allInstantiated).find_first() << endl;
         exit(1);
     }
 
@@ -103,15 +101,14 @@ static void assert_reachability_equals(const BFS::Result& r1, const BFS::Result&
 }
 
 #define REACHABILITY_ASSERTIONS 0
+#define PRINT_CUTOFFS 0
+
+#if REACHABILITY_ASSERTIONS
+static vector<bool> gvisited;
+#endif
 
 static void bfs_incremental_rec(BFS::Result& all_reachable, const BFS& bfs, BFS::Result& r, size_t purged_method_start, size_t purged_method_end, span<const string> method_names)
 {
-    /*
-    const size_t method_of_interest = 415;
-    if(purged_method_start > method_of_interest || purged_method_end <= method_of_interest)
-        return;
-        */
-
     if(purged_method_end - purged_method_start <= 0)
     {
 #if REACHABILITY_ASSERTIONS
@@ -121,24 +118,22 @@ static void bfs_incremental_rec(BFS::Result& all_reachable, const BFS& bfs, BFS:
     }
     else if(purged_method_end - purged_method_start == 1)
     {
+
+#if REACHABILITY_ASSERTIONS
         if(gvisited.size() <= purged_method_start)
             gvisited.resize(purged_method_start + 1);
         if(gvisited[purged_method_start])
             return;
         gvisited[purged_method_start] = true;
 
-        size_t reachable = (r.method_history.size() - std::count(r.method_history.begin(), r.method_history.end(), 0xFF));
-
-        cout << purged_method_start << ": " << reachable << " reachable: ";
-
-#if REACHABILITY_ASSERTIONS
-        cout << endl;
-
         method_id pm = purged_method_start;
         BFS::Result ref = bfs.run({&pm, 1});
 
         assert_reachability_equals(ref, r);
-#else
+#endif
+
+#if PRINT_CUTOFFS
+        cout << '[' << purged_method_start << "] \"" << method_names[purged_method_start] << "\": ";
 
         for(size_t i = 1; i < r.method_history.size(); i++)
         {
@@ -146,6 +141,14 @@ static void bfs_incremental_rec(BFS::Result& all_reachable, const BFS& bfs, BFS:
                 cout << method_names[i] << ' ';
         }
         cout << endl;
+#else
+        if(purged_method_start % 1000 == 0)
+        {
+            cout << '[' << purged_method_start << ']' << endl;
+        }
+#endif
+
+#if !REACHABILITY_ASSERTIONS
         return;
 #endif
     }
@@ -186,9 +189,13 @@ static void bfs_incremental_rec(BFS::Result& all_reachable, const BFS& bfs, BFS:
 
     auto search_child_asserted = [&](BFS::Result& r2, size_t depurge_start, size_t depurge_end, size_t stillpurge_start, size_t stillpurge_end)
     {
-        //BFS::Result r2_copy = r2;
+#if REACHABILITY_ASSERTIONS
+        BFS::Result r2_copy = r2;
+#endif
         search_child(r2, depurge_start, depurge_end, stillpurge_start, stillpurge_end);
-        //assert_reachability_equals(r2_copy, r2);
+#if REACHABILITY_ASSERTIONS
+        assert_reachability_equals(r2_copy, r2);
+#endif
     };
 
     search_child_asserted(r, purged_method_mid, purged_method_end, purged_method_start, purged_method_mid);
