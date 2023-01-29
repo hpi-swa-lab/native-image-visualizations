@@ -389,9 +389,9 @@ public:
         vector<bool> method_visited(std::move(r.method_visited));
         vector<uint8_t> method_history(std::move(r.method_history));
         vector<TypeflowHistory> typeflow_visited(std::move(r.typeflow_visited));
-        boost::dynamic_bitset<>& allInstantiated = r.allInstantiated;
-        vector<vector<typeflow_id>>& saturation_uses_by_filter = r.saturation_uses_by_filter;
-        vector<bool>& included_in_saturation_uses = r.included_in_saturation_uses;
+        boost::dynamic_bitset<> allInstantiated(std::move(r.allInstantiated));
+        vector<vector<typeflow_id>> saturation_uses_by_filter(std::move(r.saturation_uses_by_filter));
+        vector<bool> included_in_saturation_uses(std::move(r.included_in_saturation_uses));
 
         vector<method_id> visited_method_log;
         vector<pair<typeflow_id, TypeflowHistory>> typeflow_visited_log;
@@ -712,7 +712,9 @@ public:
         r.method_visited = std::move(method_visited);
         r.method_history = std::move(method_history);
         r.typeflow_visited = std::move(typeflow_visited);
-        //r.allInstantiated = std::move(allInstantiated);
+        r.allInstantiated = std::move(allInstantiated);
+        r.included_in_saturation_uses = std::move(included_in_saturation_uses);
+        r.saturation_uses_by_filter = std::move(saturation_uses_by_filter);
 
         return ResultDiff(std::move(visited_method_log), std::move(typeflow_visited_log), std::move(allInstantiated_log), std::move(included_in_saturation_uses_log), std::move(saturation_uses_by_filter_added_log), std::move(saturation_uses_by_filter_removed_log));
     }
