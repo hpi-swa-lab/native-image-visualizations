@@ -99,6 +99,11 @@ public:
     {
         return bitset.size();
     }
+
+    bool operator==(const Bitset& other) const
+    {
+        return bitset == other.bitset;
+    }
 };
 
 #endif //CAUSALITY_GRAPH_BITSET_H

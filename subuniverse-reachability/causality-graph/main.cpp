@@ -25,6 +25,168 @@ static uint32_t resolve_method(const unordered_map<string, uint32_t>& method_ids
     return it->second;
 }
 
+static vector<bool> gvisited;
+
+static void assert_reachability_equals(const BFS::Result& r1, const BFS::Result& r2)
+{
+    if(!(r1.allInstantiated == r2.allInstantiated))
+    {
+        cerr << "All Idiot!" << endl;
+        cerr << r2.allInstantiated.operator&(r1.allInstantiated.operator~()).first() << endl;
+        exit(1);
+    }
+
+    if(r1.method_history.size() != r2.method_history.size())
+    {
+        cerr << "Sizable Idiot!" << endl;
+        exit(1);
+    }
+
+    if(r1.typeflow_visited.size() != r2.typeflow_visited.size())
+    {
+        cerr << "Sizable Idiot2!" << endl;
+        exit(1);
+    }
+
+    for(size_t i = 0; i < r1.typeflow_visited.size(); i++)
+    {
+        if(r1.typeflow_visited[i].any() != r2.typeflow_visited[i].any())
+        {
+            cerr << "Idiot2!" << endl;
+            exit(1);
+            continue;
+        }
+
+        if(r1.typeflow_visited[i].is_saturated() != r2.typeflow_visited[i].is_saturated())
+        {
+            cerr << "Idiot3!" << endl;
+            exit(1);
+            continue;
+        }
+
+        if(r1.typeflow_visited[i].is_saturated())
+            continue;
+
+        if(r1.typeflow_visited[i].count() != r2.typeflow_visited[i].count())
+        {
+            cerr << "Idiot4!" << endl;
+            exit(1);
+            continue;
+        }
+
+        for(auto tp1 : r1.typeflow_visited[i])
+        {
+            bool c = r1.typeflow_visited[i].contains(tp1.first);
+
+            for(auto tp2 : r2.typeflow_visited[i])
+            {
+                if(tp1.first == tp2.first)
+                    goto found;
+            }
+
+            cerr << "Idiot5!" << endl;
+            exit(1);
+            break;
+
+            found: {}
+        }
+    }
+
+    for(size_t i = 0; i < r1.method_history.size(); i++)
+    {
+        if((r1.method_history[i] == 0xFF) != (r2.method_history[i] == 0xFF))
+        {
+            cerr << "Idiot!" << endl;
+            exit(1);
+        }
+    }
+}
+
+#define REACHABILITY_ASSERTIONS 1
+
+static void bfs_incremental_rec(BFS::Result& all_reachable, const BFS& bfs, const BFS::Result& r, size_t purged_method_start, size_t purged_method_end, span<const string> method_names)
+{
+    /*
+    const size_t method_of_interest = 415;
+    if(purged_method_start > method_of_interest || purged_method_end <= method_of_interest)
+        return;
+        */
+
+    if(purged_method_end - purged_method_start <= 0)
+    {
+#if REACHABILITY_ASSERTIONS
+        assert_reachability_equals(all_reachable, r);
+#endif
+        return;
+    }
+    else if(purged_method_end - purged_method_start == 1)
+    {
+        if(gvisited.size() <= purged_method_start)
+            gvisited.resize(purged_method_start + 1);
+        if(gvisited[purged_method_start])
+            return;
+        gvisited[purged_method_start] = true;
+
+        size_t reachable = (r.method_history.size() - std::count(r.method_history.begin(), r.method_history.end(), 0xFF));
+
+        cout << purged_method_start << ": " << reachable << " reachable: ";
+
+#if REACHABILITY_ASSERTIONS
+        cout << endl;
+
+        method_id pm = purged_method_start;
+        BFS::Result ref = bfs.run({&pm, 1});
+
+        assert_reachability_equals(ref, r);
+#else
+
+        for(size_t i = 1; i < r.method_history.size(); i++)
+        {
+            if(r.method_history[i] == 0xFF && all_reachable.method_history[i] != 0xFF)
+                cout << method_names[i] << ' ';
+        }
+        cout << endl;
+        return;
+#endif
+    }
+
+    size_t purged_method_mid = (purged_method_start + purged_method_end) / 2;
+
+    auto search_child = [&](size_t depurge_start, size_t depurge_end, size_t stillpurge_start, size_t stillpurge_end)
+    {
+        BFS::Result r2 = r;
+        auto& method_visited = r2.method_visited;
+        std::fill(method_visited.begin() + depurge_start, method_visited.begin() + depurge_end, false);
+        method_id root_methods[depurge_end - depurge_start];
+        size_t root_methods_size = 0;
+
+        for(size_t mid = depurge_start; mid < depurge_end; mid++)
+        {
+            auto m = bfs.adj.methods[mid];
+            if(
+                    std::any_of(m.backward_edges.begin(), m.backward_edges.end(), [&](const auto& item)
+                    {
+                        return r2.method_history[item.id] != 0xFF;
+                    })
+                    ||
+                    std::any_of(m.virtual_invocation_sources.begin(), m.virtual_invocation_sources.end(), [&](const auto& item)
+                    {
+                        return r2.typeflow_visited[item.id].any();
+                    })
+            )
+            {
+                root_methods[root_methods_size++] = mid;
+            }
+        }
+
+        bfs.run<false>(r2, {root_methods, root_methods + root_methods_size}, {});
+        bfs_incremental_rec(all_reachable, bfs, r2, stillpurge_start, stillpurge_end, method_names);
+    };
+
+    search_child(purged_method_mid, purged_method_end, purged_method_start, purged_method_mid);
+    search_child(purged_method_start, purged_method_mid, purged_method_mid, purged_method_end);
+}
+
 static void simulate_purge(Adjacency& adj, const vector<string>& method_names, const unordered_map<string, uint32_t>& method_ids_by_name, string_view command)
 {
     if(command == "purged")
@@ -77,6 +239,28 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
         auto end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end-start;
         cout << (elapsed_seconds.count() / times) << " s" << endl;
+    }
+    else if(command == "bfs-incremental")
+    {
+        BFS bfs(adj);
+        BFS::Result all_reachable = bfs.run<false>();
+        cerr << " " << std::count_if(all_reachable.method_visited.begin(), all_reachable.method_visited.end(), [](bool b) { return b; }) << " methods reachable!\n";
+        cerr << " " << std::count_if(all_reachable.method_history.begin(), all_reachable.method_history.end(), [](uint8_t b) { return b != 0xFF; }) << " methods reachable!\n";
+
+
+        BFS::Result r(bfs);
+        {
+            auto& method_visited = r.method_visited;
+            std::fill(method_visited.begin() + 1, method_visited.end(), true);
+            method_id root_method = 0;
+            typeflow_id root_typeflow = 0;
+            bfs.run<false>(r, {&root_method, 1}, {&root_typeflow, 1});
+        }
+
+        cerr << "r: " << std::count_if(r.method_history.begin(), r.method_history.end(), [](uint8_t b) { return b != 0xFF; }) << " methods reachable!\n";
+
+
+        bfs_incremental_rec(all_reachable, bfs, r, 1, adj.n_methods(), method_names);
     }
     else
     {
