@@ -93,6 +93,56 @@ struct __attribute__((aligned(64))) TypeflowHistory
 {
     static constexpr size_t saturation_cutoff = 20;
 
+    /*
+    type_t types[saturation_cutoff]
+            { numeric_limits<type_t>::max(),
+              numeric_limits<type_t>::max(),
+              numeric_limits<type_t>::max(),
+              numeric_limits<type_t>::max(),
+              numeric_limits<type_t>::max(),
+              numeric_limits<type_t>::max(),
+              numeric_limits<type_t>::max(),
+              numeric_limits<type_t>::max(),
+              numeric_limits<type_t>::max(),
+              numeric_limits<type_t>::max(),
+              numeric_limits<type_t>::max(),
+              numeric_limits<type_t>::max(),
+              numeric_limits<type_t>::max(),
+              numeric_limits<type_t>::max(),
+              numeric_limits<type_t>::max(),
+              numeric_limits<type_t>::max(),
+              numeric_limits<type_t>::max(),
+              numeric_limits<type_t>::max(),
+              numeric_limits<type_t>::max(),
+              numeric_limits<type_t>::max()
+            };
+
+
+    uint8_t dists[saturation_cutoff] {
+        0xFF,
+        0xFF,
+        0xFF,
+        0xFF,
+        0xFF,
+        0xFF,
+        0xFF,
+        0xFF,
+        0xFF,
+        0xFF,
+        0xFF,
+        0xFF,
+        0xFF,
+        0xFF,
+        0xFF,
+        0xFF,
+        0xFF,
+        0xFF,
+        0xFF,
+        0xFF,
+    };
+    uint8_t saturated_dist = numeric_limits<uint8_t>::max();
+     */
+
     type_t types[saturation_cutoff];
     uint8_t dists[saturation_cutoff];
     uint8_t saturated_dist = numeric_limits<uint8_t>::max();
@@ -104,6 +154,8 @@ public:
         fill(dists, dists + saturation_cutoff, numeric_limits<uint8_t>::max());
     }
 
+
+public:
     bool add_type(type_t type, uint8_t dist)
     {
         for(size_t i = 0; i < saturation_cutoff; i++)
@@ -160,7 +212,7 @@ public:
 
     bool any() const
     {
-        return is_saturated() || types[0] != numeric_limits<type_t>::max();
+        return /*is_saturated() || */types[0] != numeric_limits<type_t>::max();
     }
 
     size_t count() const
@@ -180,11 +232,44 @@ public:
     }
 };
 
+static_assert(std::is_trivially_copyable<TypeflowHistory>::value);
+static_assert(std::is_trivially_assignable<TypeflowHistory, TypeflowHistory>::value);
+static_assert(std::is_trivially_copy_assignable<TypeflowHistory>::value);
+static_assert(std::is_trivially_copy_constructible<TypeflowHistory>::value);
+static_assert(std::is_default_constructible<TypeflowHistory>::value);
+//static_assert(std::is_trivially_default_constructible<TypeflowHistory>::value);
+static_assert(std::is_trivially_destructible<TypeflowHistory>::value);
+//static_assert(std::is_trivial<TypeflowHistory>::value);
 static_assert(sizeof(TypeflowHistory) == 64);
+
 
 class BFS
 {
 public:
+    struct ResultDiff
+    {
+        vector<method_id> visited_method_log;
+        vector<pair<typeflow_id, TypeflowHistory>> typeflow_visited_log;
+        vector<type_t> allInstantiated_log;
+        vector<typeflow_id> included_in_saturation_uses_log;
+        vector<typeflow_id> saturation_uses_by_filter_added_log;
+        vector<typeflow_id> saturation_uses_by_filter_removed_log;
+
+        ResultDiff(vector<method_id>&& visited_method_log,
+                   vector<pair<typeflow_id, TypeflowHistory>>&& typeflow_visited_log,
+                   vector<type_t>&& allInstantiated_log,
+                   vector<typeflow_id>&& included_in_saturation_uses_log,
+                   vector<typeflow_id>&& saturation_uses_by_filter_added_log,
+                   vector<typeflow_id>&& saturation_uses_by_filter_removed_log)
+                : visited_method_log(std::move(visited_method_log)),
+                  typeflow_visited_log(std::move(typeflow_visited_log)),
+                  allInstantiated_log(std::move(allInstantiated_log)),
+                  included_in_saturation_uses_log(std::move(included_in_saturation_uses_log)),
+                  saturation_uses_by_filter_added_log(std::move(saturation_uses_by_filter_added_log)),
+                  saturation_uses_by_filter_removed_log(std::move(saturation_uses_by_filter_removed_log))
+        {}
+    };
+
     struct Result
     {
         vector<TypeflowHistory> typeflow_visited;
@@ -205,6 +290,41 @@ public:
 
         explicit Result(const BFS& bfs) : Result(bfs.adj.n_methods(), bfs.adj.n_typeflows(), bfs.adj.n_types(), bfs.filter_filters.size())
         {}
+
+        void revert(const BFS& bfs, const ResultDiff& changes)
+        {
+            for(method_id m : changes.visited_method_log)
+            {
+                method_visited[m.id] = false;
+                method_history[m.id] = numeric_limits<uint8_t>::max();
+            }
+
+            for(size_t i = changes.typeflow_visited_log.size(); i > 0; i--)
+            {
+                const auto& change = changes.typeflow_visited_log[i-1];
+                typeflow_visited[change.first.id] = change.second;
+            }
+
+            for(auto t : changes.allInstantiated_log)
+            {
+                allInstantiated[t] = false;
+            }
+
+            for(typeflow_id flow : changes.included_in_saturation_uses_log)
+            {
+                included_in_saturation_uses[flow.id] = false;
+            }
+
+            for(typeflow_id flow : changes.saturation_uses_by_filter_removed_log)
+            {
+                saturation_uses_by_filter[bfs.adj[flow].filter - bfs.filters_begin].push_back(flow);
+            }
+
+            for(typeflow_id flow : changes.saturation_uses_by_filter_added_log)
+            {
+                erase(saturation_uses_by_filter[bfs.adj[flow].filter - bfs.filters_begin], flow);
+            }
+        }
     };
 
     const Adjacency& adj;
@@ -263,8 +383,8 @@ public:
 
     /* If dist_matters is asigned false, the BFS gets sped up about x2.
      * However, all dist-values of types in typeflows and methods will be zero. */
-    template<bool dist_matters = true>
-    void run(Result& r, span<method_id> method_worklist_init, span<typeflow_id> typeflow_worklist_init) const
+    template<bool dist_matters = true, bool track_changes = false>
+    auto run(Result& r, span<method_id> method_worklist_init, span<typeflow_id> typeflow_worklist_init) const
     {
         vector<bool> method_visited(std::move(r.method_visited));
         vector<uint8_t> method_history(std::move(r.method_history));
@@ -273,7 +393,12 @@ public:
         vector<list<typeflow_id>>& saturation_uses_by_filter = r.saturation_uses_by_filter;
         vector<bool>& included_in_saturation_uses = r.included_in_saturation_uses;
 
-        vector<type_t> instantiated_since_last_iteration;
+        vector<method_id> visited_method_log;
+        vector<pair<typeflow_id, TypeflowHistory>> typeflow_visited_log;
+        vector<type_t> allInstantiated_log;
+        vector<typeflow_id> included_in_saturation_uses_log;
+        vector<typeflow_id> saturation_uses_by_filter_added_log;
+        vector<typeflow_id> saturation_uses_by_filter_removed_log;
 
         for(method_id root : method_worklist_init)
         {
@@ -284,6 +409,7 @@ public:
         vector<method_id> method_worklist(method_worklist_init.begin(), method_worklist_init.end());
         vector<method_id> next_method_worklist;
         queue<typeflow_id> typeflow_worklist;
+        vector<type_t> instantiated_since_last_iteration;
 
         // Handle white-hole typeflow
         for(typeflow_id root : typeflow_worklist_init)
@@ -292,6 +418,7 @@ public:
             {
                 TypeSet filter = typeflow_filters[v.id];
                 bool changed = false;
+                TypeflowHistory before = typeflow_visited[v.id];
 
                 for(size_t t = filter.first(); t < adj.n_types(); t = filter.next(t))
                 {
@@ -310,6 +437,9 @@ public:
                     }
                 }
 
+                if(track_changes && changed)
+                    typeflow_visited_log.emplace_back(v, before);
+
                 if(changed && !adj[v].method.dependent())
                     typeflow_worklist.push(v);
             }
@@ -321,6 +451,9 @@ public:
         {
             do
             {
+                if(track_changes)
+                    std::copy(method_worklist.begin(), method_worklist.end(), back_inserter(visited_method_log));
+
                 for(method_id u: method_worklist)
                 {
                     method_history[u.id] = dist;
@@ -385,6 +518,7 @@ public:
                             TypeSet filter = typeflow_filters[v.id];
 
                             bool changed = false;
+                            TypeflowHistory before = typeflow_visited[v.id];
 
                             for(pair<type_t, uint8_t> type: typeflow_visited[u.id])
                             {
@@ -408,6 +542,9 @@ public:
                                     }
                                 }
                             }
+
+                            if(track_changes && changed)
+                                typeflow_visited_log.emplace_back(v, before);
 
                             if(changed && method_history[adj[v].method.dependent().id] != numeric_limits<uint8_t>::max())
                                 typeflow_worklist.push(v);
@@ -433,8 +570,11 @@ public:
                                 continue;
 
                             included_in_saturation_uses[v.id] = true;
+                            if(track_changes)
+                                included_in_saturation_uses_log.push_back(v);
 
                             bool changed = false;
+                            TypeflowHistory before = typeflow_visited[v.id];
 
                             TypeSet filter = typeflow_filters[v.id];
 
@@ -450,7 +590,14 @@ public:
                             }
 
                             if(!typeflow_visited[v.id].is_saturated())
+                            {
                                 saturation_uses_by_filter[adj[v].filter - filters_begin].push_back(v);
+                                if(track_changes)
+                                    saturation_uses_by_filter_added_log.push_back(v);
+                            }
+
+                            if(track_changes && changed)
+                                typeflow_visited_log.emplace_back(v, before);
 
                             if(changed && method_history[adj[v].method.dependent().id] != numeric_limits<uint8_t>::max())
                                 typeflow_worklist.push(v);
@@ -481,6 +628,8 @@ public:
                         if(typeflow_visited[v.id].is_saturated())
                         {
                             it = saturation_uses.erase(it);
+                            if(track_changes)
+                                saturation_uses_by_filter_removed_log.push_back(v);
                         }
                         else
                         {
@@ -536,6 +685,7 @@ public:
                         else
                         {
                             bool changed = false;
+                            TypeflowHistory before = typeflow_visited[v.id];
 
                             for(type_t type : instantiated_since_last_iteration_filtered)
                             {
@@ -544,6 +694,9 @@ public:
                                 if(typeflow_visited[v.id].is_saturated())
                                     break;
                             }
+
+                            if(track_changes && changed)
+                                typeflow_visited_log.emplace_back(v, before);
 
                             if(changed && method_history[adj[v].method.dependent().id] != numeric_limits<uint8_t>::max())
                                 typeflow_worklist.push(v);
@@ -554,6 +707,11 @@ public:
 
                     instantiated_since_last_iteration_filtered.clear();
                 }
+
+
+                if(track_changes)
+                    std::copy(instantiated_since_last_iteration.begin(), instantiated_since_last_iteration.end(), back_inserter(allInstantiated_log));
+
                 instantiated_since_last_iteration.clear();
             }
         }
@@ -564,6 +722,8 @@ public:
         r.method_history = std::move(method_history);
         r.typeflow_visited = std::move(typeflow_visited);
         //r.allInstantiated = std::move(allInstantiated);
+
+        return ResultDiff(std::move(visited_method_log), std::move(typeflow_visited_log), std::move(allInstantiated_log), std::move(included_in_saturation_uses_log), std::move(saturation_uses_by_filter_added_log), std::move(saturation_uses_by_filter_removed_log));
     }
 };
 

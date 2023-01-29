@@ -102,9 +102,9 @@ static void assert_reachability_equals(const BFS::Result& r1, const BFS::Result&
     }
 }
 
-#define REACHABILITY_ASSERTIONS 1
+#define REACHABILITY_ASSERTIONS 0
 
-static void bfs_incremental_rec(BFS::Result& all_reachable, const BFS& bfs, const BFS::Result& r, size_t purged_method_start, size_t purged_method_end, span<const string> method_names)
+static void bfs_incremental_rec(BFS::Result& all_reachable, const BFS& bfs, BFS::Result& r, size_t purged_method_start, size_t purged_method_end, span<const string> method_names)
 {
     /*
     const size_t method_of_interest = 415;
@@ -152,9 +152,8 @@ static void bfs_incremental_rec(BFS::Result& all_reachable, const BFS& bfs, cons
 
     size_t purged_method_mid = (purged_method_start + purged_method_end) / 2;
 
-    auto search_child = [&](size_t depurge_start, size_t depurge_end, size_t stillpurge_start, size_t stillpurge_end)
+    auto search_child = [&](BFS::Result& r2, size_t depurge_start, size_t depurge_end, size_t stillpurge_start, size_t stillpurge_end)
     {
-        BFS::Result r2 = r;
         auto& method_visited = r2.method_visited;
         std::fill(method_visited.begin() + depurge_start, method_visited.begin() + depurge_end, false);
         method_id root_methods[depurge_end - depurge_start];
@@ -179,12 +178,21 @@ static void bfs_incremental_rec(BFS::Result& all_reachable, const BFS& bfs, cons
             }
         }
 
-        bfs.run<false>(r2, {root_methods, root_methods + root_methods_size}, {});
+        auto incremental_changes = bfs.run<false, true>(r2, {root_methods, root_methods + root_methods_size}, {});
         bfs_incremental_rec(all_reachable, bfs, r2, stillpurge_start, stillpurge_end, method_names);
+        r2.revert(bfs, incremental_changes);
+        std::fill(method_visited.begin() + depurge_start, method_visited.begin() + depurge_end, true);
     };
 
-    search_child(purged_method_mid, purged_method_end, purged_method_start, purged_method_mid);
-    search_child(purged_method_start, purged_method_mid, purged_method_mid, purged_method_end);
+    auto search_child_asserted = [&](BFS::Result& r2, size_t depurge_start, size_t depurge_end, size_t stillpurge_start, size_t stillpurge_end)
+    {
+        //BFS::Result r2_copy = r2;
+        search_child(r2, depurge_start, depurge_end, stillpurge_start, stillpurge_end);
+        //assert_reachability_equals(r2_copy, r2);
+    };
+
+    search_child_asserted(r, purged_method_mid, purged_method_end, purged_method_start, purged_method_mid);
+    search_child_asserted(r, purged_method_start, purged_method_mid, purged_method_mid, purged_method_end);
 }
 
 static void simulate_purge(Adjacency& adj, const vector<string>& method_names, const unordered_map<string, uint32_t>& method_ids_by_name, string_view command)
