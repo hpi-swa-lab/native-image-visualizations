@@ -635,18 +635,16 @@ public:
 
                     TypeSet filter = filter_filters[filter_id];
 
-                    if(filter.count() <= 4)
+                    size_t filter_count = filter.count();
+                    if(filter_count <= 4)
                     {
                         size_t i = 0;
-                        for(type_t type = filter.first();; type = filter.next(type))
+                        for(type_t type = filter.first(); i < filter_count; type = filter.next(type), i++)
                         {
                             if(std::find(instantiated_since_last_iteration.begin(), instantiated_since_last_iteration.end(), type) != instantiated_since_last_iteration.end())
                             {
                                 instantiated_since_last_iteration_filtered.push_back(type);
                             }
-
-                            if(++i >= filter.count())
-                                break;
                         }
                     }
                     else
