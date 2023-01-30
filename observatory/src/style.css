@@ -32,3 +32,14 @@ h3 {
 .dropdown-white {
     @apply bg-white border-gray-300 text-gray-900 focus:ring-blue-500 focus:border-blue-500;
 }
+
+.color-input {
+    @apply mr-1;
+    width: 1em;
+    height: 1em;
+    vertical-align: central;
+}
+
+#sankey-tree-controls input[type=checkbox] {
+    @apply mr-1
+}

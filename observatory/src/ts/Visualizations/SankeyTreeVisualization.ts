@@ -1,0 +1,30 @@
+import Visualization from "./Visualization";
+import {Node} from "../UniverseTypes/Node";
+import * as d3 from 'd3'
+
+export const ROOT_NODE_NAME = 'Diffing Root'
+
+export const UNMODIFIED = 'UNMODIFIED'
+export const MODIFIED = 'MODIFIED'
+
+// colors
+export const COLOR_RED = d3.rgb(250, 82, 82)
+export const COLOR_GREEN = d3.rgb(148, 216, 45)
+export const COLOR_BLUE = d3.rgb(165, 216, 255)
+export const COLOR_MODIFIED = COLOR_BLUE
+export const COLOR_GREY = d3.rgb(150, 150, 150)
+export const COLOR_UNMODIFIED = COLOR_GREY
+
+export const MARGIN = { top: 0, right: 50, bottom: 0, left: 75 }
+
+export default class SankeyTreeVisualization implements Visualization {
+
+    constructor() {
+        // TODO receive
+    }
+
+    visualize(node: Node): void {
+        // TODO after DataManager and types and Parser got integrated
+    }
+
+}
