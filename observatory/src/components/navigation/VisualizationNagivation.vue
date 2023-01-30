@@ -4,7 +4,7 @@ import { EventType } from '../../ts/enums/EventType'
 
 withDefaults(
     defineProps<{
-        selected: number
+        selected: VisualizationType
     }>(),
     {
         selected: VisualizationType.None
