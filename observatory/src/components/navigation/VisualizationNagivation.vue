@@ -24,7 +24,7 @@ defineEmits([EventType.CHANGE_VIZ])
             name="Visualization"
             :value="selected"
             class="dropdown dropdown-white block w-full"
-            @change="$emit(EventType.CHANGE_VIZ, parseInt($event.target.value))"
+            @change="$emit(EventType.CHANGE_VIZ, parseInt(($event.target as HTMLSelectElement).value))"
         >
             <option :value="VisualizationType.None" disabled>Choose Visualization</option>
             <option :value="VisualizationType.VennSets">Venn Sets</option>
