@@ -5,7 +5,7 @@ export const INVALID_SIZE: Bytes = -1
 
 export class Node {
     protected _name: string
-    protected _children: Node[]
+    protected readonly _children: Node[]
     protected _codeSize: Bytes = INVALID_SIZE
     protected _parent: Node | undefined
 
@@ -68,12 +68,23 @@ export class Node {
         this._parent = newParent
     }
 
-    public append(...nodes: Node[]): number {
-        for (const node of nodes) {
-            this._children.push(node)
-            node.parent = this
+    public push(...children: Node[]): number {
+        for (const child of children) {
+            this._children.push(child)
+            child.parent = this
         }
+        this.codeSize = INVALID_SIZE
         return this.children.length
+    }
+
+    public pop(): Node | undefined {
+        this.codeSize = INVALID_SIZE
+        return this._children.pop()
+    }
+
+    public splice(start: number, deleteCount?: number | undefined): Node[] {
+        this.codeSize = INVALID_SIZE
+        return this._children.splice(start, deleteCount)
     }
 
     public equals(another: Node): boolean {

@@ -57,6 +57,24 @@ describe('Universe', () => {
         expect(layeredTree.codeSize).toEqual(52)
     })
 
+    test('sum should be updated after adding another child', () => {
+        expect(layeredTree.codeSize).toEqual(52)
+        layeredTree.push(simpleTree)
+        expect(layeredTree.codeSize).toEqual(104)
+    })
+
+    test('sum should be updated after popping child', () => {
+        expect(layeredTree.codeSize).toEqual(52)
+        layeredTree.pop()
+        expect(layeredTree.codeSize).toEqual(22)
+    })
+
+    test('sum should be updated after splicing children', () => {
+        expect(layeredTree.codeSize).toEqual(52)
+        layeredTree.splice(0, 1)
+        expect(layeredTree.codeSize).toEqual(30)
+    })
+
     test('childless root should be inline', () => {
         expect(childlessRoot.inline).toBeTruthy()
     })
