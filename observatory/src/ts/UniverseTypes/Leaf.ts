@@ -8,9 +8,9 @@ export enum InitKind {
 }
 
 export class Leaf extends Node {
-    protected _reflective: boolean
-    protected _jni: boolean
-    protected _synthetic: boolean
+    protected _isReflective: boolean
+    protected _isJni: boolean
+    protected _isSynthetic: boolean
     protected _initKind: InitKind
 
     constructor(
@@ -24,22 +24,22 @@ export class Leaf extends Node {
     ) {
         super(name, [], parent)
         this._codeSize = codeSize
-        this._reflective = reflective
-        this._jni = jni
-        this._synthetic = synthetic
+        this._isReflective = reflective
+        this._isJni = jni
+        this._isSynthetic = synthetic
         this._initKind = initKind
     }
 
-    get reflective(): boolean {
-        return this._reflective
+    get isReflective(): boolean {
+        return this._isReflective
     }
 
-    get jni(): boolean {
-        return this._jni
+    get isJni(): boolean {
+        return this._isJni
     }
 
-    get synthetic(): boolean {
-        return this._synthetic
+    get isSynthetic(): boolean {
+        return this._isSynthetic
     }
 
     get initKind(): InitKind {
@@ -49,9 +49,9 @@ export class Leaf extends Node {
     public equals(another: Leaf): boolean {
         return (
             super.equals(another) &&
-            this.synthetic === another.synthetic &&
-            this.jni === another.jni &&
-            this.reflective === another.reflective &&
+            this.isSynthetic === another.isSynthetic &&
+            this.isJni === another.isJni &&
+            this.isReflective === another.isReflective &&
             this.initKind === another.initKind
         )
     }
