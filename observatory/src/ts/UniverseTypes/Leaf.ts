@@ -15,14 +15,14 @@ export class Leaf extends Node {
 
     constructor(
         name: string,
-        parent: Node | undefined,
         codeSize: Bytes,
         initKind: InitKind,
         reflective = false,
         jni = false,
-        synthetic = false
+        synthetic = false,
+        parent: Node | undefined = undefined
     ) {
-        super(name, parent, [])
+        super(name, [], parent)
         this._codeSize = codeSize
         this._reflective = reflective
         this._jni = jni

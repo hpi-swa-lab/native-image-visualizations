@@ -1,13 +1,7 @@
 import { Bytes } from '../SharedTypes/Size'
 import { HIERARCHY_NAME_SEPARATOR } from '../globals'
 
-const INVALID_SIZE: Bytes = -1
-
-export enum InitKind {
-    RUN_TIME = 1,
-    BUILD_TIME = 2,
-    RERUN = 3
-}
+export const INVALID_SIZE: Bytes = -1
 
 export class Node {
     protected _name: string
@@ -15,9 +9,17 @@ export class Node {
     protected _codeSize: Bytes = INVALID_SIZE
     protected _parent: Node | undefined
 
-    constructor(name: string, parent: Node | undefined, children: Node[], codeSize = INVALID_SIZE) {
+    constructor(
+        name: string,
+        children: Node[] = [],
+        parent: Node | undefined = undefined,
+        codeSize = INVALID_SIZE
+    ) {
         this._name = name
         this._children = children
+        for (const child of children) {
+            child.parent = this
+        }
         this._parent = parent
         this._codeSize = codeSize
     }
@@ -62,9 +64,14 @@ export class Node {
         this._codeSize = size
     }
 
+    set parent(newParent: Node | undefined) {
+        this._parent = newParent
+    }
+
     public append(...nodes: Node[]): number {
         for (const node of nodes) {
             this._children.push(node)
+            node.parent = this
         }
         return this.children.length
     }
