@@ -7,7 +7,7 @@ import { VisualizationType } from '../ts/enums/VisualizationType'
 withDefaults(
     defineProps<{
         title: string
-        visualizationType: number
+        visualizationType: VisualizationType
     }>(),
     {
         title: '',
