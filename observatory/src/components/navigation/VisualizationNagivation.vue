@@ -10,11 +10,6 @@ defineProps({
 })
 
 defineEmits([EventType.CHANGE_VIZ])
-
-defineExpose({
-    VisualizationType,
-    EventType
-})
 </script>
 
 <template>

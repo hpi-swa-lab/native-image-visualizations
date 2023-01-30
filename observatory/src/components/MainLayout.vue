@@ -16,8 +16,6 @@ defineProps({
 })
 
 defineEmits([EventType.CHANGE_VIZ])
-
-defineExpose({ EventType })
 </script>
 
 <template>

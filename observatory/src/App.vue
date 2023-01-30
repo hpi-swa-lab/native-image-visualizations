@@ -11,8 +11,6 @@ const currentVisualization = ref<number>()
 const handleChangeViz = (value: number) => {
     currentVisualization.value = value
 }
-
-defineExpose({ VisualizationType })
 </script>
 
 <template>
