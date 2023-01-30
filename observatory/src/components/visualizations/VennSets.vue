@@ -1,18 +1,8 @@
-<script lang="ts">
-import { VisualizationType } from '../../ts/enums/VisualizationType'
-import { defineComponent } from 'vue'
+<script setup lang="ts">
 import MainLayout from '../MainLayout.vue'
+import { VisualizationType } from '../../ts/enums/VisualizationType'
 
-export default defineComponent({
-    components: {
-        MainLayout
-    },
-    data() {
-        return {
-            VisualizationType
-        }
-    }
-})
+defineExpose({ VisualizationType })
 </script>
 
 <template>

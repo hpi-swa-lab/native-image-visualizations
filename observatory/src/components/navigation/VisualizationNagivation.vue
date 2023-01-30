@@ -1,22 +1,19 @@
-<script lang="ts">
-import { defineComponent } from 'vue'
+<script setup lang="ts">
 import { VisualizationType } from '../../ts/enums/VisualizationType'
-import { Event } from '../../ts/enums/Event'
+import { EventType } from '../../ts/enums/EventType'
 
-export default defineComponent({
-    props: {
-        selected: {
-            type: Number,
-            default: VisualizationType.None
-        }
-    },
-    emits: [Event.CHANGE_VIZ],
-    data() {
-        return {
-            VisualizationType,
-            Event
-        }
+defineProps({
+    selected: {
+        type: Number,
+        default: VisualizationType.None
     }
+})
+
+defineEmits([EventType.CHANGE_VIZ])
+
+defineExpose({
+    VisualizationType,
+    EventType
 })
 </script>
 
@@ -30,7 +27,7 @@ export default defineComponent({
             name="Visualization"
             :value="selected"
             class="dropdown dropdown-white block w-full"
-            @change="$emit(Event.CHANGE_VIZ, parseInt($event.target.value))"
+            @change="$emit(EventType.CHANGE_VIZ, parseInt($event.target.value))"
         >
             <option :value="VisualizationType.None" disabled>Choose Visualization</option>
             <option :value="VisualizationType.VennSets">Venn Sets</option>

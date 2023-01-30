@@ -1,32 +1,23 @@
-<script lang="ts">
+<script setup lang="ts">
 import VisualizationNavigation from './navigation/VisualizationNagivation.vue'
 import UniverseSelectionList from './controls/UniverseSelectionList.vue'
-import { defineComponent } from 'vue'
-import { Event } from '../ts/enums/Event'
+import { EventType } from '../ts/enums/EventType'
 import { VisualizationType } from '../ts/enums/VisualizationType'
 
-export default defineComponent({
-    components: {
-        VisualizationNavigation,
-        UniverseSelectionList
+defineProps({
+    title: {
+        type: String,
+        default: ''
     },
-    props: {
-        title: {
-            type: String,
-            default: ''
-        },
-        visualizationType: {
-            type: Number,
-            default: VisualizationType.None
-        }
-    },
-    emits: [Event.CHANGE_VIZ],
-    data() {
-        return {
-            Event
-        }
+    visualizationType: {
+        type: Number,
+        default: VisualizationType.None
     }
 })
+
+defineEmits([EventType.CHANGE_VIZ])
+
+defineExpose({ EventType })
 </script>
 
 <template>
@@ -44,7 +35,7 @@ export default defineComponent({
 
             <VisualizationNavigation
                 :selected="visualizationType"
-                @change-viz="$emit(Event.CHANGE_VIZ, $event)"
+                @change-viz="$emit(EventType.CHANGE_VIZ, $event)"
             ></VisualizationNavigation>
             <hr />
 

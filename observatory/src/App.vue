@@ -1,5 +1,5 @@
-<script lang="ts">
-import { defineComponent, ref } from 'vue'
+<script setup lang="ts">
+import { ref } from 'vue'
 import SankeyTree from './components/visualizations/SankeyTree.vue'
 import { VisualizationType } from './ts/enums/VisualizationType'
 import TreeLine from './components/visualizations/TreeLine.vue'
@@ -7,28 +7,12 @@ import Venn from './components/visualizations/VennSets.vue'
 import CausalityGraph from './components/visualizations/CausalityGraph.vue'
 import Home from './components/Home.vue'
 
-export default defineComponent({
-    components: {
-        CausalityGraph,
-        TreeLine,
-        SankeyTree,
-        Venn,
-        Home
-    },
-    setup() {
-        const currentVisualization = ref<number>()
+const currentVisualization = ref<number>()
+const handleChangeViz = (value: number) => {
+    currentVisualization.value = value
+}
 
-        const handleChangeViz = (value: number) => {
-            currentVisualization.value = value
-        }
-        return { currentVisualization, handleChangeViz }
-    },
-    data() {
-        return {
-            VisualizationType
-        }
-    }
-})
+defineExpose({ VisualizationType })
 </script>
 
 <template>

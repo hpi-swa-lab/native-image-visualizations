@@ -1,3 +1,3 @@
-export enum Event {
+export enum EventType {
     CHANGE_VIZ = 'change-viz'
 }
