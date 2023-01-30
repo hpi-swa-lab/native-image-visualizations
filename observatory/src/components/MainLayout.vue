@@ -4,16 +4,16 @@ import UniverseSelectionList from './controls/UniverseSelectionList.vue'
 import { EventType } from '../ts/enums/EventType'
 import { VisualizationType } from '../ts/enums/VisualizationType'
 
-defineProps({
-    title: {
-        type: String,
-        default: ''
-    },
-    visualizationType: {
-        type: Number,
-        default: VisualizationType.None
+withDefaults(
+    defineProps<{
+        title: string
+        visualizationType: number
+    }>(),
+    {
+        title: '',
+        visualizationType: VisualizationType.None
     }
-})
+)
 
 defineEmits([EventType.CHANGE_VIZ])
 </script>

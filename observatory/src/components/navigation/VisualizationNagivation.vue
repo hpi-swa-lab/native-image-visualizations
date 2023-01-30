@@ -2,12 +2,14 @@
 import { VisualizationType } from '../../ts/enums/VisualizationType'
 import { EventType } from '../../ts/enums/EventType'
 
-defineProps({
-    selected: {
-        type: Number,
-        default: VisualizationType.None
+withDefaults(
+    defineProps<{
+        selected: number
+    }>(),
+    {
+        selected: VisualizationType.None
     }
-})
+)
 
 defineEmits([EventType.CHANGE_VIZ])
 </script>
