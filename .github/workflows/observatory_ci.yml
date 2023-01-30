@@ -23,7 +23,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
-          node-version: $NODE_VERSION
+          node-version: "$NODE_VERSION"
       - name: Install Dependencies
         run: npm ci
       - name: Eslint
@@ -39,7 +39,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
-          node-version: $NODE_VERSION
+          node-version: "$NODE_VERSION"
       - name: Install Dependencies
         run: npm ci
       - name: Prettier
@@ -55,7 +55,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
-          node-version: $NODE_VERSION
+          node-version: "$NODE_VERSION"
       - name: Install Dependencies
         run: npm ci
       - name: Jest
