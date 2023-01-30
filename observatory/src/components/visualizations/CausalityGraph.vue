@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import MainLayout from '../MainLayout.vue'
-import { VisualizationType } from '../../ts/enums/VisualizationType'
+import { PageType } from '../../ts/enums/PageType'
 </script>
 
 <template>
-    <MainLayout title="WIP: Causality Graph" :visualization-type="VisualizationType.CausalityGraph">
+    <MainLayout title="WIP: Causality Graph" :page-type="PageType.CausalityGraph">
         <div id="container" />
     </MainLayout>
 </template>

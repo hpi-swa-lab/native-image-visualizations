@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import MainLayout from '../MainLayout.vue'
-import { VisualizationType } from '../../ts/enums/VisualizationType'
+import { PageType } from '../../ts/enums/PageType'
 </script>
 
 <template>
-    <MainLayout title="Venn Sets" :visualization-type="VisualizationType.VennSets">
+    <MainLayout title="Venn Sets" :page-type="PageType.VennSets">
         <div id="container" />
     </MainLayout>
 </template>

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import MainLayout from './MainLayout.vue'
-import { VisualizationType } from '../ts/enums/VisualizationType'
+import { PageType } from '../ts/enums/PageType'
 </script>
 
 <template>
-    <MainLayout title="Home" :visualization-type="VisualizationType.None"> </MainLayout>
+    <MainLayout title="Home" :page-type="PageType.Home"> </MainLayout>
 </template>

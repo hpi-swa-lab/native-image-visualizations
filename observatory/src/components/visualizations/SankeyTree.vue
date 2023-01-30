@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import MainLayout from '../MainLayout.vue'
-import { VisualizationType } from '../../ts/enums/VisualizationType'
+import { PageType } from '../../ts/enums/PageType'
 </script>
 
 <template>
-    <MainLayout title="Sankey Tree" :visualization-type="VisualizationType.SankeyTree">
+    <MainLayout title="Sankey Tree" :page-type="PageType.SankeyTree">
         <div id="container" />
     </MainLayout>
 </template>

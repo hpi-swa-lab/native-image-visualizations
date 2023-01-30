@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import { VisualizationType } from '../../ts/enums/VisualizationType'
+import { PageType } from '../../ts/enums/PageType'
 import { EventType } from '../../ts/enums/EventType'
 
 withDefaults(
     defineProps<{
-        selected: VisualizationType
+        selected: PageType
     }>(),
     {
-        selected: VisualizationType.None
+        selected: PageType.None
     }
 )
 
-defineEmits([EventType.CHANGE_VIZ])
+defineEmits([EventType.CHANGE_PAGE])
 </script>
 
 <template>
@@ -24,13 +24,15 @@ defineEmits([EventType.CHANGE_VIZ])
             name="Visualization"
             :value="selected"
             class="dropdown dropdown-white block w-full"
-            @change="$emit(EventType.CHANGE_VIZ, parseInt(($event.target as HTMLSelectElement).value))"
+            @change="
+                $emit(EventType.CHANGE_PAGE, parseInt(($event.target as HTMLSelectElement).value))
+            "
         >
-            <option :value="VisualizationType.None" disabled>Choose Visualization</option>
-            <option :value="VisualizationType.VennSets">Venn Sets</option>
-            <option :value="VisualizationType.SankeyTree">Sankey Tree</option>
-            <option :value="VisualizationType.TreeLine">Tree Line</option>
-            <option :value="VisualizationType.CausalityGraph">Causality Graph</option>
+            <option :value="PageType.None" disabled>Choose Visualization</option>
+            <option :value="PageType.VennSets">Venn Sets</option>
+            <option :value="PageType.SankeyTree">Sankey Tree</option>
+            <option :value="PageType.TreeLine">Tree Line</option>
+            <option :value="PageType.CausalityGraph">Causality Graph</option>
         </select>
     </div>
 </template>

@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import MainLayout from '../MainLayout.vue'
-import { VisualizationType } from '../../ts/enums/VisualizationType'
+import { PageType } from '../../ts/enums/PageType'
 </script>
 
 <template>
-    <MainLayout title="Tree Line" :visualization-type="VisualizationType.TreeLine">
+    <MainLayout title="Tree Line" :page-type="PageType.TreeLine">
         <div id="container" />
     </MainLayout>
 </template>
