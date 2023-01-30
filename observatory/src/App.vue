@@ -9,6 +9,7 @@ import { PageType } from './ts/enums/PageType'
 import DataManager from './components/DataManager.vue'
 
 const currentPage = ref<number>(PageType.Home)
+
 const handlePageChange = (value: number) => {
     currentPage.value = value
 }

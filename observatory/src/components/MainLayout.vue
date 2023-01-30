@@ -47,10 +47,11 @@ const emit = defineEmits([EventType.CHANGE_PAGE])
                 <hr />
 
                 <VisualizationNavigation
+                    v-if="pageType !== PageType.DataManager"
                     :selected="pageType"
                     @change-viz="$emit(EventType.CHANGE_PAGE, $event)"
                 ></VisualizationNavigation>
-                <hr />
+                <hr v-if="pageType !== PageType.DataManager" />
 
                 <UniverseSelectionList></UniverseSelectionList>
                 <hr />
