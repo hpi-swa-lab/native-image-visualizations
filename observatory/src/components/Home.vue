@@ -16,7 +16,5 @@ export default defineComponent({
 </script>
 
 <template>
-    <MainLayout title="Home" :visualization-type="VisualizationType.None">
-        <template #controls></template>
-    </MainLayout>
+    <MainLayout title="Home" :visualization-type="VisualizationType.None"> </MainLayout>
 </template>
