@@ -7,8 +7,6 @@ defineExpose({ VisualizationType })
 
 <template>
     <MainLayout title="WIP: Causality Graph" :visualization-type="VisualizationType.CausalityGraph">
-        <template #controls />
-
         <div id="container" />
     </MainLayout>
 </template>

@@ -7,8 +7,6 @@ defineExpose({ VisualizationType })
 
 <template>
     <MainLayout title="Tree Line" :visualization-type="VisualizationType.TreeLine">
-        <template #controls />
-
         <div id="container" />
     </MainLayout>
 </template>

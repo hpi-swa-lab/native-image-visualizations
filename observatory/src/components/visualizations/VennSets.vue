@@ -6,9 +6,7 @@ defineExpose({ VisualizationType })
 </script>
 
 <template>
-    <MainLayout title="VennSets" :visualization-type="VisualizationType.VennSets">
-        <template #controls />
-
+    <MainLayout title="Venn Sets" :visualization-type="VisualizationType.VennSets">
         <div id="container" />
     </MainLayout>
 </template>
