@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  nodeVersion: "17.1.0"
+
+jobs:
+  linting:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: observatory
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: $nodeVersion
+      - name: Install Dependencies
+        run: npm ci
+      - name: Eslint
+        run: npm run eslint-check
+  formatting:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: observatory
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: $nodeVersion
+      - name: Install Dependencies
+        run: npm ci
+      - name: Prettier
+        run: npm run prettier-check
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: observatory
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: $nodeVersion
+      - name: Install Dependencies
+        run: npm ci
+      - name: Jest
+        run: npm run jest
