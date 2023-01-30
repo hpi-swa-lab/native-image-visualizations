@@ -21,7 +21,7 @@ defineEmits([EventType.CHANGE_VIZ])
 <template>
     <div class="w-full h-full">
         <aside class="w-64 z-1 h-full">
-            <div class="px-3 py-4 overflow-y-auto rounded bg-gray-50 space-y-4">
+            <div class="px-3 py-4 overflow-y-auto rounded bg-gray-50 space-y-4 h-full">
                 <h2>{{ title }}</h2>
                 <hr />
 
