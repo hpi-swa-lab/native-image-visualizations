@@ -30,9 +30,11 @@ const form = ref<{
 function removeUniverse(universeName: string) {
     if (!currentUniverses.value) return
 
-    const removedUniverse = (currentUniverses.value as NamedUniverse[]).find((universe: NamedUniverse) => {
-        return universe.name === universeName
-    })
+    const removedUniverse = (currentUniverses.value as NamedUniverse[]).find(
+        (universe: NamedUniverse) => {
+            return universe.name === universeName
+        }
+    )
     if (removedUniverse) {
         currentUniverses.value.splice(currentUniverses.value.indexOf(removedUniverse), 1)
         emit(EventType.UNIVERSE_REMOVED, universeName)
@@ -108,9 +110,7 @@ async function submit() {
 
                 <ElevatedLayer>
                     <label><h3>Reachability-Export</h3></label>
-                    <p>
-                        
-                    </p>
+                    <p></p>
                     <input type="file" accept="json" required @change="updateRechabilityExport" />
                 </ElevatedLayer>
             </div>
