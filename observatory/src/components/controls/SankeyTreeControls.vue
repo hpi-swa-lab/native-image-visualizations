@@ -1,17 +1,20 @@
 <script setup lang="ts">
 import {SortingOption, SortingOrder} from "../../ts/enums/Sorting";
-import {UniverseProps, Dictionary} from "../../ts/SharedTypes/UniverseProps";
 import type { PropType } from "vue";
 
 import Switch from "./Switch.vue";
 import ColorLabel from "./ColorLabel.vue";
 import * as d3 from "d3";
 
+type UniverseProps = {
+  name: string
+  color: d3.Color
+}
+
 const SHORTCUT_TEXTS = ['shift+click on node expands branch']
 
 const UNMODIFIED = 'UNMODIFIED'
 
-// colors
 const COLOR_RED = d3.rgb(250, 82, 82)
 const COLOR_GREEN = d3.rgb(148, 216, 45)
 const COLOR_BLUE = d3.rgb(165, 216, 255)
@@ -20,9 +23,10 @@ const COLOR_GREY = d3.rgb(150, 150, 150)
 const COLOR_UNMODIFIED = COLOR_GREY
 
 // TODO #39 set {} default value for universeMetadata
+// cannot use defaultWith() with Objects
 let props = defineProps({
   universesMetadata: {
-    type: Object as PropType<Dictionary<UniverseProps>>,
+    type: Object as PropType<Record<string,UniverseProps>>,
     default: {
       '0': {name: 'Universe1', color: COLOR_RED},
       '1': {name: 'Universe2', color: COLOR_GREEN}
@@ -34,7 +38,6 @@ const sortings = [SortingOption, SortingOrder]
 function getFilteredKeys(): string[] {
   return Object.keys(props.universesMetadata).filter((key) => key.length == 1)
 }
-
 </script>
 
 <template>
