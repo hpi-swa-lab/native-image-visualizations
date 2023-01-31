@@ -60,10 +60,6 @@ export class Node {
         return this._codeSize
     }
 
-    set codeSize(size: Bytes) {
-        this._codeSize = size
-    }
-
     set parent(newParent: Node | undefined) {
         this._parent = newParent
     }
@@ -73,12 +69,12 @@ export class Node {
             this._children.push(child)
             child.parent = this
         }
-        this.codeSize = INVALID_SIZE
+        this._codeSize = INVALID_SIZE
         return this.children.length
     }
 
     public pop(): Node | undefined {
-        this.codeSize = INVALID_SIZE
+        this._codeSize = INVALID_SIZE
         const toRemove = this._children.pop()
         if (toRemove) {
             toRemove.parent = undefined
@@ -87,7 +83,7 @@ export class Node {
     }
 
     public splice(start: number, deleteCount?: number | undefined): Node[] {
-        this.codeSize = INVALID_SIZE
+        this._codeSize = INVALID_SIZE
         const toRemove = this._children.splice(start, deleteCount)
         for (const priorChild of toRemove) {
             priorChild.parent = undefined
