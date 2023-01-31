@@ -55,7 +55,8 @@
         "camelcase": [1],
         "quotes": ["error", "single"],
         "no-multi-spaces": ["error"],
-        "class-methods-use-this": "off"
+        "class-methods-use-this": "off",
+        "@typescript-eslint/adjacent-overload-signatures": "off"
     },
     "settings": {
         "import/parsers": {

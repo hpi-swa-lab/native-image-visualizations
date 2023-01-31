@@ -1,23 +1,25 @@
 import { Bytes } from '../SharedTypes/Size'
 import { HIERARCHY_NAME_SEPARATOR } from '../globals'
 
-const INVALID_SIZE: Bytes = -1
-
-export enum InitKind {
-    RUN_TIME = 1,
-    BUILD_TIME = 2,
-    RERUN = 3
-}
+export const INVALID_SIZE: Bytes = -1
 
 export class Node {
     protected _name: string
-    protected _children: Node[]
+    protected readonly _children: Node[]
     protected _codeSize: Bytes = INVALID_SIZE
     protected _parent: Node | undefined
 
-    constructor(name: string, parent: Node | undefined, children: Node[], codeSize = INVALID_SIZE) {
+    constructor(
+        name: string,
+        children: Node[] = [],
+        parent: Node | undefined = undefined,
+        codeSize = INVALID_SIZE
+    ) {
         this._name = name
         this._children = children
+        for (const child of children) {
+            child.parent = this
+        }
         this._parent = parent
         this._codeSize = codeSize
     }
@@ -58,15 +60,35 @@ export class Node {
         return this._codeSize
     }
 
-    set codeSize(size: Bytes) {
-        this._codeSize = size
+    set parent(newParent: Node | undefined) {
+        this._parent = newParent
     }
 
-    public append(...nodes: Node[]): number {
-        for (const node of nodes) {
-            this._children.push(node)
+    public push(...children: Node[]): number {
+        for (const child of children) {
+            this._children.push(child)
+            child.parent = this
         }
+        this._codeSize = INVALID_SIZE
         return this.children.length
+    }
+
+    public pop(): Node | undefined {
+        this._codeSize = INVALID_SIZE
+        const toRemove = this._children.pop()
+        if (toRemove) {
+            toRemove.parent = undefined
+        }
+        return toRemove
+    }
+
+    public splice(start: number, deleteCount?: number | undefined): Node[] {
+        this._codeSize = INVALID_SIZE
+        const toRemove = this._children.splice(start, deleteCount)
+        for (const priorChild of toRemove) {
+            priorChild.parent = undefined
+        }
+        return toRemove
     }
 
     public equals(another: Node): boolean {
