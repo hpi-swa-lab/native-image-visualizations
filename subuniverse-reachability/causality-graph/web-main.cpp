@@ -147,6 +147,92 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE simulate_purge(const char* methods)
     return res;
 }
 
+extern "C" bool EMSCRIPTEN_KEEPALIVE simulate_purges_batched(const span<const method_id>* purge_sets, size_t purge_sets_len, uint32_t* n_purged)
+{
+    if(!purge_model)
+        return false;
+
+    if(!bfs)
+        return false;
+
+    auto& m = *purge_model;
+    auto& bfs = *::bfs;
+
+
+    cerr << "Running DFS on purged graph...";
+
+    auto start = std::chrono::system_clock::now();
+
+    {
+        BFS::Result r(bfs);
+        {
+            auto& method_visited = r.method_visited;
+            std::fill(method_visited.begin() + 1, method_visited.end(), true);
+            method_id root_method = 0;
+            typeflow_id root_typeflow = 0;
+            bfs.run<false>(r, {&root_method, 1}, {&root_typeflow, 1});
+        }
+
+        auto callback = [&](const span<const method_id>& mids, const BFS::Result& r)
+        {
+            size_t iteration = &mids - purge_sets;
+
+            size_t n_purged_acc = 0;
+
+            for(size_t i = 1; i < r.method_history.size(); i++)
+            {
+                if(r.method_history[i] == 0xFF && all->method_history[i] != 0xFF)
+                    n_purged_acc++;
+            }
+
+            n_purged[iteration] = n_purged_acc;
+
+#define PRINT_CUTOFFS 0
+#if PRINT_CUTOFFS
+            cout << '[' << iteration << "] ";
+
+            if(mids.size() == 1)
+            {
+                cout << '"' << method_names[mids[0].id] << '"';
+            }
+            else
+            {
+                cout << '{';
+                for(size_t i = 0; i < mids.size(); i++)
+                {
+                    cout << '"' << method_names[mids[i].id] << '"';
+                    if(i < mids.size() - 1)
+                        cout << ',';
+                }
+                cout << '}';
+            }
+
+            cout << ": ";
+
+            for(size_t i = 1; i < r.method_history.size(); i++)
+            {
+                if(r.method_history[i] == 0xFF && all_reachable.method_history[i] != 0xFF)
+                    cout << method_names[i] << ' ';
+            }
+            cout << endl;
+#else
+            if(iteration % 1000 == 0)
+            {
+                cerr << '[' << iteration << ']' << endl;
+            }
+#endif
+        };
+
+        bfs_incremental_rec(*all, bfs, r, {purge_sets, purge_sets_len}, callback);
+    }
+
+    auto end = std::chrono::system_clock::now();
+    auto elapsed_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    cerr << ' ' << (elapsed_milliseconds.count()) << "ms elapsed - ";
+
+    return true;
+}
+
 extern "C" char* EMSCRIPTEN_KEEPALIVE show_reachability(const char* methods)
 {
     BFS::Result* bfsresult = current_purged_result ? &*current_purged_result : &*all;

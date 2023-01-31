@@ -670,4 +670,157 @@ public:
     }
 };
 
+static void assert_reachability_equals(const BFS::Result& r1, const BFS::Result& r2)
+{
+    if(!(r1.allInstantiated == r2.allInstantiated))
+    {
+        cerr << "All Idiot!" << endl;
+        cerr << (r2.allInstantiated & ~r1.allInstantiated).find_first() << endl;
+        exit(1);
+    }
+
+    if(r1.method_history.size() != r2.method_history.size())
+    {
+        cerr << "Sizable Idiot!" << endl;
+        exit(1);
+    }
+
+    if(r1.typeflow_visited.size() != r2.typeflow_visited.size())
+    {
+        cerr << "Sizable Idiot2!" << endl;
+        exit(1);
+    }
+
+    for(size_t i = 0; i < r1.typeflow_visited.size(); i++)
+    {
+        if(r1.typeflow_visited[i].any() != r2.typeflow_visited[i].any())
+        {
+            cerr << "Idiot2!" << endl;
+            exit(1);
+            continue;
+        }
+
+        if(r1.typeflow_visited[i].is_saturated() != r2.typeflow_visited[i].is_saturated())
+        {
+            cerr << "Idiot3!" << endl;
+            exit(1);
+            continue;
+        }
+
+        if(r1.typeflow_visited[i].is_saturated())
+            continue;
+
+        if(r1.typeflow_visited[i].count() != r2.typeflow_visited[i].count())
+        {
+            cerr << "Idiot4!" << endl;
+            exit(1);
+            continue;
+        }
+
+        for(auto tp1 : r1.typeflow_visited[i])
+        {
+            bool c = r1.typeflow_visited[i].contains(tp1.first);
+
+            for(auto tp2 : r2.typeflow_visited[i])
+            {
+                if(tp1.first == tp2.first)
+                    goto found;
+            }
+
+            cerr << "Idiot5!" << endl;
+            exit(1);
+            break;
+
+            found: {}
+        }
+    }
+
+    for(size_t i = 0; i < r1.method_history.size(); i++)
+    {
+        if((r1.method_history[i] == 0xFF) != (r2.method_history[i] == 0xFF))
+        {
+            cerr << "Idiot!" << endl;
+            exit(1);
+        }
+    }
+}
+
+
+static void bfs_incremental_rec(const BFS::Result& all_reachable, const BFS& bfs, BFS::Result& r, span<const span<const method_id>> methods_to_purge, const function<void(const span<const method_id>&, const BFS::Result&)>& callback)
+{
+    if(methods_to_purge.empty())
+    {
+#if REACHABILITY_ASSERTIONS
+        assert_reachability_equals(all_reachable, r);
+#endif
+        return;
+    }
+    else if(methods_to_purge.size() == 1)
+    {
+#if REACHABILITY_ASSERTIONS
+        BFS::Result ref = bfs.run(methods_to_purge[0]);
+        assert_reachability_equals(ref, r);
+#endif
+        callback(methods_to_purge[0], r);
+#if !REACHABILITY_ASSERTIONS
+        return;
+#endif
+    }
+
+    span<const span<const method_id>> first_half = methods_to_purge.subspan(0, methods_to_purge.size() / 2);
+    span<const span<const method_id>> second_half = methods_to_purge.subspan(methods_to_purge.size() / 2);
+
+    auto search_child = [&](BFS::Result& r2, span<const span<const method_id>> depurge, span<const span<const method_id>> stillpurge)
+    {
+#if REACHABILITY_ASSERTIONS
+        if(depurge.empty())
+            return;
+        BFS::Result r2_copy = r2;
+#endif
+
+        auto& method_visited = r2.method_visited;
+        size_t root_methods_capacity = std::accumulate(depurge.begin(), depurge.end(), size_t(0), [](size_t acc, auto mids){ return acc + mids.size(); });
+        method_id root_methods[root_methods_capacity];
+        size_t root_methods_size = 0;
+
+        for(span<const method_id> mids : depurge)
+        {
+            for(method_id mid : mids)
+            {
+                method_visited[mid.id] = false;
+
+                auto m = bfs.adj[mid];
+                if(
+                        std::any_of(m.backward_edges.begin(), m.backward_edges.end(), [&](const auto& item)
+                        {
+                            return r2.method_history[item.id] != 0xFF;
+                        })
+                        ||
+                        std::any_of(m.virtual_invocation_sources.begin(), m.virtual_invocation_sources.end(), [&](const auto& item)
+                        {
+                            return r2.typeflow_visited[item.id].any();
+                        })
+                        )
+                {
+                    root_methods[root_methods_size++] = mid;
+                }
+            }
+        }
+
+        auto incremental_changes = bfs.run<false, true>(r2, {root_methods, root_methods + root_methods_size}, {});
+        bfs_incremental_rec(all_reachable, bfs, r2, stillpurge, callback);
+        r2.revert(bfs, incremental_changes);
+        for(span<const method_id> mids : depurge)
+            for(method_id mid : mids)
+                method_visited[mid.id] = true;
+
+#if REACHABILITY_ASSERTIONS
+        assert_reachability_equals(r2_copy, r2);
+#endif
+    };
+
+    search_child(r, second_half, first_half);
+    search_child(r, first_half, second_half);
+}
+
 #endif //CAUSALITY_GRAPH_ANALYSIS_H
