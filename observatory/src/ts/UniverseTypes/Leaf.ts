@@ -17,16 +17,16 @@ export class Leaf extends Node {
         name: string,
         codeSize: Bytes,
         initKind: InitKind,
-        reflective = false,
-        jni = false,
-        synthetic = false,
+        isReflective = false,
+        isJni = false,
+        isSynthetic = false,
         parent: Node | undefined = undefined
     ) {
         super(name, [], parent)
         this._codeSize = codeSize
-        this._isReflective = reflective
-        this._isJni = jni
-        this._isSynthetic = synthetic
+        this._isReflective = isReflective
+        this._isJni = isJni
+        this._isSynthetic = isSynthetic
         this._initKind = initKind
     }
 
