@@ -1,9 +1,10 @@
 import { describe, expect, test } from '@jest/globals'
 import { InitKind, Leaf } from '../src/ts/UniverseTypes/Leaf'
+import { Node } from '../src/ts/UniverseTypes/Node'
 import { HIERARCHY_NAME_SEPARATOR } from '../src/ts/globals'
 import { trees } from './data/trees'
 
-describe('Universe', () => {
+describe('Node usage', () => {
     test('sum for childless root should be 0', () => {
         expect(trees.childlessRoot.codeSize).toEqual(0)
     })
@@ -94,5 +95,43 @@ describe('Universe', () => {
         expect(trees.layeredTree.children[0].children[0].children[0].identifier).toEqual(
             `module${HIERARCHY_NAME_SEPARATOR}packageA${HIERARCHY_NAME_SEPARATOR}ClassAA${HIERARCHY_NAME_SEPARATOR}methodAAA`
         )
+    })
+
+    test('is should be true for same values and children', () => {
+        const simpleTreeCopy = new Node('Class', [
+            new Leaf('methodA', 10, InitKind.BUILD_TIME),
+            new Leaf('methodB', 7, InitKind.BUILD_TIME),
+            new Leaf('methodC', 5, InitKind.RERUN),
+            new Leaf('methodD', 20, InitKind.BUILD_TIME),
+            new Leaf('methodE', 0, InitKind.BUILD_TIME),
+            new Leaf('methodF', 10, InitKind.BUILD_TIME)
+        ])
+        expect(simpleTreeCopy.is(trees.simpleTree)).toBeTruthy()
+    })
+
+    test('is should be false if one children differs', () => {
+        const simpleTreeCopy = new Node('Class', [
+            new Leaf('methodA', 18, InitKind.BUILD_TIME),
+            new Leaf('methodB', 7, InitKind.BUILD_TIME),
+            new Leaf('methodC', 5, InitKind.RERUN),
+            new Leaf('methodD', 20, InitKind.BUILD_TIME),
+            new Leaf('methodE', 0, InitKind.BUILD_TIME),
+            new Leaf('methodF', 10, InitKind.BUILD_TIME)
+        ])
+        expect(simpleTreeCopy.is(trees.simpleTree)).toBeFalsy()
+    })
+
+    test('is should be true for only root without leaves', () => {
+        const childlessRootCopy = new Node('Native Image')
+        expect(childlessRootCopy.is(trees.childlessRoot)).toBeTruthy()
+    })
+
+    test('is should be false for different number children', () => {
+        const simpleTreeCopy = new Node('Class', [
+            new Leaf('methodA', 10, InitKind.BUILD_TIME),
+            new Leaf('methodB', 7, InitKind.BUILD_TIME),
+            new Leaf('methodC', 5, InitKind.RERUN)
+        ])
+        expect(simpleTreeCopy.is(trees.simpleTree)).toBeFalsy()
     })
 })

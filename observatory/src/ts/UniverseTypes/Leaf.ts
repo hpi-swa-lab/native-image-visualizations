@@ -55,4 +55,16 @@ export class Leaf extends Node {
             this.initKind === another.initKind
         )
     }
+
+    public is(another: Leaf): boolean {
+        return (
+            Object.is(this.name, another.name) &&
+            Object.is(JSON.stringify(this.occurencesIn), JSON.stringify(another.occurencesIn)) &&
+            Object.is(this.codeSize, another.codeSize) &&
+            Object.is(this.isSynthetic, another.isSynthetic) &&
+            Object.is(this.isJni, another.isJni) &&
+            Object.is(this.isReflective, another.isReflective) &&
+            Object.is(this.initKind, another.initKind)
+        )
+    }
 }
