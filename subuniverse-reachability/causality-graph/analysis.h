@@ -93,56 +93,6 @@ struct __attribute__((aligned(64))) TypeflowHistory
 {
     static constexpr size_t saturation_cutoff = 20;
 
-    /*
-    type_t types[saturation_cutoff]
-            { numeric_limits<type_t>::max(),
-              numeric_limits<type_t>::max(),
-              numeric_limits<type_t>::max(),
-              numeric_limits<type_t>::max(),
-              numeric_limits<type_t>::max(),
-              numeric_limits<type_t>::max(),
-              numeric_limits<type_t>::max(),
-              numeric_limits<type_t>::max(),
-              numeric_limits<type_t>::max(),
-              numeric_limits<type_t>::max(),
-              numeric_limits<type_t>::max(),
-              numeric_limits<type_t>::max(),
-              numeric_limits<type_t>::max(),
-              numeric_limits<type_t>::max(),
-              numeric_limits<type_t>::max(),
-              numeric_limits<type_t>::max(),
-              numeric_limits<type_t>::max(),
-              numeric_limits<type_t>::max(),
-              numeric_limits<type_t>::max(),
-              numeric_limits<type_t>::max()
-            };
-
-
-    uint8_t dists[saturation_cutoff] {
-        0xFF,
-        0xFF,
-        0xFF,
-        0xFF,
-        0xFF,
-        0xFF,
-        0xFF,
-        0xFF,
-        0xFF,
-        0xFF,
-        0xFF,
-        0xFF,
-        0xFF,
-        0xFF,
-        0xFF,
-        0xFF,
-        0xFF,
-        0xFF,
-        0xFF,
-        0xFF,
-    };
-    uint8_t saturated_dist = numeric_limits<uint8_t>::max();
-     */
-
     type_t types[saturation_cutoff];
     uint8_t dists[saturation_cutoff];
     uint8_t saturated_dist = numeric_limits<uint8_t>::max();
