@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Causality Graph Text Interface</title>
+    <style>
+        /* Remove default bullets */
+        ul, #myUL {
+            list-style-type: none;
+        }
+
+        /* Remove margins and padding from the parent ul */
+        #myUL {
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Style the caret/arrow */
+        .caret {
+            cursor: pointer;
+            user-select: none; /* Prevent text selection */
+        }
+
+        /* Create the caret/arrow with a unicode, and style it */
+        .caret::before {
+            content: "\25B6";
+            color: black;
+            display: inline-block;
+            margin-right: 6px;
+        }
+
+        /* Rotate the caret/arrow icon when clicked on (using JavaScript) */
+        .caret-down::before {
+            transform: rotate(90deg);
+        }
+
+        /* Hide the nested list */
+        .nested {
+            display: none;
+        }
+
+        /* Show the nested list when the user clicks on the caret/arrow (with JavaScript) */
+        .active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <script src="lib/causality_graph.js"></script>
+    <script src="zip.min.js"></script>
+    <script>
+        var simulate_purge = Module.cwrap("simulate_purge", "number", ["number"]);
+        var show_reachability = Module.cwrap("show_reachability", "number", ["number"]);
+        var init = Module.cwrap("init", "number", ["number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number"]);
+
+        function simulatePurge(str) {
+            var ptr  = allocateUTF8(str)
+            var retPtr = simulate_purge(ptr)
+            var res = UTF8ToString(retPtr)
+
+            // dealloc memory
+            Module._free(ptr);
+            Module._free(retPtr);
+
+            return res
+        }
+
+        function pressBtn(str){
+            var ptr  = allocateUTF8(str)
+
+            var retPtr = simulate_purge(ptr)
+
+            document.getElementById("Output").value = UTF8ToString(retPtr)
+
+            // dealloc memory
+            Module._free(ptr);
+            Module._free(retPtr);
+
+            if(retPtr)
+                printReachability(document.getElementById("Input_reachability").value)
+        }
+
+        function printReachability(str){
+            var ptr  = allocateUTF8(str)
+
+            var retPtr = show_reachability(ptr)
+
+            document.getElementById("Output_reachability").value = UTF8ToString(retPtr)
+
+            // dealloc memory
+            Module._free(ptr);
+            Module._free(retPtr);
+        }
+
+        const model = (() => {
+
+            return {
+                getEntries(file, options) {
+                    return (new zip.ZipReader(new zip.BlobReader(file))).getEntries(options);
+                },
+                async getURL(entry, options) {
+                    return URL.createObjectURL(await entry.getData(new zip.BlobWriter(), options));
+                }
+            };
+
+        })();
+
+        function doSomething(){
+            var fileInput = document.getElementById("file-input");
+            fileInput.dispatchEvent(new MouseEvent("click"));
+            fileInput.onchange = selectFile;
+        }
+
+        async function selectFile() {
+            try {
+                var fileInput = document.getElementById("file-input");
+                var selectedFile = fileInput.files[0];
+                await loadFiles(selectedFile, "utf-8");
+            } catch (error) {
+                alert(error);
+            }
+        }
+
+        async function loadFiles(selectedFile, filenameEncoding) {
+            var entries = await model.getEntries(selectedFile, { filenameEncoding });
+            if (entries && entries.length) {
+                filesAsByteArrays = {}
+
+                for (const entry of entries) {
+                    const zipFileWriter = new zip.Uint8ArrayWriter()
+                    const data = await entry.getData(zipFileWriter)
+
+                    if(entry.filename === "methods.txt") {
+                        prepareListView(generateHierarchyFromList((await entry.getData(new zip.TextWriter())).split('\n')))
+                    }
+
+                    var input_ptr = Module._malloc(data.length);
+                    Module.HEAPU8.set(data, input_ptr);
+
+                    filesAsByteArrays[entry.filename] = { data: input_ptr, length: data.length }
+                }
+
+                init(filesAsByteArrays["types.txt"].data, filesAsByteArrays["types.txt"].length,
+                    filesAsByteArrays["methods.txt"].data, filesAsByteArrays["methods.txt"].length,
+                    filesAsByteArrays["typeflows.txt"].data, filesAsByteArrays["typeflows.txt"].length,
+                    filesAsByteArrays["typestates.bin"].data, filesAsByteArrays["typestates.bin"].length,
+                    filesAsByteArrays["interflows.bin"].data, filesAsByteArrays["interflows.bin"].length,
+                    filesAsByteArrays["direct_invokes.bin"].data, filesAsByteArrays["direct_invokes.bin"].length,
+                    filesAsByteArrays["typeflow_methods.bin"].data, filesAsByteArrays["typeflow_methods.bin"].length,
+                    filesAsByteArrays["typeflow_filters.bin"].data, filesAsByteArrays["typeflow_filters.bin"].length,
+                    filesAsByteArrays["declaring_types.bin"].data, filesAsByteArrays["declaring_types.bin"].length,
+                )
+
+                for (const span of Object.values(filesAsByteArrays))
+                {
+                    Module._free(span.ptr)
+                }
+            }
+        }
+    </script>
+
+    <button title="upload" onClick="doSomething()">Upload CausalityExport</button>
+    <br/>
+    <label for="Input"></label><textarea id="Input" cols="100" rows="5" spellcheck="false" oninput="pressBtn(this.value)"></textarea>
+    <label for="Input_reachability"></label><textarea id="Input_reachability" cols="100" rows="5" spellcheck="false" oninput="printReachability(this.value)"></textarea>
+    <br/>
+    <label for="Output"></label><textarea id="Output" cols="100" spellcheck="false" rows="20" readonly="readonly"></textarea>
+    <label for="Output_reachability"></label><textarea id="Output_reachability" cols="100" spellcheck="false" rows="20" readonly="readonly"></textarea>
+    <input type="file" id="file-input" accept="application/zip" hidden>
+        <ul id="myUL">
+            <li id="myLI">
+                <span class="caret">root</span>
+            </li>
+        </ul>
+
+    <script>
+        var data = {
+            "java": {
+                "lang": {
+                    "Object": null,
+                    "String": null
+                },
+                "math": {
+                    "BigInteger": null,
+                    "BigDecimal": null,
+                }
+            },
+            "example": {
+                "HelloWorld": {
+                    "main(java.lang.String[])": null
+                }
+            }
+        }
+
+        function generateHierarchyFromList(list) {
+            const re = /[^(\s]*/;
+            root = {}
+
+            for(e of list) {
+                var prefix = e.match(re)[0]
+
+                var parts = prefix.split('.')
+                var parent = root
+
+                for (var i = 0; i < parts.length - 1; i++) {
+                    var part = parts[i]
+                    if(!parent[part]) {
+                        parent[part] = {}
+                    }
+                    parent = parent[part]
+                }
+
+                var last_part = e.substring(prefix.length - parts[parts.length - 1].length)
+                parent[last_part] = null
+            }
+
+            return root
+        }
+
+        data = generateHierarchyFromList(["example.Main", "example.Main.main(java.lang.String[])"])
+
+        function generateHTML(data, prefix = "") {
+            var ul = document.createElement("ul")
+            ul.className = "nested"
+
+            for(d in data) {
+                var li = document.createElement("li")
+                ul.appendChild(li)
+                var span = document.createElement("span")
+                li.appendChild(span)
+                span.appendChild(document.createTextNode(d))
+                li.setAttribute("data-node-name", prefix + d)
+                var out = document.createElement("span")
+                out.style = "margin-left: 25px"
+                li.appendChild(out)
+                out.id = "purged"
+                /*
+                var checkbox = document.createElement("input")
+                checkbox.setAttribute("type", "checkbox")
+                checkbox.setAttribute("data-node-name", prefix + d)
+                li.appendChild(checkbox)
+                */
+
+                if(data[d]) {
+                    span.className = "caret"
+                    li.appendChild(generateHTML(data[d], prefix + d + "."))
+                }
+            }
+
+            return ul
+        }
+
+        function prepareListView(data) {
+            var html = generateHTML(data)
+            document.getElementById("myLI").appendChild(html)
+
+            var toggler = document.getElementsByClassName("caret");
+            document.create
+            var i;
+
+            for (i = 0; i < toggler.length; i++) {
+                toggler[i].addEventListener("click", function() {
+                    var expanded = this.parentElement.querySelector(".nested").classList.toggle("active");
+                    this.classList.toggle("caret-down");
+
+                    if (expanded) {
+                        for (e of this.parentElement.querySelector("ul").children) {
+                            var node_prefix = e.getAttribute("data-node-name")
+                            var answer = simulatePurge(node_prefix + "*")
+                            var cutCount = answer.length === 0 ? 0 : answer.split('\n').length
+
+                            e.querySelector("#purged").textContent = cutCount.toString()
+                        }
+                    }
+                });
+            }
+        }
+    </script>
+</body>
+</html>
