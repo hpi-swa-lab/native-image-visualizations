@@ -104,7 +104,7 @@ static void assert_reachability_equals(const BFS::Result& r1, const BFS::Result&
 #define PRINT_CUTOFFS 0
 
 
-static void bfs_incremental_rec(const BFS::Result& all_reachable, const BFS& bfs, BFS::Result& r, span<method_id> methods_to_purge, span<const string> method_names)
+static void bfs_incremental_rec(const BFS::Result& all_reachable, const BFS& bfs, BFS::Result& r, span<method_id> methods_to_purge, const function<void(method_id, const BFS::Result&)>& callback)
 {
     if(methods_to_purge.empty())
     {
@@ -119,23 +119,7 @@ static void bfs_incremental_rec(const BFS::Result& all_reachable, const BFS& bfs
         BFS::Result ref = bfs.run(methods_to_purge);
         assert_reachability_equals(ref, r);
 #endif
-
-#if PRINT_CUTOFFS
-        cout << '[' << methods_to_purge[0].id << "] \"" << method_names[methods_to_purge[0].id] << "\": ";
-
-        for(size_t i = 1; i < r.method_history.size(); i++)
-        {
-            if(r.method_history[i] == 0xFF && all_reachable.method_history[i] != 0xFF)
-                cout << method_names[i] << ' ';
-        }
-        cout << endl;
-#else
-        if(methods_to_purge[0].id % 1000 == 0)
-        {
-            cout << '[' << methods_to_purge[0].id << ']' << endl;
-        }
-#endif
-
+        callback(methods_to_purge[0], r);
 #if !REACHABILITY_ASSERTIONS
         return;
 #endif
@@ -172,7 +156,7 @@ static void bfs_incremental_rec(const BFS::Result& all_reachable, const BFS& bfs
         }
 
         auto incremental_changes = bfs.run<false, true>(r2, {root_methods, root_methods + root_methods_size}, {});
-        bfs_incremental_rec(all_reachable, bfs, r2, stillpurge, method_names);
+        bfs_incremental_rec(all_reachable, bfs, r2, stillpurge, callback);
         r2.revert(bfs, incremental_changes);
         for(method_id mid : depurge)
             method_visited[mid.id] = true;
@@ -269,7 +253,29 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
 
         method_id all_methods[adj.n_methods() - 1];
         iota(all_methods, all_methods + adj.n_methods() - 1, 1);
-        bfs_incremental_rec(all_reachable, bfs, r, {all_methods, all_methods + adj.n_methods() - 1}, method_names);
+
+
+
+        std::function<void(method_id, const BFS::Result&)> callback = [&](method_id mid, const BFS::Result& r)
+        {
+#if PRINT_CUTOFFS
+            cout << '[' << mid.id << "] \"" << method_names[mid.id] << "\": ";
+
+            for(size_t i = 1; i < r.method_history.size(); i++)
+            {
+                if(r.method_history[i] == 0xFF && all_reachable.method_history[i] != 0xFF)
+                    cout << method_names[i] << ' ';
+            }
+            cout << endl;
+#else
+            if(mid.id % 1000 == 0)
+            {
+                cout << '[' << mid.id << ']' << endl;
+            }
+#endif
+        };
+
+        bfs_incremental_rec(all_reachable, bfs, r, {all_methods, all_methods + adj.n_methods() - 1}, callback);
     }
     else
     {
