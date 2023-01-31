@@ -100,11 +100,11 @@ static void assert_reachability_equals(const BFS::Result& r1, const BFS::Result&
     }
 }
 
-#define REACHABILITY_ASSERTIONS 0
-#define PRINT_CUTOFFS 0
+#define REACHABILITY_ASSERTIONS 1
+#define PRINT_CUTOFFS 1
 
 
-static void bfs_incremental_rec(const BFS::Result& all_reachable, const BFS& bfs, BFS::Result& r, span<method_id> methods_to_purge, const function<void(method_id, const BFS::Result&)>& callback)
+static void bfs_incremental_rec(const BFS::Result& all_reachable, const BFS& bfs, BFS::Result& r, span<span<method_id>> methods_to_purge, const function<void(const span<method_id>&, const BFS::Result&)>& callback)
 {
     if(methods_to_purge.empty())
     {
@@ -116,7 +116,7 @@ static void bfs_incremental_rec(const BFS::Result& all_reachable, const BFS& bfs
     else if(methods_to_purge.size() == 1)
     {
 #if REACHABILITY_ASSERTIONS
-        BFS::Result ref = bfs.run(methods_to_purge);
+        BFS::Result ref = bfs.run(methods_to_purge[0]);
         assert_reachability_equals(ref, r);
 #endif
         callback(methods_to_purge[0], r);
@@ -125,58 +125,60 @@ static void bfs_incremental_rec(const BFS::Result& all_reachable, const BFS& bfs
 #endif
     }
 
-    span<method_id> first_half = methods_to_purge.subspan(0, methods_to_purge.size() / 2);
-    span<method_id> second_half = methods_to_purge.subspan(methods_to_purge.size() / 2);
+    span<span<method_id>> first_half = methods_to_purge.subspan(0, methods_to_purge.size() / 2);
+    span<span<method_id>> second_half = methods_to_purge.subspan(methods_to_purge.size() / 2);
 
-    auto search_child = [&](BFS::Result& r2, span<method_id> depurge, span<method_id> stillpurge)
-    {
-        auto& method_visited = r2.method_visited;
-        method_id root_methods[depurge.size()];
-        size_t root_methods_size = 0;
-
-        for(method_id mid : depurge)
-        {
-            method_visited[mid.id] = false;
-
-            auto m = bfs.adj[mid];
-            if(
-                    std::any_of(m.backward_edges.begin(), m.backward_edges.end(), [&](const auto& item)
-                    {
-                        return r2.method_history[item.id] != 0xFF;
-                    })
-                    ||
-                    std::any_of(m.virtual_invocation_sources.begin(), m.virtual_invocation_sources.end(), [&](const auto& item)
-                    {
-                        return r2.typeflow_visited[item.id].any();
-                    })
-                    )
-            {
-                root_methods[root_methods_size++] = mid;
-            }
-        }
-
-        auto incremental_changes = bfs.run<false, true>(r2, {root_methods, root_methods + root_methods_size}, {});
-        bfs_incremental_rec(all_reachable, bfs, r2, stillpurge, callback);
-        r2.revert(bfs, incremental_changes);
-        for(method_id mid : depurge)
-            method_visited[mid.id] = true;
-    };
-
-    auto search_child_asserted = [&](BFS::Result& r2, span<method_id> depurge, span<method_id> stillpurge)
+    auto search_child = [&](BFS::Result& r2, span<span<method_id>> depurge, span<span<method_id>> stillpurge)
     {
 #if REACHABILITY_ASSERTIONS
         if(depurge.empty())
             return;
         BFS::Result r2_copy = r2;
 #endif
-        search_child(r2, depurge, stillpurge);
+
+        auto& method_visited = r2.method_visited;
+        size_t root_methods_capacity = std::accumulate(depurge.begin(), depurge.end(), size_t(0), [](size_t acc, auto mids){ return acc + mids.size(); });
+        method_id root_methods[root_methods_capacity];
+        size_t root_methods_size = 0;
+
+        for(span<method_id> mids : depurge)
+        {
+            for(method_id mid : mids)
+            {
+                method_visited[mid.id] = false;
+
+                auto m = bfs.adj[mid];
+                if(
+                        std::any_of(m.backward_edges.begin(), m.backward_edges.end(), [&](const auto& item)
+                        {
+                            return r2.method_history[item.id] != 0xFF;
+                        })
+                        ||
+                        std::any_of(m.virtual_invocation_sources.begin(), m.virtual_invocation_sources.end(), [&](const auto& item)
+                        {
+                            return r2.typeflow_visited[item.id].any();
+                        })
+                        )
+                {
+                    root_methods[root_methods_size++] = mid;
+                }
+            }
+        }
+
+        auto incremental_changes = bfs.run<false, true>(r2, {root_methods, root_methods + root_methods_size}, {});
+        bfs_incremental_rec(all_reachable, bfs, r2, stillpurge, callback);
+        r2.revert(bfs, incremental_changes);
+        for(span<method_id> mids : depurge)
+            for(method_id mid : mids)
+                method_visited[mid.id] = true;
+
 #if REACHABILITY_ASSERTIONS
         assert_reachability_equals(r2_copy, r2);
 #endif
     };
 
-    search_child_asserted(r, second_half, first_half);
-    search_child_asserted(r, first_half, second_half);
+    search_child(r, second_half, first_half);
+    search_child(r, first_half, second_half);
 }
 
 static void simulate_purge(Adjacency& adj, const vector<string>& method_names, const unordered_map<string, uint32_t>& method_ids_by_name, string_view command)
@@ -251,15 +253,36 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
 
         cerr << "r: " << std::count_if(r.method_history.begin(), r.method_history.end(), [](uint8_t b) { return b != 0xFF; }) << " methods reachable!\n";
 
-        method_id all_methods[adj.n_methods() - 1];
-        iota(all_methods, all_methods + adj.n_methods() - 1, 1);
+        vector<method_id> all_methods(adj.n_methods() - 1);
+        std::iota(all_methods.begin(), all_methods.end(), 1);
+        vector<span<method_id>> all_method_singletons(adj.n_methods() - 1);
+        for(size_t i = 0; i < all_method_singletons.size(); i++)
+            all_method_singletons[i] = {&all_methods[i], 1};
 
-
-
-        std::function<void(method_id, const BFS::Result&)> callback = [&](method_id mid, const BFS::Result& r)
+        auto callback = [&](const span<method_id>& mids, const BFS::Result& r)
         {
+            size_t iteration = &mids - &all_method_singletons[0];
+
 #if PRINT_CUTOFFS
-            cout << '[' << mid.id << "] \"" << method_names[mid.id] << "\": ";
+            cout << '[' << iteration << "] ";
+
+            if(mids.size() == 1)
+            {
+                cout << '"' << method_names[mids[0].id] << '"';
+            }
+            else
+            {
+                cout << '{';
+                for(size_t i = 0; i < mids.size(); i++)
+                {
+                    cout << '"' << method_names[mids[i].id] << '"';
+                    if(i < mids.size() - 1)
+                        cout << ',';
+                }
+                cout << '}';
+            }
+
+            cout << ": ";
 
             for(size_t i = 1; i < r.method_history.size(); i++)
             {
@@ -268,14 +291,14 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
             }
             cout << endl;
 #else
-            if(mid.id % 1000 == 0)
+            if(iteration % 1000 == 0)
             {
-                cout << '[' << mid.id << ']' << endl;
+                cout << '[' << iteration << ']' << endl;
             }
 #endif
         };
 
-        bfs_incremental_rec(all_reachable, bfs, r, {all_methods, all_methods + adj.n_methods() - 1}, callback);
+        bfs_incremental_rec(all_reachable, bfs, r, all_method_singletons, callback);
     }
     else
     {
