@@ -79,12 +79,20 @@ export class Node {
 
     public pop(): Node | undefined {
         this.codeSize = INVALID_SIZE
-        return this._children.pop()
+        const toRemove = this._children.pop()
+        if (toRemove) {
+            toRemove.parent = undefined
+        }
+        return toRemove
     }
 
     public splice(start: number, deleteCount?: number | undefined): Node[] {
         this.codeSize = INVALID_SIZE
-        return this._children.splice(start, deleteCount)
+        const toRemove = this._children.splice(start, deleteCount)
+        for (const priorChild of toRemove) {
+            priorChild.parent = undefined
+        }
+        return toRemove
     }
 
     public equals(another: Node): boolean {

@@ -20,7 +20,7 @@ describe('Universe', () => {
         expect(trees.layeredTree.codeSize).toEqual(52)
     })
 
-    test('sum should be updated after adding another child', () => {
+    test('sum should be updated after pushing another child', () => {
         expect(trees.layeredTree.codeSize).toEqual(52)
         trees.layeredTree.push(trees.simpleTree)
         expect(trees.layeredTree.codeSize).toEqual(104)
@@ -36,6 +36,30 @@ describe('Universe', () => {
         expect(trees.layeredTree.codeSize).toEqual(52)
         trees.layeredTree.splice(0, 1)
         expect(trees.layeredTree.codeSize).toEqual(30)
+    })
+
+    test('parent of child should be node updated after pushing', () => {
+        trees.layeredTree.push(trees.simpleTree)
+        expect(trees.simpleTree.parent).toEqual(trees.layeredTree)
+        expect(trees.layeredTree.children[2]).toEqual(trees.simpleTree)
+    })
+
+    test('parent of child should be undefined after popping', () => {
+        trees.layeredTree.push(trees.simpleTree)
+        trees.layeredTree.pop()
+        expect(trees.simpleTree.parent).toEqual(undefined)
+        expect(trees.layeredTree.children.length).toEqual(2)
+        trees.layeredTree.children.every((child) => expect(child).not.toEqual(trees.simpleTree))
+    })
+
+    test('parent of children should be undefined after splicing', () => {
+        trees.layeredTree.push(trees.simpleTree, trees.method)
+        trees.layeredTree.splice(2, 2)
+        expect(trees.simpleTree.parent).toEqual(undefined)
+        expect(trees.method.parent).toEqual(undefined)
+        expect(trees.layeredTree.children.length).toEqual(2)
+        trees.layeredTree.children.every((child) => expect(child).not.toEqual(trees.simpleTree))
+        trees.layeredTree.children.every((child) => expect(child).not.toEqual(trees.method))
     })
 
     test('childless root should be inline', () => {
