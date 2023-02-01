@@ -1,4 +1,4 @@
-import { UniverseIndex } from '../SharedTypes/Indexes'
+import { UniverseIndex } from '../SharedTypes/Indices'
 import { Bytes } from '../SharedTypes/Size'
 import { HIERARCHY_NAME_SEPARATOR } from '../globals'
 
@@ -9,7 +9,7 @@ export class Node {
     protected readonly _children: Node[]
     protected _codeSize: Bytes = INVALID_SIZE
     protected _parent: Node | undefined
-    protected _occurencesIn: UniverseIndex[] = []
+    protected _occursIn: UniverseIndex[] = []
 
     constructor(
         name: string,
@@ -62,12 +62,12 @@ export class Node {
         return this._codeSize
     }
 
-    get occurencesIn(): UniverseIndex[] {
-        return this._occurencesIn
+    get occursIn(): UniverseIndex[] {
+        return this._occursIn
     }
 
-    set occurencesIn(indexes: UniverseIndex[]) {
-        this._occurencesIn = indexes
+    set occursIn(indexes: UniverseIndex[]) {
+        this._occursIn = indexes
     }
 
     set parent(newParent: Node | undefined) {
@@ -113,7 +113,10 @@ export class Node {
     public is(another: Node): boolean {
         return (
             Object.is(this.name, another.name) &&
-            Object.is(JSON.stringify(this.occurencesIn), JSON.stringify(another.occurencesIn)) &&
+            Object.is(
+                JSON.stringify(this.occursIn.sort()),
+                JSON.stringify(another.occursIn.sort())
+            ) &&
             Object.is(this.children.length, another.children.length) &&
             this.children.every((child, index) => child.is(another.children[index]))
         )

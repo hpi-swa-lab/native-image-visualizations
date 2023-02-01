@@ -1,4 +1,4 @@
-import { UniverseIndex } from '../SharedTypes/Indexes'
+import { UniverseIndex } from '../SharedTypes/Indices'
 import { Node } from './../UniverseTypes/Node'
 
 export function mergeTrees(...trees: Node[]): Node {
@@ -14,12 +14,12 @@ function mergeNode(mergedTree: Node, node: Node, treeIndex: UniverseIndex) {
         setOccurencesInRecursive(node, treeIndex)
         mergedTree.push(node)
     } else {
-        matchingChild.occurencesIn.push(treeIndex)
+        matchingChild.occursIn.push(treeIndex)
         node.children.forEach((ownChild) => mergeNode(matchingChild, ownChild, treeIndex))
     }
 }
 
 function setOccurencesInRecursive(node: Node, value: UniverseIndex): void {
-    node.occurencesIn = [value]
+    node.occursIn = [value]
     node.children.forEach((child) => setOccurencesInRecursive(child, value))
 }

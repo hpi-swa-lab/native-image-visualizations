@@ -48,4 +48,4 @@ export const treeFactory = () => ({
     ])
 })
 
-export const trees = treeFactory()
+export const forest = treeFactory()

@@ -1,19 +1,19 @@
 import { describe, expect, test } from '@jest/globals'
-import { trees } from './data/trees'
+import { forest } from './data/forest'
 import { mergeTrees } from './../src/ts/GraphOperations/TreeMerger'
-import { UniverseIndex } from '../src/ts/SharedTypes/Indexes'
+import { UniverseIndex } from '../src/ts/SharedTypes/Indices'
 import { Node } from '../src/ts/UniverseTypes/Node'
 
 class ComparisonNode extends Node {
-    constructor(name: string, occurencesIn: UniverseIndex[], children: ComparisonNode[] = []) {
+    constructor(name: string, occursIn: UniverseIndex[], children: ComparisonNode[] = []) {
         super(name, children)
-        this._occurencesIn = occurencesIn
+        this._occursIn = occursIn
     }
 }
 
 describe('Tree Merger', () => {
     test('Two trees without overlap stay separated in result', () => {
-        const merged = mergeTrees(trees.overlappingTreeC, trees.differentPackageTree)
+        const merged = mergeTrees(forest.overlappingTreeC, forest.differentPackageTree)
         const expected = new ComparisonNode(
             '',
             [],
@@ -43,7 +43,7 @@ describe('Tree Merger', () => {
     })
 
     test('Should have the occurences set to the only tree given', () => {
-        const merged = mergeTrees(trees.overlappingTreeA)
+        const merged = mergeTrees(forest.overlappingTreeA)
 
         const expected = new ComparisonNode(
             '',
@@ -63,7 +63,7 @@ describe('Tree Merger', () => {
     })
 
     test('Merging two equal trees results in the same tree with both indexes', () => {
-        const merged = mergeTrees(trees.overlappingTreeA, trees.overlappingTreeA)
+        const merged = mergeTrees(forest.overlappingTreeA, forest.overlappingTreeA)
 
         const expected = new ComparisonNode(
             '',
@@ -91,7 +91,7 @@ describe('Tree Merger', () => {
     })
 
     test('should merge 2 overlapping trees into one tree', () => {
-        const merged = mergeTrees(trees.overlappingTreeA, trees.overlappingTreeB)
+        const merged = mergeTrees(forest.overlappingTreeA, forest.overlappingTreeB)
 
         const expected = new ComparisonNode(
             '',
@@ -121,9 +121,9 @@ describe('Tree Merger', () => {
 
     test('should merge 3 overlapping trees into one tree', () => {
         const merged = mergeTrees(
-            trees.overlappingTreeA,
-            trees.overlappingTreeB,
-            trees.overlappingTreeC
+            forest.overlappingTreeA,
+            forest.overlappingTreeB,
+            forest.overlappingTreeC
         )
 
         const expected = new ComparisonNode(
@@ -155,9 +155,9 @@ describe('Tree Merger', () => {
 
     test('should merge 2 overlapping trees, append the different package with the same method name', () => {
         const merged = mergeTrees(
-            trees.overlappingTreeA,
-            trees.overlappingTreeB,
-            trees.differentPackageTree
+            forest.overlappingTreeA,
+            forest.overlappingTreeB,
+            forest.differentPackageTree
         )
 
         const expected = new ComparisonNode(
