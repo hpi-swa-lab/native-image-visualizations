@@ -2,11 +2,11 @@
 import { ref } from 'vue'
 import { EventType } from '../ts/enums/EventType'
 
-import ElevatedLayer from './ElevatedLayer.vue'
+import ElevatedLayer from './layouts/ElevatedLayer.vue'
 
 import { NamedUniverse } from '../ts/UniverseTypes/NamedUniverse'
 import { loadJson, parseReachabilityExport } from '../ts/parsing'
-import MainLayout from './MainLayout.vue'
+import MainLayout from './layouts/MainLayout.vue'
 import { PageType } from '../ts/enums/PageType'
 
 const emit = defineEmits([EventType.UNIVERSE_REMOVED, EventType.UNIVERSE_CREATED])

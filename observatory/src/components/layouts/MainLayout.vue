@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import VisualizationNavigation from './navigation/VisualizationNagivation.vue'
-import UniverseSelectionList from './controls/UniverseSelectionList.vue'
-import { EventType } from '../ts/enums/EventType'
-import { PageType } from '../ts/enums/PageType'
+import VisualizationNavigation from '../navigation/VisualizationNagivation.vue'
+import UniverseSelectionList from '../controls/UniverseSelectionList.vue'
+import { EventType } from '../../ts/enums/EventType'
+import { PageType } from '../../ts/enums/PageType'
 
 withDefaults(
     defineProps<{
