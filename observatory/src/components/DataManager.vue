@@ -13,41 +13,39 @@ const emit = defineEmits([EventType.UNIVERSE_REMOVED, EventType.UNIVERSE_CREATED
 
 const props = withDefaults(
     defineProps<{
-        next: string
         universes: NamedUniverse[]
     }>(),
     {
-        next: '/',
         universes: () => []
     }
 )
 
 const currentUniverses = ref<NamedUniverse[]>(props.universes)
 
-const form = ref<{
+const form = ref<HTMLFormElement>()
+const nameInput = ref<HTMLInputElement>()
+const dataInput = ref<HTMLInputElement>()
+
+const formContents = ref<{
     name?: string
     rechabilityExportFile?: File
 }>({})
 
-function validateAndUpdateRechabilityExport(event: Event) {
-    if (!event.target) return
+function validateAndUpdateRechabilityExport() {
+    const input = dataInput.value as HTMLInputElement
 
-    const inputElement = event.target as HTMLInputElement
-
-    if (!inputElement.files || !inputElement.files[0]) {
-        inputElement.setCustomValidity('You must the data to create a universe')
+    if (!input.files || !input.files[0]) {
+        input.setCustomValidity('You must the data to create a universe')
     } else {
-        inputElement.setCustomValidity('')
-        form.value.rechabilityExportFile = inputElement.files[0]
+        input.setCustomValidity('')
+        formContents.value.rechabilityExportFile = input.files[0]
     }
 
-    inputElement.reportValidity()
+    input.reportValidity()
 }
 
-function validateAndUpdateName(event: Event) {
-    if (!event.target) return
-
-    const input = event.target as HTMLInputElement
+function validateAndUpdateName() {
+    const input = nameInput.value as HTMLInputElement
     const name = input.value
 
     const universes = currentUniverses.value as NamedUniverse[]
@@ -59,18 +57,23 @@ function validateAndUpdateName(event: Event) {
         input.setCustomValidity('This name already exists.')
     } else {
         input.setCustomValidity('')
-        form.value.name = name
+        formContents.value.name = name
     }
 
     input.reportValidity()
 }
 
 async function addUniverse() {
-    if (!form.value.name || !form.value.rechabilityExportFile) return
+    validateAndUpdateName()
+    validateAndUpdateRechabilityExport()
 
-    const rawData = await loadJson(form.value.rechabilityExportFile)
+    if (!form.value?.checkValidity()) return
+
+    if (!formContents.value.name || !formContents.value.rechabilityExportFile) return
+
+    const rawData = await loadJson(formContents.value.rechabilityExportFile)
     const newUniverse = {
-        name: form.value.name,
+        name: formContents.value.name,
         root: parseReachabilityExport(rawData)
     }
 
@@ -104,18 +107,22 @@ async function addUniverse() {
             </div>
         </template>
 
-        <form class="flex flex-col items-center p-4 space-y-10" @submit.prevent="addUniverse">
+        <form
+            ref="form"
+            class="flex flex-col items-center p-4 space-y-10"
+            @submit.prevent="addUniverse"
+        >
             <h2 class="w-2/3">Add a new Universe</h2>
             <ElevatedLayer class="w-2/3 space-y-[3rem]">
                 <div class="space-y-4">
                     <label for="input-universe-name">Universe Name</label>
                     <input
-                        id="input-universe-name"
-                        v-model="form.name"
+                        ref="nameInput"
+                        v-model="formContents.name"
                         type="text"
                         placeholder="Awesome Universe Name"
                         required
-                        @change="validateAndUpdateName"
+                        @input="validateAndUpdateName"
                     />
                     <p class="help-text">
                         Please name the universe you are about to upload. This allows you to better
@@ -125,6 +132,7 @@ async function addUniverse() {
                 <div class="space-y-4">
                     <label>Reachability-Export</label>
                     <input
+                        ref="dataInput"
                         type="file"
                         accept="json"
                         required

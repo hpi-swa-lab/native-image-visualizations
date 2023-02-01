@@ -12,16 +12,16 @@ const shadowClass = computed(() => {
     switch (props.level) {
         case 1:
             result = 'drop-shadow-md'
-            break;
+            break
         case 2:
             result = 'drop-shadow-lg'
-            break;
+            break
         case 3:
             result = 'drop-shadow-xl'
-            break;
+            break
         case 4:
             result = 'drop-shadow-2xl'
-            break;
+            break
     }
 
     return result
