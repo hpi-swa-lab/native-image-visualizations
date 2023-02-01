@@ -5,6 +5,7 @@ withDefaults(
         value: string
     }>(),
     {
+        id: '',
         value: ''
     }
 )
