@@ -43,7 +43,7 @@ const emit = defineEmits([EventType.CHANGE_PAGE])
                         Data Manager
                     </button>
                 </div>
-                
+
                 <hr />
 
                 <VisualizationNavigation
@@ -57,7 +57,7 @@ const emit = defineEmits([EventType.CHANGE_PAGE])
                 <UniverseSelectionList
                     v-if="componentType !== SwappableComponentType.DataManager"
                 />
-                
+
                 <hr v-if="componentType !== SwappableComponentType.DataManager" />
 
                 <ul class="space-y-2">

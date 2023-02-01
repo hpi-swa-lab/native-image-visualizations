@@ -80,7 +80,7 @@ async function addUniverse() {
 
 <template>
     <MainLayout title="Data Manager" :component-type="SwappableComponentType.DataManager">
-        <template #controls >
+        <template #controls>
             <div class="space-y-10">
                 <h3>Manage Existing Universes</h3>
                 <ElevatedLayer>
@@ -118,8 +118,8 @@ async function addUniverse() {
                         @change="validateAndUpdateName"
                     />
                     <p class="help-text">
-                        Please name the universe you are about to upload. This allows you to
-                        better recognize it later on in the visualizations.
+                        Please name the universe you are about to upload. This allows you to better
+                        recognize it later on in the visualizations.
                     </p>
                 </div>
                 <div class="space-y-4">
@@ -134,7 +134,7 @@ async function addUniverse() {
                 </div>
 
                 <button class="btn btn-primary">Add Universe</button>
-            </ElevatedLayer>            
+            </ElevatedLayer>
         </form>
     </MainLayout>
 </template>
