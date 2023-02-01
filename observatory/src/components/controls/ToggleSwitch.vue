@@ -13,7 +13,7 @@ withDefaults(
 
 <template>
     <div>
-        <input :id="id" :value="value" type="checkbox" class="ml-1" />
+        <input :id="id" :value="value" type="checkbox" class="mr-1" />
         <slot></slot>
     </div>
 </template>
