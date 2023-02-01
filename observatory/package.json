@@ -4,6 +4,7 @@
     "version": "1.0.0",
     "type": "module",
     "scripts": {
+        "autofix": "npm-run-all prettier-autofix eslint-autofix",
         "dev": "vite",
         "build": "vue-tsc && vite build",
         "preview": "vite preview",

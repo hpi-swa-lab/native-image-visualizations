@@ -1,6 +1,6 @@
 import { Node } from './Node'
 
 export interface Universe {
-    name: string,
+    name: string
     root: Node
 }
