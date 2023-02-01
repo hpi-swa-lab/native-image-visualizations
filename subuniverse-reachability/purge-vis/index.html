@@ -50,10 +50,16 @@
     <script src="zip.min.js"></script>
     <script>
         var simulate_purge = Module.cwrap("simulate_purge", "number", ["number"]);
+        var simulate_purges_batched = Module.cwrap("simulate_purges_batched", "number", ["number", "number", "number"])
         var show_reachability = Module.cwrap("show_reachability", "number", ["number"]);
         var init = Module.cwrap("init", "number", ["number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number"]);
 
+
+        var methodList = []
+
         function simulatePurge(str) {
+            return methodList[simulatePurgesBatched([str])[0]]
+
             var ptr  = allocateUTF8(str)
             var retPtr = simulate_purge(ptr)
             var res = UTF8ToString(retPtr)
@@ -65,19 +71,65 @@
             return res
         }
 
-        function pressBtn(str){
-            var ptr  = allocateUTF8(str)
+        function simulatePurgesBatched(strs) {
+            var subsetsArr = new Uint32Array(strs.length * 2)
 
-            var retPtr = simulate_purge(ptr)
+            var totalCount = 0
 
-            document.getElementById("Output").value = UTF8ToString(retPtr)
+            for(let i = 0; i < strs.length; i++) {
+                var count = 0
+                for (const method of methodList) {
+                    if (method.startsWith(strs[i]))
+                        count++
+                }
+                totalCount += count
+                subsetsArr[i * 2 + 1] = count
+            }
 
-            // dealloc memory
-            Module._free(ptr);
-            Module._free(retPtr);
+            var midsPtr = Module._malloc(totalCount * 4)
+            var midsPos = 0
 
-            if(retPtr)
-                printReachability(document.getElementById("Input_reachability").value)
+            for(let i = 0; i < strs.length; i++)
+            {
+                var count = subsetsArr[i * 2 + 1]
+                var subsetArr = new Uint32Array(count)
+                var pos = 0
+
+                for(let i = 0; i < methodList.length; i++)
+                {
+                    const method = methodList[i]
+
+                    if(method.startsWith(strs))
+                    {
+                        subsetArr[pos] = i + 1
+                        pos++
+                    }
+                }
+
+                subsetsArr[i*2] = midsPtr + midsPos
+                Module.HEAPU32.set(subsetArr, (midsPtr + midsPos) / 4)
+                midsPos += count * subsetArr.BYTES_PER_ELEMENT
+            }
+
+            var subsetsArrPtr = Module._malloc(subsetsArr.length * subsetsArr.BYTES_PER_ELEMENT)
+            Module.HEAPU32.set(subsetsArr, subsetsArrPtr / 4)
+
+            var resultsArrPtr = Module._malloc(strs.length * 4)
+
+            simulate_purges_batched(subsetsArrPtr, strs.length, resultsArrPtr)
+
+            var res = Module.HEAPU32.subarray(resultsArrPtr / 4, resultsArrPtr / 4 + strs.length)
+
+            Module._free(subsetsArrPtr)
+            Module._free(midsPtr)
+            // TODO: Free resultsArrPtr
+
+            return res
+        }
+
+        function pressBtn(str) {
+            document.getElementById("Output").value = simulatePurge(str)
+            printReachability(document.getElementById("Input_reachability").value)
         }
 
         function printReachability(str){
@@ -131,7 +183,8 @@
                     const data = await entry.getData(zipFileWriter)
 
                     if(entry.filename === "methods.txt") {
-                        prepareListView(generateHierarchyFromList((await entry.getData(new zip.TextWriter())).split('\n')))
+                        methodList = (await entry.getData(new zip.TextWriter())).split('\n')
+                        prepareListView(generateHierarchyFromList(methodList))
                     }
 
                     var input_ptr = Module._malloc(data.length);

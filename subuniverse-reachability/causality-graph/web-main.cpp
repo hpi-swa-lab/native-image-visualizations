@@ -1,3 +1,5 @@
+#define REACHABILITY_ASSERTIONS 1
+
 #include <emscripten.h>
 #include <iostream>
 #include <span>
@@ -53,6 +55,7 @@ extern "C" void EMSCRIPTEN_KEEPALIVE init(
     BFS::Result all = bfs->run<true>();
 
     cerr << " " << std::count(all.method_visited.begin(), all.method_visited.end(), true) << " methods reachable!\n";
+    cerr << " " << (all.method_history.size() - std::count(all.method_history.begin(), all.method_history.end(), 0xFF)) << " methods reachable!\n";
 
     ::all.emplace(std::move(all));
 }
@@ -158,6 +161,15 @@ extern "C" bool EMSCRIPTEN_KEEPALIVE simulate_purges_batched(const span<const me
     auto& m = *purge_model;
     auto& bfs = *::bfs;
 
+    cerr << "purge sets len: " << purge_sets_len << endl;
+    for(auto ps : span{purge_sets, purge_sets_len})
+    {
+        cerr << ps.size() << ": ";
+        for(auto mid : ps)
+            cerr << mid.id << ' ';
+        cerr << endl;
+    }
+
 
     cerr << "Running DFS on purged graph...";
 
@@ -181,46 +193,18 @@ extern "C" bool EMSCRIPTEN_KEEPALIVE simulate_purges_batched(const span<const me
 
             for(size_t i = 1; i < r.method_history.size(); i++)
             {
-                if(r.method_history[i] == 0xFF && all->method_history[i] != 0xFF)
+                if(!r.method_visited[i] && all->method_history[i] != 0xFF)
                     n_purged_acc++;
+
+                /*
+                if(r.method_visited[i])
+                    cerr << "Reachable method: \"" << m.method_names[i] << '"' << endl;
+                    */
             }
 
             n_purged[iteration] = n_purged_acc;
 
-#define PRINT_CUTOFFS 0
-#if PRINT_CUTOFFS
-            cout << '[' << iteration << "] ";
-
-            if(mids.size() == 1)
-            {
-                cout << '"' << method_names[mids[0].id] << '"';
-            }
-            else
-            {
-                cout << '{';
-                for(size_t i = 0; i < mids.size(); i++)
-                {
-                    cout << '"' << method_names[mids[i].id] << '"';
-                    if(i < mids.size() - 1)
-                        cout << ',';
-                }
-                cout << '}';
-            }
-
-            cout << ": ";
-
-            for(size_t i = 1; i < r.method_history.size(); i++)
-            {
-                if(r.method_history[i] == 0xFF && all_reachable.method_history[i] != 0xFF)
-                    cout << method_names[i] << ' ';
-            }
-            cout << endl;
-#else
-            if(iteration % 1000 == 0)
-            {
-                cerr << '[' << iteration << ']' << endl;
-            }
-#endif
+            cerr << '[' << iteration << "] " << n_purged_acc << endl;
         };
 
         bfs_incremental_rec(*all, bfs, r, {purge_sets, purge_sets_len}, callback);

@@ -108,7 +108,7 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
             size_t iteration = &mids - &all_method_singletons[0];
 
 
-#define PRINT_CUTOFFS 0
+#define PRINT_CUTOFFS 1
 #if PRINT_CUTOFFS
             cout << '[' << iteration << "] ";
 
