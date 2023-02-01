@@ -4,5 +4,5 @@ import { PageType } from '../ts/enums/PageType'
 </script>
 
 <template>
-    <MainLayout title="Home" :page-type="PageType.Home"> </MainLayout>
+    <MainLayout title="Home" :page-type="PageType.Home"></MainLayout>
 </template>
