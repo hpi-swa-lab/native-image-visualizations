@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { EventType } from '../ts/enums/EventType'
 
 import ElevatedLayer from './layouts/ElevatedLayer.vue'
@@ -29,31 +29,43 @@ const form = ref<{
     rechabilityExportFile?: File
 }>({})
 
-function removeUniverse(universeName: string) {
-    if (!currentUniverses.value) return
-
-    const removedUniverse = (currentUniverses.value as NamedUniverse[]).find(
-        (universe: NamedUniverse) => {
-            return universe.name === universeName
-        }
-    )
-    if (removedUniverse) {
-        currentUniverses.value.splice(currentUniverses.value.indexOf(removedUniverse), 1)
-        emit(EventType.UNIVERSE_REMOVED, universeName)
-    }
-}
-
-function updateRechabilityExport(event: Event) {
+function validateAndUpdateRechabilityExport(event: Event) {
     if (!event.target) return
 
     const inputElement = event.target as HTMLInputElement
 
-    if (!inputElement.files) return
+    if (!inputElement.files || !inputElement.files[0]) {
+        inputElement.setCustomValidity('You must the data to create a universe')
+    } else {
+        inputElement.setCustomValidity('')
+        form.value.rechabilityExportFile = inputElement.files[0]
+    }
 
-    form.value.rechabilityExportFile = inputElement.files[0]
+    inputElement.reportValidity()
 }
 
-async function submit() {
+function validateAndUpdateName(event: Event) {
+    if (!event.target) return
+
+    const input = event.target as HTMLInputElement
+    const name = input.value
+
+    const universes = currentUniverses.value as NamedUniverse[]
+    const universeNames = universes.map((universe: NamedUniverse) => universe.name)
+
+    if (input.validity.valueMissing) {
+        input.setCustomValidity('You must give this universe a name.')
+    } else if (universeNames.includes(name)) {
+        input.setCustomValidity('This name already exists.')
+    } else {
+        input.setCustomValidity('')
+        form.value.name = name
+    }
+
+    input.reportValidity()
+}
+
+async function addUniverse() {
     if (!form.value.name || !form.value.rechabilityExportFile) return
 
     const rawData = await loadJson(form.value.rechabilityExportFile)
@@ -62,7 +74,6 @@ async function submit() {
         root: parseReachabilityExport(rawData)
     }
 
-    currentUniverses.value.push(newUniverse)
     emit(EventType.UNIVERSE_CREATED, newUniverse)
 }
 </script>
@@ -84,7 +95,7 @@ async function submit() {
                         {{ universe.name }}
                         <button
                             class="btn btn-danger"
-                            @click="() => removeUniverse(universe.name)"
+                            @click="() => emit(EventType.UNIVERSE_REMOVED, universe.name)"
                         >
                             X
                         </button>
@@ -93,7 +104,7 @@ async function submit() {
             </div>
         </template>
 
-        <form class="flex flex-col items-center p-4 space-y-10" @submit.prevent="submit">
+        <form class="flex flex-col items-center p-4 space-y-10" @submit.prevent="addUniverse">
             <h2 class="w-2/3">Add a new Universe</h2>
             <ElevatedLayer class="w-2/3 space-y-[3rem]">
                 <div class="space-y-4">
@@ -104,6 +115,7 @@ async function submit() {
                         type="text"
                         placeholder="Awesome Universe Name"
                         required
+                        @change="validateAndUpdateName"
                     />
                     <p class="help-text">
                         Please name the universe you are about to upload. This allows you to
@@ -116,11 +128,11 @@ async function submit() {
                         type="file"
                         accept="json"
                         required
-                        @change="updateRechabilityExport"
+                        @change="validateAndUpdateRechabilityExport"
                     />
                     <p class="help-text">Some text</p>
                 </div>
-                
+
                 <button class="btn btn-primary">Add Universe</button>
             </ElevatedLayer>            
         </form>
