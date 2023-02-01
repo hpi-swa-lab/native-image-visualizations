@@ -7,18 +7,24 @@ const props = defineProps({
     }
 })
 const shadowClass = computed(() => {
+    let result = 'drop-shadow-md'
+
     switch (props.level) {
         case 1:
-            return 'drop-shadow-md'
+            result = 'drop-shadow-md'
+            break;
         case 2:
-            return 'drop-shadow-lg'
+            result = 'drop-shadow-lg'
+            break;
         case 3:
-            return 'drop-shadow-xl'
+            result = 'drop-shadow-xl'
+            break;
         case 4:
-            return 'drop-shadow-2xl'
-        default:
-            return 'drop-shadow-md'
+            result = 'drop-shadow-2xl'
+            break;
     }
+
+    return result
 })
 </script>
 
