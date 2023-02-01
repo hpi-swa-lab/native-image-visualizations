@@ -19,11 +19,10 @@ const emit = defineEmits([EventType.CHANGE_PAGE])
 </script>
 
 <template>
-    <div class="w-full h-full">
-        <aside class="w-64 z-1 h-full">
+    <div class="w-full h-full grid grid-cols-12 gap-2">
+        <div class="col-span-2 drop-shadow-xl">
             <div class="px-3 py-4 overflow-y-auto rounded bg-gray-50 space-y-4 h-full">
                 <h2>{{ title }}</h2>
-
                 <hr />
 
                 <div class="space-y-4">
@@ -44,6 +43,7 @@ const emit = defineEmits([EventType.CHANGE_PAGE])
                         Data Manager
                     </button>
                 </div>
+                
                 <hr />
 
                 <VisualizationNavigation
@@ -51,17 +51,21 @@ const emit = defineEmits([EventType.CHANGE_PAGE])
                     :selected="pageType"
                     @change-viz="$emit(EventType.CHANGE_PAGE, $event)"
                 ></VisualizationNavigation>
+
                 <hr v-if="pageType !== PageType.DataManager" />
 
-                <UniverseSelectionList></UniverseSelectionList>
-                <hr />
+                <UniverseSelectionList
+                    v-if="pageType !== PageType.DataManager"
+                />
+                
+                <hr v-if="pageType !== PageType.DataManager" />
 
                 <ul class="space-y-2">
                     <slot name="controls"> Controls </slot>
                 </ul>
             </div>
-        </aside>
-        <div class="w-full h-full">
+        </div>
+        <div class="col-span-10 h-full overflow-scroll">
             <slot />
         </div>
     </div>
