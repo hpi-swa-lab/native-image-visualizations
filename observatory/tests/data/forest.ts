@@ -1,7 +1,7 @@
 import { Node } from '../../src/ts/UniverseTypes/Node'
 import { Leaf, InitKind } from '../../src/ts/UniverseTypes/Leaf'
 
-export const treeFactory = () => ({
+export const forestFactory = () => ({
     childlessRoot: new Node('Native Image'),
     method: new Leaf('method', 10, InitKind.BUILD_TIME),
     simpleTree: new Node('Class', [
@@ -36,11 +36,16 @@ export const treeFactory = () => ({
         new Node('ClassA', [new Node('methodAC')]),
         new Node('ClassC', [new Node('methodCA')])
     ]),
-    overlappingTreeC: new Node('packageB', [
+    overlappingTreeC: new Node('packageA', [
+        new Node('ClassA'),
+        new Node('ClassX'),
+        new Node('ClassY')
+    ]),
+    differentPackageTree: new Node('packageB', [
         new Node('ClassA', [new Node('methodAA')]),
         new Node('ClassX', [new Node('methodXA')]),
         new Node('ClassY', [new Node('methodYA')])
     ])
 })
 
-export const trees = treeFactory()
+export const forest = forestFactory()
