@@ -1,5 +1,5 @@
-import { treeFactory, forest } from './data/forest'
+import { forestFactory, forest } from './data/forest'
 
 beforeEach(() => {
-    Object.assign(forest, treeFactory())
+    Object.assign(forest, forestFactory())
 })
