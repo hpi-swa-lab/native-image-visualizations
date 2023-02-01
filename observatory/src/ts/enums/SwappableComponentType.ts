@@ -1,4 +1,4 @@
-export enum PageType {
+export enum SwappableComponentType {
     VennSets,
     SankeyTree,
     TreeLine,

@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import MainLayout from '../layouts/MainLayout.vue'
-import { PageType } from '../../ts/enums/PageType'
+import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
 </script>
 
 <template>
-    <MainLayout title="Sankey Tree" :page-type="PageType.SankeyTree">
+    <MainLayout title="Sankey Tree" :component-type="SwappableComponentType.SankeyTree">
         <div id="container" />
     </MainLayout>
 </template>

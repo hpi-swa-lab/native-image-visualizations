@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { EventType } from '../ts/enums/EventType'
 
 import ElevatedLayer from './layouts/ElevatedLayer.vue'
@@ -7,7 +7,7 @@ import ElevatedLayer from './layouts/ElevatedLayer.vue'
 import { NamedUniverse } from '../ts/UniverseTypes/NamedUniverse'
 import { loadJson, parseReachabilityExport } from '../ts/parsing'
 import MainLayout from './layouts/MainLayout.vue'
-import { PageType } from '../ts/enums/PageType'
+import { SwappableComponentType } from '../ts/enums/SwappableComponentType'
 
 const emit = defineEmits([EventType.UNIVERSE_REMOVED, EventType.UNIVERSE_CREATED])
 
@@ -79,7 +79,7 @@ async function addUniverse() {
 </script>
 
 <template>
-    <MainLayout title="Data Manager" :page-type="PageType.DataManager">
+    <MainLayout title="Data Manager" :component-type="SwappableComponentType.DataManager">
         <template #controls >
             <div class="space-y-10">
                 <h3>Manage Existing Universes</h3>

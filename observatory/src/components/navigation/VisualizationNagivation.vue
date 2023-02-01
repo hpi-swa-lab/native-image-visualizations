@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { PageType } from '../../ts/enums/PageType'
+import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
 import { EventType } from '../../ts/enums/EventType'
 
 withDefaults(
     defineProps<{
-        selected: PageType
+        selected: SwappableComponentType
     }>(),
     {
-        selected: PageType.None
+        selected: SwappableComponentType.None
     }
 )
 
@@ -28,11 +28,11 @@ defineEmits([EventType.CHANGE_PAGE])
                 $emit(EventType.CHANGE_PAGE, parseInt(($event.target as HTMLSelectElement).value))
             "
         >
-            <option :value="PageType.None" disabled>Choose Visualization</option>
-            <option :value="PageType.VennSets">Venn Sets</option>
-            <option :value="PageType.SankeyTree">Sankey Tree</option>
-            <option :value="PageType.TreeLine">Tree Line</option>
-            <option :value="PageType.CausalityGraph">Causality Graph</option>
+            <option :value="SwappableComponentType.None" disabled>Choose Visualization</option>
+            <option :value="SwappableComponentType.VennSets">Venn Sets</option>
+            <option :value="SwappableComponentType.SankeyTree">Sankey Tree</option>
+            <option :value="SwappableComponentType.TreeLine">Tree Line</option>
+            <option :value="SwappableComponentType.CausalityGraph">Causality Graph</option>
         </select>
     </div>
 </template>

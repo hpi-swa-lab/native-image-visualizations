@@ -2,16 +2,16 @@
 import VisualizationNavigation from '../navigation/VisualizationNagivation.vue'
 import UniverseSelectionList from '../controls/UniverseSelectionList.vue'
 import { EventType } from '../../ts/enums/EventType'
-import { PageType } from '../../ts/enums/PageType'
+import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
 
 withDefaults(
     defineProps<{
         title: string
-        pageType: PageType
+        componentType: SwappableComponentType
     }>(),
     {
         title: '',
-        pageType: PageType.None
+        componentType: SwappableComponentType.None
     }
 )
 
@@ -27,18 +27,18 @@ const emit = defineEmits([EventType.CHANGE_PAGE])
 
                 <div class="space-y-4">
                     <button
-                        v-if="pageType !== PageType.Home"
+                        v-if="componentType !== SwappableComponentType.Home"
                         type="button"
                         class="btn btn-primary"
-                        @click="emit(EventType.CHANGE_PAGE, PageType.Home)"
+                        @click="emit(EventType.CHANGE_PAGE, SwappableComponentType.Home)"
                     >
                         Home
                     </button>
                     <button
-                        v-if="pageType !== PageType.DataManager"
+                        v-if="componentType !== SwappableComponentType.DataManager"
                         type="button"
                         class="btn btn-primary"
-                        @click="emit(EventType.CHANGE_PAGE, PageType.DataManager)"
+                        @click="emit(EventType.CHANGE_PAGE, SwappableComponentType.DataManager)"
                     >
                         Data Manager
                     </button>
@@ -47,18 +47,18 @@ const emit = defineEmits([EventType.CHANGE_PAGE])
                 <hr />
 
                 <VisualizationNavigation
-                    v-if="pageType !== PageType.DataManager"
-                    :selected="pageType"
+                    v-if="componentType !== SwappableComponentType.DataManager"
+                    :selected="componentType"
                     @change-viz="$emit(EventType.CHANGE_PAGE, $event)"
                 ></VisualizationNavigation>
 
-                <hr v-if="pageType !== PageType.DataManager" />
+                <hr v-if="componentType !== SwappableComponentType.DataManager" />
 
                 <UniverseSelectionList
-                    v-if="pageType !== PageType.DataManager"
+                    v-if="componentType !== SwappableComponentType.DataManager"
                 />
                 
-                <hr v-if="pageType !== PageType.DataManager" />
+                <hr v-if="componentType !== SwappableComponentType.DataManager" />
 
                 <ul class="space-y-2">
                     <slot name="controls"> Controls </slot>
