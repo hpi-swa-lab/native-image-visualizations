@@ -12,13 +12,14 @@ import {
     UNMODIFIED
 } from '../../ts/Visualizations/SankeyTreeConstants'
 import { SortingOption, SortingOrder } from '../../ts/enums/Sorting'
+import AlertBox from './AlertBox.vue'
 
 type UniverseProps = {
     name: string
     color: d3.Color
 }
 
-const SHORTCUT_TEXTS = ['shift+click on node expands branch']
+const SHORTCUTS = ['shift+click on node expands branch']
 
 // TODO #39 set {} default value for universeMetadata
 // cannot use defaultWith() with Objects
@@ -43,7 +44,7 @@ function getFilteredKeys(): string[] {
 <template>
     <div id="sankey-tree-controls" class="input-container settings-container">
         <form>
-            <h3>Controls</h3>
+            <b>Controls</b>
 
             <!--      DIFFING FILTER-->
             <fieldset class="border rounded p-2 w-auto">
@@ -113,26 +114,7 @@ function getFilteredKeys(): string[] {
             </button>
 
             <!--      SHORTCUTS BOX -->
-            <div role="alert">
-                <div class="alert-title">Shortcuts</div>
-                <div class="alert-text">
-                    <ul class="list-unstyled">
-                        <li v-for="text in SHORTCUT_TEXTS" :key="SHORTCUT_TEXTS.indexOf(text)">
-                            {{ text }}
-                        </li>
-                    </ul>
-                </div>
-            </div>
+            <AlertBox title="Shortcuts" :alert-infos="SHORTCUTS"></AlertBox>
         </form>
     </div>
 </template>
-
-<style scoped>
-.alert-title {
-    @apply bg-cyan-600 text-white rounded-t px-4 py-2;
-}
-
-.alert-text {
-    @apply border border-t-0 border-cyan-400 rounded-b bg-cyan-100 px-4 py-3 text-cyan-700;
-}
-</style>
