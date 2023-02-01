@@ -21,7 +21,7 @@ const emit = defineEmits([EventType.CHANGE_PAGE])
 <template>
     <div class="w-full h-full grid grid-cols-12 gap-2">
         <div class="col-span-2 drop-shadow-xl">
-            <div class="px-3 py-4 overflow-y-auto rounded bg-gray-50 space-y-4 h-full">
+            <div class="px-3 py-4 rounded bg-gray-50 space-y-4 h-full">
                 <h2>{{ title }}</h2>
                 <hr />
 
@@ -65,7 +65,7 @@ const emit = defineEmits([EventType.CHANGE_PAGE])
                 </ul>
             </div>
         </div>
-        <div class="col-span-10 h-full overflow-scroll">
+        <div class="col-span-10 h-full overflow-y-auto">
             <slot />
         </div>
     </div>

@@ -50,7 +50,6 @@ function updateRechabilityExport(event: Event) {
 
     if (!inputElement.files) return
 
-    // eslint-disable-next-line prefer-destructuring
     form.value.rechabilityExportFile = inputElement.files[0]
 }
 
@@ -72,55 +71,58 @@ async function submit() {
     <MainLayout title="Data Manager" :page-type="PageType.DataManager">
         <template #controls >
             <div class="space-y-10">
-                    <h3>Manage Existing Universes</h3>
-                    <ElevatedLayer>
-                        <p v-if="currentUniverses.length === 0">
-                            Currently, there are no universes uploaded.
-                        </p>
-                        <div
-                            v-for="(universe, index) in currentUniverses"
-                            :key="index"
-                            class="flex items-center justify-between"
+                <h3>Manage Existing Universes</h3>
+                <ElevatedLayer>
+                    <p v-if="currentUniverses.length === 0">
+                        Currently, there are no universes uploaded.
+                    </p>
+                    <div
+                        v-for="(universe, index) in currentUniverses"
+                        :key="index"
+                        class="flex items-center justify-between"
+                    >
+                        {{ universe.name }}
+                        <button
+                            class="btn btn-danger"
+                            @click="() => removeUniverse(universe.name)"
                         >
-                            {{ universe.name }}
-                            <button
-                                class="btn btn-danger"
-                                @click="() => removeUniverse(universe.name)"
-                            >
-                                X
-                            </button>
-                        </div>
-                    </ElevatedLayer>
-                </div>
+                            X
+                        </button>
+                    </div>
+                </ElevatedLayer>
+            </div>
         </template>
-        
-        <form @submit.prevent="submit">
-            <h3>Add a new Universe</h3>
-            <ElevatedLayer>
-                <label for="input-universe-name"><h3>Universe Name</h3></label>
-                <p>
-                    Please name the universe you are about to upload. This allows you to
-                    better recognize it later on in the visualizations.
-                </p>
-                <input
-                    id="input-universe-name"
-                    v-model="form.name"
-                    type="text"
-                    placeholder="Awesome Universe Name"
-                    required
-                />
-            </ElevatedLayer>
 
-            <ElevatedLayer>
-                <label><h3>Reachability-Export</h3></label>
-                <p></p>
-                <input
-                    type="file"
-                    accept="json"
-                    required
-                    @change="updateRechabilityExport"
-                />
-            </ElevatedLayer>
+        <form class="flex flex-col items-center p-4 space-y-10" @submit.prevent="submit">
+            <h2 class="w-2/3">Add a new Universe</h2>
+            <ElevatedLayer class="w-2/3 space-y-[3rem]">
+                <div class="space-y-4">
+                    <label for="input-universe-name">Universe Name</label>
+                    <input
+                        id="input-universe-name"
+                        v-model="form.name"
+                        type="text"
+                        placeholder="Awesome Universe Name"
+                        required
+                    />
+                    <p class="help-text">
+                        Please name the universe you are about to upload. This allows you to
+                        better recognize it later on in the visualizations.
+                    </p>
+                </div>
+                <div class="space-y-4">
+                    <label>Reachability-Export</label>
+                    <input
+                        type="file"
+                        accept="json"
+                        required
+                        @change="updateRechabilityExport"
+                    />
+                    <p class="help-text">Some text</p>
+                </div>
+                
+                <button class="btn btn-primary">Add Universe</button>
+            </ElevatedLayer>            
         </form>
     </MainLayout>
 </template>

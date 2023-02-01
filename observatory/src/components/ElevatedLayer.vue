@@ -23,7 +23,7 @@ const shadowClass = computed(() => {
 </script>
 
 <template>
-    <div :class="`space-y-5 p-4 bg-white z-${props.level * 10} ${shadowClass}`">
+    <div :class="`space-y-5 p-4 bg-gray-100 z-${props.level * 10} ${shadowClass}`">
         <slot />
     </div>
 </template>
