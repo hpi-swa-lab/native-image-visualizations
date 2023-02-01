@@ -15,11 +15,11 @@
 }
 
 .btn-light {
-   @apply bg-gray-300
+    @apply bg-gray-300;
 }
 
 .btn-light:hover {
-    @apply bg-gray-400
+    @apply bg-gray-400;
 }
 
 h1 {
@@ -46,8 +46,4 @@ h3 {
     width: 1em;
     height: 1em;
     vertical-align: central;
-}
-
-#sankey-tree-controls input[type=checkbox] {
-    @apply mr-1
 }
