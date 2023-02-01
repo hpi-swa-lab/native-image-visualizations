@@ -6,13 +6,16 @@ import ColorLabel from './ColorLabel.vue'
 import * as d3 from 'd3'
 import {
     COLOR_GREEN,
-    COLOR_RED,
     COLOR_MODIFIED,
+    COLOR_RED,
     COLOR_UNMODIFIED,
     UNMODIFIED
 } from '../../ts/Visualizations/SankeyTreeConstants'
-import { SortingOption, SortingOrder } from '../../ts/enums/Sorting'
 import AlertBox from './AlertBox.vue'
+import SortingFilterFieldset from './SortingFilterFieldset.vue'
+import { NodesFilter } from '../../ts/SharedTypes/NodesFilter'
+import { SortingOption, SortingOrder } from '../../ts/enums/Sorting'
+import { EventType } from '../../ts/enums/EventType.js'
 
 type UniverseProps = {
     name: string
@@ -35,9 +38,24 @@ const props = defineProps({
     }
 })
 
-const sortingTypes = [SortingOption, SortingOrder]
+const filter: NodesFilter = {
+    diffing: {
+        universes: new Set(['0', '1']),
+        showUnmodified: false
+    },
+    sorting: {
+        option: SortingOption.NAME,
+        order: SortingOrder.ASCENDING
+    }
+}
+
 function getFilteredKeys(): string[] {
     return Object.keys(props.universesMetadata).filter((key) => key.length == 1)
+}
+
+function onUpdate(e: MouseEvent): void {
+    e.preventDefault()
+    // TODO #39 emit filter object
 }
 </script>
 
@@ -77,39 +95,25 @@ function getFilteredKeys(): string[] {
             </fieldset>
 
             <!--      SORTING FILTER -->
-            <fieldset class="border rounded p-2 w-auto">
-                <legend class="w-auto float-none p-2 fs-5">Node Sorting:</legend>
-
-                <!--        TODO #39 check defaults-->
-                <div class="flex flex-wrap">
-                    <template v-for="(sorting, sortingIndex) in sortingTypes" :key="sortingIndex">
-                        <div class="pr-5 pl-0">
-                            <template
-                                v-for="(option, optionIndex) in Object.values(sorting).filter(
-                                    (value) => typeof value === 'string'
-                                )"
-                                :key="optionIndex"
-                            >
-                                <div class="relative block mb-2">
-                                    <input
-                                        :id="option"
-                                        :name="sortingIndex"
-                                        :value="option"
-                                        type="radio"
-                                    />
-                                    <label class="ml-1"> {{ option }} </label>
-                                </div>
-                            </template>
-                        </div>
-                    </template>
-                </div>
-            </fieldset>
+            <SortingFilterFieldset
+                :sorting-order="filter.sorting.order"
+                :sorting-option="filter.sorting.option"
+                @sorting-order-changed="filter.sorting.order = $event"
+                @sorting-option-changed="filter.sorting.option = $event"
+            ></SortingFilterFieldset>
 
             <!--      SUBMIT BUTTON -->
-            <button type="submit" class="btn btn-sm btn-primary m-2">update</button>
+            <button type="submit" class="btn btn-sm btn-primary m-2" @click="onUpdate($event)">
+                update
+            </button>
 
             <!--      EXPAND TREE BUTTON -->
-            <button id="expand-tree-btn" type="button" class="btn btn-light m-2">
+            <button
+                id="expand-tree-btn"
+                type="button"
+                class="btn btn-light m-2"
+                @click="$emit(EventType.EXPAND_TREE, $event)"
+            >
                 expand full tree
             </button>
 

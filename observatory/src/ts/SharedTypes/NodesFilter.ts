@@ -1,4 +1,4 @@
-export type TreeNodesFilter = {
+export type NodesFilter = {
     diffing: DiffingUniversesFilter
     sorting: NodesSortingFilter
 }
@@ -11,9 +11,4 @@ export type DiffingUniversesFilter = {
 export type NodesSortingFilter = {
     option: string
     order: string
-}
-
-export type NodeTextPositionOffset = {
-    start: number
-    end: number
 }
