@@ -70,9 +70,8 @@ async function submit() {
 
 <template>
     <MainLayout title="Data Manager" :page-type="PageType.DataManager">
-        <form class="bg-gray-100 w-full h-full space-y-10" @submit.prevent="submit">
-            <div class="grid grid-cols-5 px-10 gap-x-10">
-                <div class="space-y-10">
+        <template #controls >
+            <div class="space-y-10">
                     <h3>Manage Existing Universes</h3>
                     <ElevatedLayer>
                         <p v-if="currentUniverses.length === 0">
@@ -93,41 +92,34 @@ async function submit() {
                         </div>
                     </ElevatedLayer>
                 </div>
-                <div class="col-start-3 col-span-3 space-y-10">
-                    <h3>Add a new Universe</h3>
-                    <ElevatedLayer>
-                        <label for="input-universe-name"><h3>Universe Name</h3></label>
-                        <p>
-                            Please name the universe you are about to upload. This allows you to
-                            better recognize it later on in the visualizations.
-                        </p>
-                        <input
-                            id="input-universe-name"
-                            v-model="form.name"
-                            type="text"
-                            placeholder="Awesome Universe Name"
-                            required
-                        />
-                    </ElevatedLayer>
+        </template>
+        
+        <form @submit.prevent="submit">
+            <h3>Add a new Universe</h3>
+            <ElevatedLayer>
+                <label for="input-universe-name"><h3>Universe Name</h3></label>
+                <p>
+                    Please name the universe you are about to upload. This allows you to
+                    better recognize it later on in the visualizations.
+                </p>
+                <input
+                    id="input-universe-name"
+                    v-model="form.name"
+                    type="text"
+                    placeholder="Awesome Universe Name"
+                    required
+                />
+            </ElevatedLayer>
 
-                    <ElevatedLayer>
-                        <label><h3>Reachability-Export</h3></label>
-                        <p></p>
-                        <input
-                            type="file"
-                            accept="json"
-                            required
-                            @change="updateRechabilityExport"
-                        />
-                    </ElevatedLayer>
-                </div>
-            </div>
-
-            <ElevatedLayer
-                :level="3"
-                class="fixed bottom-0 w-full h-fit grid grid-cols-5 p-10 gap-x-10"
-            >
-                <button class="btn btn-primary col-start-3 w-fit">Apply Data</button>
+            <ElevatedLayer>
+                <label><h3>Reachability-Export</h3></label>
+                <p></p>
+                <input
+                    type="file"
+                    accept="json"
+                    required
+                    @change="updateRechabilityExport"
+                />
             </ElevatedLayer>
         </form>
     </MainLayout>
