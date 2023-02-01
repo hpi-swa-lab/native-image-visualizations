@@ -1,10 +1,16 @@
+<script lang="ts">
+import * as d3 from "d3";
+
+export const COLOR_RED = d3.rgb(250, 82, 82)
+export const COLOR_GREEN = d3.rgb(148, 216, 45)
+</script>
+
 <script setup lang="ts">
 import {SortingOption, SortingOrder} from "../../ts/enums/Sorting";
 import type { PropType } from "vue";
 
 import Switch from "./Switch.vue";
 import ColorLabel from "./ColorLabel.vue";
-import * as d3 from "d3";
 
 type UniverseProps = {
   name: string
@@ -15,8 +21,6 @@ const SHORTCUT_TEXTS = ['shift+click on node expands branch']
 
 const UNMODIFIED = 'UNMODIFIED'
 
-const COLOR_RED = d3.rgb(250, 82, 82)
-const COLOR_GREEN = d3.rgb(148, 216, 45)
 const COLOR_BLUE = d3.rgb(165, 216, 255)
 const COLOR_MODIFIED = COLOR_BLUE
 const COLOR_GREY = d3.rgb(150, 150, 150)
