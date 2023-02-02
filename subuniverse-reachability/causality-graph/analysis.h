@@ -767,8 +767,29 @@ static void bfs_incremental_rec(const BFS::Result& all_reachable, const BFS& bfs
 #endif
     }
 
-    span<const span<const method_id>> first_half = methods_to_purge.subspan(0, methods_to_purge.size() / 2);
-    span<const span<const method_id>> second_half = methods_to_purge.subspan(methods_to_purge.size() / 2);
+    // Divide the purge sets into two of similar sum-size for algorithmic performance reasons
+    size_t mid_index;
+    {
+        size_t n_total_methods = 0;
+
+        for(span<const method_id> subset: methods_to_purge)
+            n_total_methods += subset.size();
+
+        mid_index = 0;
+        for(size_t mid_size = 0; mid_index < methods_to_purge.size() && mid_size < n_total_methods / 2; mid_index++)
+        {
+            mid_size += methods_to_purge[mid_index].size();
+            if(mid_size >= n_total_methods / 2)
+            {
+                if(n_total_methods - mid_size > mid_size - methods_to_purge[mid_index].size())
+                    mid_index++;
+                break;
+            }
+        }
+    }
+
+    span<const span<const method_id>> first_half = methods_to_purge.subspan(0, mid_index);
+    span<const span<const method_id>> second_half = methods_to_purge.subspan(mid_index);
 
     auto search_child = [&](BFS::Result& r2, span<const span<const method_id>> depurge, span<const span<const method_id>> stillpurge)
     {

@@ -163,43 +163,6 @@ extern "C" bool EMSCRIPTEN_KEEPALIVE simulate_purges_batched(const span<const me
         auto &m = *purge_model;
         auto &bfs = *::bfs;
 
-        /*
-        cerr << "purge sets len: " << purge_sets_len << endl;
-        for(auto ps : span{purge_sets, purge_sets_len})
-        {
-            cerr << ps.size() << ": ";
-            for(auto mid : ps)
-                cerr << mid.id << ' ';
-            cerr << endl;
-        }
-         */
-
-        {
-            vector<bool> occuring_methods(m.adj.n_methods());
-            occuring_methods[0] = true;
-
-            size_t n_occuring_methods = 0;
-            for(auto ps: span{purge_sets, purge_sets_len})
-            {
-                for(method_id mid: ps)
-                {
-                    if(mid.id >= occuring_methods.size())
-                    {
-                        cerr << "Method id out of range: " << mid.id << endl;
-                        return false;
-                    }
-                    if(occuring_methods[mid.id])
-                    {
-                        cerr << "Duplicate method " << m.method_names[mid.id] << '(' << mid.id << ')' << endl;
-                        return false;
-                    }
-                    occuring_methods[mid.id] = true;
-                }
-            }
-
-            cerr << "Finished checking for duplicates" << endl;
-        }
-
         cerr << "Running batch purges...";
 
         auto start = std::chrono::system_clock::now();
@@ -210,8 +173,22 @@ extern "C" bool EMSCRIPTEN_KEEPALIVE simulate_purges_batched(const span<const me
                 auto &method_visited = r.method_visited;
 
                 for(auto ps: span{purge_sets, purge_sets_len})
+                {
                     for(method_id mid: ps)
+                    {
+                        if(mid.id >= method_visited.size())
+                        {
+                            cerr << "Method id out of range: " << mid.id << endl;
+                            return false;
+                        }
+                        if(method_visited[mid.id])
+                        {
+                            cerr << "Duplicate method " << m.method_names[mid.id] << '(' << mid.id << ')' << endl;
+                            return false;
+                        }
                         method_visited[mid.id] = true;
+                    }
+                }
 
                 method_id root_method = 0;
                 typeflow_id root_typeflow = 0;
