@@ -1,122 +1,80 @@
 import { describe, expect, test } from '@jest/globals'
-import { forest } from './data/forest'
-import { mergeTrees } from './../src/ts/GraphOperations/TreeMerger'
 import { UniverseIndex } from '../src/ts/SharedTypes/Indices'
 import { Node } from '../src/ts/UniverseTypes/Node'
+import { mergeTrees } from './../src/ts/GraphOperations/TreeMerger'
+import { forest } from './data/forest'
+const clone = require('clone')
 
-class ComparisonNode extends Node {
-    constructor(name: string, occursIn: UniverseIndex[], children: ComparisonNode[] = []) {
-        super(name, children)
-        this._occursIn = occursIn
-    }
+function node(name: string, occursIn: UniverseIndex[], children: Node[] = []): Node {
+    const n = new Node(name, children)
+    // The `equals` method only checks the keys, not the values. That's why we
+    // can just add a dummy node there.
+    n.occursIn = new Map(occursIn.map((index) => [index, new Node('dummy')]))
+    return n
 }
 
 describe('Tree Merger', () => {
     test('Two trees without overlap stay separated in result', () => {
         const merged = mergeTrees(forest.overlappingTreeC, forest.differentPackageTree)
-        const expected = new ComparisonNode(
-            '',
-            [],
-            [
-                new ComparisonNode(
-                    'packageA',
-                    [0],
-                    [
-                        new ComparisonNode('ClassA', [0]),
-                        new ComparisonNode('ClassX', [0]),
-                        new ComparisonNode('ClassY', [0])
-                    ]
-                ),
-                new ComparisonNode(
-                    'packageB',
-                    [1],
-                    [
-                        new ComparisonNode('ClassA', [1], [new ComparisonNode('methodAA', [1])]),
-                        new ComparisonNode('ClassX', [1], [new ComparisonNode('methodXA', [1])]),
-                        new ComparisonNode('ClassY', [1], [new ComparisonNode('methodYA', [1])])
-                    ]
-                )
-            ]
-        )
 
-        expect(merged.is(expected)).toBeTruthy()
+        const inC = [0]
+        const inDifferent = [1]
+        const inBoth = [0, 1]
+        const expected = node('', inBoth, [
+            node('packageA', inC, [node('ClassA', inC), node('ClassX', inC), node('ClassY', inC)]),
+            node('packageB', inDifferent, [
+                node('ClassA', inDifferent, [node('methodAA', inDifferent)]),
+                node('ClassX', inDifferent, [node('methodXA', inDifferent)]),
+                node('ClassY', inDifferent, [node('methodYA', inDifferent)])
+            ])
+        ])
+
+        expect(merged.equals(expected)).toBeTruthy()
     })
 
     test('Should have the occurences set to the only tree given', () => {
         const merged = mergeTrees(forest.overlappingTreeA)
 
-        const expected = new ComparisonNode(
-            '',
-            [],
-            [
-                new ComparisonNode(
-                    'packageA',
-                    [0],
-                    [
-                        new ComparisonNode('ClassA', [0], [new ComparisonNode('methodAA', [0])]),
-                        new ComparisonNode('ClassB', [0], [new ComparisonNode('methodBA', [0])])
-                    ]
-                )
-            ]
-        )
-        expect(merged.is(expected)).toBeTruthy()
+        const inA = [0]
+        const expected = node('', inA, [
+            node('packageA', inA, [
+                node('ClassA', inA, [node('methodAA', inA)]),
+                node('ClassB', inA, [node('methodBA', inA)])
+            ])
+        ])
+
+        expect(merged.equals(expected)).toBeTruthy()
     })
 
     test('Merging two equal trees results in the same tree with both indexes', () => {
         const merged = mergeTrees(forest.overlappingTreeA, forest.overlappingTreeA)
 
-        const expected = new ComparisonNode(
-            '',
-            [],
-            [
-                new ComparisonNode(
-                    'packageA',
-                    [0, 1],
-                    [
-                        new ComparisonNode(
-                            'ClassA',
-                            [0, 1],
-                            [new ComparisonNode('methodAA', [0, 1])]
-                        ),
-                        new ComparisonNode(
-                            'ClassB',
-                            [0, 1],
-                            [new ComparisonNode('methodBA', [0, 1])]
-                        )
-                    ]
-                )
-            ]
-        )
-        expect(merged.is(expected)).toBeTruthy()
+        const inAA = [0, 1]
+        const expected = node('', inAA, [
+            node('packageA', inAA, [
+                node('ClassA', inAA, [node('methodAA', inAA)]),
+                node('ClassB', inAA, [node('methodBA', inAA)])
+            ])
+        ])
+
+        expect(merged.equals(expected)).toBeTruthy()
     })
 
     test('should merge 2 overlapping trees into one tree', () => {
         const merged = mergeTrees(forest.overlappingTreeA, forest.overlappingTreeB)
 
-        const expected = new ComparisonNode(
-            '',
-            [],
-            [
-                new ComparisonNode(
-                    'packageA',
-                    [0, 1],
-                    [
-                        new ComparisonNode(
-                            'ClassA',
-                            [0, 1],
-                            [
-                                new ComparisonNode('methodAA', [0]),
-                                new ComparisonNode('methodAC', [1])
-                            ]
-                        ),
-                        new ComparisonNode('ClassB', [0], [new ComparisonNode('methodBA', [0])]),
-                        new ComparisonNode('ClassC', [1], [new ComparisonNode('methodCA', [1])])
-                    ]
-                )
-            ]
-        )
+        const inA = [0]
+        const inB = [1]
+        const inAB = [0, 1]
+        const expected = node('', inAB, [
+            node('packageA', inAB, [
+                node('ClassA', inAB, [node('methodAA', inA), node('methodAC', inB)]),
+                node('ClassB', inA, [node('methodBA', inA)]),
+                node('ClassC', inB, [node('methodCA', inB)])
+            ])
+        ])
 
-        expect(merged.is(expected)).toBeTruthy()
+        expect(merged.equals(expected)).toBeTruthy()
     })
 
     test('should merge 3 overlapping trees into one tree', () => {
@@ -126,31 +84,20 @@ describe('Tree Merger', () => {
             forest.overlappingTreeC
         )
 
-        const expected = new ComparisonNode(
-            '',
-            [],
-            [
-                new ComparisonNode(
-                    'packageA',
-                    [0, 1, 2],
-                    [
-                        new ComparisonNode(
-                            'ClassA',
-                            [0, 1, 2],
-                            [
-                                new ComparisonNode('methodAA', [0]),
-                                new ComparisonNode('methodAC', [1])
-                            ]
-                        ),
-                        new ComparisonNode('ClassB', [0], [new ComparisonNode('methodBA', [0])]),
-                        new ComparisonNode('ClassC', [1], [new ComparisonNode('methodCA', [1])]),
-                        new ComparisonNode('ClassX', [2]),
-                        new ComparisonNode('ClassY', [2])
-                    ]
-                )
-            ]
-        )
-        expect(merged.is(expected)).toBeTruthy()
+        const inA = [0]
+        const inB = [1]
+        const inC = [2]
+        const inABC = [0, 1, 2]
+        const expected = node('', inABC, [
+            node('packageA', inABC, [
+                node('ClassA', inABC, [node('methodAA', inA), node('methodAC', inB)]),
+                node('ClassB', inA, [node('methodBA', inA)]),
+                node('ClassC', inB, [node('methodCA', inB)]),
+                node('ClassX', inC),
+                node('ClassY', inC)
+            ])
+        ])
+        expect(merged.equals(expected)).toBeTruthy()
     })
 
     test('should merge 2 overlapping trees, append the different package with the same method name', () => {
@@ -160,38 +107,33 @@ describe('Tree Merger', () => {
             forest.differentPackageTree
         )
 
-        const expected = new ComparisonNode(
-            '',
-            [],
-            [
-                new ComparisonNode(
-                    'packageA',
-                    [0, 1],
-                    [
-                        new ComparisonNode(
-                            'ClassA',
-                            [0, 1],
-                            [
-                                new ComparisonNode('methodAA', [0]),
-                                new ComparisonNode('methodAC', [1])
-                            ]
-                        ),
-                        new ComparisonNode('ClassB', [0], [new ComparisonNode('methodBA', [0])]),
-                        new ComparisonNode('ClassC', [1], [new ComparisonNode('methodCA', [1])])
-                    ]
-                ),
-                new ComparisonNode(
-                    'packageB',
-                    [2],
-                    [
-                        new ComparisonNode('ClassA', [2], [new ComparisonNode('methodAA', [2])]),
-                        new ComparisonNode('ClassX', [2], [new ComparisonNode('methodXA', [2])]),
-                        new ComparisonNode('ClassY', [2], [new ComparisonNode('methodYA', [2])])
-                    ]
-                )
-            ]
-        )
+        const inA = [0]
+        const inB = [1]
+        const inC = [2]
+        const inAB = [0, 1]
+        const inABC = [0, 1, 2]
+        const expected = node('', inABC, [
+            node('packageA', inAB, [
+                node('ClassA', inAB, [node('methodAA', inA), node('methodAC', inB)]),
+                node('ClassB', inA, [node('methodBA', inA)]),
+                node('ClassC', inB, [node('methodCA', inB)])
+            ]),
+            node('packageB', inC, [
+                node('ClassA', inC, [node('methodAA', inC)]),
+                node('ClassX', inC, [node('methodXA', inC)]),
+                node('ClassY', inC, [node('methodYA', inC)])
+            ])
+        ])
 
-        expect(merged.is(expected as never)).toBeTruthy()
+        expect(merged.equals(expected as never)).toBeTruthy()
+    })
+
+    test('merging trees should not affect original values', () => {
+        const treeA = clone(forest.overlappingTreeA)
+        // expect(treeA).toEqual(forest.overlappingTreeA)
+        const treeB = clone(forest.overlappingTreeB)
+        mergeTrees(forest.overlappingTreeA, forest.overlappingTreeB)
+        expect(treeA.equals(forest.overlappingTreeA)).toBeTruthy()
+        // expect(treeA.equals(forest.overlappingTreeA)).toBeTruthy()
     })
 })
