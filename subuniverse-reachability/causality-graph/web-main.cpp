@@ -1,4 +1,4 @@
-#define REACHABILITY_ASSERTIONS 1
+#define REACHABILITY_ASSERTIONS 0
 
 #include <emscripten.h>
 #include <iostream>
@@ -152,69 +152,105 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE simulate_purge(const char* methods)
 
 extern "C" bool EMSCRIPTEN_KEEPALIVE simulate_purges_batched(const span<const method_id>* purge_sets, size_t purge_sets_len, uint32_t* n_purged)
 {
-    if(!purge_model)
-        return false;
-
-    if(!bfs)
-        return false;
-
-    auto& m = *purge_model;
-    auto& bfs = *::bfs;
-
-    cerr << "purge sets len: " << purge_sets_len << endl;
-    for(auto ps : span{purge_sets, purge_sets_len})
+    try
     {
-        cerr << ps.size() << ": ";
-        for(auto mid : ps)
-            cerr << mid.id << ' ';
-        cerr << endl;
-    }
+        if(!purge_model)
+            return false;
 
+        if(!bfs)
+            return false;
 
-    cerr << "Running DFS on purged graph...";
+        auto &m = *purge_model;
+        auto &bfs = *::bfs;
 
-    auto start = std::chrono::system_clock::now();
-
-    {
-        BFS::Result r(bfs);
+        /*
+        cerr << "purge sets len: " << purge_sets_len << endl;
+        for(auto ps : span{purge_sets, purge_sets_len})
         {
-            auto& method_visited = r.method_visited;
-            std::fill(method_visited.begin() + 1, method_visited.end(), true);
-            method_id root_method = 0;
-            typeflow_id root_typeflow = 0;
-            bfs.run<false>(r, {&root_method, 1}, {&root_typeflow, 1});
+            cerr << ps.size() << ": ";
+            for(auto mid : ps)
+                cerr << mid.id << ' ';
+            cerr << endl;
         }
+         */
 
-        auto callback = [&](const span<const method_id>& mids, const BFS::Result& r)
         {
-            size_t iteration = &mids - purge_sets;
+            vector<bool> occuring_methods(m.adj.n_methods());
+            occuring_methods[0] = true;
 
-            size_t n_purged_acc = 0;
-
-            for(size_t i = 1; i < r.method_history.size(); i++)
+            size_t n_occuring_methods = 0;
+            for(auto ps: span{purge_sets, purge_sets_len})
             {
-                if(!r.method_visited[i] && all->method_history[i] != 0xFF)
-                    n_purged_acc++;
-
-                /*
-                if(r.method_visited[i])
-                    cerr << "Reachable method: \"" << m.method_names[i] << '"' << endl;
-                    */
+                for(method_id mid: ps)
+                {
+                    if(mid.id >= occuring_methods.size())
+                    {
+                        cerr << "Method id out of range: " << mid.id << endl;
+                        return false;
+                    }
+                    if(occuring_methods[mid.id])
+                    {
+                        cerr << "Duplicate method " << m.method_names[mid.id] << '(' << mid.id << ')' << endl;
+                        return false;
+                    }
+                    occuring_methods[mid.id] = true;
+                }
             }
 
-            n_purged[iteration] = n_purged_acc;
+            cerr << "Finished checking for duplicates" << endl;
+        }
 
-            cerr << '[' << iteration << "] " << n_purged_acc << endl;
-        };
+        cerr << "Running batch purges...";
 
-        bfs_incremental_rec(*all, bfs, r, {purge_sets, purge_sets_len}, callback);
+        auto start = std::chrono::system_clock::now();
+
+        {
+            BFS::Result r(bfs);
+            {
+                auto &method_visited = r.method_visited;
+
+                for(auto ps: span{purge_sets, purge_sets_len})
+                    for(method_id mid: ps)
+                        method_visited[mid.id] = true;
+
+                method_id root_method = 0;
+                typeflow_id root_typeflow = 0;
+                bfs.run<false>(r, {&root_method, 1}, {&root_typeflow, 1});
+            }
+
+            auto callback = [&](const span<const method_id> &mids, const BFS::Result &r)
+            {
+                size_t iteration = &mids - purge_sets;
+                if(iteration == purge_sets_len)
+                    return;
+
+                size_t n_purged_acc = 0;
+
+                for(size_t i = 1; i < r.method_history.size(); i++)
+                {
+                    if(r.method_history[i] == 0xFF && all->method_history[i] != 0xFF)
+                        n_purged_acc++;
+                }
+
+                n_purged[iteration] = n_purged_acc;
+
+                //cerr << '[' << iteration << "] " << n_purged_acc << endl;
+            };
+
+            bfs_incremental_rec(*all, bfs, r, {purge_sets, purge_sets_len}, callback);
+        }
+
+        auto end = std::chrono::system_clock::now();
+        auto elapsed_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        cerr << ' ' << (elapsed_milliseconds.count()) << "ms elapsed" << endl;
+
+        return true;
     }
-
-    auto end = std::chrono::system_clock::now();
-    auto elapsed_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    cerr << ' ' << (elapsed_milliseconds.count()) << "ms elapsed - ";
-
-    return true;
+    catch(const exception& e)
+    {
+        cerr << "Exception occured: " << e.what() << endl;
+        return false;
+    }
 }
 
 extern "C" char* EMSCRIPTEN_KEEPALIVE show_reachability(const char* methods)

@@ -58,8 +58,6 @@
         var methodList = []
 
         function simulatePurge(str) {
-            return methodList[simulatePurgesBatched([str])[0]]
-
             var ptr  = allocateUTF8(str)
             var retPtr = simulate_purge(ptr)
             var res = UTF8ToString(retPtr)
@@ -72,36 +70,51 @@
         }
 
         function simulatePurgesBatched(strs) {
+            var indicesSortedByLengthDescending = Array(strs.length)
+            for(let i = 0; i < indicesSortedByLengthDescending.length; i++)
+                indicesSortedByLengthDescending[i] = i
+            indicesSortedByLengthDescending.sort((a, b) => strs[b].length - strs[a].length)
+
+            var methodIncluded = Array(methodList.length)
+            for(let i = 0; i < methodIncluded.length; i++)
+                methodIncluded[i] = false
+
             var subsetsArr = new Uint32Array(strs.length * 2)
 
             var totalCount = 0
 
-            for(let i = 0; i < strs.length; i++) {
+            for(const i of indicesSortedByLengthDescending) {
                 var count = 0
-                for (const method of methodList) {
-                    if (method.startsWith(strs[i]))
+                for(let mid = 0; mid < methodList.length; mid++) {
+                    const method = methodList[mid]
+                    if (!methodIncluded[mid] && method.startsWith(strs[i])) {
+                        methodIncluded[mid] = true
                         count++
+                    }
                 }
                 totalCount += count
                 subsetsArr[i * 2 + 1] = count
             }
 
+            for(let i = 0; i < methodIncluded.length; i++)
+                methodIncluded[i] = false
+
             var midsPtr = Module._malloc(totalCount * 4)
             var midsPos = 0
 
-            for(let i = 0; i < strs.length; i++)
+            for(const i of indicesSortedByLengthDescending)
             {
                 var count = subsetsArr[i * 2 + 1]
                 var subsetArr = new Uint32Array(count)
                 var pos = 0
 
-                for(let i = 0; i < methodList.length; i++)
+                for(let mid = 0; mid < methodList.length; mid++)
                 {
-                    const method = methodList[i]
+                    const method = methodList[mid]
 
-                    if(method.startsWith(strs))
-                    {
-                        subsetArr[pos] = i + 1
+                    if (!methodIncluded[mid] && method.startsWith(strs[i])) {
+                        methodIncluded[mid] = true
+                        subsetArr[pos] = mid + 1
                         pos++
                     }
                 }
@@ -116,7 +129,7 @@
 
             var resultsArrPtr = Module._malloc(strs.length * 4)
 
-            simulate_purges_batched(subsetsArrPtr, strs.length, resultsArrPtr)
+            const status = simulate_purges_batched(subsetsArrPtr, strs.length, resultsArrPtr)
 
             var res = Module.HEAPU32.subarray(resultsArrPtr / 4, resultsArrPtr / 4 + strs.length)
 
@@ -124,7 +137,7 @@
             Module._free(midsPtr)
             // TODO: Free resultsArrPtr
 
-            return res
+            return status == 0 ? null : res
         }
 
         function pressBtn(str) {
@@ -184,6 +197,7 @@
 
                     if(entry.filename === "methods.txt") {
                         methodList = (await entry.getData(new zip.TextWriter())).split('\n')
+                        methodList.pop()
                         prepareListView(generateHierarchyFromList(methodList))
                     }
 
@@ -317,12 +331,19 @@
                     this.classList.toggle("caret-down");
 
                     if (expanded) {
+                        strs = []
+
                         for (e of this.parentElement.querySelector("ul").children) {
                             var node_prefix = e.getAttribute("data-node-name")
-                            var answer = simulatePurge(node_prefix + "*")
-                            var cutCount = answer.length === 0 ? 0 : answer.split('\n').length
+                            strs.push(node_prefix)
+                        }
 
-                            e.querySelector("#purged").textContent = cutCount.toString()
+                        res = simulatePurgesBatched(strs)
+
+                        let i = 0
+                        for (e of this.parentElement.querySelector("ul").children) {
+                            e.querySelector("#purged").textContent = res[i].toString()
+                            i++
                         }
                     }
                 });
