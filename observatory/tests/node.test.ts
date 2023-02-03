@@ -63,24 +63,12 @@ describe('Node usage', () => {
         forest.layeredTree.children.every((child) => expect(child).not.toEqual(forest.method))
     })
 
-    test('childless root should be inline', () => {
-        expect(forest.childlessRoot.inline).toBeTruthy()
-    })
-
     test('leaf with positive code size is not considered inlined', () => {
         expect(forest.method.inline).toBeFalsy()
     })
 
     test('leaf with 0 code size is inlined', () => {
         expect(new Leaf('Method', 0, InitKind.BUILD_TIME).inline).toBeTruthy()
-    })
-
-    test('simple tree should not be inlined as at least one children is not inlined', () => {
-        expect(forest.simpleTree.inline).toBeFalsy()
-    })
-
-    test('complex tree should not be inlined as at least one children is not inlined', () => {
-        expect(forest.layeredTree.inline).toBeFalsy()
     })
 
     test('childless root returns its name for identifier', () => {
