@@ -32,12 +32,7 @@ function cloneNode(node: Node): Node {
     return cloned
 }
 
-function setOccursInRecursive(node: Node, index: UniverseIndex, original: Node): void {
-    node.occursIn = new Map([[index, original]])
-    // The `setOccursInRecursive` function is only called from the `mergeNode`
-    // function above. Because the `node` is a cloned version of the `original`,
-    // we know that every child that exists in the `node` also exists on the
-    // corresponding node in the `original` tree.
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    node.children.forEach((child) => setOccursInRecursive(child, index, original.get(child.name)!))
+function setOccursInRecursive(copy: Node, original: Node, index: UniverseIndex): void {
+    copy.occursIn = new Map([[index, original]])
+    copy.children.forEach((child, i) => setOccursInRecursive(child, original.children[i], index))
 }
