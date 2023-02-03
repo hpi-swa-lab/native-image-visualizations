@@ -9,13 +9,14 @@ import { Node } from '../UniverseTypes/Node'
  * - The selection and highlight always contain nodes of the merged multiverse.
  */
 export interface Visualization {
+    selection: Node[]
+
     /**
      * Accepts a merged tree where each node references the corresponding trees
      * in the original universes.
      */
     setMultiverse(multiverse: Node): void
 
-    selection: Node[]
     setSelection(selection: Node[]): void
 
     setHighlights(highlights: Node[]): void
