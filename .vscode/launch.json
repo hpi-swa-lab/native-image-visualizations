@@ -9,6 +9,18 @@
       "args": ["--extensionDevelopmentPath=${workspaceFolder}/language-server/vscode_extension"],
       "outFiles": ["${workspaceFolder}/language-server/vscode_extension/out/**/*.js"],
       "preLaunchTask": "${defaultBuildTask}"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest: current file",
+      //"env": { "NODE_ENV": "test" },
+      "program": "${workspaceFolder}/observatory/node_modules/.bin/jest",
+      "args": ["${fileBasenameNoExtension}", "--config", "observatory/jest.config.js"],
+      "console": "integratedTerminal",
+      "windows": {
+        "program": "${workspaceFolder}/observatory/node_modules/jest/bin/jest"
+      }
     }
   ]
 }
