@@ -1,15 +1,15 @@
+import { HIERARCHY_NAME_SEPARATOR } from '../globals'
 import { UniverseIndex } from '../SharedTypes/Indices'
 import { Bytes } from '../SharedTypes/Size'
-import { HIERARCHY_NAME_SEPARATOR } from '../globals'
 
 export const INVALID_SIZE: Bytes = -1
 
 export class Node {
     protected _name: string
+    protected _parent: Node | undefined
     protected readonly _children: Node[]
     protected _codeSize: Bytes = INVALID_SIZE
-    protected _parent: Node | undefined
-    protected _occursIn: UniverseIndex[] = []
+    protected _occursIn: Map<UniverseIndex, Node> = new Map()
 
     constructor(
         name: string,
@@ -30,26 +30,22 @@ export class Node {
         return this._name
     }
 
-    get children(): Node[] {
-        return this._children
+    get identifier(): string {
+        let path = this.name
+        let parent: Node | undefined = this.parent
+        while (parent != undefined) {
+            path = parent.name + HIERARCHY_NAME_SEPARATOR + path
+            parent = parent.parent
+        }
+        return path
     }
 
     get parent(): Node | undefined {
         return this._parent
     }
 
-    get identifier(): string {
-        let path = this.name
-        let root: Node | undefined = this.parent
-        while (root != undefined) {
-            path = root.name + HIERARCHY_NAME_SEPARATOR + path
-            root = root.parent
-        }
-        return path
-    }
-
-    get inline(): boolean {
-        return this.codeSize <= 0
+    get children(): Node[] {
+        return this._children
     }
 
     get codeSize(): Bytes {
@@ -62,16 +58,16 @@ export class Node {
         return this._codeSize
     }
 
-    get occursIn(): UniverseIndex[] {
+    get occursIn(): Map<UniverseIndex, Node> {
         return this._occursIn
-    }
-
-    set occursIn(indexes: UniverseIndex[]) {
-        this._occursIn = indexes
     }
 
     set parent(newParent: Node | undefined) {
         this._parent = newParent
+    }
+
+    set occursIn(occursIn: Map<UniverseIndex, Node>) {
+        this._occursIn = occursIn
     }
 
     public push(...children: Node[]): number {
@@ -103,22 +99,29 @@ export class Node {
 
     public equals(another: Node): boolean {
         return (
-            this.name === another.name &&
-            this.parent === another.parent &&
-            this.codeSize == another.codeSize &&
-            this.children === another.children
+            this === another ||
+            (this.equalsComparingOnlyParents(another) && this.equalsIgnoringParents(another))
         )
     }
-
-    public is(another: Node): boolean {
+    private equalsComparingOnlyParents(another: Node): boolean {
+        if (this.parent === undefined && another.parent === undefined) return true
+        if (this.parent === undefined || another.parent === undefined) return false
         return (
-            Object.is(this.name, another.name) &&
-            Object.is(
-                JSON.stringify(this.occursIn.sort()),
-                JSON.stringify(another.occursIn.sort())
-            ) &&
-            Object.is(this.children.length, another.children.length) &&
-            this.children.every((child, index) => child.is(another.children[index]))
+            this.parent.name == another.parent.name &&
+            this.parent.equalsComparingOnlyParents(another.parent)
+        )
+    }
+    private equalsIgnoringParents(another: Node): boolean {
+        return (
+            this.name === another.name &&
+            this.codeSize === another.codeSize &&
+            this.occursIn.size == another.occursIn.size &&
+            Array.from(this.occursIn.entries()).every(([index, node]) => {
+                const other = another.occursIn.get(index)
+                return other && node.equals(other)
+            }) &&
+            this.children.length === another.children.length &&
+            this.children.every((child, i) => child.equalsIgnoringParents(another.children[i]))
         )
     }
 }
