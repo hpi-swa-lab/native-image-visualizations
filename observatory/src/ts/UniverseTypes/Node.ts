@@ -97,10 +97,6 @@ export class Node {
         return toRemove
     }
 
-    public get(childName: string): Node | undefined {
-        return this.children.find((child) => child.name == childName)
-    }
-
     public equals(another: Node): boolean {
         return (
             this === another ||

@@ -25,19 +25,19 @@ describe('Tree Merger', () => {
         const merged = mergeTrees(c, d)
         const expected = node('', new Map(), [
             node('packageA', new Map([[0, c]]), [
-                node('ClassA', new Map([[0, c.get('ClassA')!]])),
-                node('ClassX', new Map([[0, c.get('ClassX')!]])),
-                node('ClassY', new Map([[0, c.get('ClassY')!]]))
+                node('ClassA', new Map([[0, c.children[0]]])),
+                node('ClassX', new Map([[0, c.children[1]]])),
+                node('ClassY', new Map([[0, c.children[2]]]))
             ]),
             node('packageB', new Map([[1, d]]), [
-                node('ClassA', new Map([[1, d.get('ClassA')!]]), [
-                    node('methodAA', new Map([[1, d.get('ClassA')!.get('methodAA')!]]))
+                node('ClassA', new Map([[1, d.children[0]]]), [
+                    node('methodAA', new Map([[1, d.children[0].children[0]]]))
                 ]),
-                node('ClassX', new Map([[1, d.get('ClassX')!]]), [
-                    node('methodXA', new Map([[1, d.get('ClassX')!.get('methodXA')!]]))
+                node('ClassX', new Map([[1, d.children[1]]]), [
+                    node('methodXA', new Map([[1, d.children[1].children[0]]]))
                 ]),
-                node('ClassY', new Map([[1, d.get('ClassY')!]]), [
-                    node('methodYA', new Map([[1, d.get('ClassY')!.get('methodYA')!]]))
+                node('ClassY', new Map([[1, d.children[2]]]), [
+                    node('methodYA', new Map([[1, d.children[2].children[0]]]))
                 ])
             ])
         ])
@@ -51,11 +51,11 @@ describe('Tree Merger', () => {
         const merged = mergeTrees(a)
         const expected = node('', new Map(), [
             node('packageA', new Map([[0, a]]), [
-                node('ClassA', new Map([[0, a.get('ClassA')!]]), [
-                    node('methodAA', new Map([[0, a.get('ClassA')!.get('methodAA')!]]))
+                node('ClassA', new Map([[0, a.children[0]]]), [
+                    node('methodAA', new Map([[0, a.children[0].children[0]]]))
                 ]),
-                node('ClassB', new Map([[0, a.get('ClassB')!]]), [
-                    node('methodBA', new Map([[0, a.get('ClassB')!.get('methodBA')!]]))
+                node('ClassB', new Map([[0, a.children[1]]]), [
+                    node('methodBA', new Map([[0, a.children[1].children[0]]]))
                 ])
             ])
         ])
@@ -78,15 +78,15 @@ describe('Tree Merger', () => {
                     node(
                         'ClassA',
                         new Map([
-                            [0, a.get('ClassA')!],
-                            [1, a.get('ClassA')!]
+                            [0, a.children[0]],
+                            [1, a.children[0]]
                         ]),
                         [
                             node(
                                 'methodAA',
                                 new Map([
-                                    [0, a.get('ClassA')!.get('methodAA')!],
-                                    [1, a.get('ClassA')!.get('methodAA')!]
+                                    [0, a.children[0].children[0]],
+                                    [1, a.children[0].children[0]]
                                 ])
                             )
                         ]
@@ -94,15 +94,15 @@ describe('Tree Merger', () => {
                     node(
                         'ClassB',
                         new Map([
-                            [0, a.get('ClassB')!],
-                            [1, a.get('ClassB')!]
+                            [0, a.children[1]],
+                            [1, a.children[1]]
                         ]),
                         [
                             node(
                                 'methodBA',
                                 new Map([
-                                    [0, a.get('ClassB')!.get('methodBA')!],
-                                    [1, a.get('ClassB')!.get('methodBA')!]
+                                    [0, a.children[1].children[0]],
+                                    [1, a.children[1].children[0]]
                                 ])
                             )
                         ]
@@ -130,19 +130,19 @@ describe('Tree Merger', () => {
                     node(
                         'ClassA',
                         new Map([
-                            [0, a.get('ClassA')!],
-                            [1, b.get('ClassA')!]
+                            [0, a.children[0]],
+                            [1, b.children[0]]
                         ]),
                         [
-                            node('methodAA', new Map([[0, a.get('ClassA')!.get('methodAA')!]])),
-                            node('methodAC', new Map([[1, b.get('ClassA')!.get('methodAC')!]]))
+                            node('methodAA', new Map([[0, a.children[0].children[0]]])),
+                            node('methodAC', new Map([[1, b.children[0].children[0]]]))
                         ]
                     ),
-                    node('ClassB', new Map([[0, a.get('ClassB')!]]), [
-                        node('methodBA', new Map([[0, a.get('ClassB')!.get('methodBA')!]]))
+                    node('ClassB', new Map([[0, a.children[1]]]), [
+                        node('methodBA', new Map([[0, a.children[1].children[0]]]))
                     ]),
-                    node('ClassC', new Map([[1, b.get('ClassC')!]]), [
-                        node('methodCA', new Map([[1, b.get('ClassC')!.get('methodCA')!]]))
+                    node('ClassC', new Map([[1, b.children[1]]]), [
+                        node('methodCA', new Map([[1, b.children[1].children[0]]]))
                     ])
                 ]
             )
@@ -173,23 +173,23 @@ describe('Tree Merger', () => {
                     node(
                         'ClassA',
                         new Map([
-                            [0, a.get('ClassA')!],
-                            [1, b.get('ClassA')!],
-                            [2, c.get('ClassA')!]
+                            [0, a.children[0]],
+                            [1, b.children[0]],
+                            [2, c.children[0]]
                         ]),
                         [
-                            node('methodAA', new Map([[0, a.get('ClassA')!.get('methodAA')!]])),
-                            node('methodAC', new Map([[1, b.get('ClassA')!.get('methodAC')!]]))
+                            node('methodAA', new Map([[0, a.children[0].children[0]]])),
+                            node('methodAC', new Map([[1, b.children[0].children[0]]]))
                         ]
                     ),
-                    node('ClassB', new Map([[0, a.get('ClassB')!]]), [
-                        node('methodBA', new Map([[0, a.get('ClassB')!.get('methodBA')!]]))
+                    node('ClassB', new Map([[0, a.children[1]]]), [
+                        node('methodBA', new Map([[0, a.children[1].children[0]]]))
                     ]),
-                    node('ClassC', new Map([[1, b.get('ClassC')!]]), [
-                        node('methodCA', new Map([[1, b.get('ClassC')!.get('methodCA')!]]))
+                    node('ClassC', new Map([[1, b.children[1]]]), [
+                        node('methodCA', new Map([[1, b.children[1].children[0]]]))
                     ]),
-                    node('ClassX', new Map([[2, c.get('ClassX')!]])),
-                    node('ClassY', new Map([[2, c.get('ClassY')!]]))
+                    node('ClassX', new Map([[2, c.children[1]]])),
+                    node('ClassY', new Map([[2, c.children[2]]]))
                 ]
             )
         ])
@@ -218,31 +218,31 @@ describe('Tree Merger', () => {
                     node(
                         'ClassA',
                         new Map([
-                            [0, a.get('ClassA')!],
-                            [1, b.get('ClassA')!]
+                            [0, a.children[0]],
+                            [1, b.children[0]]
                         ]),
                         [
-                            node('methodAA', new Map([[0, a.get('ClassA')!.get('methodAA')!]])),
-                            node('methodAC', new Map([[1, b.get('ClassA')!.get('methodAC')!]]))
+                            node('methodAA', new Map([[0, a.children[0].children[0]]])),
+                            node('methodAC', new Map([[1, b.children[0].children[0]]]))
                         ]
                     ),
-                    node('ClassB', new Map([[0, a.get('ClassB')!]]), [
-                        node('methodBA', new Map([[0, a.get('ClassB')!.get('methodBA')!]]))
+                    node('ClassB', new Map([[0, a.children[1]]]), [
+                        node('methodBA', new Map([[0, a.children[1].children[0]]]))
                     ]),
-                    node('ClassC', new Map([[1, b.get('ClassC')!]]), [
-                        node('methodCA', new Map([[1, b.get('ClassC')!.get('methodCA')!]]))
+                    node('ClassC', new Map([[1, b.children[1]]]), [
+                        node('methodCA', new Map([[1, b.children[1].children[0]]]))
                     ])
                 ]
             ),
             node('packageB', new Map([[2, d]]), [
-                node('ClassA', new Map([[2, d.get('ClassA')!]]), [
-                    node('methodAA', new Map([[2, d.get('ClassA')!.get('methodAA')!]]))
+                node('ClassA', new Map([[2, d.children[0]]]), [
+                    node('methodAA', new Map([[2, d.children[0].children[0]]]))
                 ]),
-                node('ClassX', new Map([[2, d.get('ClassX')!]]), [
-                    node('methodXA', new Map([[2, d.get('ClassX')!.get('methodXA')!]]))
+                node('ClassX', new Map([[2, d.children[1]]]), [
+                    node('methodXA', new Map([[2, d.children[1].children[0]]]))
                 ]),
-                node('ClassY', new Map([[2, d.get('ClassY')!]]), [
-                    node('methodYA', new Map([[2, d.get('ClassY')!.get('methodYA')!]]))
+                node('ClassY', new Map([[2, d.children[2]]]), [
+                    node('methodYA', new Map([[2, d.children[2].children[0]]]))
                 ])
             ])
         ])
