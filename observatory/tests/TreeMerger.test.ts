@@ -130,10 +130,9 @@ describe('Tree Merger', () => {
 
     test('merging trees should not affect original values', () => {
         const treeA = clone(forest.overlappingTreeA)
-        // expect(treeA).toEqual(forest.overlappingTreeA)
         const treeB = clone(forest.overlappingTreeB)
         mergeTrees(forest.overlappingTreeA, forest.overlappingTreeB)
         expect(treeA.equals(forest.overlappingTreeA)).toBeTruthy()
-        // expect(treeA.equals(forest.overlappingTreeA)).toBeTruthy()
+        expect(treeB.equals(forest.overlappingTreeB)).toBeTruthy()
     })
 })
