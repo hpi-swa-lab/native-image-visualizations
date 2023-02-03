@@ -9,15 +9,15 @@ export function mergeTrees(...trees: Node[]): Node {
 }
 
 function mergeNode(mergedTree: Node, node: Node, treeIndex: UniverseIndex) {
-    const matchingChild = mergedTree.children.find((mergedChild) => mergedChild.name === node.name)
+    const mergedChild = mergedTree.get(node.name)
 
-    if (!matchingChild) {
+    if (!mergedChild) {
         const nodeToMerge = cloneNode(node)
-        setOccursInRecursive(nodeToMerge, treeIndex)
+        setOccursInRecursive(nodeToMerge, treeIndex, node)
         mergedTree.push(nodeToMerge)
     } else {
-        matchingChild.occursIn.set(treeIndex, node)
-        node.children.forEach((ownChild) => mergeNode(matchingChild, ownChild, treeIndex))
+        mergedChild.occursIn.set(treeIndex, node)
+        node.children.forEach((ownChild) => mergeNode(mergedChild, ownChild, treeIndex))
     }
 }
 
@@ -32,7 +32,7 @@ function cloneNode(node: Node): Node {
     return cloned
 }
 
-function setOccursInRecursive(node: Node, index: UniverseIndex): void {
-    node.occursIn = new Map([[index, node]])
-    node.children.forEach((child) => setOccursInRecursive(child, index))
+function setOccursInRecursive(node: Node, index: UniverseIndex, original: Node): void {
+    node.occursIn = new Map([[index, original]])
+    node.children.forEach((child) => setOccursInRecursive(child, index, original.get(child.name)!))
 }
