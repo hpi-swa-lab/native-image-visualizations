@@ -1,26 +1,15 @@
 <script setup lang="ts">
-import ToggleSwitch from './ToggleSwitch.vue'
 import type { PropType } from 'vue'
 
-import ColorLabel from './ColorLabel.vue'
-import * as d3 from 'd3'
-import {
-    COLOR_GREEN,
-    COLOR_MODIFIED,
-    COLOR_RED,
-    COLOR_UNMODIFIED,
-    UNMODIFIED
-} from '../../ts/Visualizations/SankeyTreeConstants'
 import AlertBox from './AlertBox.vue'
 import SortingFilterFieldset from './SortingFilterFieldset.vue'
 import { NodesFilter } from '../../ts/SharedTypes/NodesFilter'
 import { SortingOption, SortingOrder } from '../../ts/enums/Sorting'
 import { EventType } from '../../ts/enums/EventType.js'
+import DiffingUniversesFilterFieldset from "./DiffingUniversesFilterFieldset.vue";
+import {UniverseProps} from "../../ts/interfaces/UniverseProps";
+import {COLOR_GREEN, COLOR_RED} from "../../ts/constants/SankeyTreeConstants";
 
-type UniverseProps = {
-    name: string
-    color: d3.Color
-}
 
 const SHORTCUTS = ['shift+click on node expands branch']
 
@@ -28,30 +17,28 @@ const SHORTCUTS = ['shift+click on node expands branch']
 // cannot use defaultWith() with Objects
 const props = defineProps({
     universesMetadata: {
-        type: Object as PropType<Record<string, UniverseProps>>,
-        default: () => {
-            return {
-                '0': { name: 'Universe1', color: COLOR_RED },
-                '1': { name: 'Universe2', color: COLOR_GREEN }
-            }
+        type: Object as PropType<Record<number, UniverseProps>>,
+        default: () => { return {
+          '0': { name: 'Universe1', color: COLOR_RED },
+          '1': { name: 'Universe2', color: COLOR_GREEN },
+        } }
+    },
+    filter: {
+      type: Object as PropType<NodesFilter>,
+      default: () => {
+        return {
+          diffing: {
+            universes: new Set(['0', '1']),
+            showUnmodified: false
+          },
+          sorting: {
+            option: SortingOption.NAME,
+            order: SortingOrder.ASCENDING
+          }
         }
+      }
     }
 })
-
-const filter: NodesFilter = {
-    diffing: {
-        universes: new Set(['0', '1']),
-        showUnmodified: false
-    },
-    sorting: {
-        option: SortingOption.NAME,
-        order: SortingOrder.ASCENDING
-    }
-}
-
-function getFilteredKeys(): string[] {
-    return Object.keys(props.universesMetadata).filter((key) => key.length == 1)
-}
 
 function onUpdate(e: MouseEvent): void {
     e.preventDefault()
@@ -65,34 +52,12 @@ function onUpdate(e: MouseEvent): void {
             <b>Controls</b>
 
             <!--      DIFFING FILTER-->
-            <fieldset class="border rounded p-2 w-auto">
-                <legend class="w-auto float-none p-2 fs-5">Universes to display:</legend>
-
-                <!--        TODO #39 check defaults-->
-                <ToggleSwitch
-                    v-for="key in getFilteredKeys()"
-                    :id="key"
-                    :key="key"
-                    :value="universesMetadata[key].name"
-                >
-                    <ColorLabel
-                        :value="universesMetadata[key].name"
-                        :color="universesMetadata[key].color.formatHex()"
-                    ></ColorLabel>
-                </ToggleSwitch>
-
-                <ToggleSwitch :id="UNMODIFIED" value="unmodified packages">
-                    <ColorLabel
-                        value="unmodified packages"
-                        :color="COLOR_UNMODIFIED.formatHex()"
-                    ></ColorLabel>
-                </ToggleSwitch>
-
-                <ColorLabel
-                    value="modified packages"
-                    :color="COLOR_MODIFIED.formatHex()"
-                ></ColorLabel>
-            </fieldset>
+            <DiffingUniversesFilterFieldset
+                :diffing-filter="filter.diffing"
+                :universes-metadata="universesMetadata"
+                @show-unmodified-changed="filter.diffing.showUnmodified = $event"
+                @selection-changed="filter.diffing.universes = $event"
+            ></DiffingUniversesFilterFieldset>
 
             <!--      SORTING FILTER -->
             <SortingFilterFieldset
