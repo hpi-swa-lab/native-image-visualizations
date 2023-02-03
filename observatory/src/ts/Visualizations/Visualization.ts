@@ -9,14 +9,10 @@ import { Universe } from '../UniverseTypes/Universe'
  * - You are also expected to do the visualization setup in the constructor.
  */
 export interface Visualization {
+    setUniverses(universes: Universe[]): void
+
     selection: Node[]
     setSelection(selection: Node[]): void
-}
 
-export interface UniverseVisualization extends Visualization {
-    setUniverse(universe: Universe): void
-}
-
-export interface MultiverseVisualization extends Visualization {
-    setMultiverse(multiverse: Universe[]): void
+    setHighlights(highlights: Node[]): void
 }
