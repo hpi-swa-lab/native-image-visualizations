@@ -11,39 +11,17 @@ export interface VennSet {
 }
 
 export function toVennPartitions(mergedTree: Node): VennPartitions {
-    // next todo: from powersets, get number of elements in each bucket and map to venn set
-    // the sets are, indeed, inclusive!
-    /*
-    const sets = [
-  { sets: ['A'], size: 12 },
-  { sets: ['B'], size: 12 },
-  { sets: ['A', 'B'], size: 2 },
-    ];
-
-    let solution = venn.venn(sets)
-    console.log(solution)
-    solution = venn.normalizeSolution(solution, Math.PI / 2, undefined );
-    console.log(solution)
-
-
-    let circles = venn.scaleSolution(solution, 100, 100, 20, null);
-    let textCentres = venn.computeTextCentres(circles, sets, false);
-    console.log(textCentres)*/
-
     const powerSetCache = new Map<string, string[]>()
     const inclusiveCounts = new Map<string, number>()
     const exclusiveCounts = new Map<string, number>()
     mergedTree.children.forEach(countIn)
 
     function countIn(node: Node): void {
-        const intersection = JSON.stringify(Array.from(node.occursIn.keys()))
+        const occurences = Array.from(node.occursIn.keys())
+        const intersection = JSON.stringify(occurences)
         exclusiveCounts.set(intersection, (exclusiveCounts.get(intersection) ?? 0) + 1)
 
-        const combinations = hitOrCalculateOnMiss(
-            Array.from(node.occursIn.keys()),
-            intersection,
-            powerSetCache
-        )
+        const combinations = hitOrCalculateOnMiss(occurences, intersection, powerSetCache)
         combinations.forEach((combination) =>
             inclusiveCounts.set(combination, (inclusiveCounts.get(combination) ?? 0) + 1)
         )
