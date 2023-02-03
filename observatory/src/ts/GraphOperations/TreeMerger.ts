@@ -1,4 +1,4 @@
-const clone = require('clone')
+import clone from 'clone'
 import { UniverseIndex } from '../SharedTypes/Indices'
 import { Node } from './../UniverseTypes/Node'
 
