@@ -1,5 +1,4 @@
 import { Node } from '../UniverseTypes/Node'
-import { Universe } from '../UniverseTypes/Universe'
 
 /**
  * Side Notes:
@@ -7,9 +6,14 @@ import { Universe } from '../UniverseTypes/Universe'
  * - You are expected to get the initial data via the constructor.
  *   This cannot be modelled with interfaces.
  * - You are also expected to do the visualization setup in the constructor.
+ * - The selection and highlight always contain nodes of the merged multiverse.
  */
 export interface Visualization {
-    setUniverses(universes: Universe[]): void
+    /**
+     * Accepts a merged tree where each node references the corresponding trees
+     * in the original universes.
+     */
+    setMultiverse(multiverse: Node): void
 
     selection: Node[]
     setSelection(selection: Node[]): void
