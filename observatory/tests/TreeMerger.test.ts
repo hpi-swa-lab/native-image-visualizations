@@ -125,7 +125,7 @@ describe('Tree Merger', () => {
             ])
         ])
 
-        expect(merged.equals(expected as never)).toBeTruthy()
+        expect(merged.equals(expected)).toBeTruthy()
     })
 
     test('merging trees should not affect original values', () => {
