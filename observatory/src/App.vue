@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import Home from './components/Home.vue'
+import CausalityGraph from './components/visualizations/CausalityGraph.vue'
 import SankeyTree from './components/visualizations/SankeyTree.vue'
-import { VisualizationType } from './ts/enums/VisualizationType'
 import TreeLine from './components/visualizations/TreeLine.vue'
 import Venn from './components/visualizations/VennSets.vue'
-import CausalityGraph from './components/visualizations/CausalityGraph.vue'
-import Home from './components/Home.vue'
+import { VisualizationType } from './ts/enums/VisualizationType'
 
 const currentVisualization = ref<number>()
 const handleChangeViz = (value: number) => {

@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals'
+import { HIERARCHY_NAME_SEPARATOR } from '../src/ts/globals'
 import { InitKind, Leaf } from '../src/ts/UniverseTypes/Leaf'
 import { Node } from '../src/ts/UniverseTypes/Node'
-import { HIERARCHY_NAME_SEPARATOR } from '../src/ts/globals'
 import { forest } from './data/forest'
 
 describe('Node usage', () => {
@@ -63,24 +63,12 @@ describe('Node usage', () => {
         forest.layeredTree.children.every((child) => expect(child).not.toEqual(forest.method))
     })
 
-    test('childless root should be inline', () => {
-        expect(forest.childlessRoot.inline).toBeTruthy()
-    })
-
     test('leaf with positive code size is not considered inlined', () => {
-        expect(forest.method.inline).toBeFalsy()
+        expect(forest.method.isInline).toBeFalsy()
     })
 
     test('leaf with 0 code size is inlined', () => {
-        expect(new Leaf('Method', 0, InitKind.BUILD_TIME).inline).toBeTruthy()
-    })
-
-    test('simple tree should not be inlined as at least one children is not inlined', () => {
-        expect(forest.simpleTree.inline).toBeFalsy()
-    })
-
-    test('complex tree should not be inlined as at least one children is not inlined', () => {
-        expect(forest.layeredTree.inline).toBeFalsy()
+        expect(new Leaf('Method', 0, InitKind.BUILD_TIME).isInline).toBeTruthy()
     })
 
     test('childless root returns its name for identifier', () => {
@@ -97,7 +85,7 @@ describe('Node usage', () => {
         )
     })
 
-    test('is should be true for same values and children', () => {
+    test('equals should be true for same values and children', () => {
         const simpleTreeCopy = new Node('Class', [
             new Leaf('methodA', 10, InitKind.BUILD_TIME),
             new Leaf('methodB', 7, InitKind.BUILD_TIME),
@@ -106,10 +94,10 @@ describe('Node usage', () => {
             new Leaf('methodE', 0, InitKind.BUILD_TIME),
             new Leaf('methodF', 10, InitKind.BUILD_TIME)
         ])
-        expect(simpleTreeCopy.is(forest.simpleTree)).toBeTruthy()
+        expect(simpleTreeCopy.equals(forest.simpleTree)).toBeTruthy()
     })
 
-    test('is should be false if one child differs', () => {
+    test('equals should be false if one child differs', () => {
         const simpleTreeCopy = new Node('Class', [
             new Leaf('methodA', 18, InitKind.BUILD_TIME),
             new Leaf('methodB', 7, InitKind.BUILD_TIME),
@@ -118,31 +106,62 @@ describe('Node usage', () => {
             new Leaf('methodE', 0, InitKind.BUILD_TIME),
             new Leaf('methodF', 10, InitKind.BUILD_TIME)
         ])
-        expect(simpleTreeCopy.is(forest.simpleTree)).toBeFalsy()
+        expect(simpleTreeCopy.equals(forest.simpleTree)).toBeFalsy()
     })
 
-    test('is should be true for only root without leaves', () => {
+    test('equals should be true for only root without leaves', () => {
         const childlessRootCopy = new Node('Native Image')
-        expect(childlessRootCopy.is(forest.childlessRoot)).toBeTruthy()
+        expect(childlessRootCopy.equals(forest.childlessRoot)).toBeTruthy()
     })
 
-    test('is should be true for permutation of occursIn', () => {
+    test('equals should be true for permutation of occursIn', () => {
         const nodeA = new Node('ClassA', [new Leaf('methodA', 10, InitKind.BUILD_TIME)])
         const nodeB = new Node('ClassA', [new Leaf('methodA', 10, InitKind.BUILD_TIME)])
-        nodeA.occursIn = [0, 1, 2, 3]
-        nodeA.children[0].occursIn = [1, 2, 3]
-        nodeB.occursIn = [2, 1, 0, 3]
-        nodeB.children[0].occursIn = [2, 3, 1]
+        const dummy = new Node('dummy')
+        nodeA.occursIn = new Map([
+            [0, dummy],
+            [1, dummy],
+            [2, dummy],
+            [3, dummy]
+        ])
+        nodeA.children[0].occursIn = new Map([
+            [1, dummy],
+            [2, dummy],
+            [3, dummy]
+        ])
+        nodeB.occursIn = new Map([
+            [2, dummy],
+            [1, dummy],
+            [0, dummy],
+            [3, dummy]
+        ])
+        nodeB.children[0].occursIn = new Map([
+            [2, dummy],
+            [3, dummy],
+            [1, dummy]
+        ])
 
-        expect(nodeA.is(nodeB)).toBeTruthy()
+        expect(nodeA.equals(nodeB)).toBeTruthy()
     })
 
-    test('is should be false for different number children', () => {
+    test('equals should be false for different number children', () => {
         const simpleTreeCopy = new Node('Class', [
             new Leaf('methodA', 10, InitKind.BUILD_TIME),
             new Leaf('methodB', 7, InitKind.BUILD_TIME),
             new Leaf('methodC', 5, InitKind.RERUN)
         ])
-        expect(simpleTreeCopy.is(forest.simpleTree)).toBeFalsy()
+        expect(simpleTreeCopy.equals(forest.simpleTree)).toBeFalsy()
+    })
+
+    test('equals should be false for different parents', () => {
+        const treeACopyWithDifferentPackageName = new Node('packageFlub', [
+            new Node('ClassA', [new Node('methodAA')]),
+            new Node('ClassB', [new Node('methodBA')])
+        ])
+        expect(
+            treeACopyWithDifferentPackageName.children[0].equals(
+                forest.overlappingTreeA.children[0]
+            )
+        ).toBeFalsy()
     })
 })

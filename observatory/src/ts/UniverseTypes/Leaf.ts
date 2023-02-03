@@ -30,6 +30,10 @@ export class Leaf extends Node {
         this._initKind = initKind
     }
 
+    get isInline(): boolean {
+        return this.codeSize <= 0
+    }
+
     get isReflective(): boolean {
         return this._isReflective
     }
@@ -49,25 +53,10 @@ export class Leaf extends Node {
     public equals(another: Leaf): boolean {
         return (
             super.equals(another) &&
-            this.isSynthetic === another.isSynthetic &&
-            this.isJni === another.isJni &&
             this.isReflective === another.isReflective &&
+            this.isJni === another.isJni &&
+            this.isSynthetic === another.isSynthetic &&
             this.initKind === another.initKind
-        )
-    }
-
-    public is(another: Leaf): boolean {
-        return (
-            Object.is(this.name, another.name) &&
-            Object.is(
-                JSON.stringify(this.occursIn.sort()),
-                JSON.stringify(another.occursIn.sort())
-            ) &&
-            Object.is(this.codeSize, another.codeSize) &&
-            Object.is(this.isSynthetic, another.isSynthetic) &&
-            Object.is(this.isJni, another.isJni) &&
-            Object.is(this.isReflective, another.isReflective) &&
-            Object.is(this.initKind, another.initKind)
         )
     }
 }
