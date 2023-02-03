@@ -8,7 +8,7 @@ import { SortingOption, SortingOrder } from '../../ts/enums/Sorting'
 import { EventType } from '../../ts/enums/EventType.js'
 import DiffingUniversesFilterFieldset from './DiffingUniversesFilterFieldset.vue'
 import { UniverseProps } from '../../ts/interfaces/UniverseProps'
-import { COLOR_GREEN, COLOR_RED } from '../../ts/constants/SankeyTreeConstants'
+import { COLOR_GREEN, COLOR_RED } from '../../ts/constants/ColorPalette'
 
 const SHORTCUTS = ['shift+click on node expands branch']
 
