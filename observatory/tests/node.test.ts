@@ -152,4 +152,16 @@ describe('Node usage', () => {
         ])
         expect(simpleTreeCopy.equals(forest.simpleTree)).toBeFalsy()
     })
+
+    test('equals should be false for different parents', () => {
+        const treeACopyWithDifferentPackageName = new Node('packageFlub', [
+            new Node('ClassA', [new Node('methodAA')]),
+            new Node('ClassB', [new Node('methodBA')])
+        ])
+        expect(
+            treeACopyWithDifferentPackageName.children[0].equals(
+                forest.overlappingTreeA.children[0]
+            )
+        ).toBeFalsy()
+    })
 })
