@@ -107,7 +107,7 @@ export class Node {
             (this.equalsComparingOnlyParents(another) && this.equalsIgnoringParents(another))
         )
     }
-    equalsComparingOnlyParents(another: Node): boolean {
+    private equalsComparingOnlyParents(another: Node): boolean {
         if (this.parent === undefined && another.parent === undefined) return true
         if (this.parent === undefined || another.parent === undefined) return false
         return (
@@ -115,7 +115,7 @@ export class Node {
             this.parent.equalsComparingOnlyParents(another.parent)
         )
     }
-    equalsIgnoringParents(another: Node): boolean {
+    private equalsIgnoringParents(another: Node): boolean {
         return (
             this.name === another.name &&
             this.codeSize === another.codeSize &&
