@@ -36,10 +36,14 @@ export function toVennPartitions(mergedTree: Node): VennPartitions {
     mergedTree.children.forEach(countIn)
 
     function countIn(node: Node): void {
-        const intersection = JSON.stringify(node.occursIn)
+        const intersection = JSON.stringify(Array.from(node.occursIn.keys()))
         exclusiveCounts.set(intersection, (exclusiveCounts.get(intersection) ?? 0) + 1)
 
-        const combinations = hitOrCalculateOnMiss(node.occursIn, intersection, powerSetCache)
+        const combinations = hitOrCalculateOnMiss(
+            Array.from(node.occursIn.keys()),
+            intersection,
+            powerSetCache
+        )
         combinations.forEach((combination) =>
             inclusiveCounts.set(combination, (inclusiveCounts.get(combination) ?? 0) + 1)
         )
@@ -59,13 +63,9 @@ export function powerSet(l: unknown[]): unknown[][] {
         if (list.length === 0) {
             return [[]]
         }
-        const head = list.pop()
-        const tailPS = ps(list)
-        return tailPS.concat(
-            tailPS.map(function (e) {
-                return [head].concat(e)
-            })
-        )
+        const head: unknown = list.pop()
+        const tailPS: unknown[][] = ps(list)
+        return tailPS.concat(tailPS.map((e: unknown[]) => [...e, head]))
     })(l.slice())
 }
 
@@ -86,5 +86,5 @@ function hitOrCalculateOnMiss(combinees: number[], key: string, cache: Map<strin
 function toVennSets(counts: Map<string, number>): VennSet[] {
     return Array.from(counts, ([combination, count]) => {
         return { sets: JSON.parse(combination), size: count }
-    })
+    }).sort((a, b) => a.sets.length - b.sets.length)
 }
