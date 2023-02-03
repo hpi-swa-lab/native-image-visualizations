@@ -96,24 +96,23 @@ export class Node {
     }
 
     public equals(another: Node): boolean {
-        if (!this.equalsIgnoringChildren(another)) return false
-        if (this.children.length !== another.children.length) return false
-        for (let i = 0; i < this.children.length; i++) {
-            if (!this.children[i].equals(another.children[i])) return false
-        }
-        return true
+        return this.equalsParents(another) && this.equalsIgnoringParent(another)
     }
-    /// Like equals, but only compares the parent chain, not children.
-    equalsIgnoringChildren(another: Node): boolean {
-        if (
-            this.name !== another.name ||
-            (this.codeSize !== another.codeSize &&
-                new Set(Array.from(this.occursIn.keys())) !==
-                    new Set(Array.from(another.occursIn.keys())))
-        )
-            return false
+    equalsParents(another: Node): boolean {
         if (this.parent === undefined && another.parent === undefined) return true
         if (this.parent === undefined || another.parent === undefined) return false
-        return this.parent.equalsIgnoringChildren(another.parent)
+        return this.parent.equalsParents(another.parent)
+    }
+    equalsIgnoringParent(another: Node): boolean {
+        const ourOccursInKeys = new Set(Array.from(this.occursIn.keys()))
+        const otherOccursInKeys = new Set(Array.from(another.occursIn.keys()))
+        return (
+            this.name === another.name &&
+            this.codeSize === another.codeSize &&
+            ourOccursInKeys.size == otherOccursInKeys.size &&
+            [...ourOccursInKeys].every(otherOccursInKeys.has) &&
+            this.children.length === another.children.length &&
+            this.children.every((child, i) => child.equalsIgnoringParent(another.children[i]))
+        )
     }
 }
