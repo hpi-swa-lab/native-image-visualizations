@@ -11,6 +11,12 @@ function node(name: string, occursIn: Map<UniverseIndex, Node>, children: Node[]
     return node
 }
 
+// In the tests below, we traverse into the hardcoded trees using something like
+// `a.get('ClassA')`. While this retrieval of nodes may fail in the general
+// sense, our trees are hardcoded and we know exactly what classes and methods
+// they contain. That's why we use the null-assertion operator in those cases.
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+
 describe('Tree Merger', () => {
     test('Two trees without overlap stay separated in result', () => {
         const c = forest.overlappingTreeC
