@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import {EventType} from "../../ts/enums/EventType";
+import { EventType } from '../../ts/enums/EventType'
 
-const props = withDefaults(
+withDefaults(
     defineProps<{
         id: string
         value: string
@@ -13,13 +13,18 @@ const props = withDefaults(
         checked: false
     }
 )
-
-let test = props.checked
 </script>
 
 <template>
     <div>
-        <input :id="id" :value="value" type="checkbox" class="mr-1" :checked="checked" @changed="$emit(EventType.CHANGED, value)">
+        <input
+            :id="id"
+            :value="value"
+            type="checkbox"
+            class="mr-1"
+            :checked="checked"
+            @changed="$emit(EventType.CHANGED, value)"
+        />
         <slot></slot>
     </div>
 </template>
