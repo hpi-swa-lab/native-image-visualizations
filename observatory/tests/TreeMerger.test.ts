@@ -1,9 +1,9 @@
 import { describe, expect, test } from '@jest/globals'
+import clone from 'clone'
 import { UniverseIndex } from '../src/ts/SharedTypes/Indices'
 import { Node } from '../src/ts/UniverseTypes/Node'
 import { mergeTrees } from './../src/ts/GraphOperations/TreeMerger'
 import { forest } from './data/forest'
-const clone = require('clone')
 
 function node(name: string, occursIn: UniverseIndex[], children: Node[] = []): Node {
     const n = new Node(name, children)

@@ -24,6 +24,7 @@
         "vue-router": "^4.1.6"
     },
     "devDependencies": {
+        "@types/clone": "^2.1.1",
         "@types/d3": "^7.4.0",
         "@types/jest": "^29.2.6",
         "@types/papaparse": "^5.3.7",
