@@ -33,7 +33,6 @@ function cloneNode(node: Node): Node {
 }
 
 function setOccursInRecursive(node: Node, index: UniverseIndex): void {
-    node.occursIn = new Map()
-    node.occursIn.set(index, node)
+    node.occursIn = new Map([[index, node]])
     node.children.forEach((child) => setOccursInRecursive(child, index))
 }
