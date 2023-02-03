@@ -32,10 +32,10 @@ export class Node {
 
     get identifier(): string {
         let path = this.name
-        let root: Node | undefined = this.parent
-        while (root != undefined) {
-            path = root.name + HIERARCHY_NAME_SEPARATOR + path
-            root = root.parent
+        let parent: Node | undefined = this.parent
+        while (parent != undefined) {
+            path = parent.name + HIERARCHY_NAME_SEPARATOR + path
+            parent = parent.parent
         }
         return path
     }
@@ -95,24 +95,35 @@ export class Node {
         return toRemove
     }
 
-    public equals(another: Node): boolean {
-        return this.equalsParents(another) && this.equalsIgnoringParent(another)
+    public get(childName: string): Node | undefined {
+        return this.children.find((child) => child.name == childName)
     }
-    equalsParents(another: Node): boolean {
+
+    public equals(another: Node): boolean {
+        return (
+            this === another ||
+            (this.equalsComparingOnlyParents(another) && this.equalsIgnoringParents(another))
+        )
+    }
+    equalsComparingOnlyParents(another: Node): boolean {
         if (this.parent === undefined && another.parent === undefined) return true
         if (this.parent === undefined || another.parent === undefined) return false
-        return this.parent.equalsParents(another.parent)
+        return (
+            this.parent.name == another.parent.name &&
+            this.parent.equalsComparingOnlyParents(another.parent)
+        )
     }
-    equalsIgnoringParent(another: Node): boolean {
-        const ourOccursInKeys = new Set(Array.from(this.occursIn.keys()))
-        const otherOccursInKeys = new Set(Array.from(another.occursIn.keys()))
+    equalsIgnoringParents(another: Node): boolean {
         return (
             this.name === another.name &&
             this.codeSize === another.codeSize &&
-            ourOccursInKeys.size == otherOccursInKeys.size &&
-            [...ourOccursInKeys].every(otherOccursInKeys.has) &&
+            this.occursIn.size == another.occursIn.size &&
+            Array.from(this.occursIn.entries()).every(([index, node]) => {
+                const other = another.occursIn.get(index)
+                return other && node.equals(other)
+            }) &&
             this.children.length === another.children.length &&
-            this.children.every((child, i) => child.equalsIgnoringParent(another.children[i]))
+            this.children.every((child, i) => child.equalsIgnoringParents(another.children[i]))
         )
     }
 }
