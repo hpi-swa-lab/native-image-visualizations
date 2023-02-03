@@ -30,7 +30,7 @@ export class Leaf extends Node {
         this._initKind = initKind
     }
 
-    get inline(): boolean {
+    get isInline(): boolean {
         return this.codeSize <= 0
     }
 

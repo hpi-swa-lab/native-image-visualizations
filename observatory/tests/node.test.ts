@@ -64,11 +64,11 @@ describe('Node usage', () => {
     })
 
     test('leaf with positive code size is not considered inlined', () => {
-        expect(forest.method.inline).toBeFalsy()
+        expect(forest.method.isInline).toBeFalsy()
     })
 
     test('leaf with 0 code size is inlined', () => {
-        expect(new Leaf('Method', 0, InitKind.BUILD_TIME).inline).toBeTruthy()
+        expect(new Leaf('Method', 0, InitKind.BUILD_TIME).isInline).toBeTruthy()
     })
 
     test('childless root returns its name for identifier', () => {
