@@ -5,27 +5,34 @@ import { Node } from '../src/ts/UniverseTypes/Node'
 import { mergeTrees } from './../src/ts/GraphOperations/TreeMerger'
 import { forest } from './data/forest'
 
-function node(name: string, occursIn: UniverseIndex[], children: Node[] = []): Node {
-    const n = new Node(name, children)
-    // The `equals` method only checks the keys, not the values. That's why we
-    // can just add a dummy node there.
-    n.occursIn = new Map(occursIn.map((index) => [index, new Node('dummy')]))
-    return n
+function node(name: string, occursIn: Map<UniverseIndex, Node>, children: Node[] = []): Node {
+    const node = new Node(name, children)
+    node.occursIn = occursIn
+    return node
 }
 
 describe('Tree Merger', () => {
     test('Two trees without overlap stay separated in result', () => {
-        const merged = mergeTrees(forest.overlappingTreeC, forest.differentPackageTree)
+        const c = forest.overlappingTreeC
+        const d = forest.differentPackageTree
 
-        const inC = [0]
-        const inDifferent = [1]
-        const inBoth = [0, 1]
-        const expected = node('', inBoth, [
-            node('packageA', inC, [node('ClassA', inC), node('ClassX', inC), node('ClassY', inC)]),
-            node('packageB', inDifferent, [
-                node('ClassA', inDifferent, [node('methodAA', inDifferent)]),
-                node('ClassX', inDifferent, [node('methodXA', inDifferent)]),
-                node('ClassY', inDifferent, [node('methodYA', inDifferent)])
+        const merged = mergeTrees(c, d)
+        const expected = node('', new Map(), [
+            node('packageA', new Map([[0, c]]), [
+                node('ClassA', new Map([[0, c.get('ClassA')!]])),
+                node('ClassX', new Map([[0, c.get('ClassX')!]])),
+                node('ClassY', new Map([[0, c.get('ClassY')!]]))
+            ]),
+            node('packageB', new Map([[1, d]]), [
+                node('ClassA', new Map([[1, d.get('ClassA')!]]), [
+                    node('methodAA', new Map([[1, d.get('ClassA')!.get('methodAA')!]]))
+                ]),
+                node('ClassX', new Map([[1, d.get('ClassX')!]]), [
+                    node('methodXA', new Map([[1, d.get('ClassX')!.get('methodXA')!]]))
+                ]),
+                node('ClassY', new Map([[1, d.get('ClassY')!]]), [
+                    node('methodYA', new Map([[1, d.get('ClassY')!.get('methodYA')!]]))
+                ])
             ])
         ])
 
@@ -33,13 +40,17 @@ describe('Tree Merger', () => {
     })
 
     test('Should have the occurences set to the only tree given', () => {
-        const merged = mergeTrees(forest.overlappingTreeA)
+        const a = forest.overlappingTreeA
 
-        const inA = [0]
-        const expected = node('', inA, [
-            node('packageA', inA, [
-                node('ClassA', inA, [node('methodAA', inA)]),
-                node('ClassB', inA, [node('methodBA', inA)])
+        const merged = mergeTrees(a)
+        const expected = node('', new Map(), [
+            node('packageA', new Map([[0, a]]), [
+                node('ClassA', new Map([[0, a.get('ClassA')!]]), [
+                    node('methodAA', new Map([[0, a.get('ClassA')!.get('methodAA')!]]))
+                ]),
+                node('ClassB', new Map([[0, a.get('ClassB')!]]), [
+                    node('methodBA', new Map([[0, a.get('ClassB')!.get('methodBA')!]]))
+                ])
             ])
         ])
 
@@ -47,81 +58,186 @@ describe('Tree Merger', () => {
     })
 
     test('Merging two equal trees results in the same tree with both indexes', () => {
-        const merged = mergeTrees(forest.overlappingTreeA, forest.overlappingTreeA)
+        const a = forest.overlappingTreeA
 
-        const inAA = [0, 1]
-        const expected = node('', inAA, [
-            node('packageA', inAA, [
-                node('ClassA', inAA, [node('methodAA', inAA)]),
-                node('ClassB', inAA, [node('methodBA', inAA)])
-            ])
+        const merged = mergeTrees(a, a)
+        const expected = node('', new Map(), [
+            node(
+                'packageA',
+                new Map([
+                    [0, a],
+                    [1, a]
+                ]),
+                [
+                    node(
+                        'ClassA',
+                        new Map([
+                            [0, a.get('ClassA')!],
+                            [1, a.get('ClassA')!]
+                        ]),
+                        [
+                            node(
+                                'methodAA',
+                                new Map([
+                                    [0, a.get('ClassA')!.get('methodAA')!],
+                                    [1, a.get('ClassA')!.get('methodAA')!]
+                                ])
+                            )
+                        ]
+                    ),
+                    node(
+                        'ClassB',
+                        new Map([
+                            [0, a.get('ClassB')!],
+                            [1, a.get('ClassB')!]
+                        ]),
+                        [
+                            node(
+                                'methodBA',
+                                new Map([
+                                    [0, a.get('ClassB')!.get('methodBA')!],
+                                    [1, a.get('ClassB')!.get('methodBA')!]
+                                ])
+                            )
+                        ]
+                    )
+                ]
+            )
         ])
 
         expect(merged.equals(expected)).toBeTruthy()
     })
 
     test('should merge 2 overlapping trees into one tree', () => {
-        const merged = mergeTrees(forest.overlappingTreeA, forest.overlappingTreeB)
+        const a = forest.overlappingTreeA
+        const b = forest.overlappingTreeB
 
-        const inA = [0]
-        const inB = [1]
-        const inAB = [0, 1]
-        const expected = node('', inAB, [
-            node('packageA', inAB, [
-                node('ClassA', inAB, [node('methodAA', inA), node('methodAC', inB)]),
-                node('ClassB', inA, [node('methodBA', inA)]),
-                node('ClassC', inB, [node('methodCA', inB)])
-            ])
+        const merged = mergeTrees(a, b)
+        const expected = node('', new Map(), [
+            node(
+                'packageA',
+                new Map([
+                    [0, a],
+                    [1, b]
+                ]),
+                [
+                    node(
+                        'ClassA',
+                        new Map([
+                            [0, a.get('ClassA')!],
+                            [1, b.get('ClassA')!]
+                        ]),
+                        [
+                            node('methodAA', new Map([[0, a.get('ClassA')!.get('methodAA')!]])),
+                            node('methodAC', new Map([[1, b.get('ClassA')!.get('methodAC')!]]))
+                        ]
+                    ),
+                    node('ClassB', new Map([[0, a.get('ClassB')!]]), [
+                        node('methodBA', new Map([[0, a.get('ClassB')!.get('methodBA')!]]))
+                    ]),
+                    node('ClassC', new Map([[1, b.get('ClassC')!]]), [
+                        node('methodCA', new Map([[1, b.get('ClassC')!.get('methodCA')!]]))
+                    ])
+                ]
+            )
         ])
 
         expect(merged.equals(expected)).toBeTruthy()
     })
 
     test('should merge 3 overlapping trees into one tree', () => {
+        const a = forest.overlappingTreeA
+        const b = forest.overlappingTreeB
+        const c = forest.overlappingTreeC
+
         const merged = mergeTrees(
             forest.overlappingTreeA,
             forest.overlappingTreeB,
             forest.overlappingTreeC
         )
-
-        const inA = [0]
-        const inB = [1]
-        const inC = [2]
-        const inABC = [0, 1, 2]
-        const expected = node('', inABC, [
-            node('packageA', inABC, [
-                node('ClassA', inABC, [node('methodAA', inA), node('methodAC', inB)]),
-                node('ClassB', inA, [node('methodBA', inA)]),
-                node('ClassC', inB, [node('methodCA', inB)]),
-                node('ClassX', inC),
-                node('ClassY', inC)
-            ])
+        const expected = node('', new Map(), [
+            node(
+                'packageA',
+                new Map([
+                    [0, a],
+                    [1, b],
+                    [2, c]
+                ]),
+                [
+                    node(
+                        'ClassA',
+                        new Map([
+                            [0, a.get('ClassA')!],
+                            [1, b.get('ClassA')!],
+                            [2, c.get('ClassA')!]
+                        ]),
+                        [
+                            node('methodAA', new Map([[0, a.get('ClassA')!.get('methodAA')!]])),
+                            node('methodAC', new Map([[1, b.get('ClassA')!.get('methodAC')!]]))
+                        ]
+                    ),
+                    node('ClassB', new Map([[0, a.get('ClassB')!]]), [
+                        node('methodBA', new Map([[0, a.get('ClassB')!.get('methodBA')!]]))
+                    ]),
+                    node('ClassC', new Map([[1, b.get('ClassC')!]]), [
+                        node('methodCA', new Map([[1, b.get('ClassC')!.get('methodCA')!]]))
+                    ]),
+                    node('ClassX', new Map([[2, c.get('ClassX')!]])),
+                    node('ClassY', new Map([[2, c.get('ClassY')!]]))
+                ]
+            )
         ])
+
         expect(merged.equals(expected)).toBeTruthy()
     })
 
     test('should merge 2 overlapping trees, append the different package with the same method name', () => {
+        const a = forest.overlappingTreeA
+        const b = forest.overlappingTreeB
+        const d = forest.differentPackageTree
+
         const merged = mergeTrees(
             forest.overlappingTreeA,
             forest.overlappingTreeB,
             forest.differentPackageTree
         )
-
-        const inA = [0]
-        const inB = [1]
-        const inC = [2]
-        const inAB = [0, 1]
-        const inABC = [0, 1, 2]
-        const expected = node('', inABC, [
-            node('packageA', inAB, [
-                node('ClassA', inAB, [node('methodAA', inA), node('methodAC', inB)]),
-                node('ClassB', inA, [node('methodBA', inA)]),
-                node('ClassC', inB, [node('methodCA', inB)])
-            ]),
-            node('packageB', inC, [
-                node('ClassA', inC, [node('methodAA', inC)]),
-                node('ClassX', inC, [node('methodXA', inC)]),
-                node('ClassY', inC, [node('methodYA', inC)])
+        const expected = node('', new Map(), [
+            node(
+                'packageA',
+                new Map([
+                    [0, a],
+                    [1, b]
+                ]),
+                [
+                    node(
+                        'ClassA',
+                        new Map([
+                            [0, a.get('ClassA')!],
+                            [1, b.get('ClassA')!]
+                        ]),
+                        [
+                            node('methodAA', new Map([[0, a.get('ClassA')!.get('methodAA')!]])),
+                            node('methodAC', new Map([[1, b.get('ClassA')!.get('methodAC')!]]))
+                        ]
+                    ),
+                    node('ClassB', new Map([[0, a.get('ClassB')!]]), [
+                        node('methodBA', new Map([[0, a.get('ClassB')!.get('methodBA')!]]))
+                    ]),
+                    node('ClassC', new Map([[1, b.get('ClassC')!]]), [
+                        node('methodCA', new Map([[1, b.get('ClassC')!.get('methodCA')!]]))
+                    ])
+                ]
+            ),
+            node('packageB', new Map([[2, d]]), [
+                node('ClassA', new Map([[2, d.get('ClassA')!]]), [
+                    node('methodAA', new Map([[2, d.get('ClassA')!.get('methodAA')!]]))
+                ]),
+                node('ClassX', new Map([[2, d.get('ClassX')!]]), [
+                    node('methodXA', new Map([[2, d.get('ClassX')!.get('methodXA')!]]))
+                ]),
+                node('ClassY', new Map([[2, d.get('ClassY')!]]), [
+                    node('methodYA', new Map([[2, d.get('ClassY')!.get('methodYA')!]]))
+                ])
             ])
         ])
 
