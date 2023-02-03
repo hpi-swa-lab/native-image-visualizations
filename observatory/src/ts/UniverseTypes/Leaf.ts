@@ -30,6 +30,10 @@ export class Leaf extends Node {
         this._initKind = initKind
     }
 
+    get inline(): boolean {
+        return this.codeSize <= 0
+    }
+
     get isReflective(): boolean {
         return this._isReflective
     }

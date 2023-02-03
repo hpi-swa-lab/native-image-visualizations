@@ -61,10 +61,6 @@ export class Node {
         return this._codeSize
     }
 
-    get inline(): boolean {
-        return this.codeSize <= 0
-    }
-
     get occursIn(): Map<UniverseIndex, Node> {
         return this._occursIn
     }
