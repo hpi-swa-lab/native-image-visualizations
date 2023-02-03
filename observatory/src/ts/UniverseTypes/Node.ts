@@ -43,9 +43,6 @@ export class Node {
     get parent(): Node | undefined {
         return this._parent
     }
-    set parent(newParent: Node | undefined) {
-        this._parent = newParent
-    }
 
     get children(): Node[] {
         return this._children
@@ -64,6 +61,11 @@ export class Node {
     get occursIn(): Map<UniverseIndex, Node> {
         return this._occursIn
     }
+
+    set parent(newParent: Node | undefined) {
+        this._parent = newParent
+    }
+
     set occursIn(occursIn: Map<UniverseIndex, Node>) {
         this._occursIn = occursIn
     }
