@@ -1,7 +1,6 @@
 import { describe, expect, test } from '@jest/globals'
 import { forest } from './data/forest'
 import { mergeTrees } from './../src/ts/GraphOperations/TreeMerger'
-import { UniverseIndex } from '../src/ts/SharedTypes/Indices'
 import { toVennPartitions } from '../src/ts/Math/Sets'
 
 describe('Venn Sets', () => {
