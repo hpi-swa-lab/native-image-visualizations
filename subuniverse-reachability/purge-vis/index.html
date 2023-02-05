@@ -56,6 +56,7 @@
 
 
         var methodList = []
+        var transitiveSubNodes = {}
 
         function simulatePurge(str) {
             var ptr  = allocateUTF8(str)
@@ -70,6 +71,7 @@
         }
 
         function simulatePurgesBatched(strs) {
+            /*
             var indicesSortedByLengthDescending = Array(strs.length)
             for(let i = 0; i < indicesSortedByLengthDescending.length; i++)
                 indicesSortedByLengthDescending[i] = i
@@ -78,45 +80,31 @@
             var methodIncluded = Array(methodList.length)
             for(let i = 0; i < methodIncluded.length; i++)
                 methodIncluded[i] = false
+             */
 
             var subsetsArr = new Uint32Array(strs.length * 2)
 
             var totalCount = 0
 
-            for(const i of indicesSortedByLengthDescending) {
-                var count = 0
-                for(let mid = 0; mid < methodList.length; mid++) {
-                    const method = methodList[mid]
-                    if (!methodIncluded[mid] && method.startsWith(strs[i])) {
-                        methodIncluded[mid] = true
-                        count++
-                    }
-                }
+            for(let i = 0; i < strs.length; i++) {
+                const count = transitiveSubNodes[strs[i]].length
                 totalCount += count
                 subsetsArr[i * 2 + 1] = count
             }
 
-            for(let i = 0; i < methodIncluded.length; i++)
-                methodIncluded[i] = false
-
             var midsPtr = Module._malloc(totalCount * 4)
             var midsPos = 0
 
-            for(const i of indicesSortedByLengthDescending)
+            for(let i = 0; i < strs.length; i++)
             {
                 var count = subsetsArr[i * 2 + 1]
                 var subsetArr = new Uint32Array(count)
                 var pos = 0
 
-                for(let mid = 0; mid < methodList.length; mid++)
+                for(const mid of transitiveSubNodes[strs[i]])
                 {
-                    const method = methodList[mid]
-
-                    if (!methodIncluded[mid] && method.startsWith(strs[i])) {
-                        methodIncluded[mid] = true
-                        subsetArr[pos] = mid + 1
-                        pos++
-                    }
+                    subsetArr[pos] = mid + 1
+                    pos++
                 }
 
                 subsetsArr[i*2] = midsPtr + midsPos
@@ -227,12 +215,17 @@
     </script>
 
     <button title="upload" onClick="doSomething()">Upload CausalityExport</button>
-    <br/>
-    <label for="Input"></label><textarea id="Input" cols="100" rows="5" spellcheck="false" oninput="pressBtn(this.value)"></textarea>
-    <label for="Input_reachability"></label><textarea id="Input_reachability" cols="100" rows="5" spellcheck="false" oninput="printReachability(this.value)"></textarea>
-    <br/>
-    <label for="Output"></label><textarea id="Output" cols="100" spellcheck="false" rows="20" readonly="readonly"></textarea>
-    <label for="Output_reachability"></label><textarea id="Output_reachability" cols="100" spellcheck="false" rows="20" readonly="readonly"></textarea>
+
+    <details>
+
+        <br/>
+        <label for="Input"></label><textarea id="Input" cols="100" rows="5" spellcheck="false" oninput="pressBtn(this.value)"></textarea>
+        <label for="Input_reachability"></label><textarea id="Input_reachability" cols="100" rows="5" spellcheck="false" oninput="printReachability(this.value)"></textarea>
+        <br/>
+        <label for="Output"></label><textarea id="Output" cols="100" spellcheck="false" rows="20" readonly="readonly"></textarea>
+        <label for="Output_reachability"></label><textarea id="Output_reachability" cols="100" spellcheck="false" rows="20" readonly="readonly"></textarea>
+    </details>
+
     <input type="file" id="file-input" accept="application/zip" hidden>
         <ul id="myUL">
             <li id="myLI">
@@ -260,43 +253,55 @@
         }
 
         function generateHierarchyFromList(list) {
-            const re = /[^(\s]*/;
+            const re = /[^\s(.)\[\]\$]+(?=\.|$|\[|\s|\$)|[^\s(.)]+\([^)]*\)|\[[^\]]+\]|\[\]$/g
             root = {}
 
-            for(e of list) {
-                var prefix = e.match(re)[0]
+            transitiveSubNodes = {}
 
-                var parts = prefix.split('.')
+            for(let mid = 0; mid < list.length; mid++) {
+                const e = list[mid]
+
+                var m = [...e.matchAll(re)]
+
+                const parts = m.map(match => match[0])
+                const partFullNames = m.map(match => e.substring(0, match.index + match[0].length))
                 var parent = root
 
-                for (var i = 0; i < parts.length - 1; i++) {
+                for (let i = 0; i < parts.length; i++) {
+                    if(!transitiveSubNodes[partFullNames[i]])
+                        transitiveSubNodes[partFullNames[i]] = []
+                    transitiveSubNodes[partFullNames[i]].push(mid)
+
                     var part = parts[i]
-                    if(!parent[part]) {
-                        parent[part] = {}
+
+                    if(!parent.children)
+                        parent.children = {}
+                    if(!parent.children[part]) {
+                        parent.children[part] = { fullname: partFullNames[i] }
                     }
-                    parent = parent[part]
+                    parent = parent.children[part]
                 }
 
-                var last_part = e.substring(prefix.length - parts[parts.length - 1].length)
+                var last_part = parts[parts.length - 1]
                 parent[last_part] = null
             }
 
             return root
         }
 
-        data = generateHierarchyFromList(["example.Main", "example.Main.main(java.lang.String[])"])
+        data = generateHierarchyFromList(["example.Main[]", "example.Main.main(java.lang.String[])"])
 
         function generateHTML(data, prefix = "") {
             var ul = document.createElement("ul")
             ul.className = "nested"
 
-            for(d in data) {
+            for(d in data.children) {
                 var li = document.createElement("li")
                 ul.appendChild(li)
                 var span = document.createElement("span")
                 li.appendChild(span)
                 span.appendChild(document.createTextNode(d))
-                li.setAttribute("data-node-name", prefix + d)
+                li.setAttribute("data-node-name", data.children[d].fullname)
                 var out = document.createElement("span")
                 out.style = "margin-left: 25px"
                 li.appendChild(out)
@@ -308,9 +313,9 @@
                 li.appendChild(checkbox)
                 */
 
-                if(data[d]) {
+                if(data.children[d].children) {
                     span.className = "caret"
-                    li.appendChild(generateHTML(data[d], prefix + d + "."))
+                    li.appendChild(generateHTML(data.children[d], prefix + d + "."))
                 }
             }
 
