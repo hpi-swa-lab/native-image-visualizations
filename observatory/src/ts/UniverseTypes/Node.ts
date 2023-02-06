@@ -1,6 +1,6 @@
 import { HIERARCHY_NAME_SEPARATOR } from '../globals'
-import { UniverseIndex } from '../SharedTypes/Indices'
 import { Bytes } from '../SharedTypes/Size'
+import clone from 'clone'
 
 export const INVALID_SIZE: Bytes = -1
 
@@ -9,7 +9,6 @@ export class Node {
     protected _parent: Node | undefined
     protected readonly _children: Node[]
     protected _codeSize: Bytes = INVALID_SIZE
-    protected _occursIn: Map<UniverseIndex, Node> = new Map()
 
     constructor(
         name: string,
@@ -58,16 +57,20 @@ export class Node {
         return this._codeSize
     }
 
-    get occursIn(): Map<UniverseIndex, Node> {
-        return this._occursIn
-    }
-
     set parent(newParent: Node | undefined) {
         this._parent = newParent
     }
 
-    set occursIn(occursIn: Map<UniverseIndex, Node>) {
-        this._occursIn = occursIn
+    public clone(): Node {
+        const parent = this.parent
+        this.parent = undefined
+
+        const newInstance = clone(this)
+
+        newInstance.parent = parent
+        this.parent = parent
+
+        return newInstance
     }
 
     public push(...children: Node[]): number {
@@ -103,25 +106,33 @@ export class Node {
             (this.equalsComparingOnlyParents(another) && this.equalsIgnoringParents(another))
         )
     }
-    private equalsComparingOnlyParents(another: Node): boolean {
+    protected equalsIgnoringParents(another: Node): boolean {
+        if (this.name !== another.name) {
+            return false
+        }
+        if (this.codeSize !== another.codeSize) {
+            return false
+        }
+
+        if (this.children.length !== another.children.length) {
+            return false
+        }
+        if (
+            !this.children.every((child: Node, index: number) =>
+                child.equalsIgnoringParents(another.children[index])
+            )
+        ) {
+            return false
+        }
+
+        return true
+    }
+    protected equalsComparingOnlyParents(another: Node): boolean {
         if (this.parent === undefined && another.parent === undefined) return true
         if (this.parent === undefined || another.parent === undefined) return false
         return (
             this.parent.name == another.parent.name &&
             this.parent.equalsComparingOnlyParents(another.parent)
-        )
-    }
-    private equalsIgnoringParents(another: Node): boolean {
-        return (
-            this.name === another.name &&
-            this.codeSize === another.codeSize &&
-            this.occursIn.size == another.occursIn.size &&
-            Array.from(this.occursIn.entries()).every(([index, node]) => {
-                const other = another.occursIn.get(index)
-                return other && node.equals(other)
-            }) &&
-            this.children.length === another.children.length &&
-            this.children.every((child, i) => child.equalsIgnoringParents(another.children[i]))
         )
     }
 }
