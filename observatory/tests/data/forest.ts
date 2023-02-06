@@ -1,7 +1,7 @@
 import { Node } from '../../src/ts/UniverseTypes/Node'
 import { Leaf, InitKind } from '../../src/ts/UniverseTypes/Leaf'
 
-const forestFactory = () => ({
+export const forestFactory = () => ({
     childlessRoot: new Node('Native Image'),
     method: new Leaf('method', 10, InitKind.BUILD_TIME),
     simpleTree: new Node('Class', [
