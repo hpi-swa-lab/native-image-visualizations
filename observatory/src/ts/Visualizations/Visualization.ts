@@ -11,13 +11,6 @@ import { Node } from '../UniverseTypes/Node'
 export interface Visualization {
     selection: Node[]
 
-    /**
-     * Accepts a merged tree where each node references the corresponding trees
-     * in the original universes.
-     */
-    setMultiverse(multiverse: Node): void
-
     setSelection(selection: Node[]): void
-
     setHighlights(highlights: Node[]): void
 }
