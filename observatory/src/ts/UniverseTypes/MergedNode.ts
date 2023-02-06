@@ -1,5 +1,4 @@
 import { Node } from './Node'
-import { Universe } from './Universe'
 import { UniverseIndex } from '../SharedTypes/Indices'
 import { Bytes } from '../SharedTypes/Size'
 import clone from 'clone'
@@ -9,7 +8,7 @@ export const INVALID_SIZE: Bytes = -1
 export class MergedNode extends Node {
     protected _parent: MergedNode | undefined
     protected _children: MergedNode[]
-    protected _occursIn: Map<UniverseIndex, Universe> = new Map()
+    protected _sources: Map<UniverseIndex, Node> = new Map()
 
     constructor(
         name: string,
@@ -31,12 +30,12 @@ export class MergedNode extends Node {
         return this._children
     }
 
-    get occursIn(): Map<UniverseIndex, Universe> {
-        return this._occursIn
+    get sources(): Map<UniverseIndex, Node> {
+        return this._sources
     }
 
-    set occursIn(occursIn: Map<UniverseIndex, Universe>) {
-        this._occursIn = occursIn
+    set sources(occursIn: Map<UniverseIndex, Node>) {
+        this._sources = occursIn
     }
 
     set parent(newParent: MergedNode | undefined) {
@@ -99,10 +98,10 @@ export class MergedNode extends Node {
             return false
         }
 
-        const occurences = Array.from(this.occursIn.entries())
+        const occurences = Array.from(this.sources.entries())
         return occurences.every(([index, node]) => {
-            const other = another.occursIn.get(index)
-            return other && node.name === other.name && node.root.equals(other.root)
+            const other = another.sources.get(index)
+            return other && node.name === other.name && node.equals(other)
         })
     }
 }

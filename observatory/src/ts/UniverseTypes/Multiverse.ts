@@ -55,42 +55,32 @@ export class Multiverse {
     private mergeUniverses(...universes: Universe[]): MergedNode {
         const mergeResult: MergedNode = new MergedNode('')
 
-        universes.forEach((universe, i) => this.mergeNode(mergeResult, universe.root, i, universe))
+        universes.forEach((universe, i) => this.mergeNode(mergeResult, universe.root, i))
 
         return mergeResult
     }
 
-    private mergeNode(
-        mergeResult: MergedNode,
-        node: Node,
-        treeIndex: UniverseIndex,
-        universe: Universe
-    ) {
+    private mergeNode(mergeResult: MergedNode, node: Node, treeIndex: UniverseIndex) {
         const matchingChild = mergeResult.children.find(
             (child: MergedNode) => child.name == node.name
         )
 
         if (!matchingChild) {
             const nodeToMerge = MergedNode.fromNode(node)
-            this.setOccursInRecursive(nodeToMerge, node, treeIndex, universe)
+            this.setOccursInRecursive(nodeToMerge, node, treeIndex)
             mergeResult.push(nodeToMerge)
         } else {
-            matchingChild.occursIn.set(treeIndex, universe)
+            matchingChild.sources.set(treeIndex, node)
             node.children.forEach((ownChild: Node) =>
-                this.mergeNode(matchingChild, ownChild, treeIndex, universe)
+                this.mergeNode(matchingChild, ownChild, treeIndex)
             )
         }
     }
 
-    private setOccursInRecursive(
-        copy: MergedNode,
-        original: Node,
-        index: UniverseIndex,
-        universe: Universe
-    ) {
-        copy.occursIn = new Map([[index, universe]])
+    private setOccursInRecursive(copy: MergedNode, original: Node, index: UniverseIndex) {
+        copy.sources = new Map([[index, original]])
         copy.children.forEach((child: MergedNode, i: number) =>
-            this.setOccursInRecursive(child, original.children[i], index, universe)
+            this.setOccursInRecursive(child, original.children[i], index)
         )
     }
 }
