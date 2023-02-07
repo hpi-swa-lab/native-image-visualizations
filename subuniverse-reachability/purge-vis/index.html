@@ -50,7 +50,7 @@
     <script src="zip.min.js"></script>
     <script>
         var simulate_purge = Module.cwrap("simulate_purge", "number", ["number"]);
-        var simulate_purges_batched = Module.cwrap("simulate_purges_batched", "number", ["number", "number", "number"])
+        var simulate_purges_batched = Module.cwrap("simulate_purges_batched", "number", ["number", "number", "number", "number", "number"])
         var show_reachability = Module.cwrap("show_reachability", "number", ["number"]);
         var init = Module.cwrap("init", "number", ["number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number"]);
 
@@ -117,12 +117,21 @@
 
             var resultsArrPtr = Module._malloc(strs.length * 4)
 
-            const status = simulate_purges_batched(subsetsArrPtr, strs.length, resultsArrPtr)
+            var method_weights_ptr = Module._malloc((codesizes.length + 1) * 4)
+            var method_weights_arr = Module.HEAP32.subarray(method_weights_ptr / 4, method_weights_ptr / 4 + codesizes.length + 1)
+
+            method_weights_arr[0] = 0
+            for(let i = 0; i < codesizes.length; i++)
+                method_weights_arr[i+1] = codesizes[i]
+
+            const status = simulate_purges_batched(subsetsArrPtr, strs.length, method_weights_ptr, method_weights_arr.length, resultsArrPtr)
 
             var res = Module.HEAPU32.subarray(resultsArrPtr / 4, resultsArrPtr / 4 + strs.length)
 
+            Module._free(method_weights_ptr)
             Module._free(subsetsArrPtr)
             Module._free(midsPtr)
+            // Module._free(resultsArrPtr)
             // TODO: Free resultsArrPtr
 
             return status == 0 ? null : res
@@ -174,20 +183,50 @@
             }
         }
 
+        function getMethodCodesizeDictFromReachabilityJson(data) {
+            let dict = {}
+
+            for (const toplevel of data) {
+                for (const package in toplevel.packages) {
+                    for (const type in toplevel.packages[package].types) {
+                        for (const method in toplevel.packages[package].types[type].methods) {
+                            const fullyQualifiedName = package + "." + type + "." + method
+                            const codesize = toplevel.packages[package].types[type].methods[method].size
+                            dict[fullyQualifiedName] = codesize
+                        }
+                    }
+                }
+            }
+
+            return dict
+        }
+
         async function loadFiles(selectedFile, filenameEncoding) {
             var entries = await model.getEntries(selectedFile, { filenameEncoding });
             if (entries && entries.length) {
                 filesAsByteArrays = {}
 
+                methodList = (await entries.find(e => e.filename === "methods.txt").getData(new zip.TextWriter())).split('\n')
+                methodList.pop()
+                prepareListView(generateHierarchyFromList(methodList))
+
+                let reachabilityData = JSON.parse(await entries.find(e => e.filename === "reachability.json").getData(new zip.TextWriter()))
+                let codesizesDict = getMethodCodesizeDictFromReachabilityJson(reachabilityData)
+                codesizes = new Array(methodList.length)
+
+                for(let i = 0; i < methodList.length; i++) {
+                    codesizes[i] = codesizesDict[methodList[i]] ?? 0
+                }
+
+
                 for (const entry of entries) {
+                    if(entry.filename === "reachability.json")
+                    {
+                        continue;
+                    }
+
                     const zipFileWriter = new zip.Uint8ArrayWriter()
                     const data = await entry.getData(zipFileWriter)
-
-                    if(entry.filename === "methods.txt") {
-                        methodList = (await entry.getData(new zip.TextWriter())).split('\n')
-                        methodList.pop()
-                        prepareListView(generateHierarchyFromList(methodList))
-                    }
 
                     var input_ptr = Module._malloc(data.length);
                     Module.HEAPU8.set(data, input_ptr);
@@ -291,7 +330,7 @@
 
         data = generateHierarchyFromList(["example.Main[]", "example.Main.main(java.lang.String[])"])
 
-        function generateHTML(data, prefix = "") {
+        function generateHTML(data) {
             var ul = document.createElement("ul")
             ul.className = "nested"
 
@@ -301,9 +340,10 @@
                 var span = document.createElement("span")
                 li.appendChild(span)
                 span.appendChild(document.createTextNode(d))
+                span.setAttribute("title", data.children[d].fullname)
                 li.setAttribute("data-node-name", data.children[d].fullname)
                 var out = document.createElement("span")
-                out.style = "margin-left: 25px"
+                out.style = "margin-left: 25px; color: #808080"
                 li.appendChild(out)
                 out.id = "purged"
                 /*
@@ -315,7 +355,7 @@
 
                 if(data.children[d].children) {
                     span.className = "caret"
-                    li.appendChild(generateHTML(data.children[d], prefix + d + "."))
+                    li.appendChild(generateHTML(data.children[d]))
                 }
             }
 
@@ -345,11 +385,29 @@
 
                         res = simulatePurgesBatched(strs)
 
+                        var list = this.parentElement.querySelector('ul')
+
                         let i = 0
-                        for (e of this.parentElement.querySelector("ul").children) {
-                            e.querySelector("#purged").textContent = res[i].toString()
+                        for (e of list.children) {
+                            let cutoff_size = res[i]
+                            let str = ""
+                            if(cutoff_size > 1000000)
+                                str = (cutoff_size / 1000000).toPrecision(3) + " MB"
+                            else if(cutoff_size > 1000)
+                                str = (cutoff_size / 1000).toPrecision(3) + " KB"
+                            else
+                                str = cutoff_size.toPrecision(3) + " B"
+
+                            e.querySelector("#purged").textContent = str
                             i++
                         }
+
+                        var order = new Array(list.children.length)
+                        for(let i = 0; i < order.length; i++)
+                            order[i] = i
+
+                        var nodes = list.children
+                        order.sort((a, b) => res[b] - res[a]).map(i => nodes[i]).forEach(node => list.appendChild(node))
                     }
                 });
             }

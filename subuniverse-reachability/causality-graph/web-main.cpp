@@ -150,7 +150,7 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE simulate_purge(const char* methods)
     return res;
 }
 
-extern "C" bool EMSCRIPTEN_KEEPALIVE simulate_purges_batched(const span<const method_id>* purge_sets, size_t purge_sets_len, uint32_t* n_purged)
+extern "C" bool EMSCRIPTEN_KEEPALIVE simulate_purges_batched(const span<const method_id>* purge_sets, size_t purge_sets_len, const uint32_t* method_weights_ptr, size_t method_weights_len, uint32_t* n_purged)
 {
     if(!purge_model)
         return false;
@@ -160,6 +160,12 @@ extern "C" bool EMSCRIPTEN_KEEPALIVE simulate_purges_batched(const span<const me
 
     auto &m = *purge_model;
     auto &bfs = *::bfs;
+
+    if(method_weights_len != m.adj.n_methods())
+    {
+        cerr << "The number of method weights wasn't exactly the same as the number of methods." << endl;
+        return false;
+    }
 
     cerr << "Running batch purges...";
 
@@ -203,12 +209,12 @@ extern "C" bool EMSCRIPTEN_KEEPALIVE simulate_purges_batched(const span<const me
         {
             size_t iteration = &mids - purge_sets;
 
-            size_t n_purged_acc = 0;
+            uint32_t n_purged_acc = 0;
 
             for(size_t i = 1; i < r.method_history.size(); i++)
             {
                 if(r.method_history[i] == 0xFF && all->method_history[i] != 0xFF)
-                    n_purged_acc++;
+                    n_purged_acc += method_weights_ptr[i];
             }
 
             n_purged[iteration] = n_purged_acc;
