@@ -2,13 +2,21 @@ import { describe, expect, test } from '@jest/globals'
 import clone from 'clone'
 import { UniverseIndex } from '../src/ts/SharedTypes/Indices'
 import { Node } from '../src/ts/UniverseTypes/Node'
+import { InitKind, Leaf } from '../src/ts/UniverseTypes/Leaf'
 import { mergeTrees } from './../src/ts/GraphOperations/TreeMerger'
 import { forest } from './data/forest'
+import { Bytes } from '../src/ts/SharedTypes/Size'
 
 function node(name: string, occursIn: Map<UniverseIndex, Node>, children: Node[] = []): Node {
     const node = new Node(name, children)
     node.occursIn = occursIn
     return node
+}
+
+function leaf(name: string, occursIn: Map<UniverseIndex, Node>, codeSize: Bytes): Leaf {
+    const leaf = new Leaf(name, codeSize, InitKind.BUILD_TIME)
+    leaf.occursIn = occursIn
+    return leaf
 }
 
 // In the tests below, we traverse into the hardcoded trees using something like
@@ -156,11 +164,7 @@ describe('Tree Merger', () => {
         const b = forest.overlappingTreeB
         const c = forest.overlappingTreeC
 
-        const merged = mergeTrees(
-            forest.overlappingTreeA,
-            forest.overlappingTreeB,
-            forest.overlappingTreeC
-        )
+        const merged = mergeTrees(a, b, c)
         const expected = node('', new Map(), [
             node(
                 'packageA',
@@ -202,11 +206,8 @@ describe('Tree Merger', () => {
         const b = forest.overlappingTreeB
         const d = forest.differentPackageTree
 
-        const merged = mergeTrees(
-            forest.overlappingTreeA,
-            forest.overlappingTreeB,
-            forest.differentPackageTree
-        )
+        const merged = mergeTrees(a, b, d)
+
         const expected = node('', new Map(), [
             node(
                 'packageA',
@@ -256,5 +257,95 @@ describe('Tree Merger', () => {
         mergeTrees(forest.overlappingTreeA, forest.overlappingTreeB)
         expect(treeA.equals(forest.overlappingTreeA)).toBeTruthy()
         expect(treeB.equals(forest.overlappingTreeB)).toBeTruthy()
+    })
+
+    test('should merge 2 overlapping images into one image', () => {
+        const a = forest.overlappingImageA
+        const b = forest.overlappingImageB
+
+        const merged = mergeTrees(a, b)
+        const expected = node('', new Map(), [
+            node(
+                'packageA',
+                new Map([
+                    [0, a],
+                    [1, b]
+                ]),
+                [
+                    node(
+                        'ClassA',
+                        new Map([
+                            [0, a.children[0]],
+                            [1, b.children[0]]
+                        ]),
+                        [
+                            leaf('methodAA', new Map([[0, a.children[0].children[0]]]), 10),
+                            leaf('methodAC', new Map([[1, b.children[0].children[0]]]), 15)
+                        ]
+                    ),
+                    node('ClassB', new Map([[0, a.children[1]]]), [
+                        leaf('methodBA', new Map([[0, a.children[1].children[0]]]), 10)
+                    ]),
+                    node('ClassC', new Map([[1, b.children[1]]]), [
+                        leaf('methodCA', new Map([[1, b.children[1].children[0]]]), 20)
+                    ])
+                ]
+            )
+        ])
+
+        expect(merged.equals(expected)).toBeTruthy()
+    })
+
+    test('should merge 3 overlapping trees into one tree', () => {
+        const a = forest.overlappingImageA
+        const b = forest.overlappingImageB
+        const c = forest.overlappingImageC
+
+        const merged = mergeTrees(a, b, c)
+        const expected = node('', new Map(), [
+            node(
+                'packageA',
+                new Map([
+                    [0, a],
+                    [1, b],
+                    [2, c]
+                ]),
+                [
+                    node(
+                        'ClassA',
+                        new Map([
+                            [0, a.children[0]],
+                            [1, b.children[0]],
+                            [2, c.children[0]]
+                        ]),
+                        [
+                            leaf('methodAA', new Map([[0, a.children[0].children[0]]]), 10),
+                            leaf(
+                                'methodAC',
+                                new Map([
+                                    [1, b.children[0].children[0]],
+                                    [2, c.children[0].children[0]]
+                                ]),
+                                15
+                            )
+                        ]
+                    ),
+                    node('ClassB', new Map([[0, a.children[1]]]), [
+                        leaf('methodBA', new Map([[0, a.children[1].children[0]]]), 10)
+                    ]),
+                    node('ClassC', new Map([[1, b.children[1]]]), [
+                        leaf('methodCA', new Map([[1, b.children[1].children[0]]]), 20)
+                    ]),
+                    node('ClassX', new Map([[2, c.children[1]]]), [
+                        leaf('methodXA', new Map([[2, c.children[1].children[0]]]), 30)
+                    ]),
+                    node('ClassY', new Map([[2, c.children[2]]]), [
+                        leaf('methodYA', new Map([[2, c.children[2].children[0]]]), 200)
+                    ])
+                ]
+            )
+        ])
+
+        expect(merged.equals(expected)).toBeTruthy()
     })
 })
