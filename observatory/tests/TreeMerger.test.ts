@@ -259,6 +259,14 @@ describe('Tree Merger', () => {
         expect(treeB.equals(forest.overlappingTreeB)).toBeTruthy()
     })
 
+    test('merging images should not affect original values', () => {
+        const imageA = clone(forest.overlappingImageA)
+        const imageB = clone(forest.overlappingImageB)
+        mergeTrees(forest.overlappingImageA, forest.overlappingImageB)
+        expect(imageA.equals(forest.overlappingImageA)).toBeTruthy()
+        expect(imageB.equals(forest.overlappingImageB)).toBeTruthy()
+    })
+
     test('should merge 2 overlapping images into one image', () => {
         const a = forest.overlappingImageA
         const b = forest.overlappingImageB
