@@ -4,14 +4,8 @@ import { UniverseIndex } from '../src/ts/SharedTypes/Indices'
 import { Node } from '../src/ts/UniverseTypes/Node'
 import { Multiverse } from '../src/ts/UniverseTypes/Multiverse'
 import { forest } from './data/forest'
-import { MergedNode } from '../src/ts/UniverseTypes/MergedNode'
-
-function node(
-    name: string,
-    sources: Map<UniverseIndex, Node>,
-    children: MergedNode[] = []
-): MergedNode {
-    const node = new MergedNode(name, children)
+function node(name: string, sources: Map<UniverseIndex, Node>, children: Node[] = []): Node {
+    const node = new Node(name, children)
     node.sources = sources
     return node
 }
@@ -51,7 +45,7 @@ describe('Tree Merger', () => {
             ])
         ])
 
-        expect(multiverse.mergedNode.equals(expected)).toBeTruthy()
+        expect(multiverse.root.equals(expected)).toBeTruthy()
     })
 
     test('Should have the occurences set to the only tree given', () => {
@@ -70,7 +64,7 @@ describe('Tree Merger', () => {
             ])
         ])
 
-        expect(multiverse.mergedNode.equals(expected)).toBeTruthy()
+        expect(multiverse.root.equals(expected)).toBeTruthy()
     })
 
     test('Merging two equal trees results in the same tree with both indexes', () => {
@@ -125,7 +119,7 @@ describe('Tree Merger', () => {
             )
         ])
 
-        expect(multiverse.mergedNode.equals(expected)).toBeTruthy()
+        expect(multiverse.root.equals(expected)).toBeTruthy()
     })
 
     test('should merge 2 overlapping trees into one tree', () => {
@@ -166,7 +160,7 @@ describe('Tree Merger', () => {
             )
         ])
 
-        expect(multiverse.mergedNode.equals(expected)).toBeTruthy()
+        expect(multiverse.root.equals(expected)).toBeTruthy()
     })
 
     test('should merge 3 overlapping trees into one tree', () => {
@@ -213,7 +207,7 @@ describe('Tree Merger', () => {
             )
         ])
 
-        expect(multiverse.mergedNode.equals(expected)).toBeTruthy()
+        expect(multiverse.root.equals(expected)).toBeTruthy()
     })
 
     test('should merge 2 overlapping trees, append the different package with the same method name', () => {
@@ -267,7 +261,7 @@ describe('Tree Merger', () => {
             ])
         ])
 
-        expect(multiverse.mergedNode.equals(expected)).toBeTruthy()
+        expect(multiverse.root.equals(expected)).toBeTruthy()
     })
 
     test('merging trees should not affect original values', () => {
@@ -281,5 +275,35 @@ describe('Tree Merger', () => {
 
         expect(treeA.equals(forest.overlappingTreeA)).toBeTruthy()
         expect(treeB.equals(forest.overlappingTreeB)).toBeTruthy()
+    })
+
+    test('equals should be true for permutation of sources', () => {
+        const nodeA = new Node('ClassA', [new Node('methodA')])
+        const nodeB = new Node('ClassA', [new Node('methodA')])
+        const dummy = new Node('dummy')
+        nodeA.sources = new Map([
+            [0, dummy],
+            [1, dummy],
+            [2, dummy],
+            [3, dummy]
+        ])
+        nodeA.children[0].sources = new Map([
+            [1, dummy],
+            [2, dummy],
+            [3, dummy]
+        ])
+        nodeB.sources = new Map([
+            [2, dummy],
+            [1, dummy],
+            [0, dummy],
+            [3, dummy]
+        ])
+        nodeB.children[0].sources = new Map([
+            [2, dummy],
+            [3, dummy],
+            [1, dummy]
+        ])
+
+        expect(nodeA.equals(nodeB)).toBeTruthy()
     })
 })
