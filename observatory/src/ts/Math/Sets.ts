@@ -1,40 +1,4 @@
 import { Node } from '../UniverseTypes/Node'
-import { Multiverse } from '../UniverseTypes/Multiverse'
-
-export interface VennPartitions {
-    inclusive: VennSet[]
-    exclusive: VennSet[]
-}
-
-export interface VennSet {
-    sets: string[]
-    size: number
-}
-
-export function toVennPartitions(multiverse: Multiverse): VennPartitions {
-    const powerSetCache = new Map<string, string[]>()
-    const inclusiveCounts = new Map<string, number>()
-    const exclusiveCounts = new Map<string, number>()
-    multiverse.root.children.forEach(countIn)
-
-    function countIn(node: Node): void {
-        const occurences = Array.from(node.sources.keys())
-        const intersection = JSON.stringify(occurences)
-        exclusiveCounts.set(intersection, (exclusiveCounts.get(intersection) ?? 0) + 1)
-
-        const combinations = hitOrCalculateOnMiss(occurences, intersection, powerSetCache)
-        combinations.forEach((combination) =>
-            inclusiveCounts.set(combination, (inclusiveCounts.get(combination) ?? 0) + 1)
-        )
-
-        node.children.forEach(countIn)
-    }
-
-    return {
-        inclusive: toVennSets(inclusiveCounts),
-        exclusive: toVennSets(exclusiveCounts)
-    }
-}
 
 // From https://codereview.stackexchange.com/questions/139095/generate-powerset-in-js
 export function powerSet(l: unknown[]): unknown[][] {
@@ -48,7 +12,32 @@ export function powerSet(l: unknown[]): unknown[][] {
     })(l.slice())
 }
 
-function hitOrCalculateOnMiss(combinees: number[], key: string, cache: Map<string, string[]>) {
+export function countIn(
+    node: Node,
+    exclusiveCounts: Map<string, number>,
+    inclusiveCounts: Map<string, number>,
+    powerSetCache: Map<string, string[]>
+): void {
+    const occurences = Array.from(node.sources.keys())
+    const intersection = JSON.stringify(occurences)
+
+    exclusiveCounts.set(intersection, (exclusiveCounts.get(intersection) ?? 0) + 1)
+
+    const combinations = hitOrCalculateOnMiss(occurences, intersection, powerSetCache)
+    combinations.forEach((combination) =>
+        inclusiveCounts.set(combination, (inclusiveCounts.get(combination) ?? 0) + 1)
+    )
+
+    node.children.forEach((child: Node) => {
+        countIn(child, exclusiveCounts, inclusiveCounts, powerSetCache)
+    })
+}
+
+function hitOrCalculateOnMiss(
+    combinees: number[],
+    key: string,
+    cache: Map<string, string[]>
+): string[] {
     const subCombinations =
         cache.get(key) ??
         powerSet(combinees)
@@ -60,10 +49,4 @@ function hitOrCalculateOnMiss(combinees: number[], key: string, cache: Map<strin
     }
 
     return subCombinations
-}
-
-function toVennSets(counts: Map<string, number>): VennSet[] {
-    return Array.from(counts, ([combination, count]) => {
-        return { sets: JSON.parse(combination), size: count }
-    }).sort((a, b) => a.sets.length - b.sets.length)
 }

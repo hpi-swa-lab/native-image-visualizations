@@ -1,6 +1,8 @@
 import { Node } from './Node'
 import { Universe } from './Universe'
 import { UniverseIndex } from '../SharedTypes/Indices'
+import { VennPartitions, VennSet } from '../SharedTypes/Venn'
+import { countIn } from '../Math/Sets'
 
 export class Multiverse {
     private _root: Node
@@ -51,7 +53,29 @@ export class Multiverse {
         return true
     }
 
-    private mergeUniverses(...universes: Universe[]): Node {
+    public toVennPartitions(multiverse: Multiverse): VennPartitions {
+        const powerSetCache = new Map<string, string[]>()
+
+        const exclusiveCounts = new Map<string, number>()
+        const inclusiveCounts = new Map<string, number>()
+
+        multiverse.root.children.forEach((child: Node) => {
+            countIn(child, exclusiveCounts, inclusiveCounts, powerSetCache)
+        })
+
+        return {
+            inclusive: this.createVennSets(inclusiveCounts),
+            exclusive: this.createVennSets(exclusiveCounts)
+        }
+    }
+
+    protected createVennSets(counts: Map<string, number>): VennSet[] {
+        return Array.from(counts, ([combination, count]) => {
+            return { sets: JSON.parse(combination), size: count }
+        }).sort((a, b) => a.sets.length - b.sets.length)
+    }
+
+    protected mergeUniverses(...universes: Universe[]): Node {
         const mergeResult: Node = new Node('')
 
         universes.forEach((universe, i) => this.mergeNode(mergeResult, universe.root, i))
@@ -59,7 +83,7 @@ export class Multiverse {
         return mergeResult
     }
 
-    private mergeNode(mergeResult: Node, node: Node, treeIndex: UniverseIndex) {
+    protected mergeNode(mergeResult: Node, node: Node, treeIndex: UniverseIndex) {
         const matchingChild = mergeResult.children.find((child: Node) => child.name == node.name)
 
         if (!matchingChild) {
@@ -74,7 +98,7 @@ export class Multiverse {
         }
     }
 
-    private setSourcesRecursively(copy: Node, original: Node, index: UniverseIndex) {
+    protected setSourcesRecursively(copy: Node, original: Node, index: UniverseIndex) {
         copy.sources = new Map([[index, original]])
         copy.children.forEach((child: Node, i: number) =>
             this.setSourcesRecursively(child, original.children[i], index)
