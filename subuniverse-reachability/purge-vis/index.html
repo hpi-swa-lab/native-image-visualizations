@@ -313,44 +313,49 @@
             return root
         }
 
-        function expandClickHandler() {
-            var expanded = this.parentElement.querySelector(".nested").classList.toggle("active");
-            this.classList.toggle("caret-down");
+        function expandClickHandler(element, node) {
+            let expanded = element.classList.toggle("caret-down");
 
-            if (expanded) {
-                strs = []
+            if(!element.parentElement.querySelector(".nested")) {
+                if (expanded) {
+                    element.parentElement.appendChild(generateHTML(node))
 
-                for (e of this.parentElement.querySelector("ul").children) {
-                    var node_prefix = e.getAttribute("data-node-name")
-                    strs.push(node_prefix)
+                    strs = []
+
+                    for (e of element.parentElement.querySelector("ul").children) {
+                        var node_prefix = e.getAttribute("data-node-name")
+                        strs.push(node_prefix)
+                    }
+
+                    res = simulatePurgesBatched(strs)
+
+                    var list = element.parentElement.querySelector('ul')
+
+                    let i = 0
+                    for (e of list.children) {
+                        let cutoff_size = res[i]
+                        let str = ""
+                        if(cutoff_size > 1000000)
+                            str = (cutoff_size / 1000000).toPrecision(3) + " MB"
+                        else if(cutoff_size > 1000)
+                            str = (cutoff_size / 1000).toPrecision(3) + " KB"
+                        else
+                            str = cutoff_size.toPrecision(3) + " B"
+
+                        e.querySelector("#purged").textContent = str
+                        i++
+                    }
+
+                    var order = new Array(list.children.length)
+                    for(let i = 0; i < order.length; i++)
+                        order[i] = i
+
+                    var nodes = list.children
+                    order.sort((a, b) => res[b] - res[a]).map(i => nodes[i]).forEach(node => list.appendChild(node))
                 }
-
-                res = simulatePurgesBatched(strs)
-
-                var list = this.parentElement.querySelector('ul')
-
-                let i = 0
-                for (e of list.children) {
-                    let cutoff_size = res[i]
-                    let str = ""
-                    if(cutoff_size > 1000000)
-                        str = (cutoff_size / 1000000).toPrecision(3) + " MB"
-                    else if(cutoff_size > 1000)
-                        str = (cutoff_size / 1000).toPrecision(3) + " KB"
-                    else
-                        str = cutoff_size.toPrecision(3) + " B"
-
-                    e.querySelector("#purged").textContent = str
-                    i++
-                }
-
-                var order = new Array(list.children.length)
-                for(let i = 0; i < order.length; i++)
-                    order[i] = i
-
-                var nodes = list.children
-                order.sort((a, b) => res[b] - res[a]).map(i => nodes[i]).forEach(node => list.appendChild(node))
             }
+
+            element.parentElement.querySelector(".nested").classList.toggle("active");
         }
 
         function generateHTML(data) {
@@ -360,7 +365,7 @@
             for(d in data.children) {
                 var li = document.createElement("li")
                 ul.appendChild(li)
-                var span = document.createElement("span")
+                let span = document.createElement("span")
                 li.appendChild(span)
                 span.appendChild(document.createTextNode(d))
                 span.setAttribute("title", data.children[d].fullname)
@@ -377,9 +382,11 @@
                 */
 
                 if(data.children[d].children) {
+                    let node = data.children[d]
                     span.className = "caret"
-                    li.appendChild(generateHTML(data.children[d]))
-                    span.addEventListener("click", expandClickHandler);
+                    span.addEventListener("click", () => {
+                        expandClickHandler(span, node);
+                    });
                 }
             }
 
@@ -387,9 +394,10 @@
         }
 
         function prepareListView(data) {
-            var html = generateHTML(data)
-            document.getElementById("myLI").appendChild(html)
-            document.getElementById("myRoot").addEventListener("click", expandClickHandler);
+            const rootTreeViewElement = document.getElementById("myRoot")
+            rootTreeViewElement.addEventListener("click", () => {
+                expandClickHandler(rootTreeViewElement, data)
+            })
         }
     </script>
 </body>
