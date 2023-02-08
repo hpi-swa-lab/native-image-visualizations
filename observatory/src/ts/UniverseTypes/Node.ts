@@ -59,10 +59,24 @@ export class Node {
         return this._codeSize
     }
 
+    /**
+     * Use only in the context of Multiverses.
+     * @see {@link Multiverse}
+     *
+     * @return {Map<UniverseIndex, Node>}
+     * the sources from which this (merged) node was constructed
+     */
     get sources(): Map<UniverseIndex, Node> {
         return this._sources
     }
 
+    /**
+     * Use only in the context of Multiverses.
+     * @see {@link Multiverse}
+     *
+     * @param {Map<UniverseIndex, Node>} sources
+     * the nodes from which this (merged) node was constructed
+     */
     set sources(sources: Map<UniverseIndex, Node>) {
         this._sources = sources
     }
