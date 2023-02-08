@@ -1,4 +1,5 @@
 import { HIERARCHY_NAME_SEPARATOR } from '../globals'
+import { UniverseIndex } from '../SharedTypes/Indices'
 import { Bytes } from '../SharedTypes/Size'
 import clone from 'clone'
 
@@ -9,6 +10,7 @@ export class Node {
     protected _parent: Node | undefined
     protected readonly _children: Node[]
     protected _codeSize: Bytes = INVALID_SIZE
+    protected _sources: Map<UniverseIndex, Node> = new Map()
 
     constructor(
         name: string,
@@ -55,6 +57,14 @@ export class Node {
             )
         }
         return this._codeSize
+    }
+
+    get sources(): Map<UniverseIndex, Node> {
+        return this._sources
+    }
+
+    set sources(sources: Map<UniverseIndex, Node>) {
+        this._sources = sources
     }
 
     set parent(newParent: Node | undefined) {
@@ -114,7 +124,11 @@ export class Node {
             this.children.length === another.children.length &&
             this.children.every((child: Node, index: number) =>
                 child.equalsIgnoringParents(another.children[index])
-            )
+            ) &&
+            Array.from(this.sources.entries()).every(([id, node]) => {
+                const other = another.sources.get(id)
+                return other && node.equals(other)
+            })
         )
     }
 

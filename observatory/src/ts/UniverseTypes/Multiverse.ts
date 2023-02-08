@@ -1,15 +1,14 @@
 import { Node } from './Node'
-import { MergedNode } from './MergedNode'
 import { Universe } from './Universe'
 import { UniverseIndex } from '../SharedTypes/Indices'
 
 export class Multiverse {
-    private _root: MergedNode
+    private _root: Node
     private _sources: Universe[] = []
 
     constructor(sources: Universe[]) {
         // this is just for ts initialization. It gets overridden in the sources setter anyways
-        this._root = new MergedNode('tmp')
+        this._root = new Node('tmp')
 
         this.sources = sources
     }
@@ -52,21 +51,19 @@ export class Multiverse {
         return true
     }
 
-    private mergeUniverses(...universes: Universe[]): MergedNode {
-        const mergeResult: MergedNode = new MergedNode('')
+    private mergeUniverses(...universes: Universe[]): Node {
+        const mergeResult: Node = new Node('')
 
         universes.forEach((universe, i) => this.mergeNode(mergeResult, universe.root, i))
 
         return mergeResult
     }
 
-    private mergeNode(mergeResult: MergedNode, node: Node, treeIndex: UniverseIndex) {
-        const matchingChild = mergeResult.children.find(
-            (child: MergedNode) => child.name == node.name
-        )
+    private mergeNode(mergeResult: Node, node: Node, treeIndex: UniverseIndex) {
+        const matchingChild = mergeResult.children.find((child: Node) => child.name == node.name)
 
         if (!matchingChild) {
-            const nodeToMerge = MergedNode.fromNode(node)
+            const nodeToMerge = node.clone()
             this.setSourcesRecursively(nodeToMerge, node, treeIndex)
             mergeResult.push(nodeToMerge)
         } else {
@@ -77,9 +74,9 @@ export class Multiverse {
         }
     }
 
-    private setSourcesRecursively(copy: MergedNode, original: Node, index: UniverseIndex) {
+    private setSourcesRecursively(copy: Node, original: Node, index: UniverseIndex) {
         copy.sources = new Map([[index, original]])
-        copy.children.forEach((child: MergedNode, i: number) =>
+        copy.children.forEach((child: Node, i: number) =>
             this.setSourcesRecursively(child, original.children[i], index)
         )
     }
