@@ -20,7 +20,6 @@ const isSortedAscending = props.sortingOrder === SortingOrder.ASCENDING
     <fieldset class="border rounded p-2 w-auto">
         <legend class="w-auto float-none p-2 fs-5">Node Sorting:</legend>
 
-        <!--        TODO #39 check defaults-->
         <div>
             <template v-for="(option, index) in Object.values(SortingOption)" :key="index">
                 <div class="relative block">

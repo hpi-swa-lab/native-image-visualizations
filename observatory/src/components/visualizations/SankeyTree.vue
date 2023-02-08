@@ -2,8 +2,6 @@
 import MainLayout from '../MainLayout.vue'
 import { VisualizationType } from '../../ts/enums/VisualizationType'
 import SankeyTreeControls from '../controls/SankeyTreeControls.vue'
-
-document.getElementById('container')
 </script>
 
 <template>

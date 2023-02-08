@@ -56,7 +56,6 @@ function onUpdate(e: MouseEvent): void {
         <form>
             <b>Controls</b>
 
-            <!--      DIFFING FILTER-->
             <DiffingUniversesFilterFieldset
                 :diffing-filter="filter.diffing"
                 :universes-metadata="universesMetadata"
@@ -64,7 +63,6 @@ function onUpdate(e: MouseEvent): void {
                 @selection-changed="getFilter().diffing.universes = $event"
             ></DiffingUniversesFilterFieldset>
 
-            <!--      SORTING FILTER -->
             <SortingFilterFieldset
                 :sorting-order="filter.sorting.order"
                 :sorting-option="filter.sorting.option"
@@ -72,12 +70,10 @@ function onUpdate(e: MouseEvent): void {
                 @sorting-option-changed="getFilter().sorting.option = $event"
             ></SortingFilterFieldset>
 
-            <!--      SUBMIT BUTTON -->
             <button type="submit" class="btn btn-sm btn-primary m-2" @click="onUpdate($event)">
                 update
             </button>
 
-            <!--      EXPAND TREE BUTTON -->
             <button
                 id="expand-tree-btn"
                 type="button"
@@ -87,7 +83,6 @@ function onUpdate(e: MouseEvent): void {
                 expand full tree
             </button>
 
-            <!--      SHORTCUTS BOX -->
             <AlertBox title="Shortcuts" :alert-infos="SHORTCUTS"></AlertBox>
         </form>
     </div>
