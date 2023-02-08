@@ -53,13 +53,13 @@ export class Multiverse {
         return true
     }
 
-    public toVennPartitions(multiverse: Multiverse): VennPartitions {
+    public toVennPartitions(): VennPartitions {
         const powerSetCache = new Map<string, string[]>()
 
         const exclusiveCounts = new Map<string, number>()
         const inclusiveCounts = new Map<string, number>()
 
-        multiverse.root.children.forEach((child: Node) => {
+        this.root.children.forEach((child: Node) => {
             countIn(child, exclusiveCounts, inclusiveCounts, powerSetCache)
         })
 
