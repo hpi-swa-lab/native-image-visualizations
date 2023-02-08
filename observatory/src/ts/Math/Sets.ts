@@ -1,4 +1,5 @@
-import { Node } from './../UniverseTypes/Node'
+import { Node } from '../UniverseTypes/Node'
+import { Multiverse } from '../UniverseTypes/Multiverse'
 
 export interface VennPartitions {
     inclusive: VennSet[]
@@ -10,14 +11,14 @@ export interface VennSet {
     size: number
 }
 
-export function toVennPartitions(mergedTree: Node): VennPartitions {
+export function toVennPartitions(multiverse: Multiverse): VennPartitions {
     const powerSetCache = new Map<string, string[]>()
     const inclusiveCounts = new Map<string, number>()
     const exclusiveCounts = new Map<string, number>()
-    mergedTree.children.forEach(countIn)
+    multiverse.root.children.forEach(countIn)
 
     function countIn(node: Node): void {
-        const occurences = Array.from(node.occursIn.keys())
+        const occurences = Array.from(node.sources.keys())
         const intersection = JSON.stringify(occurences)
         exclusiveCounts.set(intersection, (exclusiveCounts.get(intersection) ?? 0) + 1)
 
