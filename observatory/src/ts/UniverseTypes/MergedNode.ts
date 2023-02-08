@@ -34,8 +34,8 @@ export class MergedNode extends Node {
         return this._sources
     }
 
-    set sources(occursIn: Map<UniverseIndex, Node>) {
-        this._sources = occursIn
+    set sources(sources: Map<UniverseIndex, Node>) {
+        this._sources = sources
     }
 
     set parent(newParent: MergedNode | undefined) {
@@ -98,8 +98,8 @@ export class MergedNode extends Node {
             return false
         }
 
-        const occurences = Array.from(this.sources.entries())
-        return occurences.every(([index, node]) => {
+        const sources = Array.from(this.sources.entries())
+        return sources.every(([index, node]) => {
             const other = another.sources.get(index)
             return other && node.name === other.name && node.equals(other)
         })
