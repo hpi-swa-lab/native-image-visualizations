@@ -49,19 +49,19 @@
     <script src="lib/causality_graph.js"></script>
     <script src="zip.min.js"></script>
     <script>
-        var simulate_purge = Module.cwrap("simulate_purge", "number", ["number"]);
-        var simulate_purges_batched = Module.cwrap("simulate_purges_batched", "number", ["number", "number", "number", "number", "number"])
-        var show_reachability = Module.cwrap("show_reachability", "number", ["number"]);
-        var init = Module.cwrap("init", "number", ["number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number"]);
+        let simulate_purge = Module.cwrap("simulate_purge", "number", ["number"]);
+        let simulate_purges_batched = Module.cwrap("simulate_purges_batched", "number", ["number", "number", "number", "number", "number"])
+        let show_reachability = Module.cwrap("show_reachability", "number", ["number"]);
+        let init = Module.cwrap("init", "number", ["number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number"]);
 
 
-        var methodList = []
-        var transitiveSubNodes = {}
+        let methodList = []
+        let transitiveSubNodes = {}
 
         function simulatePurge(str) {
-            var ptr  = allocateUTF8(str)
-            var retPtr = simulate_purge(ptr)
-            var res = UTF8ToString(retPtr)
+            let ptr  = allocateUTF8(str)
+            let retPtr = simulate_purge(ptr)
+            let res = UTF8ToString(retPtr)
 
             // dealloc memory
             Module._free(ptr);
@@ -72,19 +72,19 @@
 
         function simulatePurgesBatched(strs) {
             /*
-            var indicesSortedByLengthDescending = Array(strs.length)
+            let indicesSortedByLengthDescending = Array(strs.length)
             for(let i = 0; i < indicesSortedByLengthDescending.length; i++)
                 indicesSortedByLengthDescending[i] = i
             indicesSortedByLengthDescending.sort((a, b) => strs[b].length - strs[a].length)
 
-            var methodIncluded = Array(methodList.length)
+            let methodIncluded = Array(methodList.length)
             for(let i = 0; i < methodIncluded.length; i++)
                 methodIncluded[i] = false
              */
 
-            var subsetsArr = new Uint32Array(strs.length * 2)
+            let subsetsArr = new Uint32Array(strs.length * 2)
 
-            var totalCount = 0
+            let totalCount = 0
 
             for(let i = 0; i < strs.length; i++) {
                 const count = transitiveSubNodes[strs[i]].length
@@ -92,14 +92,14 @@
                 subsetsArr[i * 2 + 1] = count
             }
 
-            var midsPtr = Module._malloc(totalCount * 4)
-            var midsPos = 0
+            let midsPtr = Module._malloc(totalCount * 4)
+            let midsPos = 0
 
             for(let i = 0; i < strs.length; i++)
             {
-                var count = subsetsArr[i * 2 + 1]
-                var subsetArr = new Uint32Array(count)
-                var pos = 0
+                let count = subsetsArr[i * 2 + 1]
+                let subsetArr = new Uint32Array(count)
+                let pos = 0
 
                 for(const mid of transitiveSubNodes[strs[i]])
                 {
@@ -112,13 +112,13 @@
                 midsPos += count * subsetArr.BYTES_PER_ELEMENT
             }
 
-            var subsetsArrPtr = Module._malloc(subsetsArr.length * subsetsArr.BYTES_PER_ELEMENT)
+            let subsetsArrPtr = Module._malloc(subsetsArr.length * subsetsArr.BYTES_PER_ELEMENT)
             Module.HEAPU32.set(subsetsArr, subsetsArrPtr / 4)
 
-            var resultsArrPtr = Module._malloc(strs.length * 4)
+            let resultsArrPtr = Module._malloc(strs.length * 4)
 
-            var method_weights_ptr = Module._malloc((codesizes.length + 1) * 4)
-            var method_weights_arr = Module.HEAP32.subarray(method_weights_ptr / 4, method_weights_ptr / 4 + codesizes.length + 1)
+            let method_weights_ptr = Module._malloc((codesizes.length + 1) * 4)
+            let method_weights_arr = Module.HEAP32.subarray(method_weights_ptr / 4, method_weights_ptr / 4 + codesizes.length + 1)
 
             method_weights_arr[0] = 0
             for(let i = 0; i < codesizes.length; i++)
@@ -126,7 +126,7 @@
 
             const status = simulate_purges_batched(subsetsArrPtr, strs.length, method_weights_ptr, method_weights_arr.length, resultsArrPtr)
 
-            var res = Module.HEAPU32.subarray(resultsArrPtr / 4, resultsArrPtr / 4 + strs.length)
+            let res = Module.HEAPU32.subarray(resultsArrPtr / 4, resultsArrPtr / 4 + strs.length)
 
             Module._free(method_weights_ptr)
             Module._free(subsetsArrPtr)
@@ -143,9 +143,9 @@
         }
 
         function printReachability(str){
-            var ptr  = allocateUTF8(str)
+            let ptr  = allocateUTF8(str)
 
-            var retPtr = show_reachability(ptr)
+            let retPtr = show_reachability(ptr)
 
             document.getElementById("Output_reachability").value = UTF8ToString(retPtr)
 
@@ -168,15 +168,15 @@
         })();
 
         function doSomething(){
-            var fileInput = document.getElementById("file-input");
+            let fileInput = document.getElementById("file-input");
             fileInput.dispatchEvent(new MouseEvent("click"));
             fileInput.onchange = selectFile;
         }
 
         async function selectFile() {
             try {
-                var fileInput = document.getElementById("file-input");
-                var selectedFile = fileInput.files[0];
+                let fileInput = document.getElementById("file-input");
+                let selectedFile = fileInput.files[0];
                 await loadFiles(selectedFile, "utf-8");
             } catch (error) {
                 alert(error);
@@ -202,7 +202,7 @@
         }
 
         async function loadFiles(selectedFile, filenameEncoding) {
-            var entries = await model.getEntries(selectedFile, { filenameEncoding });
+            let entries = await model.getEntries(selectedFile, { filenameEncoding });
             if (entries && entries.length) {
                 filesAsByteArrays = {}
 
@@ -228,7 +228,7 @@
                     const zipFileWriter = new zip.Uint8ArrayWriter()
                     const data = await entry.getData(zipFileWriter)
 
-                    var input_ptr = Module._malloc(data.length);
+                    let input_ptr = Module._malloc(data.length);
                     Module.HEAPU8.set(data, input_ptr);
 
                     filesAsByteArrays[entry.filename] = { data: input_ptr, length: data.length }
@@ -285,18 +285,18 @@
             for(let mid = 0; mid < list.length; mid++) {
                 const e = list[mid]
 
-                var m = [...e.matchAll(re)]
+                let m = [...e.matchAll(re)]
 
                 const parts = m.map(match => match[0])
                 const partFullNames = m.map(match => e.substring(0, match.index + match[0].length))
-                var parent = root
+                let parent = root
 
                 for (let i = 0; i < parts.length; i++) {
                     if(!transitiveSubNodes[partFullNames[i]])
                         transitiveSubNodes[partFullNames[i]] = []
                     transitiveSubNodes[partFullNames[i]].push(mid)
 
-                    var part = parts[i]
+                    let part = parts[i]
 
                     if(!parent.children)
                         parent.children = {}
@@ -306,7 +306,7 @@
                     parent = parent.children[part]
                 }
 
-                var last_part = parts[parts.length - 1]
+                let last_part = parts[parts.length - 1]
                 parent[last_part] = null
             }
 
@@ -323,13 +323,13 @@
                     strs = []
 
                     for (e of element.parentElement.querySelector("ul").children) {
-                        var node_prefix = e.getAttribute("data-node-name")
+                        let node_prefix = e.getAttribute("data-node-name")
                         strs.push(node_prefix)
                     }
 
                     res = simulatePurgesBatched(strs)
 
-                    var list = element.parentElement.querySelector('ul')
+                    let list = element.parentElement.querySelector('ul')
 
                     let i = 0
                     for (e of list.children) {
@@ -346,11 +346,11 @@
                         i++
                     }
 
-                    var order = new Array(list.children.length)
+                    let order = new Array(list.children.length)
                     for(let i = 0; i < order.length; i++)
                         order[i] = i
 
-                    var nodes = list.children
+                    let nodes = list.children
                     order.sort((a, b) => res[b] - res[a]).map(i => nodes[i]).forEach(node => list.appendChild(node))
                 }
             }
@@ -359,23 +359,23 @@
         }
 
         function generateHTML(data) {
-            var ul = document.createElement("ul")
+            let ul = document.createElement("ul")
             ul.className = "nested"
 
             for(d in data.children) {
-                var li = document.createElement("li")
+                let li = document.createElement("li")
                 ul.appendChild(li)
                 let span = document.createElement("span")
                 li.appendChild(span)
                 span.appendChild(document.createTextNode(d))
                 span.setAttribute("title", data.children[d].fullname)
                 li.setAttribute("data-node-name", data.children[d].fullname)
-                var out = document.createElement("span")
+                let out = document.createElement("span")
                 out.style = "margin-left: 25px; color: #808080"
                 li.appendChild(out)
                 out.id = "purged"
                 /*
-                var checkbox = document.createElement("input")
+                let checkbox = document.createElement("input")
                 checkbox.setAttribute("type", "checkbox")
                 checkbox.setAttribute("data-node-name", prefix + d)
                 li.appendChild(checkbox)
