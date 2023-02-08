@@ -5,5 +5,6 @@ export enum EventType {
     SELECTION_CHANGED = 'selection-changed',
     SHOW_UNMODIFIED_CHANGED = 'show-unmodified-changed',
     EXPAND_TREE = 'expand-tree',
-    CHANGED = 'changed'
+    CHANGED = 'changed',
+    UPDATE = 'update'
 }
