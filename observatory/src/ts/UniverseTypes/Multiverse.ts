@@ -40,17 +40,9 @@ export class Multiverse {
             return false
         }
 
-        for (let i = 0; i < mySources.length; i++) {
-            if (mySources[i].name !== theirSources[i].name) {
-                return false
-            }
-
-            if (!mySources[i].root.equals(theirSources[i].root)) {
-                return false
-            }
-        }
-
-        return true
+        return mySources.every((mySource: Universe, index: number) =>
+            mySource.equals(theirSources[index])
+        )
     }
 
     public toVennPartitions(): VennPartitions {

@@ -4,6 +4,7 @@ import { UniverseIndex } from '../src/ts/SharedTypes/Indices'
 import { Node } from '../src/ts/UniverseTypes/Node'
 import { Multiverse } from '../src/ts/UniverseTypes/Multiverse'
 import { forest } from './data/forest'
+import { Universe } from '../src/ts/UniverseTypes/Universe'
 function node(name: string, sources: Map<UniverseIndex, Node>, children: Node[] = []): Node {
     const node = new Node(name, children)
     node.sources = sources
@@ -23,10 +24,7 @@ describe('Multiverse', () => {
             const c = forest.overlappingTreeC
             const d = forest.differentPackageTree
 
-            const multiverse = new Multiverse([
-                { name: 'c', root: c },
-                { name: 'd', root: d }
-            ])
+            const multiverse = new Multiverse([new Universe('c', c), new Universe('d', d)])
 
             const expected = node('', new Map(), [
                 node('packageA', new Map([[0, c]]), [
@@ -53,7 +51,7 @@ describe('Multiverse', () => {
         test('Should have the occurences set to the only tree given', () => {
             const a = forest.overlappingTreeA
 
-            const multiverse = new Multiverse([{ name: 'a', root: a }])
+            const multiverse = new Multiverse([new Universe('a', a)])
 
             const expected = node('', new Map(), [
                 node('packageA', new Map([[0, a]]), [
@@ -72,10 +70,7 @@ describe('Multiverse', () => {
         test('Merging two equal trees results in the same tree with both indexes', () => {
             const a = forest.overlappingTreeA
 
-            const multiverse = new Multiverse([
-                { name: 'a', root: a },
-                { name: 'anotherA', root: a }
-            ])
+            const multiverse = new Multiverse([new Universe('a', a), new Universe('anotherA', a)])
 
             const expected = node('', new Map(), [
                 node(
@@ -128,10 +123,7 @@ describe('Multiverse', () => {
             const a = forest.overlappingTreeA
             const b = forest.overlappingTreeB
 
-            const multiverse = new Multiverse([
-                { name: 'a', root: a },
-                { name: 'b', root: b }
-            ])
+            const multiverse = new Multiverse([new Universe('a', a), new Universe('b', b)])
 
             const expected = node('', new Map(), [
                 node(
@@ -171,9 +163,9 @@ describe('Multiverse', () => {
             const c = forest.overlappingTreeC
 
             const multiverse = new Multiverse([
-                { name: 'a', root: a },
-                { name: 'b', root: b },
-                { name: 'c', root: c }
+                new Universe('a', a),
+                new Universe('b', b),
+                new Universe('c', c)
             ])
 
             const expected = node('', new Map(), [
@@ -218,9 +210,9 @@ describe('Multiverse', () => {
             const d = forest.differentPackageTree
 
             const multiverse = new Multiverse([
-                { name: 'a', root: a },
-                { name: 'b', root: b },
-                { name: 'd', root: d }
+                new Universe('a', a),
+                new Universe('b', b),
+                new Universe('d', d)
             ])
 
             const expected = node('', new Map(), [
@@ -270,10 +262,7 @@ describe('Multiverse', () => {
             const treeA = clone(forest.overlappingTreeA)
             const treeB = clone(forest.overlappingTreeB)
 
-            new Multiverse([
-                { name: 'a', root: treeA },
-                { name: 'b', root: treeB }
-            ])
+            new Multiverse([new Universe('a', treeA), new Universe('b', treeB)])
 
             expect(treeA.equals(forest.overlappingTreeA)).toBeTruthy()
             expect(treeB.equals(forest.overlappingTreeB)).toBeTruthy()
@@ -311,7 +300,7 @@ describe('Multiverse', () => {
     })
     describe('Generating Venn sets', () => {
         test('For a tree with only occurences in one universe, has one set with count equal to tree size', () => {
-            const multiverse = new Multiverse([{ name: 'simpleTree', root: forest.simpleTree }])
+            const multiverse = new Multiverse([new Universe('simpleTree', forest.simpleTree)])
 
             const actual = multiverse.toVennPartitions()
             const expected = {
@@ -324,8 +313,8 @@ describe('Multiverse', () => {
 
         test('One merged tree with two equal trees has same amount of single combinations and double combinations', () => {
             const multiverse = new Multiverse([
-                { name: 'simpleTree', root: forest.simpleTree },
-                { name: 'simpleTree2', root: forest.simpleTree }
+                new Universe('simpleTree', forest.simpleTree),
+                new Universe('simpleTree2', forest.simpleTree)
             ])
 
             const actual = multiverse.toVennPartitions()
@@ -343,8 +332,8 @@ describe('Multiverse', () => {
 
         test('Two trees without overlap do not create a combination of occurences', () => {
             const multiverse = new Multiverse([
-                { name: 'overlappingTreeC', root: forest.overlappingTreeC },
-                { name: 'differentPackageTree', root: forest.differentPackageTree }
+                new Universe('overlappingTreeC', forest.overlappingTreeC),
+                new Universe('differentPackageTree', forest.differentPackageTree)
             ])
 
             const actual = multiverse.toVennPartitions()
@@ -364,8 +353,8 @@ describe('Multiverse', () => {
 
         test('Two overlapping trees', () => {
             const multiverse = new Multiverse([
-                { name: 'overlappingTreeA', root: forest.overlappingTreeA },
-                { name: 'overlappingTreeB', root: forest.overlappingTreeB }
+                new Universe('overlappingTreeA', forest.overlappingTreeA),
+                new Universe('overlappingTreeB', forest.overlappingTreeB)
             ])
 
             const actual = multiverse.toVennPartitions()
@@ -386,9 +375,9 @@ describe('Multiverse', () => {
 
         test('Three overlapping trees', () => {
             const multiverse = new Multiverse([
-                { name: 'overlappingTreeA', root: forest.overlappingTreeA },
-                { name: 'overlappingTreeB', root: forest.overlappingTreeB },
-                { name: 'overlappingTreeC', root: forest.overlappingTreeC }
+                new Universe('overlappingTreeA', forest.overlappingTreeA),
+                new Universe('overlappingTreeB', forest.overlappingTreeB),
+                new Universe('overlappingTreeC', forest.overlappingTreeC)
             ])
 
             const actual = multiverse.toVennPartitions()
@@ -415,9 +404,9 @@ describe('Multiverse', () => {
 
         test('Two overlapping trees, one appended', () => {
             const multiverse = new Multiverse([
-                { name: 'overlappingTreeA', root: forest.overlappingTreeA },
-                { name: 'overlappingTreeB', root: forest.overlappingTreeB },
-                { name: 'differentPackageTree', root: forest.differentPackageTree }
+                new Universe('overlappingTreeA', forest.overlappingTreeA),
+                new Universe('overlappingTreeB', forest.overlappingTreeB),
+                new Universe('differentPackageTree', forest.differentPackageTree)
             ])
 
             const actual = multiverse.toVennPartitions()
