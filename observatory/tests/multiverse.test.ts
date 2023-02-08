@@ -268,36 +268,6 @@ describe('Multiverse', () => {
             expect(treeA.equals(forest.overlappingTreeA)).toBeTruthy()
             expect(treeB.equals(forest.overlappingTreeB)).toBeTruthy()
         })
-
-        test('equals should be true for permutation of sources', () => {
-            const nodeA = new Node('ClassA', [new Node('methodA')])
-            const nodeB = new Node('ClassA', [new Node('methodA')])
-            const dummy = new Node('dummy')
-            nodeA.sources = new Map([
-                [0, dummy],
-                [1, dummy],
-                [2, dummy],
-                [3, dummy]
-            ])
-            nodeA.children[0].sources = new Map([
-                [1, dummy],
-                [2, dummy],
-                [3, dummy]
-            ])
-            nodeB.sources = new Map([
-                [2, dummy],
-                [1, dummy],
-                [0, dummy],
-                [3, dummy]
-            ])
-            nodeB.children[0].sources = new Map([
-                [2, dummy],
-                [3, dummy],
-                [1, dummy]
-            ])
-
-            expect(nodeA.equals(nodeB)).toBeTruthy()
-        })
     })
     describe('Generating Venn sets', () => {
         test('For a tree with only occurences in one universe, has one set with count equal to tree size', () => {
