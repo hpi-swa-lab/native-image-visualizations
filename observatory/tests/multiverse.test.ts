@@ -269,134 +269,40 @@ describe('Multiverse', () => {
             expect(treeB.equals(forest.overlappingTreeB)).toBeTruthy()
         })
     })
-    describe('Generating Venn sets', () => {
-        test('For a tree with only occurences in one universe, has one set with count equal to tree size', () => {
-            const multiverse = new Multiverse([new Universe('simpleTree', forest.simpleTree)])
 
-            const actual = multiverse.toVennPartitions()
-            const expected = {
-                inclusive: [{ sets: [0], size: 7 }],
-                exclusive: [{ sets: [0], size: 7 }]
-            }
+    describe('equals', () => {
+        test('returns true if sources are the same', () => {
+            const universeA = new Universe('overlappingTreeA', forest.overlappingTreeA)
+            const universeB = new Universe('overlappingTreeB', forest.overlappingTreeB)
 
-            expect(actual).toEqual(expected)
+            const multiverseA = new Multiverse([universeA, universeB])
+            const multiverseB = new Multiverse([universeA, universeB])
+
+            expect(multiverseA.equals(multiverseB)).toBeTruthy()
         })
 
-        test('One merged tree with two equal trees has same amount of single combinations and double combinations', () => {
-            const multiverse = new Multiverse([
-                new Universe('simpleTree', forest.simpleTree),
-                new Universe('simpleTree2', forest.simpleTree)
-            ])
+        test('returnes true if sources are clones of the same data', () => {
+            const universeA = new Universe('overlappingTreeA', clone(forest.overlappingTreeA))
+            const universeB = new Universe('overlappingTreeB', clone(forest.overlappingTreeB))
 
-            const actual = multiverse.toVennPartitions()
-            const expected = {
-                inclusive: [
-                    { sets: [0], size: 7 },
-                    { sets: [1], size: 7 },
-                    { sets: [0, 1], size: 7 }
-                ],
-                exclusive: [{ sets: [0, 1], size: 7 }]
-            }
+            const universeC = new Universe('overlappingTreeA', clone(forest.overlappingTreeA))
+            const universeD = new Universe('overlappingTreeB', clone(forest.overlappingTreeB))
 
-            expect(actual).toEqual(expected)
+            const multiverseA = new Multiverse([universeA, universeB])
+            const multiverseB = new Multiverse([universeC, universeD])
+
+            expect(multiverseA.equals(multiverseB)).toBeTruthy()
         })
 
-        test('Two trees without overlap do not create a combination of occurences', () => {
-            const multiverse = new Multiverse([
-                new Universe('overlappingTreeC', forest.overlappingTreeC),
-                new Universe('differentPackageTree', forest.differentPackageTree)
-            ])
+        test('returns false if the sources are different', () => {
+            const universeA = new Universe('overlappingTreeA', forest.overlappingTreeA)
+            const universeB = new Universe('overlappingTreeB', forest.overlappingTreeB)
+            const universeC = new Universe('differentPackageTree', forest.differentPackageTree)
 
-            const actual = multiverse.toVennPartitions()
-            const expected = {
-                inclusive: [
-                    { sets: [0], size: 4 },
-                    { sets: [1], size: 7 }
-                ],
-                exclusive: [
-                    { sets: [0], size: 4 },
-                    { sets: [1], size: 7 }
-                ]
-            }
+            const multiverseA = new Multiverse([universeA, universeB])
+            const multiverseB = new Multiverse([universeA, universeC])
 
-            expect(actual).toEqual(expected)
-        })
-
-        test('Two overlapping trees', () => {
-            const multiverse = new Multiverse([
-                new Universe('overlappingTreeA', forest.overlappingTreeA),
-                new Universe('overlappingTreeB', forest.overlappingTreeB)
-            ])
-
-            const actual = multiverse.toVennPartitions()
-            const expected = {
-                inclusive: [
-                    { sets: [0], size: 5 },
-                    { sets: [1], size: 5 },
-                    { sets: [0, 1], size: 2 }
-                ],
-                exclusive: [
-                    { sets: [0], size: 3 },
-                    { sets: [1], size: 3 },
-                    { sets: [0, 1], size: 2 }
-                ]
-            }
-            expect(actual).toEqual(expected)
-        })
-
-        test('Three overlapping trees', () => {
-            const multiverse = new Multiverse([
-                new Universe('overlappingTreeA', forest.overlappingTreeA),
-                new Universe('overlappingTreeB', forest.overlappingTreeB),
-                new Universe('overlappingTreeC', forest.overlappingTreeC)
-            ])
-
-            const actual = multiverse.toVennPartitions()
-            const expected = {
-                inclusive: [
-                    { sets: [0], size: 5 },
-                    { sets: [1], size: 5 },
-                    { sets: [2], size: 4 },
-                    { sets: [0, 1], size: 2 },
-                    { sets: [0, 2], size: 2 },
-                    { sets: [1, 2], size: 2 },
-                    { sets: [0, 1, 2], size: 2 }
-                ],
-                exclusive: [
-                    { sets: [0], size: 3 },
-                    { sets: [1], size: 3 },
-                    { sets: [2], size: 2 },
-                    { sets: [0, 1, 2], size: 2 }
-                ]
-            }
-
-            expect(actual).toEqual(expected)
-        })
-
-        test('Two overlapping trees, one appended', () => {
-            const multiverse = new Multiverse([
-                new Universe('overlappingTreeA', forest.overlappingTreeA),
-                new Universe('overlappingTreeB', forest.overlappingTreeB),
-                new Universe('differentPackageTree', forest.differentPackageTree)
-            ])
-
-            const actual = multiverse.toVennPartitions()
-            const expected = {
-                inclusive: [
-                    { sets: [0], size: 5 },
-                    { sets: [1], size: 5 },
-                    { sets: [2], size: 7 },
-                    { sets: [0, 1], size: 2 }
-                ],
-                exclusive: [
-                    { sets: [0], size: 3 },
-                    { sets: [1], size: 3 },
-                    { sets: [2], size: 7 },
-                    { sets: [0, 1], size: 2 }
-                ]
-            }
-
-            expect(actual).toEqual(expected)
+            expect(multiverseA.equals(multiverseB)).toBeFalsy()
         })
     })
 })
