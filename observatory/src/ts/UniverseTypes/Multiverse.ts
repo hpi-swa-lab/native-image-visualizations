@@ -1,8 +1,6 @@
 import { Node } from './Node'
 import { Universe } from './Universe'
 import { UniverseIndex } from '../SharedTypes/Indices'
-import { VennPartitions, VennSet } from '../SharedTypes/Venn'
-import { countIn } from '../Math/Sets'
 
 export class Multiverse {
     private _root: Node
@@ -43,28 +41,6 @@ export class Multiverse {
         return mySources.every((mySource: Universe, index: number) =>
             mySource.equals(theirSources[index])
         )
-    }
-
-    public toVennPartitions(): VennPartitions {
-        const powerSetCache = new Map<string, string[]>()
-
-        const exclusiveCounts = new Map<string, number>()
-        const inclusiveCounts = new Map<string, number>()
-
-        this.root.children.forEach((child: Node) => {
-            countIn(child, exclusiveCounts, inclusiveCounts, powerSetCache)
-        })
-
-        return {
-            inclusive: this.createVennSets(inclusiveCounts),
-            exclusive: this.createVennSets(exclusiveCounts)
-        }
-    }
-
-    protected createVennSets(counts: Map<string, number>): VennSet[] {
-        return Array.from(counts, ([combination, count]) => {
-            return { sets: JSON.parse(combination), size: count }
-        }).sort((a, b) => a.sets.length - b.sets.length)
     }
 
     protected mergeUniverses(...universes: Universe[]): Node {
