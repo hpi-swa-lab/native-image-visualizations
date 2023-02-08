@@ -5,6 +5,7 @@ import { Node } from '../src/ts/UniverseTypes/Node'
 import { Multiverse } from '../src/ts/UniverseTypes/Multiverse'
 import { forest } from './data/forest'
 import { Universe } from '../src/ts/UniverseTypes/Universe'
+
 function node(name: string, sources: Map<UniverseIndex, Node>, children: Node[] = []): Node {
     const node = new Node(name, children)
     node.sources = sources
