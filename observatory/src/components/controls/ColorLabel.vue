@@ -13,7 +13,15 @@ withDefaults(
 
 <template>
     <div class="inline">
-        <input v-if="color" type="color" class="color-input" :value="color" disabled />
+        <input v-if="color" type="color" class="mr-1" :value="color" disabled />
         <label> {{ value }} </label>
     </div>
 </template>
+
+<style scoped>
+input {
+    width: 1em;
+    height: 1em;
+    vertical-align: central;
+}
+</style>
