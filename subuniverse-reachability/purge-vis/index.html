@@ -266,31 +266,16 @@
     </details>
 
     <input type="file" id="file-input" accept="application/zip" hidden>
-        <ul id="myUL">
-            <li id="myLI">
-                <span class="caret">root</span>
-            </li>
-        </ul>
+
+    <input type="checkbox">Show generated code</input>
+
+    <ul id="myUL">
+        <li id="myLI">
+            <span class="caret" id="myRoot">root</span>
+        </li>
+    </ul>
 
     <script>
-        var data = {
-            "java": {
-                "lang": {
-                    "Object": null,
-                    "String": null
-                },
-                "math": {
-                    "BigInteger": null,
-                    "BigDecimal": null,
-                }
-            },
-            "example": {
-                "HelloWorld": {
-                    "main(java.lang.String[])": null
-                }
-            }
-        }
-
         function generateHierarchyFromList(list) {
             const re = /[^\s(.)\[\]\$]+(?=\.|$|\[|\s|\$)|[^\s(.)]+\([^)]*\)|\[[^\]]+\]|\[\]$/g
             root = {}
@@ -328,7 +313,45 @@
             return root
         }
 
-        data = generateHierarchyFromList(["example.Main[]", "example.Main.main(java.lang.String[])"])
+        function expandClickHandler() {
+            var expanded = this.parentElement.querySelector(".nested").classList.toggle("active");
+            this.classList.toggle("caret-down");
+
+            if (expanded) {
+                strs = []
+
+                for (e of this.parentElement.querySelector("ul").children) {
+                    var node_prefix = e.getAttribute("data-node-name")
+                    strs.push(node_prefix)
+                }
+
+                res = simulatePurgesBatched(strs)
+
+                var list = this.parentElement.querySelector('ul')
+
+                let i = 0
+                for (e of list.children) {
+                    let cutoff_size = res[i]
+                    let str = ""
+                    if(cutoff_size > 1000000)
+                        str = (cutoff_size / 1000000).toPrecision(3) + " MB"
+                    else if(cutoff_size > 1000)
+                        str = (cutoff_size / 1000).toPrecision(3) + " KB"
+                    else
+                        str = cutoff_size.toPrecision(3) + " B"
+
+                    e.querySelector("#purged").textContent = str
+                    i++
+                }
+
+                var order = new Array(list.children.length)
+                for(let i = 0; i < order.length; i++)
+                    order[i] = i
+
+                var nodes = list.children
+                order.sort((a, b) => res[b] - res[a]).map(i => nodes[i]).forEach(node => list.appendChild(node))
+            }
+        }
 
         function generateHTML(data) {
             var ul = document.createElement("ul")
@@ -356,6 +379,7 @@
                 if(data.children[d].children) {
                     span.className = "caret"
                     li.appendChild(generateHTML(data.children[d]))
+                    span.addEventListener("click", expandClickHandler);
                 }
             }
 
@@ -365,52 +389,7 @@
         function prepareListView(data) {
             var html = generateHTML(data)
             document.getElementById("myLI").appendChild(html)
-
-            var toggler = document.getElementsByClassName("caret");
-            document.create
-            var i;
-
-            for (i = 0; i < toggler.length; i++) {
-                toggler[i].addEventListener("click", function() {
-                    var expanded = this.parentElement.querySelector(".nested").classList.toggle("active");
-                    this.classList.toggle("caret-down");
-
-                    if (expanded) {
-                        strs = []
-
-                        for (e of this.parentElement.querySelector("ul").children) {
-                            var node_prefix = e.getAttribute("data-node-name")
-                            strs.push(node_prefix)
-                        }
-
-                        res = simulatePurgesBatched(strs)
-
-                        var list = this.parentElement.querySelector('ul')
-
-                        let i = 0
-                        for (e of list.children) {
-                            let cutoff_size = res[i]
-                            let str = ""
-                            if(cutoff_size > 1000000)
-                                str = (cutoff_size / 1000000).toPrecision(3) + " MB"
-                            else if(cutoff_size > 1000)
-                                str = (cutoff_size / 1000).toPrecision(3) + " KB"
-                            else
-                                str = cutoff_size.toPrecision(3) + " B"
-
-                            e.querySelector("#purged").textContent = str
-                            i++
-                        }
-
-                        var order = new Array(list.children.length)
-                        for(let i = 0; i < order.length; i++)
-                            order[i] = i
-
-                        var nodes = list.children
-                        order.sort((a, b) => res[b] - res[a]).map(i => nodes[i]).forEach(node => list.appendChild(node))
-                    }
-                });
-            }
+            document.getElementById("myRoot").addEventListener("click", expandClickHandler);
         }
     </script>
 </body>
