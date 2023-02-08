@@ -4,12 +4,12 @@ import { Universe } from './Universe'
 import { UniverseIndex } from '../SharedTypes/Indices'
 
 export class Multiverse {
-    private _mergedNode: MergedNode
+    private _root: MergedNode
     private _sources: Universe[] = []
 
     constructor(sources: Universe[]) {
         // this is just for ts initialization. It gets overridden in the sources setter anyways
-        this._mergedNode = new MergedNode('tmp')
+        this._root = new MergedNode('tmp')
 
         this.sources = sources
     }
@@ -18,17 +18,17 @@ export class Multiverse {
         return this._sources
     }
 
-    get mergedNode(): Node {
-        return this._mergedNode
+    get root(): Node {
+        return this._root
     }
 
     set sources(newSources: Universe[]) {
         this._sources = newSources
-        this._mergedNode = this.mergeUniverses(...newSources)
+        this._root = this.mergeUniverses(...newSources)
     }
 
     public equals(other: Multiverse): boolean {
-        if (!other.mergedNode.equals(this.mergedNode)) {
+        if (!other.root.equals(this.root)) {
             return false
         }
 
@@ -67,7 +67,7 @@ export class Multiverse {
 
         if (!matchingChild) {
             const nodeToMerge = MergedNode.fromNode(node)
-            this.setOccursInRecursive(nodeToMerge, node, treeIndex)
+            this.setSourcesRecursively(nodeToMerge, node, treeIndex)
             mergeResult.push(nodeToMerge)
         } else {
             matchingChild.sources.set(treeIndex, node)
@@ -77,10 +77,10 @@ export class Multiverse {
         }
     }
 
-    private setOccursInRecursive(copy: MergedNode, original: Node, index: UniverseIndex) {
+    private setSourcesRecursively(copy: MergedNode, original: Node, index: UniverseIndex) {
         copy.sources = new Map([[index, original]])
         copy.children.forEach((child: MergedNode, i: number) =>
-            this.setOccursInRecursive(child, original.children[i], index)
+            this.setSourcesRecursively(child, original.children[i], index)
         )
     }
 }

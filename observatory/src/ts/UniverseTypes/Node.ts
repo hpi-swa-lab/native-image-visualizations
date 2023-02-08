@@ -108,27 +108,16 @@ export class Node {
     }
 
     protected equalsIgnoringParents(another: Node): boolean {
-        if (this.name !== another.name) {
-            return false
-        }
-        if (this.codeSize !== another.codeSize) {
-            return false
-        }
-
-        if (this.children.length !== another.children.length) {
-            return false
-        }
-        if (
-            !this.children.every((child: Node, index: number) =>
+        return (
+            this.name === another.name &&
+            this.codeSize === another.codeSize &&
+            this.children.length === another.children.length &&
+            this.children.every((child: Node, index: number) =>
                 child.equalsIgnoringParents(another.children[index])
             )
-        ) {
-            return false
-        }
-
-        return true
+        )
     }
-    
+
     protected equalsComparingOnlyParents(another: Node): boolean {
         if (this.parent === undefined && another.parent === undefined) return true
         if (this.parent === undefined || another.parent === undefined) return false
