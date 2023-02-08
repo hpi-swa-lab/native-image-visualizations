@@ -1,11 +1,11 @@
 <script setup lang="ts">
 withDefaults(
     defineProps<{
-        value: string
+        label: string
         color: string
     }>(),
     {
-        value: '',
+        label: '',
         color: '#ffffff'
     }
 )
@@ -14,7 +14,7 @@ withDefaults(
 <template>
     <div class="inline">
         <input v-if="color" type="color" class="mr-1" :value="color" disabled />
-        <label> {{ value }} </label>
+        <label> {{ label }} </label>
     </div>
 </template>
 

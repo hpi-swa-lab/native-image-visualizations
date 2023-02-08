@@ -48,7 +48,7 @@ function onUniverseSelectionChanged(universeId: string) {
             @input="onUniverseSelectionChanged($event.target.id)"
         >
             <ColorLabel
-                :value="universesMetadata[key].name"
+                :label="universesMetadata[key].name"
                 :color="universesMetadata[key].color"
             ></ColorLabel>
         </ToggleSwitch>
@@ -59,10 +59,10 @@ function onUniverseSelectionChanged(universeId: string) {
             :checked="props.diffingFilter.showUnmodified"
             @input="$emit(EventType.SHOW_UNMODIFIED_CHANGED, $event.target.checked)"
         >
-            <ColorLabel value="unmodified packages" :color="COLOR_UNMODIFIED"></ColorLabel>
+            <ColorLabel label="unmodified packages" :color="COLOR_UNMODIFIED"></ColorLabel>
         </ToggleSwitch>
 
-        <ColorLabel value="modified packages" :color="COLOR_MODIFIED"></ColorLabel>
+        <ColorLabel label="modified packages" :color="COLOR_MODIFIED"></ColorLabel>
     </fieldset>
 </template>
 
