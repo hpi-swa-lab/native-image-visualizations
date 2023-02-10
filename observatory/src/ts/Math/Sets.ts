@@ -1,23 +1,15 @@
 import { Node } from './../UniverseTypes/Node'
+import { VennPartitions, VennSet } from '../SharedTypes/Venn'
+import { Multiverse } from '../UniverseTypes/Multiverse'
 
-export interface VennPartitions {
-    inclusive: VennSet[]
-    exclusive: VennSet[]
-}
-
-export interface VennSet {
-    sets: string[]
-    size: number
-}
-
-export function toVennPartitions(mergedTree: Node): VennPartitions {
+export function createVennPartitions(multiverse: Multiverse): VennPartitions {
     const powerSetCache = new Map<string, string[]>()
     const inclusiveCounts = new Map<string, number>()
     const exclusiveCounts = new Map<string, number>()
-    mergedTree.children.forEach(countIn)
+    multiverse.root.children.forEach(countIn)
 
     function countIn(node: Node): void {
-        const occurences = Array.from(node.occursIn.keys())
+        const occurences = Array.from(node.sources.keys())
         const intersection = JSON.stringify(occurences)
         exclusiveCounts.set(intersection, (exclusiveCounts.get(intersection) ?? 0) + 1)
 
@@ -30,8 +22,8 @@ export function toVennPartitions(mergedTree: Node): VennPartitions {
     }
 
     return {
-        inclusive: toVennSets(inclusiveCounts),
-        exclusive: toVennSets(exclusiveCounts)
+        inclusive: createVennSets(inclusiveCounts),
+        exclusive: createVennSets(exclusiveCounts)
     }
 }
 
@@ -47,7 +39,11 @@ export function powerSet(l: unknown[]): unknown[][] {
     })(l.slice())
 }
 
-function hitOrCalculateOnMiss(combinees: number[], key: string, cache: Map<string, string[]>) {
+function hitOrCalculateOnMiss(
+    combinees: number[],
+    key: string,
+    cache: Map<string, string[]>
+): string[] {
     const subCombinations =
         cache.get(key) ??
         powerSet(combinees)
@@ -61,7 +57,7 @@ function hitOrCalculateOnMiss(combinees: number[], key: string, cache: Map<strin
     return subCombinations
 }
 
-function toVennSets(counts: Map<string, number>): VennSet[] {
+function createVennSets(counts: Map<string, number>): VennSet[] {
     return Array.from(counts, ([combination, count]) => {
         return { sets: JSON.parse(combination), size: count }
     }).sort((a, b) => a.sets.length - b.sets.length)

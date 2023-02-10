@@ -114,36 +114,6 @@ describe('Node usage', () => {
         expect(childlessRootCopy.equals(forest.childlessRoot)).toBeTruthy()
     })
 
-    test('equals should be true for permutation of occursIn', () => {
-        const nodeA = new Node('ClassA', [new Leaf('methodA', 10, InitKind.BUILD_TIME)])
-        const nodeB = new Node('ClassA', [new Leaf('methodA', 10, InitKind.BUILD_TIME)])
-        const dummy = new Node('dummy')
-        nodeA.occursIn = new Map([
-            [0, dummy],
-            [1, dummy],
-            [2, dummy],
-            [3, dummy]
-        ])
-        nodeA.children[0].occursIn = new Map([
-            [1, dummy],
-            [2, dummy],
-            [3, dummy]
-        ])
-        nodeB.occursIn = new Map([
-            [2, dummy],
-            [1, dummy],
-            [0, dummy],
-            [3, dummy]
-        ])
-        nodeB.children[0].occursIn = new Map([
-            [2, dummy],
-            [3, dummy],
-            [1, dummy]
-        ])
-
-        expect(nodeA.equals(nodeB)).toBeTruthy()
-    })
-
     test('equals should be false for different number children', () => {
         const simpleTreeCopy = new Node('Class', [
             new Leaf('methodA', 10, InitKind.BUILD_TIME),
@@ -163,5 +133,35 @@ describe('Node usage', () => {
                 forest.overlappingTreeA.children[0]
             )
         ).toBeFalsy()
+    })
+
+    test('equals should be true for permutation of sources', () => {
+        const nodeA = new Node('ClassA', [new Node('methodA')])
+        const nodeB = new Node('ClassA', [new Node('methodA')])
+        const dummy = new Node('dummy')
+        nodeA.sources = new Map([
+            [0, dummy],
+            [1, dummy],
+            [2, dummy],
+            [3, dummy]
+        ])
+        nodeA.children[0].sources = new Map([
+            [1, dummy],
+            [2, dummy],
+            [3, dummy]
+        ])
+        nodeB.sources = new Map([
+            [2, dummy],
+            [1, dummy],
+            [0, dummy],
+            [3, dummy]
+        ])
+        nodeB.children[0].sources = new Map([
+            [2, dummy],
+            [3, dummy],
+            [1, dummy]
+        ])
+
+        expect(nodeA.equals(nodeB)).toBeTruthy()
     })
 })
