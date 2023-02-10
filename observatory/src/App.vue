@@ -7,7 +7,7 @@ import { SwappableComponentType } from './ts/enums/SwappableComponentType'
 import TreeLine from './components/visualizations/TreeLine.vue'
 import Venn from './components/visualizations/VennSets.vue'
 import DataManager from './components/DataManager.vue'
-import { NamedUniverse } from './ts/UniverseTypes/NamedUniverse'
+import { Universe } from './ts/UniverseTypes/Universe'
 
 const currentComponent = ref<number>(SwappableComponentType.Home)
 
@@ -15,12 +15,12 @@ const handlePageChange = (value: number) => {
     currentComponent.value = value
 }
 
-const universes = ref<NamedUniverse[]>([])
+const universes = ref<Universe[]>([])
 
 function removeUniverse(universeName: string) {
     if (!universes.value) return
 
-    const removedUniverse = (universes.value as NamedUniverse[]).find((universe: NamedUniverse) => {
+    const removedUniverse = (universes.value as Universe[]).find((universe: Universe) => {
         return universe.name === universeName
     })
     if (removedUniverse) {
@@ -28,9 +28,9 @@ function removeUniverse(universeName: string) {
     }
 }
 
-function addUniverse(newUniverse: NamedUniverse) {
-    const currentUniverses = universes.value as NamedUniverse[]
-    if (!currentUniverses.find((universe: NamedUniverse) => universe.name === newUniverse.name)) {
+function addUniverse(newUniverse: Universe) {
+    const currentUniverses = universes.value as Universe[]
+    if (!currentUniverses.find((universe: Universe) => universe.name === newUniverse.name)) {
         universes.value.push(newUniverse)
     }
 }
@@ -39,18 +39,22 @@ function addUniverse(newUniverse: NamedUniverse) {
 <template>
     <Venn
         v-if="currentComponent === SwappableComponentType.VennSets"
+        :universes="(universes as Universe[])"
         @change-page="handlePageChange"
     ></Venn>
     <SankeyTree
         v-else-if="currentComponent === SwappableComponentType.SankeyTree"
+        :universes="(universes as Universe[])"
         @change-page="handlePageChange"
     ></SankeyTree>
     <TreeLine
         v-else-if="currentComponent === SwappableComponentType.TreeLine"
+        :universes="(universes as Universe[])"
         @change-page="handlePageChange"
     ></TreeLine>
     <CausalityGraph
         v-else-if="currentComponent === SwappableComponentType.CausalityGraph"
+        :universes="universes[0]"
         @change-page="handlePageChange"
     ></CausalityGraph>
     <Home
@@ -59,7 +63,7 @@ function addUniverse(newUniverse: NamedUniverse) {
     ></Home>
     <DataManager
         v-else-if="currentComponent === SwappableComponentType.DataManager"
-        :universes="(universes as NamedUniverse[])"
+        :universes="(universes as Universe[])"
         @change-page="handlePageChange"
         @universe-created="addUniverse"
         @universe-removed="removeUniverse"

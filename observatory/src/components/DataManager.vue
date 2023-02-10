@@ -4,7 +4,7 @@ import { EventType } from '../ts/enums/EventType'
 
 import ElevatedLayer from './layouts/ElevatedLayer.vue'
 
-import { NamedUniverse } from '../ts/UniverseTypes/NamedUniverse'
+import { Universe } from '../ts/UniverseTypes/Universe'
 import { loadJson, parseReachabilityExport } from '../ts/parsing'
 import MainLayout from './layouts/MainLayout.vue'
 import { SwappableComponentType } from '../ts/enums/SwappableComponentType'
@@ -13,14 +13,14 @@ const emit = defineEmits([EventType.UNIVERSE_REMOVED, EventType.UNIVERSE_CREATED
 
 const props = withDefaults(
     defineProps<{
-        universes: NamedUniverse[]
+        universes: Universe[]
     }>(),
     {
         universes: () => []
     }
 )
 
-const currentUniverses = ref<NamedUniverse[]>(props.universes)
+const currentUniverses = ref<Universe[]>(props.universes)
 
 const form = ref<HTMLFormElement>()
 const nameInput = ref<HTMLInputElement>()
@@ -48,8 +48,8 @@ function validateAndUpdateName() {
     const input = nameInput.value as HTMLInputElement
     const name = input.value
 
-    const universes = currentUniverses.value as NamedUniverse[]
-    const universeNames = universes.map((universe: NamedUniverse) => universe.name)
+    const universes = currentUniverses.value as Universe[]
+    const universeNames = universes.map((universe: Universe) => universe.name)
 
     if (input.validity.valueMissing) {
         input.setCustomValidity('You must give this universe a name.')
@@ -72,10 +72,7 @@ async function addUniverse() {
     if (!formContents.value.name || !formContents.value.rechabilityExportFile) return
 
     const rawData = await loadJson(formContents.value.rechabilityExportFile)
-    const newUniverse = {
-        name: formContents.value.name,
-        root: parseReachabilityExport(rawData)
-    }
+    const newUniverse = new Universe(formContents.value.name, parseReachabilityExport(rawData))
 
     emit(EventType.UNIVERSE_CREATED, newUniverse)
 }
