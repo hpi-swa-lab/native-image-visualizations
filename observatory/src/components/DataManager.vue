@@ -28,17 +28,19 @@ const dataInput = ref<HTMLInputElement>()
 
 const formContents = ref<{
     name?: string
-    rechabilityExportFile?: File
+    reachabilityExportFile?: File
 }>({})
 
-function validateAndUpdateRechabilityExport() {
+function validateAndUpdateReachabilityExport() {
     const input = dataInput.value as HTMLInputElement
 
     if (!input.files || !input.files[0]) {
-        input.setCustomValidity('You must the data to create a universe')
+        input.setCustomValidity(
+            'You need to upload a reachability export in order to create a universe.'
+        )
     } else {
         input.setCustomValidity('')
-        formContents.value.rechabilityExportFile = input.files[0]
+        formContents.value.reachabilityExportFile = input.files[0]
     }
 
     input.reportValidity()
@@ -65,13 +67,13 @@ function validateAndUpdateName() {
 
 async function addUniverse() {
     validateAndUpdateName()
-    validateAndUpdateRechabilityExport()
+    validateAndUpdateReachabilityExport()
 
     if (!form.value?.checkValidity()) return
 
-    if (!formContents.value.name || !formContents.value.rechabilityExportFile) return
+    if (!formContents.value.name || !formContents.value.reachabilityExportFile) return
 
-    const rawData = await loadJson(formContents.value.rechabilityExportFile)
+    const rawData = await loadJson(formContents.value.reachabilityExportFile)
     const newUniverse = new Universe(formContents.value.name, parseReachabilityExport(rawData))
 
     emit(EventType.UNIVERSE_CREATED, newUniverse)
@@ -133,7 +135,7 @@ async function addUniverse() {
                         type="file"
                         accept="json"
                         required
-                        @change="validateAndUpdateRechabilityExport"
+                        @change="validateAndUpdateReachabilityExport"
                     />
                     <p class="help-text">Some text</p>
                 </div>
