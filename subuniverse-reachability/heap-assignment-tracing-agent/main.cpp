@@ -788,7 +788,8 @@ static void JNICALL onClassFileLoad(
     cerr << "ClassLoad: " << name << endl;
 #endif
 
-    if(string_view(name) == HOOK_CLASS_NAME) // Do not replace our own hooks, logically
+    if(string_view(name) == HOOK_CLASS_NAME // Do not replace our own hooks, logically
+    || string_view(name) == "com/oracle/svm/core/jni/functions/JNIFunctionTables") // Crashes during late compile phase
         return;
 
     if(string_view(name) == "java/util/ArrayList")
