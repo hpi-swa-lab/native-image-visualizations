@@ -144,20 +144,49 @@ static void print_reachability_of_method(ostream& out, const Adjacency& adj, con
             }
         }
 
-        assert(flow_type_dist <= dist);
+        if(flow_type_dist > dist)
+        {
+            TreeIndenter::indent i(indentation);
+            out << indentation << "Lost due to saturation!" << endl;
+            return;
+        }
+
         worklist.push(start_flow);
 
         for(;;)
         {
-            assert(!worklist.empty());
+            if(worklist.empty())
+            {
+                TreeIndenter::indent i(indentation);
+                out << indentation << "Lost due to saturation!" << endl;
+                return;
+            }
 
             typeflow_id flow = worklist.front();
             worklist.pop();
 
             if(flow != adj.allInstantiated && all.typeflow_visited[flow.id].is_saturated() && all.typeflow_visited[flow.id].saturated_dist <= dist)
             {
-                parent[adj.allInstantiated.id] = flow;
-                worklist.emplace(adj.allInstantiated);
+                for(size_t i = 1; i < adj.n_typeflows(); i++)
+                {
+                    if(all.typeflow_visited[i].is_saturated() && all.typeflow_visited[i].saturated_dist <= dist)
+                    {
+                        for(auto type_pair : all.typeflow_visited[i])
+                        {
+                            if(type_pair.first == flow_type)
+                            {
+                                if(flow.id != i)
+                                {
+                                    parent[i] = flow;
+                                    worklist.emplace(i);
+                                }
+                                goto found_saturation_source;
+                            }
+                        }
+                    }
+                }
+
+                found_saturation_source: {}
             }
 
             for(typeflow_id prev : adj[flow].backward_edges)
