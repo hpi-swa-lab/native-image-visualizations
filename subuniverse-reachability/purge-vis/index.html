@@ -71,6 +71,7 @@
         }
 
         function simulatePurgesBatched(strs) {
+            return null
             /*
             let indicesSortedByLengthDescending = Array(strs.length)
             for(let i = 0; i < indicesSortedByLengthDescending.length; i++)
@@ -206,11 +207,8 @@
             if (entries && entries.length) {
                 filesAsByteArrays = {}
 
-                methodList = (await entries.find(e => e.filename === "methods.txt").getData(new zip.TextWriter())).split('\n')
-                methodList.pop()
-                prepareListView(generateHierarchyFromList(methodList))
-
                 let reachabilityData = JSON.parse(await entries.find(e => e.filename === "reachability.json").getData(new zip.TextWriter()))
+                prepareListView(generateHierarchyFromReachabilityJson(reachabilityData))
                 let codesizesDict = getMethodCodesizeDictFromReachabilityJson(reachabilityData)
                 codesizes = new Array(methodList.length)
 
@@ -276,6 +274,37 @@
     </ul>
 
     <script>
+        function generateHierarchyFromReachabilityJson(json) {
+            let dict = {}
+            dict.children = {}
+
+            for (const toplevel of json) {
+                let l1name = toplevel.path + ":" + toplevel.module
+                let l1 = {}
+                l1.children = {}
+                dict.children[l1name] = l1
+
+                for (const package in toplevel.packages) {
+                    let l2 = {}
+                    l2.children = {}
+                    l1.children[package] = l2
+
+                    for (const type in toplevel.packages[package].types) {
+                        let l3 = {}
+                        l3.children = {}
+                        l2.children[type] = l3
+
+                        for (const method in toplevel.packages[package].types[type].methods) {
+                            let l4 = {}
+                            l3.children[method] = l4
+                        }
+                    }
+                }
+            }
+
+            return dict
+        }
+
         function generateHierarchyFromList(list) {
             const re = /[^\s(.)\[\]\$]+(?=\.|$|\[|\s|\$)|[^\s(.)]+\([^)]*\)|\[[^\]]+\]|\[\]$/g
             root = {}
@@ -326,32 +355,6 @@
                         let node_prefix = e.getAttribute("data-node-name")
                         strs.push(node_prefix)
                     }
-
-                    res = simulatePurgesBatched(strs)
-
-                    let list = element.parentElement.querySelector('ul')
-
-                    let i = 0
-                    for (e of list.children) {
-                        let cutoff_size = res[i]
-                        let str = ""
-                        if(cutoff_size > 1000000)
-                            str = (cutoff_size / 1000000).toPrecision(3) + " MB"
-                        else if(cutoff_size > 1000)
-                            str = (cutoff_size / 1000).toPrecision(3) + " KB"
-                        else
-                            str = cutoff_size.toPrecision(3) + " B"
-
-                        e.querySelector("#purged").textContent = str
-                        i++
-                    }
-
-                    let order = new Array(list.children.length)
-                    for(let i = 0; i < order.length; i++)
-                        order[i] = i
-
-                    let nodes = list.children
-                    order.sort((a, b) => res[b] - res[a]).map(i => nodes[i]).forEach(node => list.appendChild(node))
                 }
             }
 
