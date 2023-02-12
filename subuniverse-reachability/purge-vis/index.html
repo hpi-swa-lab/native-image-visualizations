@@ -276,6 +276,35 @@
     </ul>
 
     <script>
+        class Trie {
+            constructor(dict) {
+                this.root = { next: {} }
+                for (const str in dict) {
+                    let node = this.root
+                    for (const c of str) {
+                        if (!node.next[c]) {
+                            node.next[c] = { next: {} }
+                        }
+                        node = node.next[c]
+                    }
+                    node.val = dict[str]
+                }
+            }
+
+            find(str) {
+                let node = this.root
+                let val = undefined
+                for (const c of str) {
+                    if (!node.next[c])
+                        return val
+                    node = node.next[c]
+                    if (node.val)
+                        val = node.val
+                }
+                return val
+            }
+        }
+
         function generateHierarchyFromReachabilityJsonAndMethodList(json, cgNodes) {
             let dict = { children: [] }
 
@@ -334,16 +363,13 @@
                 }
             }
 
-            prefixesSorted = Object.keys(prefixToNode).sort((a, b) => b.length - a.length)
+            const trie = new Trie(prefixToNode)
 
             for (let i = 0; i < cgNodes.length; i++) {
                 const cgNodeName = cgNodes[i]
-                for (const prefix of prefixesSorted) {
-                    if (cgNodeName.startsWith(prefix)) {
-                        prefixToNode[prefix].cg_nodes.push(i)
-                        break;
-                    }
-                }
+                const node = trie.find(cgNodeName)
+                if (node)
+                    node.cg_nodes.push(i)
             }
 
             return dict
