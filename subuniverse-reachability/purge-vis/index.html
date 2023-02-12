@@ -70,25 +70,14 @@
             return res
         }
 
-        function simulatePurgesBatched(strs) {
-            return null
-            /*
-            let indicesSortedByLengthDescending = Array(strs.length)
-            for(let i = 0; i < indicesSortedByLengthDescending.length; i++)
-                indicesSortedByLengthDescending[i] = i
-            indicesSortedByLengthDescending.sort((a, b) => strs[b].length - strs[a].length)
+        function simulatePurgesBatched(purge_groups) {
 
-            let methodIncluded = Array(methodList.length)
-            for(let i = 0; i < methodIncluded.length; i++)
-                methodIncluded[i] = false
-             */
-
-            let subsetsArr = new Uint32Array(strs.length * 2)
+            let subsetsArr = new Uint32Array(purge_groups.length * 2)
 
             let totalCount = 0
 
-            for(let i = 0; i < strs.length; i++) {
-                const count = transitiveSubNodes[strs[i]].length
+            for(let i = 0; i < purge_groups.length; i++) {
+                const count = purge_groups[i].length
                 totalCount += count
                 subsetsArr[i * 2 + 1] = count
             }
@@ -96,17 +85,25 @@
             let midsPtr = Module._malloc(totalCount * 4)
             let midsPos = 0
 
-            for(let i = 0; i < strs.length; i++)
+            for(let i = 0; i < purge_groups.length; i++)
             {
                 let count = subsetsArr[i * 2 + 1]
                 let subsetArr = new Uint32Array(count)
                 let pos = 0
 
-                for(const mid of transitiveSubNodes[strs[i]])
+                for(const mid of purge_groups[i])
                 {
                     subsetArr[pos] = mid + 1
                     pos++
                 }
+
+                if(subsetArr.length != pos) {
+                    throw new Error()
+                }
+
+                assert(subsetArr.length === pos)
+
+
 
                 subsetsArr[i*2] = midsPtr + midsPos
                 Module.HEAPU32.set(subsetArr, (midsPtr + midsPos) / 4)
@@ -116,7 +113,7 @@
             let subsetsArrPtr = Module._malloc(subsetsArr.length * subsetsArr.BYTES_PER_ELEMENT)
             Module.HEAPU32.set(subsetsArr, subsetsArrPtr / 4)
 
-            let resultsArrPtr = Module._malloc(strs.length * 4)
+            let resultsArrPtr = Module._malloc(purge_groups.length * 4)
 
             let method_weights_ptr = Module._malloc((codesizes.length + 1) * 4)
             let method_weights_arr = Module.HEAP32.subarray(method_weights_ptr / 4, method_weights_ptr / 4 + codesizes.length + 1)
@@ -125,9 +122,9 @@
             for(let i = 0; i < codesizes.length; i++)
                 method_weights_arr[i+1] = codesizes[i]
 
-            const status = simulate_purges_batched(subsetsArrPtr, strs.length, method_weights_ptr, method_weights_arr.length, resultsArrPtr)
+            const status = simulate_purges_batched(subsetsArrPtr, purge_groups.length, method_weights_ptr, method_weights_arr.length, resultsArrPtr)
 
-            let res = Module.HEAPU32.subarray(resultsArrPtr / 4, resultsArrPtr / 4 + strs.length)
+            let res = Module.HEAPU32.subarray(resultsArrPtr / 4, resultsArrPtr / 4 + purge_groups.length)
 
             Module._free(method_weights_ptr)
             Module._free(subsetsArrPtr)
@@ -208,7 +205,12 @@
                 filesAsByteArrays = {}
 
                 let reachabilityData = JSON.parse(await entries.find(e => e.filename === "reachability.json").getData(new zip.TextWriter()))
-                prepareListView(generateHierarchyFromReachabilityJson(reachabilityData))
+                let methods = await entries.find(e => e.filename === "methods.txt").getData(new zip.TextWriter())
+                let methodList = methods.split('\n')
+                if(methodList[methodList.length-1].length == 0) {
+                    methodList.pop()
+                }
+                prepareListView(generateHierarchyFromReachabilityJsonAndMethodList(reachabilityData, methodList))
                 let codesizesDict = getMethodCodesizeDictFromReachabilityJson(reachabilityData)
                 codesizes = new Array(methodList.length)
 
@@ -245,7 +247,7 @@
 
                 for (const span of Object.values(filesAsByteArrays))
                 {
-                    Module._free(span.ptr)
+                    Module._free(span.data)
                 }
             }
         }
@@ -274,8 +276,10 @@
     </ul>
 
     <script>
-        function generateHierarchyFromReachabilityJson(json) {
+        function generateHierarchyFromReachabilityJsonAndMethodList(json, cgNodes) {
             let dict = { children: [] }
+
+            prefixToNode = {}
 
             for (const toplevel of json) {
                 let l1name = "ϵ"
@@ -287,9 +291,10 @@
                     l1name = toplevel.module
                 }
 
-                let l1 = { children: [], name: l1name }
-                if (toplevel.path)
-                    l1.fullname = toplevel.path
+                let l1 = { children: [], name: l1name, fullname: l1name, cg_nodes: [] }
+                if (toplevel.path) {
+                    prefixToNode[toplevel.path] = l1
+                }
                 dict.children.push(l1)
 
                 for (const packageName in toplevel.packages) {
@@ -302,13 +307,9 @@
                     if(packageName.length !== 0) {
                         for (const subPackageName of packageName.split('.')) {
                             prefix += subPackageName + "."
-
-                            if (!node.children) {
-                                node.children = []
-                            }
                             let next = node.children.find(n => n.name === subPackageName)
                             if(!next) {
-                                next = { children: [], fullname: prefix, name: subPackageName }
+                                next = { children: [], fullname: prefix, name: subPackageName, cg_nodes: [] }
                                 node.children.push(next)
                             }
                             node = next
@@ -320,13 +321,27 @@
 
                     for (const typeName in package.types) {
                         const type = package.types[typeName]
-                        let l3 = { children: [], fullname: prefix + typeName, name: typeName }
+                        let l3 = { children: [], fullname: prefix + typeName, name: typeName, cg_nodes: [] }
+                        prefixToNode[l3.fullname] = l3
                         l2.children.push(l3)
 
                         for (const method in type.methods) {
-                            let l4 = { fullname: l3.fullname + "." + method, name: method }
+                            let l4 = { fullname: l3.fullname + "." + method, name: method, cg_nodes: [] }
+                            prefixToNode[l4.fullname] = l4
                             l3.children.push(l4)
                         }
+                    }
+                }
+            }
+
+            prefixesSorted = Object.keys(prefixToNode).sort((a, b) => b.length - a.length)
+
+            for (let i = 0; i < cgNodes.length; i++) {
+                const cgNodeName = cgNodes[i]
+                for (const prefix of prefixesSorted) {
+                    if (cgNodeName.startsWith(prefix)) {
+                        prefixToNode[prefix].cg_nodes.push(i)
+                        break;
                     }
                 }
             }
@@ -340,13 +355,71 @@
             if(!element.parentElement.querySelector(".nested")) {
                 if (expanded) {
                     element.parentElement.appendChild(generateHTML(node))
+                    let purge_groups = []
 
-                    strs = []
+                    for (const child of node.children) {
+                        let group = []
 
+                        {
+                            let stack = []
+                            stack.push(child)
+                            while (stack.length > 0) {
+                                const u = stack.pop()
+                                if (u.cg_nodes)
+                                    group = group.concat(u.cg_nodes)
+                                if (u.children)
+                                    stack = stack.concat(u.children)
+                            }
+                        }
+
+                        purge_groups.push(group)
+                    }
+
+                    /*
                     for (e of element.parentElement.querySelector("ul").children) {
                         let node_prefix = e.getAttribute("data-node-name")
                         strs.push(node_prefix)
                     }
+                     */
+
+                    let nonempty_purge_groups = purge_groups.filter(g => g.length > 0)
+                    nonempty_res = simulatePurgesBatched(nonempty_purge_groups)
+                    let res = Array(purge_groups.length)
+
+                    {
+                        let i = 0
+                        for (let j = 0; j < purge_groups.length; j++) {
+                            if (purge_groups[j].length > 0) {
+                                res[j] = nonempty_res[i++]
+                            } else {
+                                res[j] = 0
+                            }
+                        }
+                    }
+
+                    let list = element.parentElement.querySelector('ul')
+
+                    let i = 0
+                    for (e of list.children) {
+                        let cutoff_size = res[i]
+                        let str = ""
+                        if(cutoff_size > 1000000)
+                            str = (cutoff_size / 1000000).toPrecision(3) + " MB"
+                        else if(cutoff_size > 1000)
+                            str = (cutoff_size / 1000).toPrecision(3) + " KB"
+                        else
+                            str = cutoff_size.toPrecision(3) + " B"
+
+                        e.querySelector("#purged").textContent = str
+                        i++
+                    }
+
+                    let order = new Array(list.children.length)
+                    for(let i = 0; i < order.length; i++)
+                        order[i] = i
+
+                    let nodes = list.children
+                    order.sort((a, b) => res[b] - res[a]).map(i => nodes[i]).forEach(node => list.appendChild(node))
                 }
             }
 
