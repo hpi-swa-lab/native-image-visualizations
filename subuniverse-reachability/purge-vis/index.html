@@ -275,71 +275,63 @@
 
     <script>
         function generateHierarchyFromReachabilityJson(json) {
-            let dict = {}
-            dict.children = {}
+            let dict = { children: [] }
 
             for (const toplevel of json) {
-                let l1name = toplevel.path + ":" + toplevel.module
-                let l1 = {}
-                l1.children = {}
-                dict.children[l1name] = l1
+                let l1name = "ϵ"
+                if (toplevel.path && toplevel.module) {
+                    l1name = toplevel.path + ":" + toplevel.module
+                } else if(toplevel.path) {
+                    l1name = toplevel.path
+                } else if(toplevel.module) {
+                    l1name = toplevel.module
+                }
 
-                for (const package in toplevel.packages) {
-                    let l2 = {}
-                    l2.children = {}
-                    l1.children[package] = l2
+                let l1 = { children: [], name: l1name }
+                if (toplevel.path)
+                    l1.fullname = toplevel.path
+                dict.children.push(l1)
 
-                    for (const type in toplevel.packages[package].types) {
-                        let l3 = {}
-                        l3.children = {}
-                        l2.children[type] = l3
+                for (const packageName in toplevel.packages) {
+                    const package = toplevel.packages[packageName]
 
-                        for (const method in toplevel.packages[package].types[type].methods) {
-                            let l4 = {}
-                            l3.children[method] = l4
+                    let prefix = ""
+
+                    let node = l1
+
+                    if(packageName.length !== 0) {
+                        for (const subPackageName of packageName.split('.')) {
+                            prefix += subPackageName + "."
+
+                            if (!node.children) {
+                                node.children = []
+                            }
+                            let next = node.children.find(n => n.name === subPackageName)
+                            if(!next) {
+                                next = { children: [], fullname: prefix, name: subPackageName }
+                                node.children.push(next)
+                            }
+                            node = next
+                        }
+                    }
+
+
+                    let l2 = node
+
+                    for (const typeName in package.types) {
+                        const type = package.types[typeName]
+                        let l3 = { children: [], fullname: prefix + typeName, name: typeName }
+                        l2.children.push(l3)
+
+                        for (const method in type.methods) {
+                            let l4 = { fullname: l3.fullname + "." + method, name: method }
+                            l3.children.push(l4)
                         }
                     }
                 }
             }
 
             return dict
-        }
-
-        function generateHierarchyFromList(list) {
-            const re = /[^\s(.)\[\]\$]+(?=\.|$|\[|\s|\$)|[^\s(.)]+\([^)]*\)|\[[^\]]+\]|\[\]$/g
-            root = {}
-
-            transitiveSubNodes = {}
-
-            for(let mid = 0; mid < list.length; mid++) {
-                const e = list[mid]
-
-                let m = [...e.matchAll(re)]
-
-                const parts = m.map(match => match[0])
-                const partFullNames = m.map(match => e.substring(0, match.index + match[0].length))
-                let parent = root
-
-                for (let i = 0; i < parts.length; i++) {
-                    if(!transitiveSubNodes[partFullNames[i]])
-                        transitiveSubNodes[partFullNames[i]] = []
-                    transitiveSubNodes[partFullNames[i]].push(mid)
-
-                    let part = parts[i]
-
-                    if(!parent.children)
-                        parent.children = {}
-                    if(!parent.children[part]) {
-                        parent.children[part] = { fullname: partFullNames[i] }
-                    }
-                    parent = parent.children[part]
-                }
-
-                let last_part = parts[parts.length - 1]
-                parent[last_part] = null
-            }
-
-            return root
         }
 
         function expandClickHandler(element, node) {
@@ -365,14 +357,14 @@
             let ul = document.createElement("ul")
             ul.className = "nested"
 
-            for(d in data.children) {
+            for(const d of data.children) {
                 let li = document.createElement("li")
                 ul.appendChild(li)
                 let span = document.createElement("span")
                 li.appendChild(span)
-                span.appendChild(document.createTextNode(d))
-                span.setAttribute("title", data.children[d].fullname)
-                li.setAttribute("data-node-name", data.children[d].fullname)
+                span.appendChild(document.createTextNode(d.name))
+                span.setAttribute("title", d.fullname)
+                li.setAttribute("data-node-name", d.fullname)
                 let out = document.createElement("span")
                 out.style = "margin-left: 25px; color: #808080"
                 li.appendChild(out)
@@ -384,8 +376,8 @@
                 li.appendChild(checkbox)
                 */
 
-                if(data.children[d].children) {
-                    let node = data.children[d]
+                if(d.children) {
+                    let node = d
                     span.className = "caret"
                     span.addEventListener("click", () => {
                         expandClickHandler(span, node);
