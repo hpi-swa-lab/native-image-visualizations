@@ -312,15 +312,28 @@
 
             for (const toplevel of json) {
                 let l1name = "ϵ"
-                if (toplevel.path && toplevel.module) {
-                    l1name = toplevel.path + ":" + toplevel.module
-                } else if(toplevel.path) {
-                    l1name = toplevel.path
-                } else if(toplevel.module) {
-                    l1name = toplevel.module
+                let l1fullname = ""
+
+                let display_path = toplevel.path
+                if (display_path && display_path.endsWith(".jar")) {
+                    let index = display_path.lastIndexOf("/")
+                    if (index !== -1) {
+                        display_path = display_path.substring(index+1)
+                    }
                 }
 
-                let l1 = { children: [], name: l1name, fullname: l1name, cg_nodes: [] }
+                if (toplevel.path && toplevel.module) {
+                    l1name = display_path + ":" + toplevel.module
+                    l1fullname = toplevel.path + ":" + toplevel.module
+                } else if(toplevel.path) {
+                    l1name = display_path
+                    l1fullname = toplevel.path
+                } else if(toplevel.module) {
+                    l1name = toplevel.module
+                    l1fullname = toplevel.module
+                }
+
+                let l1 = { children: [], name: l1name, fullname: l1fullname, cg_nodes: [] }
                 if (toplevel.path) {
                     prefixToNode[toplevel.path] = l1
                 }
@@ -328,25 +341,28 @@
 
                 for (const packageName in toplevel.packages) {
                     const package = toplevel.packages[packageName]
-
                     let prefix = ""
-
-                    let node = l1
+                    let l2 = l1
 
                     if(packageName.length !== 0) {
                         for (const subPackageName of packageName.split('.')) {
                             prefix += subPackageName + "."
-                            let next = node.children.find(n => n.name === subPackageName)
+                            let next = l2.children.find(n => n.name === subPackageName)
                             if(!next) {
                                 next = { children: [], fullname: prefix, name: subPackageName, cg_nodes: [] }
-                                node.children.push(next)
+
+                                /* Eigentlich sollten keine Causality-Graph-Knoten direkt in einem Package hängen.
+                                 * Es gibt jedoch Knoten für Klassen, die nicht reachable sind (z.B. Build-Time-Features).
+                                 * Diese müssen unbedingt in die Abschneide-Berechnung miteinbezogen werden.
+                                 * Idealerweise sollten sie auch in der Baumstruktur auftauchen.
+                                 * Das ist aber gerade noch zu kompliziert umzusetzen... */
+                                prefixToNode[prefix] = next
+
+                                l2.children.push(next)
                             }
-                            node = next
+                            l2 = next
                         }
                     }
-
-
-                    let l2 = node
 
                     for (const typeName in package.types) {
                         const type = package.types[typeName]
@@ -401,13 +417,7 @@
                         purge_groups.push(group)
                     }
 
-                    /*
-                    for (e of element.parentElement.querySelector("ul").children) {
-                        let node_prefix = e.getAttribute("data-node-name")
-                        strs.push(node_prefix)
-                    }
-                     */
-
+                    // The C++ code doesn't handle empty groups well. Therefore we already handle them here.
                     let nonempty_purge_groups = purge_groups.filter(g => g.length > 0)
                     nonempty_res = simulatePurgesBatched(nonempty_purge_groups)
                     let res = Array(purge_groups.length)
