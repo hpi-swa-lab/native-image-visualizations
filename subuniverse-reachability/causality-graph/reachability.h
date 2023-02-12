@@ -137,7 +137,7 @@ static void print_reachability_of_method(ostream& out, const Adjacency& adj, con
             {
                 if(history.saturated_dist < flow_type_dist)
                 {
-                    flow_type = adj[flow].filter->first();
+                    flow_type = adj[flow].filter.first();
                     flow_type_dist = history.saturated_dist;
                     start_flow = flow;
                 }

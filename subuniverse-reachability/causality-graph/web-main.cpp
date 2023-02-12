@@ -44,7 +44,15 @@ extern "C" void EMSCRIPTEN_KEEPALIVE init(
     read_buffer(data.declaring_types, declaring_types_data, declaring_types_len);
 
     purge_model.emplace(std::move(data));
+
+#if LOG
+    cerr << "Adjacency memory usage: " << purge_model->adj.used_memory_size() << endl;
+#endif
+
     bfs.emplace(purge_model->adj);
+
+    purge_model->typeflow_names.clear();
+    purge_model->typeflow_names.shrink_to_fit();
 
     auto end = std::chrono::system_clock::now();
     auto elapsed_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);

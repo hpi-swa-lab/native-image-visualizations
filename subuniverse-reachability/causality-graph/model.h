@@ -5,6 +5,7 @@
 #ifndef CAUSALITY_GRAPH_MODEL_H
 #define CAUSALITY_GRAPH_MODEL_H
 
+#define LOG 1
 
 #include <cstdint>
 #include <unordered_map>
@@ -36,18 +37,6 @@ struct typeflow_id
     bool operator==(typeflow_id other) const { return id == other.id; }
     explicit operator bool() const { return id != 0; }
 };
-
-struct TypestateEdge
-{
-    typeflow_id src;
-    method_id dst;
-    uint32_t typestate_id;
-};
-
-static_assert(sizeof(TypestateEdge) == 12);
-static_assert(offsetof(TypestateEdge, src) == 0);
-static_assert(offsetof(TypestateEdge, dst) == 4);
-static_assert(offsetof(TypestateEdge, typestate_id) == 8);
 
 template<typename T>
 struct Edge
@@ -83,15 +72,131 @@ public:
 
 static_assert(sizeof(ContainingMethod) == 4);
 
+class TypeSet
+{
+public:
+    uintptr_t data;
+
+public:
+    TypeSet() : data(0) {}
+
+    TypeSet(type_t single_type) : data((((uintptr_t)single_type << 1) | 1))
+    {
+        assert(data);
+    }
+
+    TypeSet(const Bitset* multiple_types) : data(multiple_types->count() == 1 ? (((uintptr_t)multiple_types->first()) << 1) | 1 : (uintptr_t)multiple_types)
+    {
+        assert(multiple_types);
+        assert((((uintptr_t)multiple_types) & 1) == 0);
+        assert(data);
+    }
+
+    [[nodiscard]] bool is_single_type() const
+    {
+        return (data & 1) != 0;
+    }
+
+    [[nodiscard]] type_t get_single_type() const
+    {
+        assert(is_single_type());
+        return data >> 1;
+    }
+
+    bool operator[](size_t i) const
+    {
+        if(is_single_type())
+        {
+            return get_single_type() == i;
+        }
+        else
+        {
+            const Bitset& bs = *(const Bitset*)data;
+            return bs[i];
+        }
+    }
+
+    [[nodiscard]] size_t count() const
+    {
+        if(is_single_type())
+        {
+            return 1;
+        }
+        else
+        {
+            const Bitset& bs = *(const Bitset*)data;
+            return bs.count();
+        }
+    }
+
+    [[nodiscard]] type_t first() const
+    {
+        if(is_single_type())
+        {
+            return get_single_type();
+        }
+        else
+        {
+            const Bitset& bs = *(const Bitset*)data;
+            return bs.first();
+        }
+    }
+
+    [[nodiscard]] type_t next(size_t pos) const
+    {
+        if(is_single_type())
+        {
+            return numeric_limits<type_t>::max();
+        }
+        else
+        {
+            const Bitset& bs = *(const Bitset*)data;
+            return bs.next(pos);
+        }
+    }
+
+    [[nodiscard]] bool is_superset(TypeSet other) const
+    {
+        if(is_single_type())
+        {
+            if(other.is_single_type())
+            {
+                return this->get_single_type() == other.get_single_type();
+            }
+            else
+            {
+                return other.count() == 0;
+            }
+        }
+        else
+        {
+            const Bitset& bs = *(const Bitset*)data;
+
+            if(other.is_single_type())
+            {
+                return bs[other.get_single_type()];
+            }
+            else
+            {
+                const Bitset& other_bs = *(const Bitset*)other.data;
+                return bs.is_superset(other_bs);
+            }
+        }
+    }
+};
+
 struct Adjacency
 {
     struct TypeflowInfo
     {
         vector<typeflow_id> forward_edges;
         vector<typeflow_id> backward_edges;
-        const Bitset* filter;
+        const Bitset* original_filter;
+        TypeSet filter;
         ContainingMethod method;
+#if INCLUDE_LABELS
         string name;
+#endif
     };
 
     struct MethodInfo
@@ -110,6 +215,12 @@ struct Adjacency
     Adjacency(size_t n_types, size_t n_methods, size_t n_typeflows, const vector<Edge<typeflow_id>>& interflows, const vector<Edge<method_id>>& direct_invokes, const vector<Bitset>& typestates, const vector<uint32_t>& typeflow_filters, const vector<ContainingMethod>& typeflow_methods, const vector<string>& typeflow_names)
             : _n_types(n_types), flows(n_typeflows), methods(n_methods)
     {
+        vector<TypeSet> typestates_compressed;
+        typestates_compressed.reserve(typestates.size());
+
+        for(const Bitset& typestate : typestates)
+            typestates_compressed.push_back(&typestate);
+
         for(auto e : interflows)
         {
             assert(e.src != e.dst);
@@ -131,17 +242,36 @@ struct Adjacency
         }
 
         for(size_t i = 0; i < typeflow_filters.size(); i++)
-            flows[i].filter = &typestates.at(typeflow_filters[i]);
+        {
+            flows[i].original_filter = &typestates.at(typeflow_filters[i]);
+            flows[i].filter = typestates_compressed.at(typeflow_filters[i]);
+        }
 
         allInstantiated = 0;
         for(size_t i = 0; i < typeflow_names.size(); i++)
         {
+#if INCLUDE_LABELS
             flows[i].name = typeflow_names[i];
+#endif
             if(typeflow_names[i] == "AllInstantiatedTypeFlow: java.lang.Object")
                 allInstantiated = i;
         }
 
         assert(allInstantiated);
+
+        for(auto& flow : flows)
+        {
+            flow.forward_edges.shrink_to_fit();
+            flow.backward_edges.shrink_to_fit();
+        }
+
+        for(auto& m : methods)
+        {
+            m.forward_edges.shrink_to_fit();
+            m.backward_edges.shrink_to_fit();
+            m.virtual_invocation_sources.shrink_to_fit();
+            m.dependent_typeflows.shrink_to_fit();
+        }
     }
 
     [[nodiscard]] size_t n_typeflows() const { return flows.size(); }
@@ -155,6 +285,32 @@ struct Adjacency
 
     [[nodiscard]] TypeflowInfo& operator[](typeflow_id id) { return flows[(uint32_t)id]; }
     [[nodiscard]] const TypeflowInfo& operator[](typeflow_id id) const { return flows[(uint32_t)id]; }
+
+    [[nodiscard]] size_t used_memory_size() const
+    {
+        size_t complete_size = 0;
+        complete_size += flows.capacity() * sizeof(TypeflowInfo);
+        complete_size += methods.capacity() * sizeof(MethodInfo);
+
+        for(const auto& flow : flows)
+        {
+            complete_size += flow.forward_edges.capacity() * sizeof(typeflow_id);
+            complete_size += flow.backward_edges.capacity() * sizeof(typeflow_id);
+#if INCLUDE_LABELS
+            complete_size += flow.name.capacity();
+#endif
+        }
+
+        for(const auto& m : methods)
+        {
+            complete_size += m.forward_edges.capacity() * sizeof(method_id);
+            complete_size += m.backward_edges.capacity() * sizeof(method_id);
+            complete_size += m.dependent_typeflows.capacity() * sizeof(typeflow_id);
+            complete_size += m.virtual_invocation_sources.capacity() * sizeof(typeflow_id);
+        }
+
+        return complete_size;
+    }
 };
 
 static bool is_redundant(const Adjacency& adj, typeflow_id typeflow)
@@ -176,7 +332,7 @@ static bool is_redundant(const Adjacency& adj, typeflow_id typeflow)
             method_id M3 = adj[f.forward_edges[0]].method.dependent();
 
             if((M2 == M1 || M2 == M3 || M2 == 0)
-               && f.filter->is_superset(*adj[f.forward_edges[0]].filter))
+               && f.filter.is_superset(adj[f.forward_edges[0]].filter))
                 return true;
         }
 
@@ -187,7 +343,7 @@ static bool is_redundant(const Adjacency& adj, typeflow_id typeflow)
 
             for(auto& next : f.forward_edges)
             {
-                if(!f.filter->is_superset(*adj[next].filter))
+                if(!f.filter.is_superset(adj[next].filter))
                     return false;
             }
 
@@ -202,7 +358,7 @@ static bool is_redundant(const Adjacency& adj, typeflow_id typeflow)
             method_id M2 = f.method.dependent();
             method_id M3 = adj[f.forward_edges[0]].method.dependent();
 
-            if(!f.filter->is_superset(*adj[f.forward_edges[0]].filter))
+            if(!f.filter.is_superset(adj[f.forward_edges[0]].filter))
                 return false;
 
             if(M2 == M3 || M2 == 0)
@@ -239,7 +395,7 @@ static void remove_redundant(Adjacency& adj)
                 auto removed = erase(adj[prev].forward_edges, typeflow);
                 assert(removed == 1);
 
-                for(auto& next : f.forward_edges)
+                for(auto next : f.forward_edges)
                 {
                     if(next != prev && std::find(adj[prev].forward_edges.begin(), adj[prev].forward_edges.end(), next) == adj[prev].forward_edges.end())
                     {
@@ -271,7 +427,7 @@ static void remove_redundant(Adjacency& adj)
         }
     }
 
-#if !NDEBUG
+#if LOG
     cerr << "Redundant typeflows: " << redundant_typeflows.count() << "/" << (adj.n_typeflows() - 1) << "=" << ((float) redundant_typeflows.count() / (adj.n_typeflows() - 1)) << endl;
 #endif
 
@@ -321,7 +477,8 @@ static void remove_redundant(Adjacency& adj)
             remap(f);
     }
 
-    vector<Adjacency::TypeflowInfo> new_flows(redundant_typeflows.size() - redundant_typeflows.count());
+    vector<Adjacency::TypeflowInfo> new_flows;
+    new_flows.reserve(redundant_typeflows.size() - redundant_typeflows.count());
 
     for(size_t i = 0; i < adj.n_typeflows(); i++)
     {
@@ -331,13 +488,12 @@ static void remove_redundant(Adjacency& adj)
         typeflow_id f = i;
         remap(f);
 
-        if(new_flows[f.id].filter)
-            exit(1);
+        assert(new_flows.size() == f.id);
 
-        new_flows[f.id] = adj.flows[i];
+        new_flows.emplace_back(std::move(adj.flows[i]));
     }
 
-    swap(adj.flows, new_flows);
+    adj.flows = std::move(new_flows);
 }
 
 struct model_data
@@ -365,7 +521,6 @@ struct model
     Adjacency adj;
 
     unordered_map<string, uint32_t> method_ids_by_name;
-    vector<uint32_t> declaring_types;
 
 public:
     model(
@@ -375,7 +530,6 @@ public:
         type_names(std::move(data.type_names)),
         typeflow_names(std::move(data.typeflow_names)),
         typestates(std::move(data.typestates)),
-        declaring_types(std::move(data.declaring_types)),
         adj(type_names.size(), method_names.size(), typeflow_names.size(), data.interflows, data.direct_invokes, this->typestates, data.typeflow_filters, data.containing_methods, typeflow_names)
     {
         {
@@ -388,7 +542,7 @@ public:
         for(Bitset& typestate : typestates)
             max_typestate_size = max(max_typestate_size, typestate.count());
 
-#if !NDEBUG
+#if LOG
         cerr << "All instantiated types: " << max_typestate_size << endl;
 #endif
 

@@ -7,88 +7,6 @@
 
 using namespace std;
 
-class TypeSet
-{
-public:
-    uintptr_t data;
-
-public:
-    TypeSet(type_t single_type) : data((((uintptr_t)single_type << 1) | 1))
-    {
-        assert(data);
-    }
-
-    TypeSet(const Bitset* multiple_types) : data(multiple_types->count() == 1 ? (((uintptr_t)multiple_types->first()) << 1) | 1 : (uintptr_t)multiple_types)
-    {
-        assert(multiple_types);
-        assert((((uintptr_t)multiple_types) & 1) == 0);
-        assert(data);
-    }
-
-    [[nodiscard]] bool is_single_type() const
-    {
-        return (data & 1) != 0;
-    }
-
-    [[nodiscard]] type_t get_single_type() const
-    {
-        assert(is_single_type());
-        return data >> 1;
-    }
-
-    bool operator[](size_t i) const
-    {
-        if(is_single_type())
-        {
-            return get_single_type() == i;
-        }
-        else
-        {
-            const Bitset& bs = *(const Bitset*)data;
-            return bs[i];
-        }
-    }
-
-    [[nodiscard]] size_t count() const
-    {
-        if(is_single_type())
-        {
-            return 1;
-        }
-        else
-        {
-            const Bitset& bs = *(const Bitset*)data;
-            return bs.count();
-        }
-    }
-
-    [[nodiscard]] type_t first() const
-    {
-        if(is_single_type())
-        {
-            return get_single_type();
-        }
-        else
-        {
-            const Bitset& bs = *(const Bitset*)data;
-            return bs.first();
-        }
-    }
-
-    [[nodiscard]] type_t next(size_t pos) const
-    {
-        if(is_single_type())
-        {
-            return numeric_limits<type_t>::max();
-        }
-        else
-        {
-            const Bitset& bs = *(const Bitset*)data;
-            return bs.next(pos);
-        }
-    }
-};
-
 struct __attribute__((aligned(64))) TypeflowHistory
 {
     static constexpr size_t saturation_cutoff = 20;
@@ -217,7 +135,18 @@ public:
                   included_in_saturation_uses_log(std::move(included_in_saturation_uses_log)),
                   saturation_uses_by_filter_added_log(std::move(saturation_uses_by_filter_added_log)),
                   saturation_uses_by_filter_removed_log(std::move(saturation_uses_by_filter_removed_log))
-        {}
+        {
+#if LOG
+            size_t complete_size = 0;
+            complete_size += this->visited_method_log.capacity() * sizeof(method_id);
+            complete_size += this->typeflow_visited_log.capacity() * sizeof(pair<typeflow_id, TypeflowHistory>);
+            complete_size += this->allInstantiated_log.capacity() * sizeof(type_t);
+            complete_size += this->included_in_saturation_uses_log.capacity() * sizeof(typeflow_id);
+            complete_size += this->saturation_uses_by_filter_added_log.capacity() * sizeof(typeflow_id);
+            complete_size += this->saturation_uses_by_filter_removed_log.capacity() * sizeof(typeflow_id);
+            cerr << "ResultDiff size: " << complete_size << endl;
+#endif
+        }
     };
 
     struct Result
@@ -267,12 +196,12 @@ public:
 
             for(typeflow_id flow : changes.saturation_uses_by_filter_removed_log)
             {
-                saturation_uses_by_filter[bfs.adj[flow].filter - bfs.filters_begin].push_back(flow);
+                saturation_uses_by_filter[bfs.adj[flow].original_filter - bfs.filters_begin].push_back(flow);
             }
 
             for(typeflow_id flow : changes.saturation_uses_by_filter_added_log)
             {
-                erase(saturation_uses_by_filter[bfs.adj[flow].filter - bfs.filters_begin], flow);
+                erase(saturation_uses_by_filter[bfs.adj[flow].original_filter - bfs.filters_begin], flow);
             }
         }
     };
@@ -288,10 +217,10 @@ public:
 
         {
             auto [f1, f2] = std::minmax_element(adj.flows.begin(), adj.flows.end(), [](const auto& a, const auto& b)
-            { return a.filter < b.filter; });
+            { return a.original_filter < b.original_filter; });
 
-            filters_begin = f1->filter;
-            filters_end = f2->filter + 1;
+            filters_begin = f1->original_filter;
+            filters_end = f2->original_filter + 1;
         }
 
         filter_filters.reserve(filters_end - filters_begin);
@@ -305,7 +234,7 @@ public:
 
         for(size_t i = 0; i < adj.n_typeflows(); i++)
         {
-            size_t filter_index = adj.flows[i].filter - filters_begin;
+            size_t filter_index = adj.flows[i].original_filter - filters_begin;
             typeflow_filters.push_back(filter_filters[filter_index]);
         }
     }
@@ -315,6 +244,9 @@ public:
     template<bool dist_matters = true>
     [[nodiscard]] Result run(span<const method_id> purged_methods = {}) const
     {
+#if LOG
+        cerr << "n_filters: " << filter_filters.size() << ", n_methods: " << adj.n_methods() << ", n_types: " << adj.n_types() << ", n_typeflows: " << adj.n_typeflows() << endl;
+#endif
         Result r(*this);
 
         for(method_id purged : purged_methods)
@@ -541,7 +473,7 @@ public:
 
                             if(!typeflow_visited[v.id].is_saturated())
                             {
-                                saturation_uses_by_filter[adj[v].filter - filters_begin].push_back(v);
+                                saturation_uses_by_filter[adj[v].original_filter - filters_begin].push_back(v);
                                 if(track_changes)
                                     saturation_uses_by_filter_added_log.push_back(v);
                             }
