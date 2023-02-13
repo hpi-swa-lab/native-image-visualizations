@@ -1,6 +1,6 @@
 import { SortingOption, SortingOrder } from '../enums/Sorting'
 import { NodesFilter } from '../SharedTypes/NodesFilter'
-import COLORS from './ColorPalette';
+import COLORS from './ColorPalette'
 
 export const UNMODIFIED = 'UNMODIFIED'
 
