@@ -49,7 +49,7 @@ const emit = defineEmits([EventType.CHANGE_PAGE])
                 <VisualizationNavigation
                     v-if="componentType !== SwappableComponentType.DataManager"
                     :selected="componentType"
-                    @change-viz="$emit(EventType.CHANGE_PAGE, $event)"
+                    @change-page="(componentNumber: SwappableComponentType) => emit(EventType.CHANGE_PAGE, componentNumber)"
                 ></VisualizationNavigation>
 
                 <hr v-if="componentType !== SwappableComponentType.DataManager" />

@@ -11,7 +11,7 @@ withDefaults(
     }
 )
 
-defineEmits([EventType.CHANGE_PAGE])
+const emit = defineEmits([EventType.CHANGE_PAGE])
 </script>
 
 <template>
@@ -25,7 +25,9 @@ defineEmits([EventType.CHANGE_PAGE])
             :value="selected"
             class="dropdown dropdown-white block w-full"
             @change="
-                $emit(EventType.CHANGE_PAGE, parseInt(($event.target as HTMLSelectElement).value))
+                (event) => {
+                    emit(EventType.CHANGE_PAGE, parseInt((event.target as HTMLSelectElement).value))
+                }
             "
         >
             <option :value="SwappableComponentType.None" disabled>Choose Visualization</option>
