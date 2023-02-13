@@ -3,7 +3,7 @@ import MainLayout from '../MainLayout.vue'
 import { VisualizationType } from '../../ts/enums/VisualizationType'
 import { EventType } from '../../ts/enums/EventType'
 
-const emit = defineEmits([EventType.EXPORT_CONFIG])
+const emit = defineEmits([EventType.EXPORT_CONFIG, EventType.CONFIG_CHANGED])
 </script>
 
 <template>

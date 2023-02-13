@@ -28,7 +28,7 @@ const selections = ref<Record<string, Node[]>>({})
 const currentVisualization = ref<number>(props.currentComponent)
 
 const vennConfig = ref<Record<string, unknown>>({})
-const snakeyTreeConfig = ref<Record<string, unknown>>({})
+const sankeyTreeConfig = ref<Record<string, unknown>>({})
 const treeLineConfig = ref<Record<string, unknown>>({})
 const causalityGraphConfig = ref<Record<string, unknown>>({})
 
@@ -42,7 +42,7 @@ function exportConfig() {
                 search: search.value
             },
             venn: vennConfig.value,
-            sankeyTree: snakeyTreeConfig.value,
+            sankeyTree: sankeyTreeConfig.value,
             treeLine: treeLineConfig.value,
             causalityGraph: causalityGraphConfig.value
         }
@@ -71,21 +71,25 @@ const handleChangeViz = (value: number) => {
         v-if="currentVisualization === VisualizationType.VennSets"
         @change-viz="handleChangeViz"
         @export-config="exportConfig"
+        @config-changed="(name: string, value: unknown) => vennConfig[name] = value"
     ></Venn>
     <SankeyTree
         v-else-if="currentVisualization === VisualizationType.SankeyTree"
         @change-viz="handleChangeViz"
         @export-config="exportConfig"
+        @config-changed="(name: string, value: unknown) => sankeyTreeConfig[name] = value"
     ></SankeyTree>
     <TreeLine
         v-else-if="currentVisualization === VisualizationType.TreeLine"
         @change-viz="handleChangeViz"
         @export-config="exportConfig"
+        @config-changed="(name: string, value: unknown) => treeLineConfig[name] = value"
     ></TreeLine>
     <CausalityGraph
         v-else-if="currentVisualization === VisualizationType.CausalityGraph"
         @change-viz="handleChangeViz"
         @export-config="exportConfig"
+        @config-changed="(name: string, value: unknown) => causalityGraphConfig[name] = value"
     ></CausalityGraph>
     <Home v-else @change-viz="handleChangeViz" @export-config="exportConfig"></Home>
 </template>
