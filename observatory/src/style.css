@@ -14,6 +14,18 @@
     @apply bg-blue-700;
 }
 
+.btn-danger {
+    @apply bg-red-500 text-white;
+}
+
+.btn-danger:hover {
+    @apply bg-red-700;
+}
+
+.btn:disabled {
+    @apply bg-gray-400;
+}
+
 h1 {
     @apply text-4xl;
 }
@@ -24,6 +36,18 @@ h2 {
 
 h3 {
     @apply text-2xl;
+}
+
+label {
+    @apply block mb-2 text-sm font-medium text-gray-900;
+}
+
+input {
+    @apply bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5;
+}
+
+.help-text {
+    @apply mt-2 text-sm text-gray-500 dark:text-gray-400;
 }
 
 .dropdown {

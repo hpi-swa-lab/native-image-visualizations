@@ -1,10 +1,25 @@
 <script setup lang="ts">
-import MainLayout from '../MainLayout.vue'
-import { VisualizationType } from '../../ts/enums/VisualizationType'
+import MainLayout from '../layouts/MainLayout.vue'
+import { Universe } from '../../ts/UniverseTypes/Universe'
+import { EventType } from '../../ts/enums/EventType'
+import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
+
+const emit = defineEmits([EventType.CHANGE_PAGE])
+
+withDefaults(
+    defineProps<{
+        universes: Universe[]
+    }>(),
+    { universes: () => [] }
+)
 </script>
 
 <template>
-    <MainLayout title="Sankey Tree" :visualization-type="VisualizationType.SankeyTree">
+    <MainLayout
+        title="Sankey Tree"
+        :component-type="SwappableComponentType.SankeyTree"
+        @change-page="(componentType: SwappableComponentType) => emit(EventType.CHANGE_PAGE, componentType)"
+    >
         <div id="container" />
     </MainLayout>
 </template>
