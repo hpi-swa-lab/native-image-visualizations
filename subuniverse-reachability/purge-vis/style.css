@@ -38,6 +38,28 @@ ul, #myUL {
     display: block;
 }
 
+html {
+    height: 100%
+}
+
+body {
+    height: 98%;
+}
+
+.total-size-column {
+    float: right;
+    width: 100px;
+    margin-left: 25px;
+    color: #FF8080
+}
+
+.cut-size-column {
+    float: right;
+    width: 100px;
+    margin-left: 25px;
+    color: #808080
+}
+
 .size-bar-outer {
     text-align: center;
     float: right;
@@ -62,4 +84,19 @@ ul, #myUL {
 
 .size-bar-text {
     color: #8080FF;
+}
+
+.overview-div {
+    float: left;
+    width: 64%;
+    height: 100%;
+    margin-right: 2%;
+    overflow-y: scroll
+}
+
+.detail-div {
+    float: left;
+    width: 32%;
+    height: 100%;
+    margin-right: 2%
 }
