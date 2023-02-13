@@ -1,11 +1,11 @@
-import { COLOR_BLUE, COLOR_GREY } from './ColorPalette'
 import { SortingOption, SortingOrder } from '../enums/Sorting'
 import { NodesFilter } from '../SharedTypes/NodesFilter'
+import COLORS from './ColorPalette'
 
 export const UNMODIFIED = 'UNMODIFIED'
 
-export const COLOR_MODIFIED = COLOR_BLUE
-export const COLOR_UNMODIFIED = COLOR_GREY
+export const COLOR_MODIFIED = COLORS.blue
+export const COLOR_UNMODIFIED = COLORS.gray
 
 export const DEFAULT_NODES_FILTER: NodesFilter = {
     diffing: {
