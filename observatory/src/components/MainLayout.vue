@@ -37,7 +37,9 @@ const emit = defineEmits([EventType.CHANGE_VIZ, EventType.EXPORT_CONFIG])
                 <UniverseSelectionList></UniverseSelectionList>
                 <hr />
 
-                <button class="btn btn-primary w-full">Export config</button>
+                <button class="btn btn-primary w-full" @click="emit(EventType.EXPORT_CONFIG)">
+                    Export config
+                </button>
                 <hr />
 
                 <ul class="space-y-2">
