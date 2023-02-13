@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="height: 100%">
 <head>
     <meta charset="UTF-8">
     <title>Causality Graph Text Interface</title>
@@ -45,7 +45,7 @@
         }
     </style>
 </head>
-<body>
+<body style="height: 98%">
     <script src="lib/causality_graph.js"></script>
     <script src="zip.min.js"></script>
     <script>
@@ -182,7 +182,7 @@
 
                 let reachabilityData = JSON.parse(await entries.find(e => e.filename === "reachability.json").getData(new zip.TextWriter()))
                 let methods = await entries.find(e => e.filename === "methods.txt").getData(new zip.TextWriter())
-                let methodList = methods.split('\n')
+                methodList = methods.split('\n')
                 if(methodList[methodList.length-1].length == 0) {
                     methodList.pop()
                 }
@@ -229,9 +229,8 @@
         }
     </script>
 
-    <button title="upload" onClick="doSomething()">Upload CausalityExport</button>
 
-    <details>
+    <details hidden>
 
         <br/>
         <label for="Input"></label><textarea id="Input" cols="100" rows="5" spellcheck="false" oninput="pressBtn(this.value)"></textarea>
@@ -241,15 +240,19 @@
         <label for="Output_reachability"></label><textarea id="Output_reachability" cols="100" spellcheck="false" rows="20" readonly="readonly"></textarea>
     </details>
 
-    <input type="file" id="file-input" accept="application/zip" hidden>
-
-    <input type="checkbox">Show generated code</input>
-
-    <ul id="myUL">
-        <li id="myLI">
-            <span class="caret" id="myRoot">root</span>
-        </li>
-    </ul>
+    <div style="float: left; width: 64%; height: 100%; margin-right: 2%; overflow-y: scroll">
+        <input type="file" id="file-input" accept="application/zip" hidden>
+        <button title="upload" onClick="doSomething()">Upload CausalityExport</button>
+        <input type="checkbox">Show generated code</input>
+        <ul id="myUL">
+            <li id="myLI">
+                <span class="caret" id="myRoot">root</span>
+            </li>
+        </ul>
+    </div>
+    <div style="float: left; width: 32%; height: 100%; margin-right: 2%">
+        <label for="Output_hoverpurge"></label><textarea placeholder="Events made unreachable" wrap="off" style="width: 100%; height: 100%" id="Output_hoverpurge" spellcheck="false" rows="50" readonly="readonly"></textarea>
+    </div>
 
     <script>
         class Trie {
@@ -376,31 +379,27 @@
                 return size.toPrecision(3) + " B"
         }
 
+        function collectCgNodesInSubtree(node) {
+            let group = []
+            let stack = []
+            stack.push(node)
+            while (stack.length > 0) {
+                const u = stack.pop()
+                if (u.cg_nodes)
+                    group = group.concat(u.cg_nodes)
+                if (u.children)
+                    stack = stack.concat(u.children)
+            }
+            return group
+        }
+
         function expandClickHandler(element, node) {
             let expanded = element.classList.toggle("caret-down");
 
             if(!element.parentElement.querySelector(".nested")) {
                 if (expanded) {
                     element.parentElement.appendChild(generateHTML(node))
-                    let purge_groups = []
-
-                    for (const child of node.children) {
-                        let group = []
-
-                        {
-                            let stack = []
-                            stack.push(child)
-                            while (stack.length > 0) {
-                                const u = stack.pop()
-                                if (u.cg_nodes)
-                                    group = group.concat(u.cg_nodes)
-                                if (u.children)
-                                    stack = stack.concat(u.children)
-                            }
-                        }
-
-                        purge_groups.push(group)
-                    }
+                    let purge_groups = node.children.map(collectCgNodesInSubtree)
 
                     let list = element.parentElement.querySelector('ul')
                     let res = Array(purge_groups.length)
@@ -446,25 +445,22 @@
                 li.appendChild(span)
                 span.appendChild(document.createTextNode(d.name))
                 span.setAttribute("title", d.fullname)
-                li.setAttribute("data-node-name", d.fullname)
                 let out = document.createElement("span")
                 out.style = "margin-left: 25px; color: #808080"
                 li.appendChild(out)
                 out.id = "purged"
-                /*
-                let checkbox = document.createElement("input")
-                checkbox.setAttribute("type", "checkbox")
-                checkbox.setAttribute("data-node-name", prefix + d)
-                li.appendChild(checkbox)
-                */
 
+                let node = d
                 if(d.children) {
-                    let node = d
                     span.className = "caret"
                     span.addEventListener("click", () => {
                         expandClickHandler(span, node);
                     });
                 }
+                span.addEventListener("mouseenter", () => {
+                    const purged = simulatePurge(collectCgNodesInSubtree(node).map(i => methodList[i]).join("\n"))
+                    document.getElementById("Output_hoverpurge").value = purged
+                })
             }
 
             return ul
