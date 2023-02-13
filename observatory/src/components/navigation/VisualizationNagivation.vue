@@ -30,7 +30,7 @@ const emit = defineEmits([EventType.CHANGE_PAGE])
                 }
             "
         >
-            <option :value="SwappableComponentType.None" disabled>Choose Visualization</option>
+            <option :value="SwappableComponentType.Home" disabled>Choose Visualization</option>
             <option :value="SwappableComponentType.VennSets">Venn Sets</option>
             <option :value="SwappableComponentType.SankeyTree">Sankey Tree</option>
             <option :value="SwappableComponentType.TreeLine">Tree Line</option>
