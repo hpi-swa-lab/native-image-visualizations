@@ -15,7 +15,7 @@ withDefaults(
     }
 )
 
-defineEmits([EventType.CHANGE_VIZ])
+const emit = defineEmits([EventType.CHANGE_VIZ, EventType.EXPORT_CONFIG])
 </script>
 
 <template>
@@ -25,11 +25,7 @@ defineEmits([EventType.CHANGE_VIZ])
                 <h2>{{ title }}</h2>
                 <hr />
 
-                <div>
-                    <button type="button" class="btn btn-primary btn-primary:hover">
-                        WIP: Data Manager
-                    </button>
-                </div>
+                <button class="btn btn-primary w-full">WIP: Data Manager</button>
                 <hr />
 
                 <VisualizationNavigation
@@ -39,6 +35,9 @@ defineEmits([EventType.CHANGE_VIZ])
                 <hr />
 
                 <UniverseSelectionList></UniverseSelectionList>
+                <hr />
+
+                <button class="btn btn-primary w-full">Export config</button>
                 <hr />
 
                 <ul class="space-y-2">
