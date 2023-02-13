@@ -13,7 +13,7 @@ withDefaults(
 )
 
 function exportConfig() {
-    const dataString = `data:text/json;charset=utf-8, ${encodeURIComponent(JSON.stringify(store))}`
+    const dataString = `data:text/json;charset=utf-8, ${encodeURIComponent(store.toExportString())}`
 
     const anchor = document.createElement('a')
     anchor.setAttribute('href', dataString)
