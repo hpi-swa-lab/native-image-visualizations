@@ -1,21 +1,28 @@
 <script setup lang="ts">
 import VisualizationNavigation from './navigation/VisualizationNagivation.vue'
 import UniverseSelectionList from './controls/UniverseSelectionList.vue'
-import { EventType } from '../ts/enums/EventType'
-import { VisualizationType } from '../ts/enums/VisualizationType'
+import { store } from '../ts/configStore'
 
 withDefaults(
     defineProps<{
         title: string
-        visualizationType: VisualizationType
     }>(),
     {
-        title: '',
-        visualizationType: VisualizationType.None
+        title: ''
     }
 )
 
-const emit = defineEmits([EventType.CHANGE_VIZ, EventType.EXPORT_CONFIG])
+function exportConfig() {
+    const dataString = `data:text/json;charset=utf-8, ${encodeURIComponent(JSON.stringify(store))}`
+
+    const anchor = document.createElement('a')
+    anchor.setAttribute('href', dataString)
+    anchor.setAttribute('download', 'dataAndConfig.json')
+
+    document.body.appendChild(anchor)
+    anchor.click()
+    document.body.removeChild(anchor)
+}
 </script>
 
 <template>
@@ -28,18 +35,13 @@ const emit = defineEmits([EventType.CHANGE_VIZ, EventType.EXPORT_CONFIG])
                 <button class="btn btn-primary w-full">WIP: Data Manager</button>
                 <hr />
 
-                <VisualizationNavigation
-                    :selected="visualizationType"
-                    @change-viz="$emit(EventType.CHANGE_VIZ, $event)"
-                ></VisualizationNavigation>
+                <VisualizationNavigation></VisualizationNavigation>
                 <hr />
 
                 <UniverseSelectionList></UniverseSelectionList>
                 <hr />
 
-                <button class="btn btn-primary w-full" @click="emit(EventType.EXPORT_CONFIG)">
-                    Export config
-                </button>
+                <button class="btn btn-primary w-full" @click="exportConfig">Export config</button>
                 <hr />
 
                 <ul class="space-y-2">

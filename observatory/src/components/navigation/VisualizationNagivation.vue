@@ -1,17 +1,11 @@
 <script setup lang="ts">
 import { VisualizationType } from '../../ts/enums/VisualizationType'
-import { EventType } from '../../ts/enums/EventType'
+import { store } from '../../ts/configStore'
 
-withDefaults(
-    defineProps<{
-        selected: VisualizationType
-    }>(),
-    {
-        selected: VisualizationType.None
-    }
-)
-
-defineEmits([EventType.CHANGE_VIZ])
+function applyComponent(event: Event) {
+    const currentComponent = parseInt((event.target as HTMLSelectElement).value)
+    store.componentChanged(currentComponent)
+}
 </script>
 
 <template>
@@ -22,9 +16,9 @@ defineEmits([EventType.CHANGE_VIZ])
         <select
             id="visualization-dropdown"
             name="Visualization"
-            :value="selected"
+            :value="store.config.global.currentComponent"
             class="dropdown dropdown-white block w-full"
-            @change="$emit(EventType.CHANGE_VIZ, parseInt($event.target.value))"
+            @change="applyComponent"
         >
             <option :value="VisualizationType.None" disabled>Choose Visualization</option>
             <option :value="VisualizationType.VennSets">Venn Sets</option>

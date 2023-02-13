@@ -1,17 +1,9 @@
 <script setup lang="ts">
 import MainLayout from '../MainLayout.vue'
-import { VisualizationType } from '../../ts/enums/VisualizationType'
-import { EventType } from '../../ts/enums/EventType'
-
-const emit = defineEmits([EventType.EXPORT_CONFIG, EventType.CONFIG_CHANGED])
 </script>
 
 <template>
-    <MainLayout
-        title="WIP: Causality Graph"
-        :visualization-type="VisualizationType.CausalityGraph"
-        @export-config="emit(EventType.EXPORT_CONFIG)"
-    >
+    <MainLayout title="WIP: Causality Graph">
         <div id="container" />
     </MainLayout>
 </template>
