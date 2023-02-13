@@ -9,9 +9,11 @@ import Venn from './components/visualizations/VennSets.vue'
 import DataManager from './components/DataManager.vue'
 import { Universe } from './ts/UniverseTypes/Universe'
 
+const previousComponent = ref<number | undefined>(undefined)
 const currentComponent = ref<number>(SwappableComponentType.Home)
 
 const handlePageChange = (value: number) => {
+    previousComponent.value = currentComponent.value
     currentComponent.value = value
 }
 
@@ -64,6 +66,7 @@ function addUniverse(newUniverse: Universe) {
     <DataManager
         v-else-if="currentComponent === SwappableComponentType.DataManager"
         :universes="(universes as Universe[])"
+        :previous-component="previousComponent"
         @change-page="handlePageChange"
         @universe-created="addUniverse"
         @universe-removed="removeUniverse"

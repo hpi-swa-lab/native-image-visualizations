@@ -18,9 +18,11 @@ const emit = defineEmits([
 const props = withDefaults(
     defineProps<{
         universes: Universe[]
+        previousComponent?: SwappableComponentType | undefined
     }>(),
     {
-        universes: () => []
+        universes: () => [],
+        previousComponent: undefined
     }
 )
 
@@ -88,6 +90,7 @@ async function addUniverse() {
     <MainLayout
         title="Data Manager"
         :component-type="SwappableComponentType.DataManager"
+        :previous-component="previousComponent"
         @change-page="(componentType: SwappableComponentType) => emit(EventType.CHANGE_PAGE, componentType)"
     >
         <template #controls>

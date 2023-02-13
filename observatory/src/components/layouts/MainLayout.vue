@@ -1,21 +1,41 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import VisualizationNavigation from '../navigation/VisualizationNagivation.vue'
 import UniverseSelectionList from '../controls/UniverseSelectionList.vue'
 import { EventType } from '../../ts/enums/EventType'
 import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
 
-withDefaults(
+const props = withDefaults(
     defineProps<{
         title: string
         componentType: SwappableComponentType
+        previousComponent?: SwappableComponentType | undefined
     }>(),
     {
         title: '',
-        componentType: SwappableComponentType.None
+        componentType: SwappableComponentType.None,
+        previousComponent: undefined
     }
 )
 
 const emit = defineEmits([EventType.CHANGE_PAGE])
+
+const previousComponentName = computed(() => {
+    switch (props.previousComponent) {
+        case SwappableComponentType.VennSets:
+            return 'Venn Sets'
+        case SwappableComponentType.SankeyTree:
+            return 'Sankey Tree'
+        case SwappableComponentType.TreeLine:
+            return 'Tree Line'
+        case SwappableComponentType.CausalityGraph:
+            return 'Causality Graph'
+        case SwappableComponentType.Home:
+            return 'Home'
+        default:
+            return '<Error>'
+    }
+})
 </script>
 
 <template>
@@ -27,7 +47,10 @@ const emit = defineEmits([EventType.CHANGE_PAGE])
 
                 <div class="space-y-4">
                     <button
-                        v-if="componentType === SwappableComponentType.DataManager"
+                        v-if="
+                            componentType === SwappableComponentType.DataManager &&
+                            previousComponent !== SwappableComponentType.Home
+                        "
                         type="button"
                         class="btn btn-primary w-full"
                         @click="emit(EventType.CHANGE_PAGE, SwappableComponentType.Home)"
@@ -42,6 +65,17 @@ const emit = defineEmits([EventType.CHANGE_PAGE])
                     >
                         Data Manager
                     </button>
+                    <button
+                        v-if="
+                            componentType === SwappableComponentType.DataManager &&
+                            previousComponent !== undefined
+                        "
+                        class="btn btn-primary w-full"
+                        @click="emit(EventType.CHANGE_PAGE, previousComponent)"
+                    >
+                        Go back to {{ previousComponentName }}
+                    </button>
+                    <slot name="topButtons" />
                 </div>
 
                 <hr />
