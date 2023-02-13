@@ -6,13 +6,64 @@ import SankeyTree from './components/visualizations/SankeyTree.vue'
 import TreeLine from './components/visualizations/TreeLine.vue'
 import Venn from './components/visualizations/VennSets.vue'
 import { VisualizationType } from './ts/enums/VisualizationType'
+import { Universe } from './ts/UniverseTypes/Universe'
+import { Node } from './ts/UniverseTypes/Node'
+import { createConfigData, createConfigSelections } from './ts/parsing'
 
-const currentVisualization = ref<number>()
+const props = withDefaults(
+    defineProps<{
+        currentComponent: number
+        search: string
+    }>(),
+    {
+        currentComponent: VisualizationType.None,
+        search: ''
+    }
+)
+
+const search = ref<string>(props.search)
+const universes = ref<Universe[]>([])
+const selections = ref<Record<string, Node[]>>({})
+
+const currentVisualization = ref<number>(props.currentComponent)
+
+const vennConfig = ref<Record<string, unknown>>({})
+const snakeyTreeConfig = ref<Record<string, unknown>>({})
+const treeLineConfig = ref<Record<string, unknown>>({})
+const causalityGraphConfig = ref<Record<string, unknown>>({})
+
+function exportConfig() {
+    const exportData: Record<string, Record<string, unknown>> = {
+        data: createConfigData(universes.value as Universe[]),
+        selections: createConfigSelections(selections.value),
+        config: {
+            global: {
+                currentComponent: currentVisualization.value,
+                search: search.value
+            },
+            venn: vennConfig.value,
+            sankeyTree: snakeyTreeConfig.value,
+            treeLine: treeLineConfig.value,
+            causalityGraph: causalityGraphConfig.value
+        }
+    }
+
+    const dataString = `data:text/json;charset=utf-8, ${encodeURIComponent(
+        JSON.stringify(exportData)
+    )}`
+
+    const anchor = document.createElement('a')
+    anchor.setAttribute('href', dataString)
+    anchor.setAttribute('download', 'dataAndConfig.json')
+
+    document.body.appendChild(anchor)
+    anchor.click()
+    document.body.removeChild(anchor)
+}
+
 const handleChangeViz = (value: number) => {
     currentVisualization.value = value
 }
-
-function exportConfig() {}
 </script>
 
 <template>
