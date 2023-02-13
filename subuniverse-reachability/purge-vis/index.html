@@ -67,14 +67,7 @@
             // dealloc memory
             Module._free(midsPtr);
 
-            const still_reachable = Module.HEAPU8.subarray(method_history_ptr, method_history_ptr + codesizes.length)
-
-            let purgedMethodNames = ""
-            for (let i = 0; i < codesizes.length; i++)
-                if (all_reachable[i] !== 0xFF && still_reachable[i] === 0xFF)
-                    purgedMethodNames += methodList[i] + "\n"
-
-            return purgedMethodNames
+            return Module.HEAPU8.subarray(method_history_ptr, method_history_ptr + codesizes.length)
         }
 
         function simulatePurgesBatched(purge_groups, resultCallback) {
@@ -392,17 +385,23 @@
                 return size.toPrecision(3) + " B"
         }
 
-        function collectCgNodesInSubtree(node) {
-            let group = []
+        function forEachInSubtree(node, callback) {
             let stack = []
             stack.push(node)
             while (stack.length > 0) {
                 const u = stack.pop()
-                if (u.cg_nodes)
-                    group = group.concat(u.cg_nodes)
                 if (u.children)
                     stack = stack.concat(u.children)
+                callback(u)
             }
+        }
+
+        function collectCgNodesInSubtree(node) {
+            let group = []
+            forEachInSubtree(node, u => {
+                if (u.cg_nodes)
+                    group = group.concat(u.cg_nodes)
+            })
             return group
         }
 
@@ -460,8 +459,13 @@
                 span.setAttribute("title", d.fullname)
                 let out = document.createElement("span")
                 out.style = "margin-left: 25px; color: #808080"
-                li.appendChild(out)
                 out.id = "purged"
+                li.appendChild(out)
+                let out2 = document.createElement("span")
+                out2.style = "margin-left: 25px; color: #8080FF"
+                out2.id = "purged_of"
+                li.appendChild(out2)
+                d.html = li
 
                 let node = d
                 if(d.children) {
@@ -471,8 +475,27 @@
                     });
                 }
                 span.addEventListener("mouseenter", () => {
-                    const purged = simulatePurge(collectCgNodesInSubtree(node))
-                    document.getElementById("Output_hoverpurge").value = purged
+                    const still_reachable = simulatePurge(collectCgNodesInSubtree(node))
+
+                    let purgedMethodNames = ""
+                    for (let i = 0; i < codesizes.length; i++)
+                        if (all_reachable[i] !== 0xFF && still_reachable[i] === 0xFF)
+                            purgedMethodNames += methodList[i] + "\n"
+
+                    document.getElementById("Output_hoverpurge").value = purgedMethodNames
+
+                    forEachInSubtree(this.dataRoot, (u) => {
+                        if (u.html) {
+                            let codesize = 0
+                            forEachInSubtree(u, (v) => {
+                                if (v.cg_nodes)
+                                    for (const i of v.cg_nodes)
+                                        if (all_reachable[i] !== 0xFF && still_reachable[i] === 0xFF)
+                                            codesize += codesizes[i]
+                            })
+                            u.html.querySelector("#purged_of").textContent = formatByteSizesWithUnitPrefix(codesize)
+                        }
+                    })
                 })
             }
 
@@ -480,6 +503,7 @@
         }
 
         function prepareListView(data) {
+            this.dataRoot = data
             const rootTreeViewElement = document.getElementById("myRoot")
             rootTreeViewElement.addEventListener("click", () => {
                 expandClickHandler(rootTreeViewElement, data)
