@@ -1,0 +1,65 @@
+/* Remove default bullets */
+ul, #myUL {
+    list-style-type: none;
+}
+
+/* Remove margins and padding from the parent ul */
+#myUL {
+    margin: 0;
+    padding: 0;
+}
+
+/* Style the caret/arrow */
+.caret {
+    cursor: pointer;
+    user-select: none; /* Prevent text selection */
+}
+
+/* Create the caret/arrow with a unicode, and style it */
+.caret::before {
+    content: "\25B6";
+    color: black;
+    display: inline-block;
+    margin-right: 6px;
+}
+
+/* Rotate the caret/arrow icon when clicked on (using JavaScript) */
+.caret-down::before {
+    transform: rotate(90deg);
+}
+
+/* Hide the nested list */
+.nested {
+    display: none;
+}
+
+/* Show the nested list when the user clicks on the caret/arrow (with JavaScript) */
+.active {
+    display: block;
+}
+
+.size-bar-outer {
+    text-align: center;
+    float: right;
+    width: 100px;
+    margin-left: 25px;
+    border: 1px solid gray;
+    height: 16px;
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: 16px;
+}
+.size-bar-outer > * {
+    grid-row-start: 1;
+    grid-column-start: 1;
+}
+
+.size-bar-inner {
+    height: 100%;
+    width: 0;
+    background-color: #FF000060;
+}
+
+.size-bar-text {
+    color: #8080FF;
+}

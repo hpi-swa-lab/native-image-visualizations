@@ -3,47 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Causality Graph Text Interface</title>
-    <style>
-        /* Remove default bullets */
-        ul, #myUL {
-            list-style-type: none;
-        }
-
-        /* Remove margins and padding from the parent ul */
-        #myUL {
-            margin: 0;
-            padding: 0;
-        }
-
-        /* Style the caret/arrow */
-        .caret {
-            cursor: pointer;
-            user-select: none; /* Prevent text selection */
-        }
-
-        /* Create the caret/arrow with a unicode, and style it */
-        .caret::before {
-            content: "\25B6";
-            color: black;
-            display: inline-block;
-            margin-right: 6px;
-        }
-
-        /* Rotate the caret/arrow icon when clicked on (using JavaScript) */
-        .caret-down::before {
-            transform: rotate(90deg);
-        }
-
-        /* Hide the nested list */
-        .nested {
-            display: none;
-        }
-
-        /* Show the nested list when the user clicks on the caret/arrow (with JavaScript) */
-        .active {
-            display: block;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body style="height: 98%">
     <script src="lib/causality_graph.js"></script>
@@ -452,20 +412,47 @@
 
             for(const d of data.children) {
                 let li = document.createElement("li")
+                d.html = li
                 ul.appendChild(li)
                 let span = document.createElement("span")
                 li.appendChild(span)
                 span.appendChild(document.createTextNode(d.name))
                 span.setAttribute("title", d.fullname)
+
                 let out = document.createElement("span")
-                out.style = "margin-left: 25px; color: #808080"
+                out.style = "float: right; width: 100px; margin-left: 25px; color: #808080"
                 out.id = "purged"
                 li.appendChild(out)
+
+                let out3 = document.createElement("span")
+                out3.style = "float: right; width: 100px; margin-left: 25px; color: #FF8080"
+                out3.id = "size"
+                li.appendChild(out3)
+
+                let out4 = document.createElement("div")
+                out4.className = "size-bar-outer"
+                li.appendChild(out4)
+
+                let out5 = document.createElement("div")
+                out5.className = "size-bar-inner"
+                out5.id = "purged_of_bar"
+                out4.appendChild(out5)
+
                 let out2 = document.createElement("span")
-                out2.style = "margin-left: 25px; color: #8080FF"
+                out2.className = "size-bar-text"
                 out2.id = "purged_of"
-                li.appendChild(out2)
-                d.html = li
+                out4.appendChild(out2)
+
+                {
+                    let codesize = 0
+                    forEachInSubtree(d, (v) => {
+                        if (v.cg_nodes)
+                            for (const i of v.cg_nodes)
+                                codesize += codesizes[i]
+                    })
+                    d.size = codesize
+                    out3.textContent = formatByteSizesWithUnitPrefix(codesize)
+                }
 
                 let node = d
                 if(d.children) {
@@ -486,14 +473,22 @@
 
                     forEachInSubtree(this.dataRoot, (u) => {
                         if (u.html) {
-                            let codesize = 0
+                            let purgedCodesize = 0
                             forEachInSubtree(u, (v) => {
                                 if (v.cg_nodes)
                                     for (const i of v.cg_nodes)
                                         if (all_reachable[i] !== 0xFF && still_reachable[i] === 0xFF)
-                                            codesize += codesizes[i]
+                                            purgedCodesize += codesizes[i]
                             })
-                            u.html.querySelector("#purged_of").textContent = formatByteSizesWithUnitPrefix(codesize)
+                            let purgedPercentage = 100 * purgedCodesize / u.size
+                            let barWidth = 0
+                            let percentageText = ""
+                            if (u.size !== 0) {
+                                barWidth = purgedPercentage.toFixed(1) + "%"
+                                percentageText = purgedPercentage.toFixed(1) + " %"
+                            }
+                            u.html.querySelector("#purged_of").textContent = percentageText
+                            u.html.querySelector("#purged_of_bar").style.width = barWidth
                         }
                     })
                 })

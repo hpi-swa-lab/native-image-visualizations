@@ -123,12 +123,14 @@ extern "C" const uint8_t* EMSCRIPTEN_KEEPALIVE simulate_purge(const method_id* p
 
     span<const method_id> purged_mids = {purge_set_ptr, purge_set_len};
 
+#if LOG
     cerr << "Running DFS on purged graph...";
-
     auto start = std::chrono::system_clock::now();
+#endif
 
     BFS::Result after_purge = bfs->run<true>(purged_mids);
 
+#if LOG
     auto end = std::chrono::system_clock::now();
     auto elapsed_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     cerr << ' ' << (elapsed_milliseconds.count()) << "ms elapsed - ";
@@ -138,10 +140,10 @@ extern "C" const uint8_t* EMSCRIPTEN_KEEPALIVE simulate_purge(const method_id* p
         if(all->method_visited[i] && !after_purge.method_visited[i])
             n_purged++;
 
-    current_purged_result.emplace(std::move(after_purge));
-
     cerr << n_purged << " method nodes purged!" << endl;
+#endif
 
+    current_purged_result.emplace(std::move(after_purge));
     return &current_purged_result->method_history[1];
 }
 
@@ -158,9 +160,10 @@ extern "C" bool EMSCRIPTEN_KEEPALIVE simulate_purges_batched(const span<const me
     auto &m = *purge_model;
     auto &bfs = *::bfs;
 
+#if LOG
     cerr << "Running batch purges...";
-
     auto start = std::chrono::system_clock::now();
+#endif
 
     {
         BFS::Result r(bfs);
@@ -206,9 +209,11 @@ extern "C" bool EMSCRIPTEN_KEEPALIVE simulate_purges_batched(const span<const me
         bfs_incremental_rec(*all, bfs, r, {purge_sets, purge_sets_len}, callback);
     }
 
+#if LOG
     auto end = std::chrono::system_clock::now();
     auto elapsed_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     cerr << ' ' << (elapsed_milliseconds.count()) << "ms elapsed" << endl;
+#endif
 
     return true;
 }
