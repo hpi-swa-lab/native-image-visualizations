@@ -1,3 +1,5 @@
+import { SortingOption, SortingOrder } from '../enums/Sorting'
+
 export type NodesFilter = {
     diffing: DiffingUniversesFilter
     sorting: NodesSortingFilter
@@ -9,6 +11,6 @@ export type DiffingUniversesFilter = {
 }
 
 export type NodesSortingFilter = {
-    option: string
-    order: string
+    option: SortingOption
+    order: SortingOrder
 }

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { VisualizationType } from '../../ts/enums/VisualizationType'
 import { EventType } from '../../ts/enums/EventType'
+import { ref } from 'vue';
 
-withDefaults(
+const props = withDefaults(
     defineProps<{
         selected: VisualizationType
     }>(),
@@ -10,6 +11,8 @@ withDefaults(
         selected: VisualizationType.None
     }
 )
+
+const selectedOption = ref(props.selected)
 
 defineEmits([EventType.CHANGE_VIZ])
 </script>
@@ -21,10 +24,10 @@ defineEmits([EventType.CHANGE_VIZ])
         >
         <select
             id="visualization-dropdown"
+            v-model="selectedOption"
             name="Visualization"
-            :value="selected"
             class="dropdown dropdown-white block w-full"
-            @change="$emit(EventType.CHANGE_VIZ, parseInt($event.target.value))"
+            @change="$emit(EventType.CHANGE_VIZ, selectedOption)"
         >
             <option :value="VisualizationType.None" disabled>Choose Visualization</option>
             <option :value="VisualizationType.VennSets">Venn Sets</option>
