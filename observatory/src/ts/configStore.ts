@@ -6,8 +6,8 @@ import { Config } from './SharedTypes/Config'
 import { createConfigData, createConfigSelections } from './parsing'
 
 export interface Store {
-    data: Record<string, unknown>
-    selections: Record<string, unknown>
+    data: Config
+    selections: Config
     globalConfig: Config
     vennConfig: Config
     sankeyTreeConfig: Config
