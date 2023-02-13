@@ -15,6 +15,11 @@ ul, #myUL {
     user-select: none; /* Prevent text selection */
 }
 
+.node-text {
+    cursor: crosshair;
+    user-select: none;
+}
+
 /* Create the caret/arrow with a unicode, and style it */
 .caret::before {
     content: "\25B6";
@@ -99,4 +104,9 @@ body {
     width: 32%;
     height: 100%;
     margin-right: 2%
+}
+
+.selected-for-purge {
+    border: 1px solid #8080FF;
+    background-color: #0000FF20;
 }

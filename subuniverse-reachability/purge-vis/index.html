@@ -249,6 +249,9 @@
                 return val
             }
         }
+    </script>
+    <script>
+        let selectedForPurging = new Set()
 
         function generateHierarchyFromReachabilityJsonAndMethodList(json, cgNodes) {
             let dict = { children: [] }
@@ -416,8 +419,12 @@
                 ul.appendChild(li)
                 let span = document.createElement("span")
                 li.appendChild(span)
-                span.appendChild(document.createTextNode(d.name))
-                span.setAttribute("title", d.fullname)
+
+                let nameSpan = document.createElement("span")
+                nameSpan.appendChild(document.createTextNode(d.name))
+                nameSpan.title = d.fullname
+                nameSpan.className = "node-text"
+                li.appendChild(nameSpan)
 
                 let out = document.createElement("span")
                 out.className = "cut-size-column"
@@ -461,36 +468,13 @@
                         expandClickHandler(span, node);
                     });
                 }
-                span.addEventListener("mouseenter", () => {
-                    const still_reachable = simulatePurge(collectCgNodesInSubtree(node))
-
-                    let purgedMethodNames = ""
-                    for (let i = 0; i < codesizes.length; i++)
-                        if (all_reachable[i] !== 0xFF && still_reachable[i] === 0xFF)
-                            purgedMethodNames += methodList[i] + "\n"
-
-                    document.getElementById("Output_hoverpurge").value = purgedMethodNames
-
-                    forEachInSubtree(this.dataRoot, (u) => {
-                        if (u.html) {
-                            let purgedCodesize = 0
-                            forEachInSubtree(u, (v) => {
-                                if (v.cg_nodes)
-                                    for (const i of v.cg_nodes)
-                                        if (all_reachable[i] !== 0xFF && still_reachable[i] === 0xFF)
-                                            purgedCodesize += codesizes[i]
-                            })
-                            let purgedPercentage = 100 * purgedCodesize / u.size
-                            let barWidth = 0
-                            let percentageText = ""
-                            if (u.size !== 0) {
-                                barWidth = purgedPercentage.toFixed(1) + "%"
-                                percentageText = purgedPercentage.toFixed(1) + " %"
-                            }
-                            u.html.querySelector("#purged_of").textContent = percentageText
-                            u.html.querySelector("#purged_of_bar").style.width = barWidth
-                        }
-                    })
+                nameSpan.addEventListener("click", () => {
+                    let selected = nameSpan.classList.toggle("selected-for-purge")
+                    if (selected)
+                        selectedForPurging.add(node)
+                    else
+                        selectedForPurging.delete(node)
+                    updatePurgeValues()
                 })
             }
 
@@ -502,6 +486,38 @@
             const rootTreeViewElement = document.getElementById("myRoot")
             rootTreeViewElement.addEventListener("click", () => {
                 expandClickHandler(rootTreeViewElement, data)
+            })
+        }
+
+        function updatePurgeValues() {
+            const still_reachable = simulatePurge([...new Set([...selectedForPurging].flatMap(collectCgNodesInSubtree))])
+
+            let purgedMethodNames = ""
+            for (let i = 0; i < codesizes.length; i++)
+                if (all_reachable[i] !== 0xFF && still_reachable[i] === 0xFF)
+                    purgedMethodNames += methodList[i] + "\n"
+
+            document.getElementById("Output_hoverpurge").value = purgedMethodNames
+
+            forEachInSubtree(this.dataRoot, (u) => {
+                if (u.html) {
+                    let purgedCodesize = 0
+                    forEachInSubtree(u, (v) => {
+                        if (v.cg_nodes)
+                            for (const i of v.cg_nodes)
+                                if (all_reachable[i] !== 0xFF && still_reachable[i] === 0xFF)
+                                    purgedCodesize += codesizes[i]
+                    })
+                    let purgedPercentage = 100 * purgedCodesize / u.size
+                    let barWidth = 0
+                    let percentageText = ""
+                    if (u.size !== 0) {
+                        barWidth = purgedPercentage.toFixed(1) + "%"
+                        percentageText = purgedPercentage.toFixed(1) + " %"
+                    }
+                    u.html.querySelector("#purged_of").textContent = percentageText
+                    u.html.querySelector("#purged_of_bar").style.width = barWidth
+                }
             })
         }
     </script>
