@@ -50,13 +50,9 @@
     <script src="zip.min.js"></script>
     <script>
         let simulate_purge = Module.cwrap("simulate_purge", "number", ["number"]);
-        let simulate_purges_batched = Module.cwrap("simulate_purges_batched", "number", ["number", "number", "number", "number", "number"])
+        let simulate_purges_batched = Module.cwrap("simulate_purges_batched", "number", ["number", "number", "number"])
         let show_reachability = Module.cwrap("show_reachability", "number", ["number"]);
         let init = Module.cwrap("init", "number", ["number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number"]);
-
-
-        let methodList = []
-        let transitiveSubNodes = {}
 
         function simulatePurge(str) {
             let ptr  = allocateUTF8(str)
@@ -70,69 +66,47 @@
             return res
         }
 
-        function simulatePurgesBatched(purge_groups) {
+        function simulatePurgesBatched(purge_groups, resultCallback) {
+            let subsetsArrPtr = Module._malloc(purge_groups.length * 2 /* {ptr, len} */ * 4 /* (4 byte ptr/len) */)
+            let subsetsArr = Module.HEAPU32.subarray(subsetsArrPtr / 4, subsetsArrPtr / 4 + purge_groups.length * 2)
 
-            let subsetsArr = new Uint32Array(purge_groups.length * 2)
-
-            let totalCount = 0
-
-            for(let i = 0; i < purge_groups.length; i++) {
-                const count = purge_groups[i].length
-                totalCount += count
-                subsetsArr[i * 2 + 1] = count
-            }
+            let totalCount = 0// = purge_groups.reduce((cnt, group) => cnt + group.length, 0)
+            for(const group of purge_groups)
+                totalCount += group.length
 
             let midsPtr = Module._malloc(totalCount * 4)
-            let midsPos = 0
+            let midsPos = midsPtr / 4
 
             for(let i = 0; i < purge_groups.length; i++)
             {
-                let count = subsetsArr[i * 2 + 1]
-                let subsetArr = new Uint32Array(count)
-                let pos = 0
-
+                subsetsArr[i*2] /* ptr */ = midsPos * 4
+                subsetsArr[i * 2 + 1] /* len */ = purge_groups[i].length
                 for(const mid of purge_groups[i])
-                {
-                    subsetArr[pos] = mid + 1
-                    pos++
-                }
-
-                if(subsetArr.length != pos) {
-                    throw new Error()
-                }
-
-                assert(subsetArr.length === pos)
-
-
-
-                subsetsArr[i*2] = midsPtr + midsPos
-                Module.HEAPU32.set(subsetArr, (midsPtr + midsPos) / 4)
-                midsPos += count * subsetArr.BYTES_PER_ELEMENT
+                    Module.HEAPU32[midsPos++] = mid + 1
             }
 
-            let subsetsArrPtr = Module._malloc(subsetsArr.length * subsetsArr.BYTES_PER_ELEMENT)
-            Module.HEAPU32.set(subsetsArr, subsetsArrPtr / 4)
+            assert(midsPos * 4 === midsPtr + totalCount * 4)
 
-            let resultsArrPtr = Module._malloc(purge_groups.length * 4)
+            const callback = (iteration, method_history_ptr, all_method_history_ptr) => {
+                const still_reachable = Module.HEAPU8.subarray(method_history_ptr, method_history_ptr + codesizes.length)
+                const all_reachable = Module.HEAPU8.subarray(all_method_history_ptr, all_method_history_ptr + codesizes.length)
+                let purged_size = 0
+                for (let i = 0; i < codesizes.length; i++)
+                    if (all_reachable[i] !== 0xFF && still_reachable[i] === 0xFF)
+                        purged_size += codesizes[i]
+                resultCallback(iteration, purged_size)
+                return 0
+            }
 
-            let method_weights_ptr = Module._malloc((codesizes.length + 1) * 4)
-            let method_weights_arr = Module.HEAP32.subarray(method_weights_ptr / 4, method_weights_ptr / 4 + codesizes.length + 1)
+            const callback_ptr = addFunction(callback, 'iiii')
+            const status = simulate_purges_batched(subsetsArrPtr, purge_groups.length, callback_ptr)
+            removeFunction(callback_ptr)
 
-            method_weights_arr[0] = 0
-            for(let i = 0; i < codesizes.length; i++)
-                method_weights_arr[i+1] = codesizes[i]
-
-            const status = simulate_purges_batched(subsetsArrPtr, purge_groups.length, method_weights_ptr, method_weights_arr.length, resultsArrPtr)
-
-            let res = Module.HEAPU32.subarray(resultsArrPtr / 4, resultsArrPtr / 4 + purge_groups.length)
-
-            Module._free(method_weights_ptr)
             Module._free(subsetsArrPtr)
             Module._free(midsPtr)
-            // Module._free(resultsArrPtr)
-            // TODO: Free resultsArrPtr
 
-            return status == 0 ? null : res
+            if(status === 0)
+                throw new Error("simulate_purges_batched exited with error code " + status)
         }
 
         function pressBtn(str) {
@@ -185,12 +159,14 @@
             let dict = {}
 
             for (const toplevel of data) {
-                for (const package in toplevel.packages) {
-                    for (const type in toplevel.packages[package].types) {
-                        for (const method in toplevel.packages[package].types[type].methods) {
-                            const fullyQualifiedName = package + "." + type + "." + method
-                            const codesize = toplevel.packages[package].types[type].methods[method].size
-                            dict[fullyQualifiedName] = codesize
+                for (const packageName in toplevel.packages) {
+                    const package = toplevel.packages[packageName]
+                    for (const typeName in package.types) {
+                        const type = package.types[typeName]
+                        for (const methodName in type.methods) {
+                            const method = type.methods[methodName]
+                            const fullyQualifiedName = `${packageName}.${typeName}.${methodName}`
+                            dict[fullyQualifiedName] = method.size
                         }
                     }
                 }
@@ -391,6 +367,15 @@
             return dict
         }
 
+        function formatByteSizesWithUnitPrefix(size) {
+            if(size > 1000000)
+                return (size / 1000000).toPrecision(3) + " MB"
+            else if(size > 1000)
+                return (size / 1000).toPrecision(3) + " KB"
+            else
+                return size.toPrecision(3) + " B"
+        }
+
         function expandClickHandler(element, node) {
             let expanded = element.classList.toggle("caret-down");
 
@@ -417,38 +402,26 @@
                         purge_groups.push(group)
                     }
 
-                    // The C++ code doesn't handle empty groups well. Therefore we already handle them here.
-                    let nonempty_purge_groups = purge_groups.filter(g => g.length > 0)
-                    nonempty_res = simulatePurgesBatched(nonempty_purge_groups)
+                    let list = element.parentElement.querySelector('ul')
                     let res = Array(purge_groups.length)
 
-                    {
-                        let i = 0
-                        for (let j = 0; j < purge_groups.length; j++) {
-                            if (purge_groups[j].length > 0) {
-                                res[j] = nonempty_res[i++]
-                            } else {
-                                res[j] = 0
-                            }
-                        }
-                    }
-
-                    let list = element.parentElement.querySelector('ul')
-
-                    let i = 0
-                    for (e of list.children) {
-                        let cutoff_size = res[i]
-                        let str = ""
-                        if(cutoff_size > 1000000)
-                            str = (cutoff_size / 1000000).toPrecision(3) + " MB"
-                        else if(cutoff_size > 1000)
-                            str = (cutoff_size / 1000).toPrecision(3) + " KB"
+                    // The C++ code doesn't handle empty groups well. Therefore we already handle them here.
+                    let nonempty_purge_groups_indexes = []
+                    for (let i = 0; i < purge_groups.length; i++) {
+                        if (purge_groups[i].length > 0)
+                            nonempty_purge_groups_indexes.push(i)
                         else
-                            str = cutoff_size.toPrecision(3) + " B"
-
-                        e.querySelector("#purged").textContent = str
-                        i++
+                            res[i] = 0
                     }
+
+                    let nonempty_purge_groups = purge_groups.filter(g => g.length > 0)
+                    nonempty_res = simulatePurgesBatched(nonempty_purge_groups, (iteration, size) => {
+                        i = nonempty_purge_groups_indexes[iteration]
+                        res[i] = size
+                    })
+
+                    for (let i = 0; i < list.children.length; i++)
+                        list.children[i].querySelector('#purged').textContent = formatByteSizesWithUnitPrefix(res[i])
 
                     let order = new Array(list.children.length)
                     for(let i = 0; i < order.length; i++)

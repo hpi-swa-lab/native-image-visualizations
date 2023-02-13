@@ -1,5 +1,7 @@
 #define REACHABILITY_ASSERTIONS 0
 
+#define LOG 0
+
 #include <emscripten.h>
 #include <iostream>
 #include <span>
@@ -158,7 +160,9 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE simulate_purge(const char* methods)
     return res;
 }
 
-extern "C" bool EMSCRIPTEN_KEEPALIVE simulate_purges_batched(const span<const method_id>* purge_sets, size_t purge_sets_len, const uint32_t* method_weights_ptr, size_t method_weights_len, uint32_t* n_purged)
+using purges_batched_result_callback = uint32_t (*)(uint32_t, const uint8_t*, const uint8_t*);
+
+extern "C" bool EMSCRIPTEN_KEEPALIVE simulate_purges_batched(const span<const method_id>* purge_sets, size_t purge_sets_len, purges_batched_result_callback result_callback)
 {
     if(!purge_model)
         return false;
@@ -168,12 +172,6 @@ extern "C" bool EMSCRIPTEN_KEEPALIVE simulate_purges_batched(const span<const me
 
     auto &m = *purge_model;
     auto &bfs = *::bfs;
-
-    if(method_weights_len != m.adj.n_methods())
-    {
-        cerr << "The number of method weights wasn't exactly the same as the number of methods." << endl;
-        return false;
-    }
 
     cerr << "Running batch purges...";
 
@@ -216,16 +214,8 @@ extern "C" bool EMSCRIPTEN_KEEPALIVE simulate_purges_batched(const span<const me
         auto callback = [&](const span<const method_id> &mids, const BFS::Result &r)
         {
             size_t iteration = &mids - purge_sets;
-
-            uint32_t n_purged_acc = 0;
-
-            for(size_t i = 1; i < r.method_history.size(); i++)
-            {
-                if(r.method_history[i] == 0xFF && all->method_history[i] != 0xFF)
-                    n_purged_acc += method_weights_ptr[i];
-            }
-
-            n_purged[iteration] = n_purged_acc;
+            bool cancellation_requested = result_callback(iteration, &r.method_history[1], &all->method_history[1]) != 0;
+            // TODO: Enable cancellation
         };
 
         bfs_incremental_rec(*all, bfs, r, {purge_sets, purge_sets_len}, callback);

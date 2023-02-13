@@ -5,8 +5,6 @@
 #ifndef CAUSALITY_GRAPH_MODEL_H
 #define CAUSALITY_GRAPH_MODEL_H
 
-#define LOG 1
-
 #include <cstdint>
 #include <unordered_map>
 #include "Bitset.h"
