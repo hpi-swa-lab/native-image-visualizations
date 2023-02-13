@@ -29,7 +29,7 @@ const emit = defineEmits([EventType.CHANGE_PAGE])
                     <button
                         v-if="componentType !== SwappableComponentType.Home"
                         type="button"
-                        class="btn btn-primary"
+                        class="btn btn-primary w-full"
                         @click="emit(EventType.CHANGE_PAGE, SwappableComponentType.Home)"
                     >
                         Home
@@ -37,7 +37,7 @@ const emit = defineEmits([EventType.CHANGE_PAGE])
                     <button
                         v-if="componentType !== SwappableComponentType.DataManager"
                         type="button"
-                        class="btn btn-primary"
+                        class="btn btn-primary w-full"
                         @click="emit(EventType.CHANGE_PAGE, SwappableComponentType.DataManager)"
                     >
                         Data Manager
