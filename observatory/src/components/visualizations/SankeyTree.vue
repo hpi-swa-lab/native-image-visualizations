@@ -2,14 +2,14 @@
 import MainLayout from '../MainLayout.vue'
 import { VisualizationType } from '../../ts/enums/VisualizationType'
 import SankeyTreeControls from '../controls/SankeyTreeControls.vue'
-import { COLOR_GREEN, COLOR_RED } from '../../ts/constants/ColorPalette'
 import { UniverseProps } from '../../ts/interfaces/UniverseProps'
 import { NodesFilter } from '../../ts/SharedTypes/NodesFilter'
 import { DEFAULT_NODES_FILTER } from '../../ts/constants/SankeyTreeConstants'
+import COLORS from '../../ts/constants/ColorPalette';
 
 const universeMetadata: Record<number, UniverseProps> = {
-    '0': { name: 'Universe1', color: COLOR_RED },
-    '1': { name: 'Universe2', color: COLOR_GREEN }
+    '0': { name: 'Universe1', color: COLORS.red },
+    '1': { name: 'Universe2', color: COLORS.green }
 }
 
 const nodesFilter: NodesFilter = DEFAULT_NODES_FILTER

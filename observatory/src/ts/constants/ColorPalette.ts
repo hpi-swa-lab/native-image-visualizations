@@ -1,4 +1,9 @@
-export const COLOR_RED = '#FA5252'
-export const COLOR_GREEN = '#94D82D'
-export const COLOR_BLUE = '#A5D8FF'
-export const COLOR_GREY = '#969696'
+import colors from 'tailwindcss/colors'
+
+const COLORS = {
+    red: colors.red[400],
+    green: colors.lime[400],
+    blue: colors.sky[300],
+    gray: colors.red[400]
+}
+export default COLORS
