@@ -18,7 +18,7 @@ withDefaults(
     <MainLayout
         title="Sankey Tree"
         :component-type="SwappableComponentType.SankeyTree"
-        @change-page="(componentNumber: SwappableComponentType) => emit(EventType.CHANGE_PAGE, componentNumber)"
+        @change-page="(componentType: SwappableComponentType) => emit(EventType.CHANGE_PAGE, componentType)"
     >
         <div id="container" />
     </MainLayout>

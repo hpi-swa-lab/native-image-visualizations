@@ -10,6 +10,6 @@ const emit = defineEmits([EventType.CHANGE_PAGE])
     <MainLayout
         title="Home"
         :component-type="SwappableComponentType.Home"
-        @change-page="(componentNumber: SwappableComponentType) => emit(EventType.CHANGE_PAGE, componentNumber)"
+        @change-page="(componentType: SwappableComponentType) => emit(EventType.CHANGE_PAGE, componentType)"
     ></MainLayout>
 </template>

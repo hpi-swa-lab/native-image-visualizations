@@ -88,7 +88,7 @@ async function addUniverse() {
     <MainLayout
         title="Data Manager"
         :component-type="SwappableComponentType.DataManager"
-        @change-page="(componentNumber: SwappableComponentType) => emit(EventType.CHANGE_PAGE, componentNumber)"
+        @change-page="(componentType: SwappableComponentType) => emit(EventType.CHANGE_PAGE, componentType)"
     >
         <template #controls>
             <div class="space-y-10">
