@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { VisualizationType } from '../../ts/enums/VisualizationType'
 import { EventType } from '../../ts/enums/EventType'
-import { ref } from 'vue';
+import { ref } from 'vue'
 
 const props = withDefaults(
     defineProps<{
