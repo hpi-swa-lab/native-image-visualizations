@@ -49,21 +49,32 @@
     <script src="lib/causality_graph.js"></script>
     <script src="zip.min.js"></script>
     <script>
-        let simulate_purge = Module.cwrap("simulate_purge", "number", ["number"]);
+        let simulate_purge = Module.cwrap("simulate_purge", "number", ["number", "number"]);
         let simulate_purges_batched = Module.cwrap("simulate_purges_batched", "number", ["number", "number", "number"])
         let show_reachability = Module.cwrap("show_reachability", "number", ["number"]);
         let init = Module.cwrap("init", "number", ["number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number"]);
 
-        function simulatePurge(str) {
-            let ptr  = allocateUTF8(str)
-            let retPtr = simulate_purge(ptr)
-            let res = UTF8ToString(retPtr)
+        let all_reachable
 
+        function simulatePurge(purge_group) {
+            let midsPtr = Module._malloc(purge_group.length * 4)
+            let midsArray = Module.HEAPU32.subarray(midsPtr / 4, midsPtr / 4 + purge_group.length)
+
+            for (let i = 0; i < purge_group.length; i++)
+                midsArray[i] = purge_group[i] + 1
+
+            let method_history_ptr = simulate_purge(midsPtr, purge_group.length)
             // dealloc memory
-            Module._free(ptr);
-            Module._free(retPtr);
+            Module._free(midsPtr);
 
-            return res
+            const still_reachable = Module.HEAPU8.subarray(method_history_ptr, method_history_ptr + codesizes.length)
+
+            let purgedMethodNames = ""
+            for (let i = 0; i < codesizes.length; i++)
+                if (all_reachable[i] !== 0xFF && still_reachable[i] === 0xFF)
+                    purgedMethodNames += methodList[i] + "\n"
+
+            return purgedMethodNames
         }
 
         function simulatePurgesBatched(purge_groups, resultCallback) {
@@ -87,9 +98,8 @@
 
             assert(midsPos * 4 === midsPtr + totalCount * 4)
 
-            const callback = (iteration, method_history_ptr, all_method_history_ptr) => {
+            const callback = (iteration, method_history_ptr) => {
                 const still_reachable = Module.HEAPU8.subarray(method_history_ptr, method_history_ptr + codesizes.length)
-                const all_reachable = Module.HEAPU8.subarray(all_method_history_ptr, all_method_history_ptr + codesizes.length)
                 let purged_size = 0
                 for (let i = 0; i < codesizes.length; i++)
                     if (all_reachable[i] !== 0xFF && still_reachable[i] === 0xFF)
@@ -98,7 +108,7 @@
                 return 0
             }
 
-            const callback_ptr = addFunction(callback, 'iiii')
+            const callback_ptr = addFunction(callback, 'iii')
             const status = simulate_purges_batched(subsetsArrPtr, purge_groups.length, callback_ptr)
             removeFunction(callback_ptr)
 
@@ -110,6 +120,7 @@
         }
 
         function pressBtn(str) {
+            throw Error("Currently not implemented properly!!!")
             document.getElementById("Output").value = simulatePurge(str)
             printReachability(document.getElementById("Input_reachability").value)
         }
@@ -210,7 +221,7 @@
                     filesAsByteArrays[entry.filename] = { data: input_ptr, length: data.length }
                 }
 
-                init(filesAsByteArrays["types.txt"].data, filesAsByteArrays["types.txt"].length,
+                const all_method_history_ptr = init(filesAsByteArrays["types.txt"].data, filesAsByteArrays["types.txt"].length,
                     filesAsByteArrays["methods.txt"].data, filesAsByteArrays["methods.txt"].length,
                     filesAsByteArrays["typeflows.txt"].data, filesAsByteArrays["typeflows.txt"].length,
                     filesAsByteArrays["typestates.bin"].data, filesAsByteArrays["typestates.bin"].length,
@@ -220,6 +231,8 @@
                     filesAsByteArrays["typeflow_filters.bin"].data, filesAsByteArrays["typeflow_filters.bin"].length,
                     filesAsByteArrays["declaring_types.bin"].data, filesAsByteArrays["declaring_types.bin"].length,
                 )
+
+                all_reachable = Module.HEAPU8.subarray(all_method_history_ptr, all_method_history_ptr + codesizes.length)
 
                 for (const span of Object.values(filesAsByteArrays))
                 {
@@ -458,7 +471,7 @@
                     });
                 }
                 span.addEventListener("mouseenter", () => {
-                    const purged = simulatePurge(collectCgNodesInSubtree(node).map(i => methodList[i]).join("\n"))
+                    const purged = simulatePurge(collectCgNodesInSubtree(node))
                     document.getElementById("Output_hoverpurge").value = purged
                 })
             }

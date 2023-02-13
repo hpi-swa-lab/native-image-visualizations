@@ -19,7 +19,7 @@ static std::optional<BFS::Result> all;
 
 static std::optional<BFS::Result> current_purged_result;
 
-extern "C" void EMSCRIPTEN_KEEPALIVE init(
+extern "C" const uint8_t* EMSCRIPTEN_KEEPALIVE init(
         const uint8_t* types_data, size_t types_len,
         const uint8_t* methods_data, size_t methods_len,
         const uint8_t* typeflows_data, size_t typeflows_len,
@@ -68,6 +68,8 @@ extern "C" void EMSCRIPTEN_KEEPALIVE init(
     cerr << " " << (all.method_history.size() - std::count(all.method_history.begin(), all.method_history.end(), 0xFF)) << " methods reachable!\n";
 
     ::all.emplace(std::move(all));
+
+    return &::all->method_history[1];
 }
 
 static vector<method_id> parse_methods(const model& m, const char* methods)
@@ -106,25 +108,20 @@ static vector<method_id> parse_methods(const model& m, const char* methods)
     return purged_mids;
 }
 
-extern "C" char* EMSCRIPTEN_KEEPALIVE simulate_purge(const char* methods)
+extern "C" const uint8_t* EMSCRIPTEN_KEEPALIVE simulate_purge(const method_id* purge_set_ptr, size_t purge_set_len)
 {
     if(!purge_model)
         return nullptr;
 
-    if(string_view(methods).empty())
+    if(purge_set_len == 0)
     {
-        current_purged_result.reset();
-        char* empty = new char[1];
-        empty[0] = 0;
-        return empty;
+        current_purged_result = all;
+        return &current_purged_result->method_history[1];
     }
 
     auto& m = *purge_model;
 
-    vector<method_id> purged_mids = parse_methods(m, methods);
-
-    if(purged_mids.empty()) // Parsing error
-        return nullptr;
+    span<const method_id> purged_mids = {purge_set_ptr, purge_set_len};
 
     cerr << "Running DFS on purged graph...";
 
@@ -136,31 +133,19 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE simulate_purge(const char* methods)
     auto elapsed_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     cerr << ' ' << (elapsed_milliseconds.count()) << "ms elapsed - ";
 
-    stringstream output;
-
     size_t n_purged = 0;
-
     for(size_t i = 1; i < all->method_visited.size(); i++)
-    {
         if(all->method_visited[i] && !after_purge.method_visited[i])
-        {
             n_purged++;
-            output << m.method_names[i] << endl;
-        }
-    }
 
     current_purged_result.emplace(std::move(after_purge));
 
     cerr << n_purged << " method nodes purged!" << endl;
 
-    string s(output.str());
-    char* res = new char[s.size() + 1];
-    copy(s.begin(), s.end(), res);
-    res[s.size()] = 0;
-    return res;
+    return &current_purged_result->method_history[1];
 }
 
-using purges_batched_result_callback = uint32_t (*)(uint32_t, const uint8_t*, const uint8_t*);
+using purges_batched_result_callback = uint32_t (*)(uint32_t, const uint8_t*);
 
 extern "C" bool EMSCRIPTEN_KEEPALIVE simulate_purges_batched(const span<const method_id>* purge_sets, size_t purge_sets_len, purges_batched_result_callback result_callback)
 {
@@ -214,7 +199,7 @@ extern "C" bool EMSCRIPTEN_KEEPALIVE simulate_purges_batched(const span<const me
         auto callback = [&](const span<const method_id> &mids, const BFS::Result &r)
         {
             size_t iteration = &mids - purge_sets;
-            bool cancellation_requested = result_callback(iteration, &r.method_history[1], &all->method_history[1]) != 0;
+            bool cancellation_requested = result_callback(iteration, &r.method_history[1]) != 0;
             // TODO: Enable cancellation
         };
 
