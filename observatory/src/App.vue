@@ -9,15 +9,15 @@ import { store } from './ts/configStore'
 </script>
 
 <template>
-    <Venn v-if="store.config.global.currentComponent === VisualizationType.VennSets"></Venn>
+    <Venn v-if="store.globalConfig.currentComponent === VisualizationType.VennSets"></Venn>
     <SankeyTree
-        v-else-if="store.config.global.currentComponent === VisualizationType.SankeyTree"
+        v-else-if="store.globalConfig.currentComponent === VisualizationType.SankeyTree"
     ></SankeyTree>
     <TreeLine
-        v-else-if="store.config.global.currentComponent === VisualizationType.TreeLine"
+        v-else-if="store.globalConfig.currentComponent === VisualizationType.TreeLine"
     ></TreeLine>
     <CausalityGraph
-        v-else-if="store.config.global.currentComponent === VisualizationType.CausalityGraph"
+        v-else-if="store.globalConfig.currentComponent === VisualizationType.CausalityGraph"
     ></CausalityGraph>
     <Home v-else></Home>
 </template>

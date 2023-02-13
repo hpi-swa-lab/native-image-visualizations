@@ -1,20 +1,34 @@
 import { reactive } from 'vue'
 import { VisualizationType } from './enums/VisualizationType'
 import { Universe } from './UniverseTypes/Universe'
+import { Config } from './SharedTypes/Config'
 
-export const store = reactive({
+export interface Store {
+    data: Record<string, unknown>
+    selections: Record<string, unknown>
+    globalConfig: Config
+    vennConfig: Config
+    sankeyTreeConfig: Config
+    treeLineConfig: Config
+    causalityGraphConfig: Config
+
+    dataChanged(newUniverses: Universe[]): void
+    selectionsChanged(newSelections: Record<string, Node[]>): void
+    componentChanged(newComponent: VisualizationType): void
+    searchChange(newSearch: string): void
+    setVisualizationConfig(visualization: VisualizationType, name: string, value: unknown): void
+}
+
+export const store: Store = reactive({
     data: {},
     selections: {},
-    config: {
-        global: {
-            currentComponent: VisualizationType.None,
-            search: ''
-        },
-        venn: {},
-        sankeyTree: {},
-        treeLine: {},
-        causalityGraph: {}
+    globalConfig: {
+        currentComponent: VisualizationType.None
     },
+    vennConfig: {},
+    sankeyTreeConfig: {},
+    treeLineConfig: {},
+    causalityGraphConfig: {},
     dataChanged(newUniverses: Universe[]) {
         this.config.data = createConfigData(newUniverses)
     },

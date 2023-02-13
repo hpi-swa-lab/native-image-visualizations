@@ -16,7 +16,7 @@ function applyComponent(event: Event) {
         <select
             id="visualization-dropdown"
             name="Visualization"
-            :value="store.config.global.currentComponent"
+            :value="store.globalConfig.currentComponent"
             class="dropdown dropdown-white block w-full"
             @change="applyComponent"
         >
