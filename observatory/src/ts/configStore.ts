@@ -1,7 +1,9 @@
 import { reactive } from 'vue'
 import { VisualizationType } from './enums/VisualizationType'
 import { Universe } from './UniverseTypes/Universe'
+import { Node } from './UniverseTypes/Node'
 import { Config } from './SharedTypes/Config'
+import { createConfigData, createConfigSelections } from './parsing'
 
 export interface Store {
     data: Record<string, unknown>
@@ -20,49 +22,38 @@ export interface Store {
 }
 
 export const store: Store = reactive({
-    data: {},
-    selections: {},
+    data: {} as Config,
+    selections: {} as Config,
     globalConfig: {
-        currentComponent: VisualizationType.None
-    },
-    vennConfig: {},
-    sankeyTreeConfig: {},
-    treeLineConfig: {},
-    causalityGraphConfig: {},
+        currentComponent: VisualizationType.None,
+        search: ''
+    } as Config,
+    vennConfig: {} as Config,
+    sankeyTreeConfig: {} as Config,
+    treeLineConfig: {} as Config,
+    causalityGraphConfig: {} as Config,
+
     dataChanged(newUniverses: Universe[]) {
-        this.config.data = createConfigData(newUniverses)
+        this.data = createConfigData(newUniverses)
     },
     selectionsChanged(newSelections: Record<string, Node[]>) {
-        this.config.selections = createConfigSelections(newSelections)
+        this.selections = createConfigSelections(newSelections)
     },
     componentChanged(newComponent: VisualizationType) {
-        this.config.global.currentComponent = newComponent
+        this.globalConfig.currentComponent = newComponent
     },
     searchChange(newSearch: string) {
-        this.config.global.search = newSearch
+        this.globalConfig.search = newSearch
     },
     setVisualizationConfig(visualization: VisualizationType, name: string, value: unknown) {
-        let config
-
-        switch (visualization) {
-            case VennSets:
-                config = this.config.venn
-                break
-            case SankeyTree:
-                config = this.config.sankeyTree
-                break
-            case TreeLine:
-                config = this.config.treeLine
-                break
-            case CausalityGraph:
-                config = this.config.causalityGraph
-                break
-            default:
-                config = null
-        }
-
-        if (config) {
-            config[name] = value
+        if (visualization === VisualizationType.VennSets) {
+            this.vennConfig[name] = value
+        } else if (visualization === VisualizationType.SankeyTree) {
+            this.sankeyTreeConfig[name] = value
+        } else if (visualization === VisualizationType.TreeLine) {
+            this.treeLineConfig[name] = value
+        } else if (visualization === VisualizationType.CausalityGraph) {
+            this.causalityGraphConfig[name] = value
         }
     }
 })

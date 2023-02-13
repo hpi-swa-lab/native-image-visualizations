@@ -4,10 +4,11 @@ import { Node } from './UniverseTypes/Node'
 export function createConfigSelections(
     selections: Record<string, Node[]>
 ): Record<string, Record<string, unknown>> {
-    const result = {}
+    const result: Record<string, Record<string, unknown>> = {}
 
     Object.keys(selections).forEach((name: string) => {
-        result['name'] = createConfigSelectionForSelection(name, selections[name])
+        const currentSelection: Node[] = selections[name]
+        result[name] = createConfigSelectionForSelection(name, currentSelection)
     })
 
     return result
@@ -19,7 +20,7 @@ function createConfigSelectionForSelection(name: string, nodes: Node[]): Record<
 }
 
 export function createConfigData(universes: Universe[]): Record<string, Record<string, unknown>> {
-    const result = {}
+    const result: Record<string, Record<string, unknown>> = {}
 
     universes.forEach((universe) => {
         result[universe.name] = createConfigDataForUniverse(universe)
