@@ -9,7 +9,11 @@ import { loadJson, parseReachabilityExport } from '../ts/parsing'
 import MainLayout from './layouts/MainLayout.vue'
 import { SwappableComponentType } from '../ts/enums/SwappableComponentType'
 
-const emit = defineEmits([EventType.UNIVERSE_REMOVED, EventType.UNIVERSE_CREATED])
+const emit = defineEmits([
+    EventType.CHANGE_PAGE,
+    EventType.UNIVERSE_REMOVED,
+    EventType.UNIVERSE_CREATED
+])
 
 const props = withDefaults(
     defineProps<{
@@ -81,7 +85,11 @@ async function addUniverse() {
 </script>
 
 <template>
-    <MainLayout title="Data Manager" :component-type="SwappableComponentType.DataManager">
+    <MainLayout
+        title="Data Manager"
+        :component-type="SwappableComponentType.DataManager"
+        @change-page="(componentNumber: SwappableComponentType) => emit(EventType.CHANGE_PAGE, componentNumber)"
+    >
         <template #controls>
             <div class="space-y-10">
                 <h3>Manage Existing Universes</h3>
@@ -118,6 +126,7 @@ async function addUniverse() {
                     <input
                         ref="nameInput"
                         v-model="formContents.name"
+                        class="w-full"
                         type="text"
                         placeholder="Awesome Universe Name"
                         required
@@ -129,9 +138,10 @@ async function addUniverse() {
                     </p>
                 </div>
                 <div class="space-y-4">
-                    <label>Reachability-Export</label>
+                    <label>Reachability Export</label>
                     <input
                         ref="dataInput"
+                        class="w-full"
                         type="file"
                         accept="json"
                         required
