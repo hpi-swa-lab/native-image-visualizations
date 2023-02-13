@@ -147,7 +147,10 @@ async function addUniverse() {
                         required
                         @change="validateAndUpdateReachabilityExport"
                     />
-                    <p class="help-text">Some text</p>
+                    <p class="help-text">
+                        Please upload the reachability analysis data that came out of your
+                        native-image build process.
+                    </p>
                 </div>
 
                 <button class="btn btn-primary">Add Universe</button>
