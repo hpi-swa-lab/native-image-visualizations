@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import MainLayout from '../layouts/MainLayout.vue'
-import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
 import { Universe } from '../../ts/UniverseTypes/Universe'
+import { EventType } from '../../ts/enums/EventType'
+import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
+
+const emit = defineEmits([EventType.CHANGE_PAGE])
 
 withDefaults(
     defineProps<{
@@ -12,7 +15,11 @@ withDefaults(
 </script>
 
 <template>
-    <MainLayout title="Venn Sets" :component-type="SwappableComponentType.VennSets">
+    <MainLayout
+        title="Venn Sets"
+        :component-type="SwappableComponentType.VennSets"
+        @change-page="(componentNumber: SwappableComponentType) => emit(EventType.CHANGE_PAGE, componentNumber)"
+    >
         <div id="container" />
     </MainLayout>
 </template>
