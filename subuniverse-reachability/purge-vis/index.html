@@ -377,6 +377,8 @@
             calculateAggregateCutWeight(list, node)
         }
 
+        let maxRes
+
         function calculateAggregateCutWeight(list, node) {
             let purge_groups = node.children.map(collectCgNodesInSubtree)
 
@@ -397,20 +399,15 @@
                 res[i] = size
             })
 
-            for (let i = 0; i < list.children.length; i++)
-                list.children[i].querySelector('#purged').textContent = formatByteSizesWithUnitPrefix(res[i])
+            if (node === this.dataRoot)
+                this.maxRes = Math.max(...res)
 
-            let order = new Array(list.children.length)
-            for(let i = 0; i < order.length; i++)
-                order[i] = i
+            assert(this.maxRes)
 
-            let nodes = list.children
-            order.sort((a, b) => res[b] - res[a]).map(i => nodes[i]).forEach(node => list.appendChild(node))
-        }
-
-        function calculateAggregateSize(list, node) {
-            for (let i = 0; i < list.children.length; i++)
-                list.children[i].querySelector('#purged').textContent = formatByteSizesWithUnitPrefix(res[i])
+            for (let i = 0; i < list.children.length; i++) {
+                list.children[i].querySelector('.cut-size-column').textContent = formatByteSizesWithUnitPrefix(res[i])
+                list.children[i].querySelector('.cut-size-bar').style.width = (res[i] / this.maxRes * 100) + "%"
+            }
 
             let order = new Array(list.children.length)
             for(let i = 0; i < order.length; i++)
@@ -436,24 +433,29 @@
 
             for(const d of data.children) {
                 let li = document.createElement("li")
-                li.className = "row"
+                li.className = "cut-row"
                 d.html = li
                 ul.appendChild(li)
 
                 let out = document.createElement("span")
                 out.className = "cut-size-column"
-                out.id = "purged"
                 li.appendChild(out)
 
+                let sizebar = document.createElement("div")
+                sizebar.className = "cut-size-bar"
+                li.appendChild(sizebar)
+
                 let node = d
+                let span = document.createElement("span")
+                span.className = "caret"
                 if (d.children) {
-                    let span = document.createElement("span")
-                    span.className = "caret"
                     span.addEventListener("click", () => {
                         expandClickHandler(span, node, () => insertChildren(li, node));
                     });
-                    li.appendChild(span)
+                } else {
+                    span.style.visibility = "hidden"
                 }
+                li.appendChild(span)
 
                 let nameSpan = document.createElement("span")
                 nameSpan.appendChild(document.createTextNode(d.name))
@@ -480,6 +482,7 @@
 
             for(const d of data.children) {
                 let li = document.createElement("li")
+                li.className = "image-row"
                 d.html_imageview = li
                 ul.appendChild(li)
                 let span = document.createElement("span")
@@ -493,7 +496,6 @@
 
                 let out3 = document.createElement("span")
                 out3.className = "total-size-column"
-                out3.id = "size"
                 li.appendChild(out3)
 
                 let out4 = document.createElement("div")
@@ -502,13 +504,22 @@
 
                 let out5 = document.createElement("div")
                 out5.className = "size-bar-inner"
-                out5.id = "purged_of_bar"
                 out4.appendChild(out5)
 
                 let out2 = document.createElement("span")
                 out2.className = "size-bar-text"
-                out2.id = "purged_of"
                 out4.appendChild(out2)
+
+                let node = d
+                span.className = "caret"
+                if (d.children) {
+                    span.addEventListener("click", () => {
+                        expandClickHandler(span, node, () => li.appendChild(generateHtmlImageview(node)));
+                    });
+                } else {
+                    span.style.visibility = "hidden"
+                }
+                li.appendChild(span)
 
                 {
                     let codesize = 0
@@ -519,14 +530,6 @@
                     })
                     d.size = codesize
                     out3.textContent = formatByteSizesWithUnitPrefix(codesize)
-                }
-
-                let node = d
-                if(d.children) {
-                    span.className = "caret"
-                    span.addEventListener("click", () => {
-                        expandClickHandler(span, node, () => li.appendChild(generateHtmlImageview(node)));
-                    });
                 }
             }
 
@@ -588,8 +591,8 @@
                         barWidth = purgedPercentage.toFixed(1) + "%"
                         percentageText = purgedPercentage.toFixed(1) + " %"
                     }
-                    u.html_imageview.querySelector("#purged_of").textContent = percentageText
-                    u.html_imageview.querySelector("#purged_of_bar").style.width = barWidth
+                    u.html_imageview.querySelector(".size-bar-text").textContent = percentageText
+                    u.html_imageview.querySelector(".size-bar-inner").style.width = barWidth
                 }
             })
         }

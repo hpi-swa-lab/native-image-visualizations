@@ -43,7 +43,7 @@ ul {
 /* Hide the nested list */
 .nested {
     display: none;
-    grid-row-start: 2;
+    grid-row-start: 3;
     grid-column-start: 1;
     grid-column-end: 4;
     padding-left: 20px;
@@ -64,9 +64,12 @@ body {
 
 .total-size-column {
     float: right;
-    width: 100px;
-    margin-left: 25px;
-    color: #606060
+    margin-right: 5px;
+    margin-left: 5px;
+    color: #606060;
+    grid-row-start: 1;
+    grid-column-start: 4;
+    width: 70px;
 }
 
 .cut-size-column {
@@ -82,10 +85,11 @@ body {
     text-align: center;
     float: right;
     width: 100px;
-    margin-left: 25px;
     border: 1px solid gray;
     height: 16px;
     display: grid;
+    grid-row-start: 1;
+    grid-column-start: 3;
     grid-template-columns: 1fr;
     grid-template-rows: 16px;
 }
@@ -144,8 +148,23 @@ body {
     background-color: #0000FF20;
 }
 
-.row {
+.cut-row {
     display: grid;
     grid-template-columns: max-content 1fr max-content;
     grid-template-rows: 18px;
+}
+
+.image-row {
+    display: grid;
+    grid-template-columns: max-content 1fr max-content;
+    grid-template-rows: 18px;
+}
+
+.cut-size-bar {
+    background-color: #B0404080;
+    height: 2px;
+    margin-top: -2px;
+    grid-row-start: 2;
+    grid-column-start: 2;
+    grid-column-end: 3;
 }
