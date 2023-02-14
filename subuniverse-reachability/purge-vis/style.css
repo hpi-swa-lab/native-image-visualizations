@@ -1,10 +1,10 @@
 /* Remove default bullets */
-ul, #myUL {
+ul {
     list-style-type: none;
 }
 
 /* Remove margins and padding from the parent ul */
-#myUL {
+.unpadded {
     margin: 0;
     padding: 0;
 }
@@ -13,11 +13,17 @@ ul, #myUL {
 .caret {
     cursor: pointer;
     user-select: none; /* Prevent text selection */
+    grid-row-start: 1;
+    grid-column-start: 1;
 }
 
 .node-text {
     cursor: crosshair;
     user-select: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    grid-row-start: 1;
+    grid-column-start: 2;
 }
 
 /* Create the caret/arrow with a unicode, and style it */
@@ -36,6 +42,10 @@ ul, #myUL {
 /* Hide the nested list */
 .nested {
     display: none;
+    grid-row-start: 2;
+    grid-column-start: 1;
+    grid-column-end: 4;
+    padding-left: 20px;
 }
 
 /* Show the nested list when the user clicks on the caret/arrow (with JavaScript) */
@@ -62,7 +72,9 @@ body {
     float: right;
     width: 100px;
     margin-left: 25px;
-    color: #808080
+    color: #808080;
+    grid-row-start: 1;
+    grid-column-start: 3;
 }
 
 .size-bar-outer {
@@ -91,22 +103,48 @@ body {
     color: #8080FF;
 }
 
+.top-panel {
+    float: top;
+    width: 100%;
+    height: 4%;
+}
+
+.main-panel {
+    height: 96%;
+}
+
 .overview-div {
     float: left;
-    width: 64%;
+    width: 43%;
     height: 100%;
-    margin-right: 2%;
-    overflow-y: scroll
+    margin-right: 1%;
+    overflow-y: scroll;
+    resize: horizontal;
+}
+
+.imageview-div {
+    float: left;
+    width: 55%;
+    height: 100%;
+    margin-right: 1%;
+    overflow-y: scroll;
+    resize: horizontal;
 }
 
 .detail-div {
     float: left;
-    width: 32%;
+    width: 0%;
     height: 100%;
-    margin-right: 2%
+    visibility: hidden;
 }
 
 .selected-for-purge {
     border: 1px solid #8080FF;
     background-color: #0000FF20;
+}
+
+.row {
+    display: grid;
+    grid-template-columns: max-content 1fr max-content;
+    grid-template-rows: 18px;
 }

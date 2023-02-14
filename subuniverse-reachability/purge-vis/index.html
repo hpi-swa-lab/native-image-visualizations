@@ -147,10 +147,9 @@
                 let reachabilityData = JSON.parse(await entries.find(e => e.filename === "reachability.json").getData(new zip.TextWriter()))
                 let methods = await entries.find(e => e.filename === "methods.txt").getData(new zip.TextWriter())
                 methodList = methods.split('\n')
-                if(methodList[methodList.length-1].length == 0) {
+                if(methodList[methodList.length-1].length === 0) {
                     methodList.pop()
                 }
-                prepareListView(generateHierarchyFromReachabilityJsonAndMethodList(reachabilityData, methodList))
                 let codesizesDict = getMethodCodesizeDictFromReachabilityJson(reachabilityData)
                 codesizes = new Array(methodList.length)
 
@@ -185,12 +184,11 @@
                     filesAsByteArrays["declaring_types.bin"].data, filesAsByteArrays["declaring_types.bin"].length,
                 )
 
-                all_reachable = Module.HEAPU8.subarray(all_method_history_ptr, all_method_history_ptr + codesizes.length)
-
                 for (const span of Object.values(filesAsByteArrays))
-                {
                     Module._free(span.data)
-                }
+
+                all_reachable = Module.HEAPU8.subarray(all_method_history_ptr, all_method_history_ptr + codesizes.length)
+                prepareListView(generateHierarchyFromReachabilityJsonAndMethodList(reachabilityData, methodList))
             }
         }
     </script>
@@ -206,18 +204,23 @@
         <label for="Output_reachability"></label><textarea id="Output_reachability" cols="100" spellcheck="false" rows="20" readonly="readonly"></textarea>
     </details>
 
-    <div class="overview-div">
+    <div class="top-panel">
         <input type="file" id="file-input" accept="application/zip" hidden>
-        <button title="upload" onClick="doSomething()">Upload CausalityExport</button>
-        <input type="checkbox">Show generated code</input>
-        <ul id="myUL">
-            <li id="myLI">
-                <span class="caret" id="myRoot">root</span>
-            </li>
-        </ul>
+        <button title="upload" onClick="doSomething()"><big>Upload CausalityExport</big></button>
     </div>
-    <div class="detail-div">
-        <label for="Output_hoverpurge"></label><textarea placeholder="Events made unreachable" wrap="off" style="width: 100%; height: 100%" id="Output_hoverpurge" spellcheck="false" rows="50" readonly="readonly"></textarea>
+
+    <div class="main-panel">
+        <div class="overview-div">
+            <span><b>Cut Overview:</b></span>
+            <div id="cut-overview-root"></div>
+        </div>
+        <div class="imageview-div">
+            <span><b>In-Image Overview:</b></span>
+            <div id="imageview-root"></div>
+        </div>
+        <div class="detail-div">
+            <label for="Output_hoverpurge"></label><textarea placeholder="Events made unreachable" wrap="off" style="width: 100%; height: 100%" id="Output_hoverpurge" spellcheck="false" rows="50" readonly="readonly"></textarea>
+        </div>
     </div>
 
     <script>
@@ -368,42 +371,60 @@
             return group
         }
 
-        function expandClickHandler(element, node) {
+        function insertChildren(element, node) {
+            let list = generateHTML(node)
+            element.appendChild(list)
+            calculateAggregateCutWeight(list, node)
+        }
+
+        function calculateAggregateCutWeight(list, node) {
+            let purge_groups = node.children.map(collectCgNodesInSubtree)
+
+            let res = Array(purge_groups.length)
+
+            // The C++ code doesn't handle empty groups well. Therefore we already handle them here.
+            let nonempty_purge_groups_indexes = []
+            for (let i = 0; i < purge_groups.length; i++) {
+                if (purge_groups[i].length > 0)
+                    nonempty_purge_groups_indexes.push(i)
+                else
+                    res[i] = 0
+            }
+
+            let nonempty_purge_groups = purge_groups.filter(g => g.length > 0)
+            nonempty_res = simulatePurgesBatched(nonempty_purge_groups, (iteration, size) => {
+                i = nonempty_purge_groups_indexes[iteration]
+                res[i] = size
+            })
+
+            for (let i = 0; i < list.children.length; i++)
+                list.children[i].querySelector('#purged').textContent = formatByteSizesWithUnitPrefix(res[i])
+
+            let order = new Array(list.children.length)
+            for(let i = 0; i < order.length; i++)
+                order[i] = i
+
+            let nodes = list.children
+            order.sort((a, b) => res[b] - res[a]).map(i => nodes[i]).forEach(node => list.appendChild(node))
+        }
+
+        function calculateAggregateSize(list, node) {
+            for (let i = 0; i < list.children.length; i++)
+                list.children[i].querySelector('#purged').textContent = formatByteSizesWithUnitPrefix(res[i])
+
+            let order = new Array(list.children.length)
+            for(let i = 0; i < order.length; i++)
+                order[i] = i
+
+            let nodes = list.children
+            order.sort((a, b) => res[b] - res[a]).map(i => nodes[i]).forEach(node => list.appendChild(node))
+        }
+
+        function expandClickHandler(element, node, populateCallback) {
             let expanded = element.classList.toggle("caret-down");
 
-            if(!element.parentElement.querySelector(".nested")) {
-                if (expanded) {
-                    element.parentElement.appendChild(generateHTML(node))
-                    let purge_groups = node.children.map(collectCgNodesInSubtree)
-
-                    let list = element.parentElement.querySelector('ul')
-                    let res = Array(purge_groups.length)
-
-                    // The C++ code doesn't handle empty groups well. Therefore we already handle them here.
-                    let nonempty_purge_groups_indexes = []
-                    for (let i = 0; i < purge_groups.length; i++) {
-                        if (purge_groups[i].length > 0)
-                            nonempty_purge_groups_indexes.push(i)
-                        else
-                            res[i] = 0
-                    }
-
-                    let nonempty_purge_groups = purge_groups.filter(g => g.length > 0)
-                    nonempty_res = simulatePurgesBatched(nonempty_purge_groups, (iteration, size) => {
-                        i = nonempty_purge_groups_indexes[iteration]
-                        res[i] = size
-                    })
-
-                    for (let i = 0; i < list.children.length; i++)
-                        list.children[i].querySelector('#purged').textContent = formatByteSizesWithUnitPrefix(res[i])
-
-                    let order = new Array(list.children.length)
-                    for(let i = 0; i < order.length; i++)
-                        order[i] = i
-
-                    let nodes = list.children
-                    order.sort((a, b) => res[b] - res[a]).map(i => nodes[i]).forEach(node => list.appendChild(node))
-                }
+            if(!element.parentElement.querySelector(".nested") && expanded) {
+                populateCallback()
             }
 
             element.parentElement.querySelector(".nested").classList.toggle("active");
@@ -415,7 +436,51 @@
 
             for(const d of data.children) {
                 let li = document.createElement("li")
+                li.className = "row"
                 d.html = li
+                ul.appendChild(li)
+
+                let out = document.createElement("span")
+                out.className = "cut-size-column"
+                out.id = "purged"
+                li.appendChild(out)
+
+                let node = d
+                if (d.children) {
+                    let span = document.createElement("span")
+                    span.className = "caret"
+                    span.addEventListener("click", () => {
+                        expandClickHandler(span, node, () => insertChildren(li, node));
+                    });
+                    li.appendChild(span)
+                }
+
+                let nameSpan = document.createElement("span")
+                nameSpan.appendChild(document.createTextNode(d.name))
+                nameSpan.title = d.fullname
+                nameSpan.className = "node-text"
+                li.appendChild(nameSpan)
+
+                nameSpan.addEventListener("click", () => {
+                    let selected = nameSpan.classList.toggle("selected-for-purge")
+                    if (selected)
+                        selectedForPurging.add(node)
+                    else
+                        selectedForPurging.delete(node)
+                    updatePurgeValues()
+                })
+            }
+
+            return ul
+        }
+
+        function generateHtmlImageview(data) {
+            let ul = document.createElement("ul")
+            ul.className = "nested"
+
+            for(const d of data.children) {
+                let li = document.createElement("li")
+                d.html_imageview = li
                 ul.appendChild(li)
                 let span = document.createElement("span")
                 li.appendChild(span)
@@ -425,11 +490,6 @@
                 nameSpan.title = d.fullname
                 nameSpan.className = "node-text"
                 li.appendChild(nameSpan)
-
-                let out = document.createElement("span")
-                out.className = "cut-size-column"
-                out.id = "purged"
-                li.appendChild(out)
 
                 let out3 = document.createElement("span")
                 out3.className = "total-size-column"
@@ -465,28 +525,41 @@
                 if(d.children) {
                     span.className = "caret"
                     span.addEventListener("click", () => {
-                        expandClickHandler(span, node);
+                        expandClickHandler(span, node, () => li.appendChild(generateHtmlImageview(node)));
                     });
                 }
-                nameSpan.addEventListener("click", () => {
-                    let selected = nameSpan.classList.toggle("selected-for-purge")
-                    if (selected)
-                        selectedForPurging.add(node)
-                    else
-                        selectedForPurging.delete(node)
-                    updatePurgeValues()
-                })
             }
+
+            let child_sizes = data.children.map(cn => cn.size)
+
+            let order = new Array(data.children.length)
+            for(let i = 0; i < order.length; i++)
+                order[i] = i
+
+            let nodes = ul.children
+            order.sort((a, b) => child_sizes[b] - child_sizes[a]).map(i => nodes[i]).forEach(node => ul.appendChild(node))
 
             return ul
         }
 
         function prepareListView(data) {
             this.dataRoot = data
-            const rootTreeViewElement = document.getElementById("myRoot")
-            rootTreeViewElement.addEventListener("click", () => {
-                expandClickHandler(rootTreeViewElement, data)
-            })
+            {
+                const rootTreeViewElement = document.getElementById("cut-overview-root")
+                insertChildren(rootTreeViewElement, data)
+                const list = rootTreeViewElement.querySelector('ul')
+                list.classList.remove("nested")
+                list.classList.add("unpadded")
+                list.classList.add("active")
+            }
+            {
+                const rootTreeViewElement = document.getElementById("imageview-root")
+                const list = generateHtmlImageview(data)
+                rootTreeViewElement.appendChild(list)
+                list.classList.remove("nested")
+                list.classList.add("unpadded")
+                list.classList.add("active")
+            }
         }
 
         function updatePurgeValues() {
@@ -500,7 +573,7 @@
             document.getElementById("Output_hoverpurge").value = purgedMethodNames
 
             forEachInSubtree(this.dataRoot, (u) => {
-                if (u.html) {
+                if (u.html_imageview) {
                     let purgedCodesize = 0
                     forEachInSubtree(u, (v) => {
                         if (v.cg_nodes)
@@ -515,8 +588,8 @@
                         barWidth = purgedPercentage.toFixed(1) + "%"
                         percentageText = purgedPercentage.toFixed(1) + " %"
                     }
-                    u.html.querySelector("#purged_of").textContent = percentageText
-                    u.html.querySelector("#purged_of_bar").style.width = barWidth
+                    u.html_imageview.querySelector("#purged_of").textContent = percentageText
+                    u.html_imageview.querySelector("#purged_of_bar").style.width = barWidth
                 }
             })
         }
