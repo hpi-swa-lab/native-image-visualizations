@@ -8,38 +8,42 @@ export enum InitKind {
 }
 
 export class Leaf extends Node {
-    protected _reflective: boolean
-    protected _jni: boolean
-    protected _synthetic: boolean
+    protected _isReflective: boolean
+    protected _isJni: boolean
+    protected _isSynthetic: boolean
     protected _initKind: InitKind
 
     constructor(
         name: string,
-        parent: Node | undefined,
         codeSize: Bytes,
         initKind: InitKind,
-        reflective = false,
-        jni = false,
-        synthetic = false
+        isReflective = false,
+        isJni = false,
+        isSynthetic = false,
+        parent: Node | undefined = undefined
     ) {
-        super(name, parent, [])
+        super(name, [], parent)
         this._codeSize = codeSize
-        this._reflective = reflective
-        this._jni = jni
-        this._synthetic = synthetic
+        this._isReflective = isReflective
+        this._isJni = isJni
+        this._isSynthetic = isSynthetic
         this._initKind = initKind
     }
 
-    get reflective(): boolean {
-        return this._reflective
+    get isInline(): boolean {
+        return this.codeSize <= 0
     }
 
-    get jni(): boolean {
-        return this._jni
+    get isReflective(): boolean {
+        return this._isReflective
     }
 
-    get synthetic(): boolean {
-        return this._synthetic
+    get isJni(): boolean {
+        return this._isJni
+    }
+
+    get isSynthetic(): boolean {
+        return this._isSynthetic
     }
 
     get initKind(): InitKind {
@@ -49,9 +53,9 @@ export class Leaf extends Node {
     public equals(another: Leaf): boolean {
         return (
             super.equals(another) &&
-            this.synthetic === another.synthetic &&
-            this.jni === another.jni &&
-            this.reflective === another.reflective &&
+            this.isReflective === another.isReflective &&
+            this.isJni === another.isJni &&
+            this.isSynthetic === another.isSynthetic &&
             this.initKind === another.initKind
         )
     }

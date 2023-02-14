@@ -1,20 +1,20 @@
 <script setup lang="ts">
-import { VisualizationType } from '../../ts/enums/VisualizationType'
+import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
 import { EventType } from '../../ts/enums/EventType'
 import { ref } from 'vue'
 
 const props = withDefaults(
     defineProps<{
-        selected: VisualizationType
+        selected: SwappableComponentType
     }>(),
     {
-        selected: VisualizationType.None
+        selected: SwappableComponentType.None
     }
 )
 
 const selectedOption = ref(props.selected)
 
-defineEmits([EventType.CHANGE_VIZ])
+const emit = defineEmits([EventType.CHANGE_PAGE])
 </script>
 
 <template>
@@ -27,13 +27,13 @@ defineEmits([EventType.CHANGE_VIZ])
             v-model="selectedOption"
             name="Visualization"
             class="dropdown dropdown-white block w-full"
-            @change="$emit(EventType.CHANGE_VIZ, selectedOption)"
+            @change="emit(EventType.CHANGE_PAGE, selectedOption)"
         >
-            <option :value="VisualizationType.None" disabled>Choose Visualization</option>
-            <option :value="VisualizationType.VennSets">Venn Sets</option>
-            <option :value="VisualizationType.SankeyTree">Sankey Tree</option>
-            <option :value="VisualizationType.TreeLine">Tree Line</option>
-            <option :value="VisualizationType.CausalityGraph">Causality Graph</option>
+            <option :value="SwappableComponentType.Home" disabled>Choose Visualization</option>
+            <option :value="SwappableComponentType.VennSets">Venn Sets</option>
+            <option :value="SwappableComponentType.SankeyTree">Sankey Tree</option>
+            <option :value="SwappableComponentType.TreeLine">Tree Line</option>
+            <option :value="SwappableComponentType.CausalityGraph">Causality Graph</option>
         </select>
     </div>
 </template>

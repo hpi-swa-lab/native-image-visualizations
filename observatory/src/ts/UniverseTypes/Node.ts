@@ -1,23 +1,28 @@
-import { Bytes } from '../SharedTypes/Size'
 import { HIERARCHY_NAME_SEPARATOR } from '../globals'
+import { UniverseIndex } from '../SharedTypes/Indices'
+import { Bytes } from '../SharedTypes/Size'
+import clone from 'clone'
 
-const INVALID_SIZE: Bytes = -1
-
-export enum InitKind {
-    RUN_TIME = 1,
-    BUILD_TIME = 2,
-    RERUN = 3
-}
+export const INVALID_SIZE: Bytes = -1
 
 export class Node {
     protected _name: string
-    protected _children: Node[]
-    protected _codeSize: Bytes = INVALID_SIZE
     protected _parent: Node | undefined
+    protected readonly _children: Node[]
+    protected _codeSize: Bytes = INVALID_SIZE
+    protected _sources: Map<UniverseIndex, Node> = new Map()
 
-    constructor(name: string, parent: Node | undefined, children: Node[], codeSize = INVALID_SIZE) {
+    constructor(
+        name: string,
+        children: Node[] = [],
+        parent: Node | undefined = undefined,
+        codeSize = INVALID_SIZE
+    ) {
         this._name = name
         this._children = children
+        for (const child of children) {
+            child.parent = this
+        }
         this._parent = parent
         this._codeSize = codeSize
     }
@@ -26,26 +31,22 @@ export class Node {
         return this._name
     }
 
-    get children(): Node[] {
-        return this._children
+    get identifier(): string {
+        let path = this.name
+        let parent: Node | undefined = this.parent
+        while (parent != undefined) {
+            path = parent.name + HIERARCHY_NAME_SEPARATOR + path
+            parent = parent.parent
+        }
+        return path
     }
 
     get parent(): Node | undefined {
         return this._parent
     }
 
-    get identifier(): string {
-        let path = this.name
-        let root: Node | undefined = this.parent
-        while (root != undefined) {
-            path = root.name + HIERARCHY_NAME_SEPARATOR + path
-            root = root.parent
-        }
-        return path
-    }
-
-    get inline(): boolean {
-        return this.codeSize <= 0
+    get children(): Node[] {
+        return this._children
     }
 
     get codeSize(): Bytes {
@@ -58,23 +59,99 @@ export class Node {
         return this._codeSize
     }
 
-    set codeSize(size: Bytes) {
-        this._codeSize = size
+    /**
+     * Use only in the context of Multiverses.
+     * @see {@link Multiverse}
+     *
+     * @return {Map<UniverseIndex, Node>}
+     * the sources from which this (merged) node was constructed
+     */
+    get sources(): Map<UniverseIndex, Node> {
+        return this._sources
     }
 
-    public append(...nodes: Node[]): number {
-        for (const node of nodes) {
-            this._children.push(node)
+    /**
+     * Use only in the context of Multiverses.
+     * @see {@link Multiverse}
+     *
+     * @param {Map<UniverseIndex, Node>} sources
+     * the nodes from which this (merged) node was constructed
+     */
+    set sources(sources: Map<UniverseIndex, Node>) {
+        this._sources = sources
+    }
+
+    set parent(newParent: Node | undefined) {
+        this._parent = newParent
+    }
+
+    public clone(): Node {
+        const parent = this.parent
+        this.parent = undefined
+
+        const newInstance = clone(this)
+
+        newInstance.parent = parent
+        this.parent = parent
+
+        return newInstance
+    }
+
+    public push(...children: Node[]): number {
+        for (const child of children) {
+            this._children.push(child)
+            child.parent = this
         }
+        this._codeSize = INVALID_SIZE
         return this.children.length
+    }
+
+    public pop(): Node | undefined {
+        this._codeSize = INVALID_SIZE
+        const toRemove = this._children.pop()
+        if (toRemove) {
+            toRemove.parent = undefined
+        }
+        return toRemove
+    }
+
+    public splice(start: number, deleteCount?: number | undefined): Node[] {
+        this._codeSize = INVALID_SIZE
+        const toRemove = this._children.splice(start, deleteCount)
+        for (const priorChild of toRemove) {
+            priorChild.parent = undefined
+        }
+        return toRemove
     }
 
     public equals(another: Node): boolean {
         return (
+            this === another ||
+            (this.equalsComparingOnlyParents(another) && this.equalsIgnoringParents(another))
+        )
+    }
+
+    protected equalsIgnoringParents(another: Node): boolean {
+        return (
             this.name === another.name &&
-            this.parent === another.parent &&
-            this.codeSize == another.codeSize &&
-            this.children === another.children
+            this.codeSize === another.codeSize &&
+            this.children.length === another.children.length &&
+            this.children.every((child: Node, index: number) =>
+                child.equalsIgnoringParents(another.children[index])
+            ) &&
+            Array.from(this.sources.entries()).every(([id, node]) => {
+                const other = another.sources.get(id)
+                return other && node.equals(other)
+            })
+        )
+    }
+
+    protected equalsComparingOnlyParents(another: Node): boolean {
+        if (this.parent === undefined && another.parent === undefined) return true
+        if (this.parent === undefined || another.parent === undefined) return false
+        return (
+            this.parent.name == another.parent.name &&
+            this.parent.equalsComparingOnlyParents(another.parent)
         )
     }
 }
