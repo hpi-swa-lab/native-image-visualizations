@@ -2,6 +2,7 @@ import { Bytes } from '../SharedTypes/Size'
 import { Node } from './Node'
 
 export enum InitKind {
+    NO_CLASS_CONSTRUCTOR = 0,
     RUN_TIME = 1,
     BUILD_TIME = 2,
     RERUN = 3
@@ -11,12 +12,12 @@ export class Leaf extends Node {
     protected _isReflective: boolean
     protected _isJni: boolean
     protected _isSynthetic: boolean
-    protected _initKind: InitKind
+    protected _initKinds: InitKind[]
 
     constructor(
         name: string,
         codeSize: Bytes,
-        initKind: InitKind,
+        initKinds: InitKind[],
         isReflective = false,
         isJni = false,
         isSynthetic = false,
@@ -27,7 +28,7 @@ export class Leaf extends Node {
         this._isReflective = isReflective
         this._isJni = isJni
         this._isSynthetic = isSynthetic
-        this._initKind = initKind
+        this._initKinds = initKinds
     }
 
     get isInline(): boolean {
@@ -46,8 +47,8 @@ export class Leaf extends Node {
         return this._isSynthetic
     }
 
-    get initKind(): InitKind {
-        return this._initKind
+    get initKinds(): InitKind[] {
+        return this._initKinds
     }
 
     public equals(another: Leaf): boolean {
@@ -56,7 +57,10 @@ export class Leaf extends Node {
             this.isReflective === another.isReflective &&
             this.isJni === another.isJni &&
             this.isSynthetic === another.isSynthetic &&
-            this.initKind === another.initKind
+            this.initKinds.length == another.initKinds.length &&
+            this.initKinds.every(
+                (initKind: InitKind, index: number) => initKind === another.initKinds[index]
+            )
         )
     }
 }
