@@ -24,6 +24,7 @@ ul {
     white-space: nowrap;
     grid-row-start: 1;
     grid-column-start: 2;
+    overflow: hidden;
 }
 
 /* Create the caret/arrow with a unicode, and style it */
@@ -65,14 +66,14 @@ body {
     float: right;
     width: 100px;
     margin-left: 25px;
-    color: #FF8080
+    color: #606060
 }
 
 .cut-size-column {
     float: right;
-    width: 100px;
-    margin-left: 25px;
-    color: #808080;
+    margin-right: 5px;
+    margin-left: 5px;
+    color: #B02020;
     grid-row-start: 1;
     grid-column-start: 3;
 }
