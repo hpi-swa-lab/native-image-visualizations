@@ -161,3 +161,10 @@ async function addUniverse() {
         </form>
     </MainLayout>
 </template>
+
+<style scoped>
+input,
+label {
+    @apply block;
+}
+</style>

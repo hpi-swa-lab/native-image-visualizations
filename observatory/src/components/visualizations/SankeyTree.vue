@@ -19,14 +19,14 @@ withDefaults(
 )
 
 const universeMetadata: Record<number, UniverseProps> = {
-  '0': { name: 'Universe1', color: COLORS.red },
-  '1': { name: 'Universe2', color: COLORS.green }
+    '0': { name: 'Universe1', color: COLORS.red },
+    '1': { name: 'Universe2', color: COLORS.green }
 }
 
 const nodesFilter: NodesFilter = DEFAULT_NODES_FILTER
 
 function handleFilterUpdate() {
-  // TODO #39
+    // TODO #39
 }
 </script>
 
@@ -36,11 +36,13 @@ function handleFilterUpdate() {
         :component-type="SwappableComponentType.SankeyTree"
         @change-page="(componentType: SwappableComponentType) => emit(EventType.CHANGE_PAGE, componentType)"
     >
-      <SankeyTreeControls
-          :universes-metadata="universeMetadata"
-          :nodes-filter="nodesFilter"
-          @update="handleFilterUpdate()"
-      ></SankeyTreeControls>
+        <template #controls>
+            <SankeyTreeControls
+                :universes-metadata="universeMetadata"
+                :nodes-filter="nodesFilter"
+                @update="handleFilterUpdate()"
+            ></SankeyTreeControls>
+        </template>
         <div id="container" />
     </MainLayout>
 </template>
