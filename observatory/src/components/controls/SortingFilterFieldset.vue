@@ -1,19 +1,9 @@
 <script setup lang="ts">
 import { SortingOption, SortingOrder } from '../../ts/enums/Sorting.js'
-import { EventType } from '../../ts/enums/EventType.js'
+import {sankeyTreeConfigStore} from "../../ts/stores";
 
-const props = withDefaults(
-    defineProps<{
-        sortingOption: SortingOption
-        sortingOrder: SortingOrder
-    }>(),
-    {
-        sortingOption: SortingOption.NAME,
-        sortingOrder: SortingOrder.ASCENDING
-    }
-)
-
-const isSortedAscending = props.sortingOrder === SortingOrder.ASCENDING
+const sankeyTreeStore = sankeyTreeConfigStore()
+const isSortedAscending = sankeyTreeStore.nodesFilter.sorting.order === SortingOrder.ASCENDING
 </script>
 
 <template>
@@ -28,8 +18,8 @@ const isSortedAscending = props.sortingOrder === SortingOrder.ASCENDING
                         name="sorting-options"
                         :value="option"
                         type="radio"
-                        :checked="option === sortingOption"
-                        @change="$emit(EventType.SORTING_OPTION_CHANGED, option)"
+                        :checked="option === sankeyTreeStore.nodesFilter.sorting.option"
+                        @change="sankeyTreeStore.setSortingOption(option)"
                     />
                     <label :for="option" class="ml-1"> {{ option }} </label>
                 </div>
@@ -41,12 +31,7 @@ const isSortedAscending = props.sortingOrder === SortingOrder.ASCENDING
                 <input
                     v-model="isSortedAscending"
                     type="checkbox"
-                    @change="
-                        $emit(
-                            EventType.SORTING_ORDER_CHANGED,
-                            isSortedAscending ? SortingOrder.ASCENDING : SortingOrder.DESCENDING
-                        )
-                    "
+                    @change="sankeyTreeStore.setSortingOrder(isSortedAscending ? SortingOrder.ASCENDING : SortingOrder.DESCENDING)"
                 />
                 {{ SortingOrder.ASCENDING }}
             </label>

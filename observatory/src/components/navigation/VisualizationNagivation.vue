@@ -1,14 +1,11 @@
 <script setup lang="ts">
 import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
 import { globalConfigStore } from '../../ts/stores'
-import { ref } from 'vue'
 
 const store = globalConfigStore()
 
-const selectedOption = ref(store.currentComponent)
-
 function applyComponent(event: Event) {
-    const currentComponent = selectedOption
+    const currentComponent = parseInt((event.target as HTMLSelectElement).value)
     store.switchToComponent(currentComponent)
 }
 </script>
@@ -20,8 +17,8 @@ function applyComponent(event: Event) {
         >
         <select
             id="visualization-dropdown"
-            v-model="selectedOption"
             name="Visualization"
+            :value="store.currentComponent"
             class="dropdown dropdown-white block w-full"
             @change="applyComponent"
         >

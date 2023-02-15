@@ -1,8 +1,10 @@
-import { defineStore } from 'pinia'
-import { Universe } from './UniverseTypes/Universe'
-import { Node } from './UniverseTypes/Node'
-import { createConfigUniverses, createConfigSelections } from './parsing'
-import { SwappableComponentType, componentName } from './enums/SwappableComponentType'
+import {defineStore} from 'pinia'
+import {Universe} from './UniverseTypes/Universe'
+import {Node} from './UniverseTypes/Node'
+import {createConfigSelections, createConfigUniverses} from './parsing'
+import {componentName, SwappableComponentType} from './enums/SwappableComponentType'
+import {SortingOption, SortingOrder} from "./enums/Sorting";
+import {NodesFilter} from "./SharedTypes/NodesFilter";
 
 export const globalConfigStore = defineStore('globalConfig', {
     state: () => {
@@ -44,9 +46,6 @@ export const globalConfigStore = defineStore('globalConfig', {
                 this.switchToComponent(this.previousComponent)
             }
         },
-        searchChange(newSearch: string): void {
-            this.search = newSearch
-        },
         toExportDict(): Record<
             string,
             Record<string, Record<string, unknown>> | SwappableComponentType
@@ -69,9 +68,33 @@ export const vennConfigStore = defineStore('vennConfig', {
 })
 
 export const sankeyTreeConfigStore = defineStore('sankeyTreeConfig', {
+    state: () => {
+        return {
+            nodesFilter: {
+                diffing: {
+                    universes: new Set(['0', '1']),
+                    showUnmodified: false
+                },
+                sorting: {
+                    option: SortingOption.NAME,
+                    order: SortingOrder.ASCENDING
+                }
+            } as NodesFilter
+        }
+    },
     actions: {
         toExportDict(): Record<string, unknown> {
             return {}
+        },
+        setSortingOption(option: string) {
+            const sortingOption = Object.values(SortingOption).find(item => item.toString() === option)!
+            this.nodesFilter.sorting.option = sortingOption ? sortingOption : SortingOption.NAME
+        },
+        setSortingOrder(order: SortingOrder) {
+            this.nodesFilter.sorting.order = order
+        },
+        setShowUnmodified(show: boolean) {
+            this.nodesFilter.diffing.showUnmodified = show
         }
     }
 })

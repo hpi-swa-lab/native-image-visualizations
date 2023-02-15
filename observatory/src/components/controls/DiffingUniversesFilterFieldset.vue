@@ -8,30 +8,20 @@ import {
 import { UniverseProps } from '../../ts/interfaces/UniverseProps'
 import ColorLabel from './ColorLabel.vue'
 import ToggleSwitch from './ToggleSwitch.vue'
-import { DiffingUniversesFilter } from '../../ts/SharedTypes/NodesFilter'
-import { EventType } from '../../ts/enums/EventType'
+import {sankeyTreeConfigStore} from "../../ts/stores";
 
-const props = defineProps({
-    diffingFilter: {
-        type: Object as PropType<DiffingUniversesFilter>,
-        required: true
-    },
-    universesMetadata: {
-        type: Object as PropType<Record<string, UniverseProps>>,
-        required: true
-    }
+defineProps({
+    universesMetadata: Object as PropType<Record<string, UniverseProps>>
 })
 
-const emit = defineEmits([EventType.SELECTION_CHANGED, EventType.SHOW_UNMODIFIED_CHANGED])
+const sankeyTreeStore = sankeyTreeConfigStore()
 
 function onUniverseSelectionChanged(universeId: string) {
-    if (props.diffingFilter.universes.has(universeId)) {
-        props.diffingFilter.universes.delete(universeId)
+    if (sankeyTreeStore.nodesFilter.diffing.universes.has(universeId)) {
+      sankeyTreeStore.nodesFilter.diffing.universes.delete(universeId)
     } else {
-        props.diffingFilter.universes.add(universeId)
+      sankeyTreeStore.nodesFilter.diffing.universes.add(universeId)
     }
-
-    emit(EventType.SELECTION_CHANGED, props.diffingFilter.universes)
 }
 </script>
 
@@ -44,7 +34,7 @@ function onUniverseSelectionChanged(universeId: string) {
             :id="key"
             :key="key"
             :value="universesMetadata[key].name"
-            :checked="diffingFilter.universes.has(key)"
+            :checked="sankeyTreeStore.nodesFilter.diffing.universes.has(key)"
             @input="onUniverseSelectionChanged($event.target.id)"
         >
             <ColorLabel
@@ -56,8 +46,8 @@ function onUniverseSelectionChanged(universeId: string) {
         <ToggleSwitch
             :id="UNMODIFIED"
             :value="UNMODIFIED"
-            :checked="props.diffingFilter.showUnmodified"
-            @input="$emit(EventType.SHOW_UNMODIFIED_CHANGED, $event.target.checked)"
+            :checked="sankeyTreeStore.nodesFilter.diffing.showUnmodified"
+            @input="sankeyTreeStore.setShowUnmodified($event.target.checked)"
         >
             <ColorLabel label="unmodified packages" :color="COLOR_UNMODIFIED"></ColorLabel>
         </ToggleSwitch>
