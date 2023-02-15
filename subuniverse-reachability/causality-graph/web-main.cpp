@@ -128,7 +128,7 @@ extern "C" const uint8_t* EMSCRIPTEN_KEEPALIVE simulate_purge(const method_id* p
     auto start = std::chrono::system_clock::now();
 #endif
 
-    BFS::Result after_purge = bfs->run<true>(purged_mids);
+    BFS::Result after_purge = bfs->run<false>(purged_mids);
 
 #if LOG
     auto end = std::chrono::system_clock::now();

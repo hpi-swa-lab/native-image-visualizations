@@ -1,3 +1,6 @@
+#define INCLUDE_LABELS 0
+#define LOG 0
+
 #include <iostream>
 #include <vector>
 #include <numeric>
@@ -555,6 +558,77 @@ static void print_reachability(const model& m)
         cout << "Not reachable" << endl;
 }
 
+vector<vector<bool>> compute_purge_matrix(const model& m)
+{
+    vector<vector<bool>> result(m.adj.n_methods() - 1);
+
+    BFS bfs(m.adj);
+    BFS::Result all_reachable = bfs.run<false>();
+
+    BFS::Result r(bfs);
+    {
+        auto& method_visited = r.method_visited;
+        std::fill(method_visited.begin() + 1, method_visited.end(), true);
+        method_id root_method = 0;
+        typeflow_id root_typeflow = 0;
+        bfs.run<false>(r, {&root_method, 1}, {&root_typeflow, 1});
+    }
+
+    vector<method_id> all_methods(m.adj.n_methods() - 1);
+    std::iota(all_methods.begin(), all_methods.end(), 1);
+    vector<span<const method_id>> all_method_singletons(m.adj.n_methods() - 1);
+    for(size_t i = 0; i < all_method_singletons.size(); i++)
+        all_method_singletons[i] = {&all_methods[i], 1};
+
+
+
+    auto callback = [&](const span<const method_id>& mids, const BFS::Result& r)
+    {
+        size_t iteration = &mids - &all_method_singletons[0];
+        result[iteration] = r.method_visited;
+    };
+
+    bfs_incremental_rec(all_reachable, bfs, r, all_method_singletons, callback);
+
+    return result;
+}
+
+void check_redundant_typeflow_correctness(model& m)
+{
+    auto mat1 = compute_purge_matrix(m);
+    m.optimize();
+    auto mat2 = compute_purge_matrix(m);
+
+    if(mat1.size() != mat2.size())
+    {
+        cerr << "Result sizes dont match!" << endl;
+        exit(1);
+    }
+
+    for(size_t i = 0; i < mat1.size(); i++)
+    {
+        if(mat1[i].size() != mat2[i].size())
+        {
+            cerr << "Result sizes dont match!" << endl;
+            exit(2);
+        }
+
+        if(!std::equal(mat1[i].begin(), mat1[i].end(), mat2[i].begin()))
+        {
+            for(size_t j = 0; j < mat1[i].size(); j++)
+            {
+                if(mat1[i][j] != mat2[i][j])
+                {
+                    cerr << "Result entries dont match:" << endl;
+                    cerr << m.method_names[i+1] << endl;
+                    cerr << m.method_names[j] << endl;
+                    exit(3);
+                }
+            }
+        }
+    }
+}
+
 int main(int argc, const char** argv)
 {
     model_data data;
@@ -570,7 +644,7 @@ int main(int argc, const char** argv)
     read_buffer(data.declaring_types, "declaring_types.bin");
 
     model m(std::move(data));
-
+    
     string_view command = argv[1];
 
     if(command == "reachability")
@@ -584,6 +658,10 @@ int main(int argc, const char** argv)
     else if(command == "bruteforce_purges_classes")
     {
         bruteforce_purges_classes(m.adj, m.type_names, m.method_names);
+    }
+    else if(command == "check_redundant_typeflow_correctness")
+    {
+        check_redundant_typeflow_correctness(m);
     }
     else
     {

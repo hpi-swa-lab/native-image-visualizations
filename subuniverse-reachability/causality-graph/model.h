@@ -544,6 +544,11 @@ public:
         cerr << "All instantiated types: " << max_typestate_size << endl;
 #endif
 
+        //optimize();
+    }
+
+    void optimize()
+    {
         remove_redundant(adj);
     }
 };
