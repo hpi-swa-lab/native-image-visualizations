@@ -16,16 +16,10 @@ withDefaults(
         <input
             v-if="color"
             type="color"
-            class="mr-1 w-4 h-4 align-middle"
+            class="mr-1 w-4 h-4 align-middle p-0 border-none"
             :value="color"
             disabled
         />
         <label> {{ label }} </label>
     </div>
 </template>
-
-<style scoped>
-input[type='color'] {
-    @apply p-0 border-none;
-}
-</style>
