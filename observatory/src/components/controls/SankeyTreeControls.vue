@@ -20,15 +20,15 @@ const props = withDefaults(
     }
 )
 
-const emit = defineEmits([EventType.UPDATE])
+const emit = defineEmits([EventType.CHANGED])
 
 function getNodesFilter() {
     return props.nodesFilter
 }
 
-function onUpdate(e: MouseEvent): void {
+function onChange(e: MouseEvent): void {
     e.preventDefault()
-    emit(EventType.UPDATE, getNodesFilter())
+    emit(EventType.CHANGED, getNodesFilter())
 }
 </script>
 
@@ -51,7 +51,7 @@ function onUpdate(e: MouseEvent): void {
                 @sorting-option-changed="getNodesFilter().sorting.option = $event"
             ></SortingFilterFieldset>
 
-            <button type="submit" class="btn btn-sm btn-primary m-2" @click="onUpdate($event)">
+            <button type="submit" class="btn btn-sm btn-primary m-2" @click="onChange($event)">
                 update
             </button>
 
