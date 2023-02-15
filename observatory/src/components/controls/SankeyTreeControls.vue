@@ -68,9 +68,3 @@ function onUpdate(e: MouseEvent): void {
         </form>
     </div>
 </template>
-
-<style scoped>
->>> input[type='color'] {
-    @apply p-0 border-none;
-}
-</style>

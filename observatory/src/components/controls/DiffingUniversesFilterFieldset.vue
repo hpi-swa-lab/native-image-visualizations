@@ -65,5 +65,3 @@ function onUniverseSelectionChanged(universeId: string) {
         <ColorLabel label="modified packages" :color="COLOR_MODIFIED"></ColorLabel>
     </fieldset>
 </template>
-
-<style scoped></style>

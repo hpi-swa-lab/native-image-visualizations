@@ -23,3 +23,9 @@ withDefaults(
         <label> {{ label }} </label>
     </div>
 </template>
+
+<style scoped>
+input[type='color'] {
+    @apply p-0 border-none;
+}
+</style>
