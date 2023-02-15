@@ -3,7 +3,7 @@ import { Node } from '../UniverseTypes/Node'
 export function findNodesWithName(name: string, root: Node): Node[] {
     let result: Node[] = []
 
-    if (root.name.toLocaleLowerCase().includes(name.toLocaleLowerCase())) {
+    if (root.name.toLowerCase().includes(name.toLowerCase())) {
         result.push(root)
     }
 
