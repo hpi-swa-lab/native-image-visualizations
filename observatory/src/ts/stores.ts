@@ -10,8 +10,7 @@ export const globalConfigStore = defineStore('globalConfig', {
             universes: [] as Universe[],
             selections: {} as Record<string, Node[]>,
             currentComponent: SwappableComponentType.Home as SwappableComponentType,
-            previousComponent: undefined as SwappableComponentType | undefined,
-            search: ''
+            previousComponent: undefined as SwappableComponentType | undefined
         }
     },
     getters: {
@@ -33,14 +32,8 @@ export const globalConfigStore = defineStore('globalConfig', {
                 this.universes.splice(this.universes.indexOf(matchingUniverse), 1)
             }
         },
-        universesChanged(newUniverses: Universe[]): void {
-            this.universes = newUniverses
-        },
         setSelection(universeName: string, selection: Node[]): void {
             this.selections[universeName] = selection
-        },
-        selectionsChanged(newSelections: Record<string, Node[]>): void {
-            this.selections = newSelections
         },
         switchToComponent(newComponent: SwappableComponentType): void {
             this.previousComponent = this.currentComponent
@@ -56,13 +49,12 @@ export const globalConfigStore = defineStore('globalConfig', {
         },
         toExportDict(): Record<
             string,
-            Record<string, Record<string, unknown>> | SwappableComponentType | string
+            Record<string, Record<string, unknown>> | SwappableComponentType
         > {
             return {
                 universes: createConfigData(this.universes),
                 selections: createConfigSelections(this.selections),
-                currentComponent: this.currentComponent,
-                search: this.search
+                currentComponent: this.currentComponent
             }
         }
     }

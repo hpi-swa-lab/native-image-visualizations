@@ -34,7 +34,7 @@ function exportConfig() {
 
     const anchor = document.createElement('a')
     anchor.setAttribute('href', dataString)
-    anchor.setAttribute('download', 'dataAndConfig.json')
+    anchor.setAttribute('download', 'data-config.json')
 
     document.body.appendChild(anchor)
     anchor.click()
