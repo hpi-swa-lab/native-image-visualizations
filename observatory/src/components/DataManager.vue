@@ -125,11 +125,11 @@ async function addUniverse() {
             <h2 class="w-2/3">Add a new Universe</h2>
             <ElevatedLayer class="w-2/3 space-y-[3rem]">
                 <div class="space-y-4">
-                    <label for="input-universe-name">Universe Name</label>
+                    <label for="input-universe-name" class="block">Universe Name</label>
                     <input
                         ref="nameInput"
                         v-model="formContents.name"
-                        class="w-full"
+                        class="w-full block"
                         type="text"
                         placeholder="Awesome Universe Name"
                         required
@@ -141,10 +141,10 @@ async function addUniverse() {
                     </p>
                 </div>
                 <div class="space-y-4">
-                    <label>Reachability Export</label>
+                    <label class="block">Reachability Export</label>
                     <input
                         ref="dataInput"
-                        class="w-full"
+                        class="w-full block"
                         type="file"
                         accept="json"
                         required
@@ -161,10 +161,3 @@ async function addUniverse() {
         </form>
     </MainLayout>
 </template>
-
-<style scoped>
-input,
-label {
-    @apply block;
-}
-</style>
