@@ -1,32 +1,15 @@
+s
 <script setup lang="ts">
 import { ref } from 'vue'
-import { EventType } from '../ts/enums/EventType'
 
 import ElevatedLayer from './layouts/ElevatedLayer.vue'
 
 import { Universe } from '../ts/UniverseTypes/Universe'
 import { loadJson, parseReachabilityExport } from '../ts/parsing'
 import MainLayout from './layouts/MainLayout.vue'
-import { SwappableComponentType } from '../ts/enums/SwappableComponentType'
+import { globalConfigStore } from '../ts/stores'
 
-const emit = defineEmits([
-    EventType.CHANGE_PAGE,
-    EventType.UNIVERSE_REMOVED,
-    EventType.UNIVERSE_CREATED
-])
-
-const props = withDefaults(
-    defineProps<{
-        universes: Universe[]
-        previousComponent?: SwappableComponentType | undefined
-    }>(),
-    {
-        universes: () => [],
-        previousComponent: undefined
-    }
-)
-
-const currentUniverses = ref<Universe[]>(props.universes)
+const store = globalConfigStore()
 
 const form = ref<HTMLFormElement>()
 const nameInput = ref<HTMLInputElement>()
@@ -56,7 +39,7 @@ function validateAndUpdateName() {
     const input = nameInput.value as HTMLInputElement
     const name = input.value
 
-    const universes = currentUniverses.value as Universe[]
+    const universes = store.universes as Universe[]
     const universeNames = universes.map((universe: Universe) => universe.name)
 
     if (input.validity.valueMissing) {
@@ -82,33 +65,28 @@ async function addUniverse() {
     const rawData = await loadJson(formContents.value.reachabilityExportFile)
     const newUniverse = new Universe(formContents.value.name, parseReachabilityExport(rawData))
 
-    emit(EventType.UNIVERSE_CREATED, newUniverse)
+    store.addUniverse(newUniverse)
 }
 </script>
 
 <template>
-    <MainLayout
-        title="Data Manager"
-        :component-type="SwappableComponentType.DataManager"
-        :previous-component="previousComponent"
-        @change-page="(componentType: SwappableComponentType) => emit(EventType.CHANGE_PAGE, componentType)"
-    >
+    <MainLayout title="Data Manager">
         <template #controls>
             <div class="space-y-10">
                 <h3>Manage Existing Universes</h3>
                 <ElevatedLayer>
-                    <p v-if="currentUniverses.length === 0">
+                    <p v-if="store.universes.length === 0">
                         Currently, there are no universes uploaded.
                     </p>
                     <div
-                        v-for="(universe, index) in currentUniverses"
+                        v-for="(universe, index) in store.universes"
                         :key="index"
                         class="flex items-center justify-between"
                     >
                         {{ universe.name }}
                         <button
                             class="btn btn-danger"
-                            @click="() => emit(EventType.UNIVERSE_REMOVED, universe.name)"
+                            @click="() => store.removeUniverse(universe.name)"
                         >
                             X
                         </button>
