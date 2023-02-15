@@ -80,7 +80,7 @@ async function addUniverse() {
     if (!formContents.value.name || !formContents.value.reachabilityExportFile) return
 
     const rawData = await loadJson(formContents.value.reachabilityExportFile)
-    const newUniverse = new Universe(formContents.value.name, parseReachabilityExport(rawData))
+    const newUniverse = new Universe(formContents.value.name, parseReachabilityExport(rawData, formContents.value.name))
 
     emit(EventType.UNIVERSE_CREATED, newUniverse)
 }
