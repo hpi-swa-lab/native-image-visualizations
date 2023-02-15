@@ -6,6 +6,7 @@ import { SwappableComponentType } from './ts/enums/SwappableComponentType'
 import TreeLine from './components/visualizations/TreeLine.vue'
 import Venn from './components/visualizations/VennSets.vue'
 import { globalConfigStore } from './ts/configStore'
+
 import DataManager from './components/DataManager.vue'
 
 const store = globalConfigStore()

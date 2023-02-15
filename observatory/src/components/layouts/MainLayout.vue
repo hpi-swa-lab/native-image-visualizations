@@ -2,7 +2,13 @@
 import VisualizationNavigation from '../navigation/VisualizationNagivation.vue'
 import UniverseSelectionList from '../controls/UniverseSelectionList.vue'
 import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
-import { globalConfigStore } from '../../ts/configStore'
+import {
+    globalConfigStore,
+    vennConfigStore,
+    treeLineConfigStore,
+    sankeyTreeConfigStore,
+    causalityGraphConfigStore
+} from '../../ts/configStore'
 
 withDefaults(
     defineProps<{
@@ -13,7 +19,27 @@ withDefaults(
     }
 )
 
-const store = globalConfigStore()
+const globalStore = globalConfigStore()
+
+function exportConfig() {
+    const data = {
+        global: { ...globalStore.toExportDict() },
+        venn: { ...vennConfigStore().toExportDict() },
+        sankey: { ...treeLineConfigStore().toExportDict() },
+        treeLine: { ...sankeyTreeConfigStore().toExportDict() },
+        causalityGraph: { ...causalityGraphConfigStore().toExportDict() }
+    }
+
+    const dataString = `data:text/json;charset=utf-8, ${encodeURIComponent(JSON.stringify(data))}`
+
+    const anchor = document.createElement('a')
+    anchor.setAttribute('href', dataString)
+    anchor.setAttribute('download', 'dataAndConfig.json')
+
+    document.body.appendChild(anchor)
+    anchor.click()
+    document.body.removeChild(anchor)
+}
 </script>
 
 <template>
@@ -26,32 +52,32 @@ const store = globalConfigStore()
                 <div class="space-y-4">
                     <button
                         v-if="
-                            store.currentComponent === SwappableComponentType.DataManager &&
-                            store.previousComponent !== SwappableComponentType.Home
+                            globalStore.currentComponent === SwappableComponentType.DataManager &&
+                            globalStore.previousComponent !== SwappableComponentType.Home
                         "
                         type="button"
                         class="btn btn-primary w-full"
-                        @click="store.switchToComponent(SwappableComponentType.Home)"
+                        @click="globalStore.switchToComponent(SwappableComponentType.Home)"
                     >
                         Home
                     </button>
                     <button
-                        v-if="store.currentComponent !== SwappableComponentType.DataManager"
+                        v-if="globalStore.currentComponent !== SwappableComponentType.DataManager"
                         type="button"
                         class="btn btn-primary w-full"
-                        @click="store.switchToComponent(SwappableComponentType.DataManager)"
+                        @click="globalStore.switchToComponent(SwappableComponentType.DataManager)"
                     >
                         Data Manager
                     </button>
                     <button
                         v-if="
-                            store.currentComponent === SwappableComponentType.DataManager &&
-                            store.previousComponent !== undefined
+                            globalStore.currentComponent === SwappableComponentType.DataManager &&
+                            globalStore.previousComponent !== undefined
                         "
                         class="btn btn-primary w-full"
-                        @click="store.goToPreviousComponent()"
+                        @click="globalStore.goToPreviousComponent()"
                     >
-                        Go back to {{ store.previousComponentName }}
+                        Go back to {{ globalStore.previousComponentName }}
                     </button>
                     <slot name="topButtons" />
                 </div>
@@ -59,16 +85,19 @@ const store = globalConfigStore()
                 <hr />
 
                 <VisualizationNavigation
-                    v-if="store.currentComponent !== SwappableComponentType.DataManager"
+                    v-if="globalStore.currentComponent !== SwappableComponentType.DataManager"
                 ></VisualizationNavigation>
 
-                <hr v-if="store.currentComponent !== SwappableComponentType.DataManager" />
+                <hr v-if="globalStore.currentComponent !== SwappableComponentType.DataManager" />
 
                 <UniverseSelectionList
-                    v-if="store.currentComponent !== SwappableComponentType.DataManager"
+                    v-if="globalStore.currentComponent !== SwappableComponentType.DataManager"
                 />
+                <hr />
 
-                <hr v-if="store.currentComponent !== SwappableComponentType.DataManager" />
+                <button class="btn btn-primary w-full" @click="exportConfig">Export config</button>
+
+                <hr v-if="globalStore.currentComponent !== SwappableComponentType.DataManager" />
 
                 <ul class="space-y-2">
                     <slot name="controls"> Controls </slot>
