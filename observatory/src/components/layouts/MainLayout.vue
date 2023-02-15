@@ -23,11 +23,11 @@ const globalStore = globalConfigStore()
 
 function exportConfig() {
     const data = {
-        global: { ...globalStore.toExportDict() },
-        venn: { ...vennConfigStore().toExportDict() },
-        sankey: { ...treeLineConfigStore().toExportDict() },
-        treeLine: { ...sankeyTreeConfigStore().toExportDict() },
-        causalityGraph: { ...causalityGraphConfigStore().toExportDict() }
+        global: globalStore.toExportDict(),
+        venn: vennConfigStore().toExportDict(),
+        sankey: treeLineConfigStore().toExportDict(),
+        treeLine: sankeyTreeConfigStore().toExportDict(),
+        causalityGraph: causalityGraphConfigStore().toExportDict()
     }
 
     const dataString = `data:text/json;charset=utf-8, ${encodeURIComponent(JSON.stringify(data))}`
