@@ -2,14 +2,22 @@ import { describe, expect, test } from '@jest/globals'
 import clone from 'clone'
 import { UniverseIndex } from '../src/ts/SharedTypes/Indices'
 import { Node } from '../src/ts/UniverseTypes/Node'
+import { InitKind, Leaf } from '../src/ts/UniverseTypes/Leaf'
 import { Multiverse } from '../src/ts/UniverseTypes/Multiverse'
 import { forest } from './data/forest'
 import { Universe } from '../src/ts/UniverseTypes/Universe'
+import { Bytes } from '../src/ts/SharedTypes/Size'
 
 function node(name: string, sources: Map<UniverseIndex, Node>, children: Node[] = []): Node {
     const node = new Node(name, children)
     node.sources = sources
     return node
+}
+
+function leaf(name: string, occursIn: Map<UniverseIndex, Node>, codeSize: Bytes): Leaf {
+    const leaf = new Leaf(name, codeSize, InitKind.BUILD_TIME)
+    leaf.sources = occursIn
+    return leaf
 }
 
 describe('Multiverse', () => {
@@ -267,6 +275,108 @@ describe('Multiverse', () => {
 
             expect(treeA.equals(forest.overlappingTreeA)).toBeTruthy()
             expect(treeB.equals(forest.overlappingTreeB)).toBeTruthy()
+        })
+
+        test('merging images should not affect original values', () => {
+            const imageA = clone(forest.overlappingImageA)
+            const imageB = clone(forest.overlappingImageB)
+            new Multiverse([new Universe('a', imageA), new Universe('b', imageB)])
+            expect(imageA.equals(forest.overlappingImageA)).toBeTruthy()
+            expect(imageB.equals(forest.overlappingImageB)).toBeTruthy()
+        })
+
+        test('should merge 2 overlapping images into one image', () => {
+            const a = forest.overlappingImageA
+            const b = forest.overlappingImageB
+
+            const multiverse = new Multiverse([new Universe('a', a), new Universe('b', b)])
+            const expected = node('', new Map(), [
+                node(
+                    'packageA',
+                    new Map([
+                        [0, a],
+                        [1, b]
+                    ]),
+                    [
+                        node(
+                            'ClassA',
+                            new Map([
+                                [0, a.children[0]],
+                                [1, b.children[0]]
+                            ]),
+                            [
+                                leaf('methodAA', new Map([[0, a.children[0].children[0]]]), 10),
+                                leaf('methodAC', new Map([[1, b.children[0].children[0]]]), 15)
+                            ]
+                        ),
+                        node('ClassB', new Map([[0, a.children[1]]]), [
+                            leaf('methodBA', new Map([[0, a.children[1].children[0]]]), 10)
+                        ]),
+                        node('ClassC', new Map([[1, b.children[1]]]), [
+                            leaf('methodCA', new Map([[1, b.children[1].children[0]]]), 20)
+                        ])
+                    ]
+                )
+            ])
+
+            expect(multiverse.root.equals(expected)).toBeTruthy()
+        })
+
+        test('should merge 3 overlapping trees into one tree', () => {
+            const a = forest.overlappingImageA
+            const b = forest.overlappingImageB
+            const c = forest.overlappingImageC
+
+            const multiverse = new Multiverse([
+                new Universe('a', a),
+                new Universe('b', b),
+                new Universe('c', c)
+            ])
+            const expected = node('', new Map(), [
+                node(
+                    'packageA',
+                    new Map([
+                        [0, a],
+                        [1, b],
+                        [2, c]
+                    ]),
+                    [
+                        node(
+                            'ClassA',
+                            new Map([
+                                [0, a.children[0]],
+                                [1, b.children[0]],
+                                [2, c.children[0]]
+                            ]),
+                            [
+                                leaf('methodAA', new Map([[0, a.children[0].children[0]]]), 10),
+                                leaf(
+                                    'methodAC',
+                                    new Map([
+                                        [1, b.children[0].children[0]],
+                                        [2, c.children[0].children[0]]
+                                    ]),
+                                    15
+                                )
+                            ]
+                        ),
+                        node('ClassB', new Map([[0, a.children[1]]]), [
+                            leaf('methodBA', new Map([[0, a.children[1].children[0]]]), 10)
+                        ]),
+                        node('ClassC', new Map([[1, b.children[1]]]), [
+                            leaf('methodCA', new Map([[1, b.children[1].children[0]]]), 20)
+                        ]),
+                        node('ClassX', new Map([[2, c.children[1]]]), [
+                            leaf('methodXA', new Map([[2, c.children[1].children[0]]]), 30)
+                        ]),
+                        node('ClassY', new Map([[2, c.children[2]]]), [
+                            leaf('methodYA', new Map([[2, c.children[2].children[0]]]), 200)
+                        ])
+                    ]
+                )
+            ])
+
+            expect(multiverse.root.equals(expected)).toBeTruthy()
         })
     })
 
