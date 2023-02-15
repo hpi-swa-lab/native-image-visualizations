@@ -7,17 +7,7 @@ import ElevatedLayer from './layouts/ElevatedLayer.vue'
 import { Universe } from '../ts/UniverseTypes/Universe'
 import { loadJson, parseReachabilityExport } from '../ts/parsing'
 import MainLayout from './layouts/MainLayout.vue'
-import { SwappableComponentType } from '../ts/enums/SwappableComponentType'
 import { globalConfigStore } from '../ts/stores'
-
-withDefaults(
-    defineProps<{
-        previousComponent?: SwappableComponentType | undefined
-    }>(),
-    {
-        previousComponent: undefined
-    }
-)
 
 const store = globalConfigStore()
 
@@ -80,7 +70,7 @@ async function addUniverse() {
 </script>
 
 <template>
-    <MainLayout title="Data Manager" :previous-component="previousComponent">
+    <MainLayout title="Data Manager">
         <template #controls>
             <div class="space-y-10">
                 <h3>Manage Existing Universes</h3>
