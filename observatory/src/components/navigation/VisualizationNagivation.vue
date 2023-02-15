@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
-import { globalConfigStore } from '../../ts/configStore'
+import { globalConfigStore } from '../../ts/stores'
 
 const store = globalConfigStore()
 

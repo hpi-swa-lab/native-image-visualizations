@@ -5,7 +5,7 @@ import SankeyTree from './components/visualizations/SankeyTree.vue'
 import { SwappableComponentType } from './ts/enums/SwappableComponentType'
 import TreeLine from './components/visualizations/TreeLine.vue'
 import Venn from './components/visualizations/VennSets.vue'
-import { globalConfigStore } from './ts/configStore'
+import { globalConfigStore } from './ts/stores'
 
 import DataManager from './components/DataManager.vue'
 

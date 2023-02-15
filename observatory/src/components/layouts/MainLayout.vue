@@ -8,7 +8,7 @@ import {
     treeLineConfigStore,
     sankeyTreeConfigStore,
     causalityGraphConfigStore
-} from '../../ts/configStore'
+} from '../../ts/stores'
 
 withDefaults(
     defineProps<{

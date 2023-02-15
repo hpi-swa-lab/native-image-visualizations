@@ -1,3 +1,4 @@
+s
 <script setup lang="ts">
 import { ref } from 'vue'
 
@@ -7,7 +8,7 @@ import { Universe } from '../ts/UniverseTypes/Universe'
 import { loadJson, parseReachabilityExport } from '../ts/parsing'
 import MainLayout from './layouts/MainLayout.vue'
 import { SwappableComponentType } from '../ts/enums/SwappableComponentType'
-import { globalConfigStore } from '../ts/configStore'
+import { globalConfigStore } from '../ts/stores'
 
 withDefaults(
     defineProps<{
