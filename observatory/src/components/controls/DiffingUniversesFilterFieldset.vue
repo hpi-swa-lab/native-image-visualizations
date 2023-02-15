@@ -41,7 +41,7 @@ const sankeyTreeStore = sankeyTreeConfigStore()
         <ToggleSwitch
             :id="UNMODIFIED"
             :value="UNMODIFIED"
-            :checked="sankeyTreeStore.nodesFilter.diffing.showUnmodified"
+            :checked="sankeyTreeStore.diffingFilter.showUnmodified"
             @input="sankeyTreeStore.setShowUnmodified($event.target.checked)"
         >
             <ColorLabel label="unmodified packages" :color="COLOR_UNMODIFIED"></ColorLabel>

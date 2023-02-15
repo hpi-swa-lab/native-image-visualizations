@@ -1,11 +1,11 @@
 import { SortingOption, SortingOrder } from '../enums/Sorting'
 
 export type NodesFilter = {
-    diffing: DiffingUniversesFilter
+    diffing: NodesDiffingFilter
     sorting: NodesSortingFilter
 }
 
-export type DiffingUniversesFilter = {
+export type NodesDiffingFilter = {
     universes: Set<string>
     showUnmodified: boolean
 }

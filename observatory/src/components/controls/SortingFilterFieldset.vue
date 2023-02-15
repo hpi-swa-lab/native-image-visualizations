@@ -3,7 +3,7 @@ import { SortingOption, SortingOrder } from '../../ts/enums/Sorting.js'
 import { sankeyTreeConfigStore } from '../../ts/stores'
 
 const sankeyTreeStore = sankeyTreeConfigStore()
-const isSortedAscending = sankeyTreeStore.nodesFilter.sorting.order === SortingOrder.ASCENDING
+const isSortedAscending = sankeyTreeStore.sortingFilter.order === SortingOrder.ASCENDING
 </script>
 
 <template>

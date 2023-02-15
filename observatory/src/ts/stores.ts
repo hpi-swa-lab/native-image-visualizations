@@ -5,7 +5,7 @@ import { createConfigUniverses, createConfigSelections } from './parsing'
 import { SwappableComponentType, componentName } from './enums/SwappableComponentType'
 import { findNodesWithName } from './Math/filters'
 import { SortingOption, SortingOrder } from './enums/Sorting'
-import { NodesFilter } from './SharedTypes/NodesFilter'
+import { NodesDiffingFilter, NodesFilter, NodesSortingFilter } from './SharedTypes/NodesFilter'
 
 export const globalConfigStore = defineStore('globalConfig', {
     state: () => {
@@ -81,49 +81,49 @@ export const vennConfigStore = defineStore('vennConfig', {
 export const sankeyTreeConfigStore = defineStore('sankeyTreeConfig', {
     state: () => {
         return {
-            nodesFilter: {
-                diffing: {
-                    universes: new Set(['0', '1']),
-                    showUnmodified: false
-                },
-                sorting: {
-                    option: SortingOption.NAME,
-                    order: SortingOrder.ASCENDING
-                }
-            } as NodesFilter
+            diffingFilter: {
+                universes: new Set(['0', '1']),
+                showUnmodified: false
+            } as NodesDiffingFilter,
+            sortingFilter: {
+                option: SortingOption.NAME,
+                order: SortingOrder.ASCENDING
+            } as NodesSortingFilter
         }
     },
     getters: {
+        nodesFilter: (state) =>
+            ({
+                diffing: state.diffingFilter,
+                sorting: state.sortingFilter
+            } as NodesFilter),
         isUniverseFiltered: (state) => (universeId: string) =>
-            state.nodesFilter.diffing.universes.has(universeId),
+            state.diffingFilter.universes.has(universeId),
         isFilteredSortingOption: (state) => (option: string) =>
-            option === state.nodesFilter.sorting.option
+            option === state.sortingFilter.option
     },
     actions: {
         toExportDict(): Record<string, unknown> {
             return {}
         },
         changeUniverseSelection(universeId: string) {
-            if (this.nodesFilter.diffing.universes.has(universeId)) {
-                this.nodesFilter.diffing.universes.delete(universeId)
+            if (this.diffingFilter.universes.has(universeId)) {
+                this.diffingFilter.universes.delete(universeId)
             } else {
-                this.nodesFilter.diffing.universes.add(universeId)
+                this.diffingFilter.universes.add(universeId)
             }
         },
-        // isUniverseFiltered(universeId: string) {
-        //     return this.nodesFilter.diffing.universes.has(universeId)
-        // },
         setSortingOption(option: string) {
             const sortingOption = Object.values(SortingOption).find(
                 (item) => item.toString() === option
             )
-            this.nodesFilter.sorting.option = sortingOption ? sortingOption : SortingOption.NAME
+            this.sortingFilter.option = sortingOption ? sortingOption : SortingOption.NAME
         },
         setSortingOrder(order: SortingOrder) {
-            this.nodesFilter.sorting.order = order
+            this.sortingFilter.order = order
         },
         setShowUnmodified(show: boolean) {
-            this.nodesFilter.diffing.showUnmodified = show
+            this.diffingFilter.showUnmodified = show
         }
     }
 })
