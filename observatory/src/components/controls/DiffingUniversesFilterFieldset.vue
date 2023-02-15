@@ -19,13 +19,6 @@ defineProps({
 
 const sankeyTreeStore = sankeyTreeConfigStore()
 
-function onUniverseSelectionChanged(universeId: string) {
-    if (sankeyTreeStore.nodesFilter.diffing.universes.has(universeId)) {
-        sankeyTreeStore.nodesFilter.diffing.universes.delete(universeId)
-    } else {
-        sankeyTreeStore.nodesFilter.diffing.universes.add(universeId)
-    }
-}
 </script>
 
 <template>
@@ -37,8 +30,8 @@ function onUniverseSelectionChanged(universeId: string) {
             :id="key"
             :key="key"
             :value="universesMetadata[key].name"
-            :checked="sankeyTreeStore.nodesFilter.diffing.universes.has(key)"
-            @input="onUniverseSelectionChanged($event.target.id)"
+            :checked="sankeyTreeStore.isUniverseFiltered(key)"
+            @input="sankeyTreeStore.changeUniverseSelection($event.target.id)"
         >
             <ColorLabel
                 :label="universesMetadata[key].name"

@@ -93,10 +93,23 @@ export const sankeyTreeConfigStore = defineStore('sankeyTreeConfig', {
             } as NodesFilter
         }
     },
+    getters: {
+        isUniverseFiltered: (state) => (universeId: string) => state.nodesFilter.diffing.universes.has(universeId)
+    },
     actions: {
         toExportDict(): Record<string, unknown> {
             return {}
         },
+        changeUniverseSelection(universeId: string) {
+            if (this.nodesFilter.diffing.universes.has(universeId)) {
+                this.nodesFilter.diffing.universes.delete(universeId)
+            } else {
+                this.nodesFilter.diffing.universes.add(universeId)
+            }
+        },
+        // isUniverseFiltered(universeId: string) {
+        //     return this.nodesFilter.diffing.universes.has(universeId)
+        // },
         setSortingOption(option: string) {
             const sortingOption = Object.values(SortingOption).find(
                 (item) => item.toString() === option
