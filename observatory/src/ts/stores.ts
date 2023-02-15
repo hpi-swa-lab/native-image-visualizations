@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { Universe } from './UniverseTypes/Universe'
 import { Node } from './UniverseTypes/Node'
-import { createConfigData, createConfigSelections } from './parsing'
+import { createConfigUniverses, createConfigSelections } from './parsing'
 import { SwappableComponentType, componentName } from './enums/SwappableComponentType'
 
 export const globalConfigStore = defineStore('globalConfig', {
@@ -52,7 +52,7 @@ export const globalConfigStore = defineStore('globalConfig', {
             Record<string, Record<string, unknown>> | SwappableComponentType
         > {
             return {
-                universes: createConfigData(this.universes),
+                universes: createConfigUniverses(this.universes),
                 selections: createConfigSelections(this.selections),
                 currentComponent: this.currentComponent
             }

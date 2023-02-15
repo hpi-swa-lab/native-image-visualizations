@@ -8,28 +8,30 @@ export function createConfigSelections(
 
     Object.keys(selections).forEach((name: string) => {
         const currentSelection: Node[] = selections[name]
-        result[name] = createConfigSelectionForSelection(name, currentSelection)
+        result[name] = createConfigSelection(name, currentSelection)
     })
 
     return result
 }
 
-function createConfigSelectionForSelection(name: string, nodes: Node[]): Record<string, unknown> {
+function createConfigSelection(name: string, nodes: Node[]): Record<string, unknown> {
     // TODO: implement this, corresponding issue: [#85](https://github.com/hpi-swa-lab/MPWS2022RH1/issues/85)
     return {}
 }
 
-export function createConfigData(universes: Universe[]): Record<string, Record<string, unknown>> {
+export function createConfigUniverses(
+    universes: Universe[]
+): Record<string, Record<string, unknown>> {
     const result: Record<string, Record<string, unknown>> = {}
 
     universes.forEach((universe) => {
-        result[universe.name] = createConfigDataForUniverse(universe)
+        result[universe.name] = createConfigUniverse(universe)
     })
 
     return result
 }
 
-function createConfigDataForUniverse(universe: Universe): Record<string, unknown> {
+function createConfigUniverse(universe: Universe): Record<string, unknown> {
     // TODO: implement this, corresponding issue: [#85](https://github.com/hpi-swa-lab/MPWS2022RH1/issues/85v)
     return {}
 }
