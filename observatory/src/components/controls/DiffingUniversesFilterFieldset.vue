@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { PropType } from 'vue'
 import {
     COLOR_MODIFIED,
     COLOR_UNMODIFIED,
@@ -10,12 +9,9 @@ import ColorLabel from './ColorLabel.vue'
 import ToggleSwitch from './ToggleSwitch.vue'
 import { sankeyTreeConfigStore } from '../../ts/stores'
 
-defineProps({
-    universesMetadata: {
-        type: Object as PropType<Record<string, UniverseProps>>,
-        required: true
-    }
-})
+defineProps<{
+    universesMetadata: Record<string, UniverseProps>
+}>()
 
 const sankeyTreeStore = sankeyTreeConfigStore()
 </script>
