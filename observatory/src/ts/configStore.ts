@@ -1,45 +1,68 @@
-import { reactive } from 'vue'
 import { defineStore } from 'pinia'
-import { VisualizationType } from './enums/VisualizationType'
 import { Universe } from './UniverseTypes/Universe'
 import { Node } from './UniverseTypes/Node'
 import { createConfigData, createConfigSelections } from './parsing'
+import { SwappableComponentType, componentName } from './enums/SwappableComponentType'
 
 export const globalConfigStore = defineStore('globalConfig', {
-    state: () => ({
-        _universes: [],
-        _selections: {},
-        _currentComponent: VisualizationType.None,
-        _search: ''
-    }),
+    state: () => {
+        return {
+            universes: [] as Universe[],
+            selections: {} as Record<string, Node[]>,
+            currentComponent: SwappableComponentType.Home as SwappableComponentType,
+            previousComponent: undefined as SwappableComponentType | undefined,
+            search: ''
+        }
+    },
     getters: {
-        universes: (state) => state._universes,
-        selections: (state) => state._selections,
-        currentComponent: (state) => state._currentComponent,
-        search: (state) => state._search
+        currentComponentName: (state) => componentName(state.currentComponent),
+        previousComponentName: (state) => componentName(state.previousComponent)
     },
     actions: {
+        addUniverse(newUniverse: Universe): void {
+            if (this.universes.find((universe) => universe.name === newUniverse.name)) return
+
+            this.universes.push(newUniverse)
+        },
+        removeUniverse(universeName: string): void {
+            const matchingUniverse = this.universes.find(
+                (universe) => universe.name === universeName
+            )
+
+            if (matchingUniverse) {
+                this.universes.splice(this.universes.indexOf(matchingUniverse), 1)
+            }
+        },
         universesChanged(newUniverses: Universe[]): void {
-            this._universes = newUniverses
+            this.universes = newUniverses
         },
         setSelection(universeName: string, selection: Node[]): void {
-            this._selections[universeName] = selection
+            this.selections[universeName] = selection
         },
         selectionsChanged(newSelections: Record<string, Node[]>): void {
-            this._selections = newSelections
+            this.selections = newSelections
         },
-        componentChanged(newComponent: VisualizationType): void {
-            this._currentComponent = newComponent
+        switchToComponent(newComponent: SwappableComponentType): void {
+            this.previousComponent = this.currentComponent
+            this.currentComponent = newComponent
+        },
+        goToPreviousComponent(): void {
+            if (this.previousComponent) {
+                this.switchToComponent(this.previousComponent)
+            }
         },
         searchChange(newSearch: string): void {
-            this._search = newSearch
+            this.search = newSearch
         },
-        toExportDict(): Record<string, Universe[] | Node[]> {
+        toExportDict(): Record<
+            string,
+            Record<string, Record<string, unknown>> | SwappableComponentType | string
+        > {
             return {
-                universes: createConfigData(this._universes),
-                selections: createConfigSelections(this._selections),
-                currentComponent: this._currentComponent,
-                search: this._search
+                universes: createConfigData(this.universes),
+                selections: createConfigSelections(this.selections),
+                currentComponent: this.currentComponent,
+                search: this.search
             }
         }
     }
