@@ -1,24 +1,13 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { EventType } from '../../ts/enums/EventType'
+import { globalConfigStore } from '../../ts/stores'
 
-withDefaults(
-    defineProps<{
-        placeholder?: string
-    }>(),
-    {
-        placeholder: 'Search'
-    }
-)
+const store = globalConfigStore()
 
-const emit = defineEmits([EventType.SEARCH_INPUT_CHANGED])
+function searchChanged(event: Event): void {
+    if (!event.target) return
 
-const searchText = ref<HTMLInputElement>()
-
-function searchChanged() {
-    if (!searchText.value?.checkValidity()) return
-
-    emit(EventType.SEARCH_INPUT_CHANGED, searchText.value?.value)
+    const input = event.target as HTMLInputElement
+    store.changeSearch(input.value)
 }
 </script>
 
@@ -47,7 +36,8 @@ function searchChanged() {
                 ref="searchText"
                 type="search"
                 class="p-4 pl-10 w-full"
-                :placeholder="placeholder"
+                placeholder="Search nodes"
+                :value="store.search"
                 required
                 @input="searchChanged"
             />
