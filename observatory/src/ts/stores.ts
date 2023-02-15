@@ -94,7 +94,10 @@ export const sankeyTreeConfigStore = defineStore('sankeyTreeConfig', {
         }
     },
     getters: {
-        isUniverseFiltered: (state) => (universeId: string) => state.nodesFilter.diffing.universes.has(universeId)
+        isUniverseFiltered: (state) => (universeId: string) =>
+            state.nodesFilter.diffing.universes.has(universeId),
+        isFilteredSortingOption: (state) => (option: string) =>
+            option === state.nodesFilter.sorting.option
     },
     actions: {
         toExportDict(): Record<string, unknown> {

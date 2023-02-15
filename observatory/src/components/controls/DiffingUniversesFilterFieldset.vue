@@ -18,7 +18,6 @@ defineProps({
 })
 
 const sankeyTreeStore = sankeyTreeConfigStore()
-
 </script>
 
 <template>

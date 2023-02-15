@@ -18,7 +18,7 @@ const isSortedAscending = sankeyTreeStore.nodesFilter.sorting.order === SortingO
                         name="sorting-options"
                         :value="option"
                         type="radio"
-                        :checked="option === sankeyTreeStore.nodesFilter.sorting.option"
+                        :checked="sankeyTreeStore.isFilteredSortingOption(option)"
                         @change="sankeyTreeStore.setSortingOption(option)"
                     />
                     <label :for="option" class="ml-1"> {{ option }} </label>

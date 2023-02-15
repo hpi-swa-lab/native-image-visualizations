@@ -4,7 +4,6 @@ import SortingFilterFieldset from './SortingFilterFieldset.vue'
 import { EventType } from '../../ts/enums/EventType.js'
 import DiffingUniversesFilterFieldset from './DiffingUniversesFilterFieldset.vue'
 import { UniverseProps } from '../../ts/interfaces/UniverseProps'
-import { sankeyTreeConfigStore } from '../../ts/stores'
 
 const SHORTCUTS = ['shift+click on node expands branch']
 
@@ -19,9 +18,9 @@ withDefaults(
 
 const emit = defineEmits([EventType.CHANGE, EventType.EXPAND_TREE])
 
-function onChange(e: MouseEvent): void {
-    e.preventDefault()
-    emit(EventType.CHANGE, sankeyTreeConfigStore().nodesFilter)
+function onChange(event: MouseEvent): void {
+    event.preventDefault()
+    emit(EventType.CHANGE, event)
 }
 </script>
 
