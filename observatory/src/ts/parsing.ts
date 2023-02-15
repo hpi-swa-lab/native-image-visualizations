@@ -15,7 +15,7 @@ export function createConfigSelections(
 }
 
 function createConfigSelectionForSelection(name: string, nodes: Node[]): Record<string, unknown> {
-    // TODO: implement this
+    // TODO: implement this, corresponding issue: [#85](https://github.com/hpi-swa-lab/MPWS2022RH1/issues/85)
     return {}
 }
 
@@ -30,7 +30,7 @@ export function createConfigData(universes: Universe[]): Record<string, Record<s
 }
 
 function createConfigDataForUniverse(universe: Universe): Record<string, unknown> {
-    // TODO: implement this
+    // TODO: implement this, corresponding issue: [#85](https://github.com/hpi-swa-lab/MPWS2022RH1/issues/85v)
     return {}
 }
 
