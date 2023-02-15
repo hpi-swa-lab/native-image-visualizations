@@ -93,11 +93,10 @@ function exportConfig() {
                 <UniverseSelectionList
                     v-if="globalStore.currentComponent !== SwappableComponentType.DataManager"
                 />
-                <hr />
+                <hr v-if="globalStore.currentComponent !== SwappableComponentType.DataManager" />
 
                 <button class="btn btn-primary w-full" @click="exportConfig">Export config</button>
-
-                <hr v-if="globalStore.currentComponent !== SwappableComponentType.DataManager" />
+                <hr />
 
                 <ul class="space-y-2">
                     <slot name="controls"> Controls </slot>
