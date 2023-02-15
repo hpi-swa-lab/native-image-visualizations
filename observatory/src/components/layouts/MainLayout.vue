@@ -50,9 +50,12 @@ function exportConfig() {
         <div class="col-span-2 drop-shadow-xl">
             <div class="rounded bg-gray-50 space-y-4 h-full">
                 <h2 class="text-center">{{ title }}</h2>
-                <hr />
 
-                <TabLayout :selected-index="0" :tab-names="['controls', 'data-manager']">
+                <TabLayout
+                    :selected-index="0"
+                    :tab-names="['controls', 'data-manager']"
+                    :button-names="['Controls', 'Data Manager']"
+                >
                     <template #tab-content-controls>
                         <div class="px-3 py-4 space-y-4 h-full w-full">
                             <VisualizationNavigation

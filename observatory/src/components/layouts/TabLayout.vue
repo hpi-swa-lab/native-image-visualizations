@@ -4,10 +4,12 @@ import { ref } from 'vue'
 const props = withDefaults(
     defineProps<{
         tabNames: string[]
+        buttonNames: string[]
         selectedIndex: number
     }>(),
     {
         tabNames: () => [],
+        buttonNames: () => [],
         selectedIndex: 0
     }
 )
@@ -16,11 +18,17 @@ const currentIndex = ref<number>(props.selectedIndex)
 </script>
 <template>
     <div>
-        <ul class="flex flex-wrap -mb-px">
-            <li v-for="(name, index) in tabNames" :key="`tab-button-${index}`" class="tab-button">
+        <ul class="flex border-b">
+            <li
+                v-for="(name, index) in buttonNames"
+                :key="`tab-button-${index}`"
+                class="-mb-px mr-1"
+            >
                 <button
                     :data-tab-index="index"
-                    class="nav-link w-full block font-medium text-xs leading-tight uppercase border-x-0 border-t-0 border-b-2 border-transparent px-6 py-3 my-2 hover:border-transparent hover:bg-gray-100 focus:border-transparent"
+                    :class="`tab-button${
+                        currentIndex === index ? ' border-l border-t border-r rounded-t' : ''
+                    }`"
                     @click="
                         () => {
                             currentIndex = index
