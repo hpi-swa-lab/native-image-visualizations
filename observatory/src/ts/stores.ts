@@ -48,7 +48,9 @@ export const globalConfigStore = defineStore('globalConfig', {
         },
         changeSearch(newSearch: string): void {
             this.search = newSearch
-            ;(this.universes as Universe[]).forEach((universe: Universe) => {
+
+            const universes = this.universes as Universe[]
+            universes.forEach((universe: Universe) => {
                 this.setSelection(universe.name, findNodesWithName(this.search, universe.root))
             })
         },
