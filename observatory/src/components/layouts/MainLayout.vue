@@ -3,6 +3,7 @@ import VisualizationNavigation from '../navigation/VisualizationNagivation.vue'
 import UniverseSelectionList from '../controls/UniverseSelectionList.vue'
 import SearchBar from '../controls/SearchBar.vue'
 import TabLayout from './TabLayout.vue'
+import DataManager from '../controls/DataManager.vue'
 import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
 import {
     globalConfigStore,
@@ -23,26 +24,6 @@ withDefaults(
 )
 
 const globalStore = globalConfigStore()
-
-function exportConfig() {
-    const data = {
-        global: globalStore.toExportDict(),
-        venn: vennConfigStore().toExportDict(),
-        sankey: treeLineConfigStore().toExportDict(),
-        treeLine: sankeyTreeConfigStore().toExportDict(),
-        causalityGraph: causalityGraphConfigStore().toExportDict()
-    }
-
-    const dataString = `data:text/json;charset=utf-8, ${encodeURIComponent(JSON.stringify(data))}`
-
-    const anchor = document.createElement('a')
-    anchor.setAttribute('href', dataString)
-    anchor.setAttribute('download', 'data-config.json')
-
-    document.body.appendChild(anchor)
-    anchor.click()
-    document.body.removeChild(anchor)
-}
 </script>
 
 <template>
@@ -58,12 +39,7 @@ function exportConfig() {
                 >
                     <template #tab-content-controls>
                         <div class="px-3 py-4 space-y-4 h-full w-full">
-                            <VisualizationNavigation
-                                v-if="
-                                    globalStore.currentComponent !==
-                                    SwappableComponentType.DataManager
-                                "
-                            ></VisualizationNavigation>
+                            <VisualizationNavigation></VisualizationNavigation>
                             <hr />
 
                             <SearchBar />
@@ -78,15 +54,7 @@ function exportConfig() {
                         </div>
                     </template>
                     <template #tab-content-data-manager>
-                        <div class="px-3 py-4 space-y-4 h-full w-full">
-                            <button
-                                class="btn btn-primary w-full justify-between"
-                                @click="exportConfig"
-                            >
-                                <font-awesome-icon icon="fa-file-export" />
-                                Export Config
-                            </button>
-                        </div>
+                        <DataManager class="px-3 py-4 h-full w-full" />
                     </template>
                 </TabLayout>
             </div>
