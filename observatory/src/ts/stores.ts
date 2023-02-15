@@ -47,7 +47,6 @@ export const globalConfigStore = defineStore('globalConfig', {
             }
         },
         changeSearch(newSearch: string): void {
-            debugger
             this.search = newSearch
             this.selections = {}
 
