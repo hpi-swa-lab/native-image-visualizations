@@ -2,6 +2,7 @@
 import VisualizationNavigation from '../navigation/VisualizationNagivation.vue'
 import UniverseSelectionList from '../controls/UniverseSelectionList.vue'
 import SearchBar from '../controls/SearchBar.vue'
+import TabLayout from './TabLayout.vue'
 import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
 import {
     globalConfigStore,
@@ -49,69 +50,54 @@ function exportConfig() {
         <div class="col-span-2 drop-shadow-xl overflow-y-scroll min-w-[250px]">
             <div class="px-3 py-4 rounded bg-gray-50 space-y-4 h-full">
                 <h2>{{ title }}</h2>
-                <hr />
+                <TabLayout
+                    class="space-y-4"
+                    :selected-index="0"
+                    :tab-names="['controls', 'data-manager']"
+                >
+                    <template #tab-content-controls>
+                        <div class="space-y-4">
+                            <button
+                                v-if="
+                                    globalStore.currentComponent ===
+                                        SwappableComponentType.DataManager &&
+                                    globalStore.previousComponent !== SwappableComponentType.Home
+                                "
+                                type="button"
+                                class="btn btn-primary w-full"
+                                @click="globalStore.switchToComponent(SwappableComponentType.Home)"
+                            >
+                                Home
+                            </button>
+                            <slot name="topButtons" />
+                        </div>
 
-                <div class="flex flex-row justify-between">
-                    <button
-                        v-if="
-                            globalStore.currentComponent === SwappableComponentType.DataManager &&
-                            globalStore.previousComponent !== undefined
-                        "
-                        class="btn btn-primary mr-2"
-                        :title="'go back to ' + globalStore.previousComponentName"
-                        @click="globalStore.goToPreviousComponent()"
+                        <hr />
+
+                        <VisualizationNavigation
+                            v-if="
+                                globalStore.currentComponent !== SwappableComponentType.DataManager
+                            "
+                        ></VisualizationNavigation>
+                        <hr />
+
+                        <SearchBar />
+                        <hr />
+
+                        <UniverseSelectionList />
+                        <hr />
+
+                        <ul class="space-y-2">
+                            <slot name="controls"> Controls </slot>
+                        </ul>
+                    </template>
+                    <template #tab-content-data-manager
+                        ><button class="btn btn-primary w-full" @click="exportConfig">
+                            <font-awesome-icon icon="fa-file-export" />
+                            Export config
+                        </button></template
                     >
-                        <font-awesome-icon icon="fa-arrow-left" />
-                    </button>
-
-                    <button
-                        v-if="
-                            globalStore.currentComponent === SwappableComponentType.DataManager &&
-                            globalStore.previousComponent !== SwappableComponentType.Home
-                        "
-                        type="button"
-                        class="btn btn-primary flex-auto"
-                        @click="globalStore.switchToComponent(SwappableComponentType.Home)"
-                    >
-                        Home
-                    </button>
-                    <button
-                        v-if="globalStore.currentComponent !== SwappableComponentType.DataManager"
-                        type="button"
-                        class="btn btn-primary flex-auto"
-                        @click="globalStore.switchToComponent(SwappableComponentType.DataManager)"
-                    >
-                        Data Manager
-                    </button>
-
-                    <button
-                        class="btn btn-primary ml-2"
-                        title="export config"
-                        @click="exportConfig"
-                    >
-                        <font-awesome-icon icon="fa-file-export" />
-                    </button>
-                    <slot name="topButtons" />
-                </div>
-
-                <hr />
-
-                <VisualizationNavigation
-                    v-if="globalStore.currentComponent !== SwappableComponentType.DataManager"
-                ></VisualizationNavigation>
-                <hr v-if="globalStore.currentComponent !== SwappableComponentType.DataManager" />
-
-                <SearchBar />
-                <hr />
-
-                <UniverseSelectionList
-                    v-if="globalStore.currentComponent !== SwappableComponentType.DataManager"
-                />
-                <hr v-if="globalStore.currentComponent !== SwappableComponentType.DataManager" />
-
-                <ul class="space-y-2">
-                    <slot name="controls"> Controls </slot>
-                </ul>
+                </TabLayout>
             </div>
         </div>
         <div class="col-span-10 h-full overflow-y-auto">
