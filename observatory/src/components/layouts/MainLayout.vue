@@ -1,41 +1,45 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import VisualizationNavigation from '../navigation/VisualizationNagivation.vue'
 import UniverseSelectionList from '../controls/UniverseSelectionList.vue'
-import { EventType } from '../../ts/enums/EventType'
 import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
+import {
+    globalConfigStore,
+    vennConfigStore,
+    treeLineConfigStore,
+    sankeyTreeConfigStore,
+    causalityGraphConfigStore
+} from '../../ts/stores'
 
-const props = withDefaults(
+withDefaults(
     defineProps<{
         title: string
-        componentType: SwappableComponentType
-        previousComponent?: SwappableComponentType | undefined
     }>(),
     {
-        title: '',
-        componentType: SwappableComponentType.None,
-        previousComponent: undefined
+        title: ''
     }
 )
 
-const emit = defineEmits([EventType.CHANGE_PAGE])
+const globalStore = globalConfigStore()
 
-const previousComponentName = computed(() => {
-    switch (props.previousComponent) {
-        case SwappableComponentType.VennSets:
-            return 'Venn Sets'
-        case SwappableComponentType.SankeyTree:
-            return 'Sankey Tree'
-        case SwappableComponentType.TreeLine:
-            return 'Tree Line'
-        case SwappableComponentType.CausalityGraph:
-            return 'Causality Graph'
-        case SwappableComponentType.Home:
-            return 'Home'
-        default:
-            return '<Error>'
+function exportConfig() {
+    const data = {
+        global: globalStore.toExportDict(),
+        venn: vennConfigStore().toExportDict(),
+        sankey: treeLineConfigStore().toExportDict(),
+        treeLine: sankeyTreeConfigStore().toExportDict(),
+        causalityGraph: causalityGraphConfigStore().toExportDict()
     }
-})
+
+    const dataString = `data:text/json;charset=utf-8, ${encodeURIComponent(JSON.stringify(data))}`
+
+    const anchor = document.createElement('a')
+    anchor.setAttribute('href', dataString)
+    anchor.setAttribute('download', 'data-config.json')
+
+    document.body.appendChild(anchor)
+    anchor.click()
+    document.body.removeChild(anchor)
+}
 </script>
 
 <template>
@@ -48,32 +52,32 @@ const previousComponentName = computed(() => {
                 <div class="space-y-4">
                     <button
                         v-if="
-                            componentType === SwappableComponentType.DataManager &&
-                            previousComponent !== SwappableComponentType.Home
+                            globalStore.currentComponent === SwappableComponentType.DataManager &&
+                            globalStore.previousComponent !== SwappableComponentType.Home
                         "
                         type="button"
                         class="btn btn-primary w-full"
-                        @click="emit(EventType.CHANGE_PAGE, SwappableComponentType.Home)"
+                        @click="globalStore.switchToComponent(SwappableComponentType.Home)"
                     >
                         Home
                     </button>
                     <button
-                        v-if="componentType !== SwappableComponentType.DataManager"
+                        v-if="globalStore.currentComponent !== SwappableComponentType.DataManager"
                         type="button"
                         class="btn btn-primary w-full"
-                        @click="emit(EventType.CHANGE_PAGE, SwappableComponentType.DataManager)"
+                        @click="globalStore.switchToComponent(SwappableComponentType.DataManager)"
                     >
                         Data Manager
                     </button>
                     <button
                         v-if="
-                            componentType === SwappableComponentType.DataManager &&
-                            previousComponent !== undefined
+                            globalStore.currentComponent === SwappableComponentType.DataManager &&
+                            globalStore.previousComponent !== undefined
                         "
                         class="btn btn-primary w-full"
-                        @click="emit(EventType.CHANGE_PAGE, previousComponent)"
+                        @click="globalStore.goToPreviousComponent()"
                     >
-                        Go back to {{ previousComponentName }}
+                        Go back to {{ globalStore.previousComponentName }}
                     </button>
                     <slot name="topButtons" />
                 </div>
@@ -81,20 +85,18 @@ const previousComponentName = computed(() => {
                 <hr />
 
                 <VisualizationNavigation
-                    v-if="componentType !== SwappableComponentType.DataManager"
-                    :selected="componentType"
-                    @change-page="(componentType: SwappableComponentType) => {
-                        emit(EventType.CHANGE_PAGE, componentType)
-                    }"
+                    v-if="globalStore.currentComponent !== SwappableComponentType.DataManager"
                 ></VisualizationNavigation>
 
-                <hr v-if="componentType !== SwappableComponentType.DataManager" />
+                <hr v-if="globalStore.currentComponent !== SwappableComponentType.DataManager" />
 
                 <UniverseSelectionList
-                    v-if="componentType !== SwappableComponentType.DataManager"
+                    v-if="globalStore.currentComponent !== SwappableComponentType.DataManager"
                 />
+                <hr v-if="globalStore.currentComponent !== SwappableComponentType.DataManager" />
 
-                <hr v-if="componentType !== SwappableComponentType.DataManager" />
+                <button class="btn btn-primary w-full" @click="exportConfig">Export config</button>
+                <hr />
 
                 <ul class="space-y-2">
                     <slot name="controls"> Controls </slot>

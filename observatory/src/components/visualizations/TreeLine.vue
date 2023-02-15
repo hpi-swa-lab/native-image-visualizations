@@ -1,24 +1,16 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { EventType } from '../../ts/enums/EventType';
-import { SwappableComponentType } from '../../ts/enums/SwappableComponentType';
+import { globalConfigStore } from '../../ts/stores';
 import { Multiverse } from '../../ts/UniverseTypes/Multiverse';
-import { Universe } from '../../ts/UniverseTypes/Universe';
 import { TreeLine } from '../../ts/Visualizations/TreeLine';
 import MainLayout from '../layouts/MainLayout.vue';
 
-const emit = defineEmits([EventType.CHANGE_PAGE])
-
-const props = withDefaults(
-    defineProps<{
-        universes: Universe[]
-    }>(),
-    { universes: () => [] }
-)
 // const universes = ref<Universe[]>(props.universes)
 
-console.log('Universes: ', props.universes)
-const multiverse = new Multiverse(props.universes)
+const store = globalConfigStore()
+
+console.log('Universes: ', store.universes)
+const multiverse = new Multiverse(store.universes)
 
 const container = ref<HTMLDivElement>()
 let visualization: TreeLine = new TreeLine(
@@ -29,9 +21,7 @@ visualization.setMultiverse(multiverse)
 </script>
 
 <template>
-    <MainLayout title="Tree Line" :component-type="SwappableComponentType.TreeLine"
-        @change-page="(componentType: SwappableComponentType) => emit(EventType.CHANGE_PAGE, componentType)">
-
+    <MainLayout title="Tree Line">
         <div id="container">
             <div id="tree-line-container" ref="container" class="w-full h-full" />
         </div>

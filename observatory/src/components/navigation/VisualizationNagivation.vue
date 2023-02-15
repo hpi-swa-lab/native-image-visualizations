@@ -1,17 +1,13 @@
 <script setup lang="ts">
 import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
-import { EventType } from '../../ts/enums/EventType'
+import { globalConfigStore } from '../../ts/stores'
 
-withDefaults(
-    defineProps<{
-        selected: SwappableComponentType
-    }>(),
-    {
-        selected: SwappableComponentType.None
-    }
-)
+const store = globalConfigStore()
 
-const emit = defineEmits([EventType.CHANGE_PAGE])
+function applyComponent(event: Event) {
+    const currentComponent = parseInt((event.target as HTMLSelectElement).value)
+    store.switchToComponent(currentComponent)
+}
 </script>
 
 <template>
@@ -22,13 +18,9 @@ const emit = defineEmits([EventType.CHANGE_PAGE])
         <select
             id="visualization-dropdown"
             name="Visualization"
-            :value="selected"
+            :value="store.currentComponent"
             class="dropdown dropdown-white block w-full"
-            @change="
-                (event) => {
-                    emit(EventType.CHANGE_PAGE, parseInt((event.target as HTMLSelectElement).value))
-                }
-            "
+            @change="applyComponent"
         >
             <option :value="SwappableComponentType.Home" disabled>Choose Visualization</option>
             <option :value="SwappableComponentType.VennSets">Venn Sets</option>
