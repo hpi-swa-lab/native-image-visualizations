@@ -4,8 +4,8 @@ import { Node } from './UniverseTypes/Node'
 import { createConfigUniverses, createConfigSelections } from './parsing'
 import { SwappableComponentType, componentName } from './enums/SwappableComponentType'
 import { findNodesWithName } from './Math/filters'
-import {SortingOption, SortingOrder} from "./enums/Sorting";
-import {NodesFilter} from "./SharedTypes/NodesFilter";
+import { SortingOption, SortingOrder } from './enums/Sorting'
+import { NodesFilter } from './SharedTypes/NodesFilter'
 
 export const globalConfigStore = defineStore('globalConfig', {
     state: () => {
@@ -98,7 +98,9 @@ export const sankeyTreeConfigStore = defineStore('sankeyTreeConfig', {
             return {}
         },
         setSortingOption(option: string) {
-            const sortingOption = Object.values(SortingOption).find(item => item.toString() === option)!
+            const sortingOption = Object.values(SortingOption).find(
+                (item) => item.toString() === option
+            )
             this.nodesFilter.sorting.option = sortingOption ? sortingOption : SortingOption.NAME
         },
         setSortingOrder(order: SortingOrder) {

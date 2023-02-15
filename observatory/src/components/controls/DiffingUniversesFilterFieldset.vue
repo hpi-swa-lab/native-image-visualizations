@@ -8,19 +8,22 @@ import {
 import { UniverseProps } from '../../ts/interfaces/UniverseProps'
 import ColorLabel from './ColorLabel.vue'
 import ToggleSwitch from './ToggleSwitch.vue'
-import {sankeyTreeConfigStore} from "../../ts/stores";
+import { sankeyTreeConfigStore } from '../../ts/stores'
 
 defineProps({
-    universesMetadata: Object as PropType<Record<string, UniverseProps>>
+    universesMetadata: {
+        type: Object as PropType<Record<string, UniverseProps>>,
+        required: true
+    }
 })
 
 const sankeyTreeStore = sankeyTreeConfigStore()
 
 function onUniverseSelectionChanged(universeId: string) {
     if (sankeyTreeStore.nodesFilter.diffing.universes.has(universeId)) {
-      sankeyTreeStore.nodesFilter.diffing.universes.delete(universeId)
+        sankeyTreeStore.nodesFilter.diffing.universes.delete(universeId)
     } else {
-      sankeyTreeStore.nodesFilter.diffing.universes.add(universeId)
+        sankeyTreeStore.nodesFilter.diffing.universes.add(universeId)
     }
 }
 </script>

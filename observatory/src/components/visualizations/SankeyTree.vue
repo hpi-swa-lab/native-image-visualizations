@@ -5,12 +5,12 @@ import { UniverseProps } from '../../ts/interfaces/UniverseProps'
 import SankeyTreeControls from '../controls/SankeyTreeControls.vue'
 
 const universeMetadata: Record<number, UniverseProps> = {
-  '0': { name: 'Universe1', color: COLORS.red },
-  '1': { name: 'Universe2', color: COLORS.green }
+    '0': { name: 'Universe1', color: COLORS.red },
+    '1': { name: 'Universe2', color: COLORS.green }
 }
 
 function handleNodesFilterChanged() {
-  // TODO #39 -> update tree
+    // TODO #39 -> update tree
 }
 </script>
 

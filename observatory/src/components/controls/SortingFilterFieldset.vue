@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { SortingOption, SortingOrder } from '../../ts/enums/Sorting.js'
-import {sankeyTreeConfigStore} from "../../ts/stores";
+import { sankeyTreeConfigStore } from '../../ts/stores'
 
 const sankeyTreeStore = sankeyTreeConfigStore()
 const isSortedAscending = sankeyTreeStore.nodesFilter.sorting.order === SortingOrder.ASCENDING
@@ -31,7 +31,11 @@ const isSortedAscending = sankeyTreeStore.nodesFilter.sorting.order === SortingO
                 <input
                     v-model="isSortedAscending"
                     type="checkbox"
-                    @change="sankeyTreeStore.setSortingOrder(isSortedAscending ? SortingOrder.ASCENDING : SortingOrder.DESCENDING)"
+                    @change="
+                        sankeyTreeStore.setSortingOrder(
+                            isSortedAscending ? SortingOrder.ASCENDING : SortingOrder.DESCENDING
+                        )
+                    "
                 />
                 {{ SortingOrder.ASCENDING }}
             </label>

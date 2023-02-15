@@ -4,7 +4,7 @@ import SortingFilterFieldset from './SortingFilterFieldset.vue'
 import { EventType } from '../../ts/enums/EventType.js'
 import DiffingUniversesFilterFieldset from './DiffingUniversesFilterFieldset.vue'
 import { UniverseProps } from '../../ts/interfaces/UniverseProps'
-import {sankeyTreeConfigStore} from "../../ts/stores";
+import { sankeyTreeConfigStore } from '../../ts/stores'
 
 const SHORTCUTS = ['shift+click on node expands branch']
 
@@ -13,7 +13,7 @@ withDefaults(
         universesMetadata: Record<number, UniverseProps>
     }>(),
     {
-        universesMetadata: () => ({}),
+        universesMetadata: () => ({})
     }
 )
 
@@ -34,7 +34,7 @@ function onChange(e: MouseEvent): void {
                 :universes-metadata="universesMetadata"
             ></DiffingUniversesFilterFieldset>
 
-            <SortingFilterFieldset/>
+            <SortingFilterFieldset />
 
             <button type="submit" class="btn btn-sm btn-primary m-2" @click="onChange">
                 update
