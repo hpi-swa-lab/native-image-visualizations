@@ -476,9 +476,27 @@
             return ul
         }
 
+        let maxCodeSize
+
         function generateHtmlImageview(data) {
             let ul = document.createElement("ul")
             ul.className = "nested"
+
+            for (const d of data.children) {
+                let codesize = 0
+                forEachInSubtree(d, (v) => {
+                    if (v.cg_nodes)
+                        for (const i of v.cg_nodes)
+                            codesize += codesizes[i]
+                })
+                d.size = codesize
+            }
+
+            if (data === this.dataRoot) {
+                maxCodeSize = Math.max(...data.children.map(d => d.size))
+            }
+
+            assert(maxCodeSize)
 
             for(const d of data.children) {
                 let li = document.createElement("li")
@@ -488,18 +506,14 @@
                 let span = document.createElement("span")
                 li.appendChild(span)
 
-                let nameSpan = document.createElement("span")
-                nameSpan.appendChild(document.createTextNode(d.name))
-                nameSpan.title = d.fullname
-                nameSpan.className = "node-text"
-                li.appendChild(nameSpan)
-
                 let out3 = document.createElement("span")
                 out3.className = "total-size-column"
+                out3.textContent = formatByteSizesWithUnitPrefix(d.size)
                 li.appendChild(out3)
 
                 let out4 = document.createElement("div")
                 out4.className = "size-bar-outer"
+                out4.style.width = (d.size / maxCodeSize * 100) + "%"
                 li.appendChild(out4)
 
                 let out5 = document.createElement("div")
@@ -508,7 +522,7 @@
 
                 let out2 = document.createElement("span")
                 out2.className = "size-bar-text"
-                out4.appendChild(out2)
+                li.appendChild(out2)
 
                 let node = d
                 span.className = "caret"
@@ -521,16 +535,11 @@
                 }
                 li.appendChild(span)
 
-                {
-                    let codesize = 0
-                    forEachInSubtree(d, (v) => {
-                        if (v.cg_nodes)
-                            for (const i of v.cg_nodes)
-                                codesize += codesizes[i]
-                    })
-                    d.size = codesize
-                    out3.textContent = formatByteSizesWithUnitPrefix(codesize)
-                }
+                let nameSpan = document.createElement("span")
+                nameSpan.appendChild(document.createTextNode(d.name))
+                nameSpan.title = d.fullname
+                nameSpan.className = "node-text"
+                li.appendChild(nameSpan)
             }
 
             let child_sizes = data.children.map(cn => cn.size)
