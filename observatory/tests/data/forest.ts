@@ -45,6 +45,19 @@ export const forestFactory = () => ({
         new Node('ClassA', [new Node('methodAA')]),
         new Node('ClassX', [new Node('methodXA')]),
         new Node('ClassY', [new Node('methodYA')])
+    ]),
+    overlappingImageA: new Node('packageA', [
+        new Node('ClassA', [new Leaf('methodAA', 10, InitKind.BUILD_TIME)]),
+        new Node('ClassB', [new Leaf('methodBA', 10, InitKind.BUILD_TIME)])
+    ]),
+    overlappingImageB: new Node('packageA', [
+        new Node('ClassA', [new Leaf('methodAC', 15, InitKind.BUILD_TIME)]),
+        new Node('ClassC', [new Leaf('methodCA', 20, InitKind.BUILD_TIME)])
+    ]),
+    overlappingImageC: new Node('packageA', [
+        new Node('ClassA', [new Leaf('methodAC', 15, InitKind.BUILD_TIME)]),
+        new Node('ClassX', [new Leaf('methodXA', 30, InitKind.BUILD_TIME)]),
+        new Node('ClassY', [new Leaf('methodYA', 200, InitKind.BUILD_TIME)])
     ])
 })
 
