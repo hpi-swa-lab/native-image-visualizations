@@ -1,7 +1,7 @@
+import clone from 'clone'
 import { HIERARCHY_NAME_SEPARATOR } from '../globals'
 import { UniverseIndex } from '../SharedTypes/Indices'
 import { Bytes } from '../SharedTypes/Size'
-import clone from 'clone'
 
 export const INVALID_SIZE: Bytes = -1
 
