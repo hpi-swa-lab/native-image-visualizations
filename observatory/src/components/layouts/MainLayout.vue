@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import VisualizationNavigation from '../navigation/VisualizationNagivation.vue'
 import UniverseSelectionList from '../controls/UniverseSelectionList.vue'
+import SearchBar from '../controls/SearchBar.vue'
 import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
 import {
     globalConfigStore,
@@ -87,8 +88,10 @@ function exportConfig() {
                 <VisualizationNavigation
                     v-if="globalStore.currentComponent !== SwappableComponentType.DataManager"
                 ></VisualizationNavigation>
-
                 <hr v-if="globalStore.currentComponent !== SwappableComponentType.DataManager" />
+
+                <SearchBar />
+                <hr />
 
                 <UniverseSelectionList
                     v-if="globalStore.currentComponent !== SwappableComponentType.DataManager"
