@@ -31,14 +31,12 @@ const currentIndex = ref<number>(props.selectedIndex)
                 </button>
             </li>
         </ul>
-        <div class="space-10">
-            <div
-                v-for="(name, index) in tabNames"
-                :key="`tab-content-${index}`"
-                :hidden="index !== currentIndex"
-            >
-                <slot :name="`tab-content-${name}`" />
-            </div>
+        <div
+            v-for="(name, index) in tabNames"
+            :key="`tab-content-${index}`"
+            :hidden="index !== currentIndex"
+        >
+            <slot :name="`tab-content-${name}`" />
         </div>
     </div>
 </template>

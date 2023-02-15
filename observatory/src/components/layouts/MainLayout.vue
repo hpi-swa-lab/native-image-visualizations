@@ -47,56 +47,44 @@ function exportConfig() {
 
 <template>
     <div class="w-full h-full grid grid-cols-12 gap-2">
-        <div class="col-span-2 drop-shadow-xl overflow-y-scroll min-w-[250px]">
-            <div class="px-3 py-4 rounded bg-gray-50 space-y-4 h-full">
-                <h2>{{ title }}</h2>
-                <TabLayout
-                    class="space-y-4"
-                    :selected-index="0"
-                    :tab-names="['controls', 'data-manager']"
-                >
+        <div class="col-span-2 drop-shadow-xl">
+            <div class="rounded bg-gray-50 space-y-4 h-full">
+                <h2 class="text-center">{{ title }}</h2>
+                <hr />
+
+                <TabLayout :selected-index="0" :tab-names="['controls', 'data-manager']">
                     <template #tab-content-controls>
-                        <div class="space-y-4">
-                            <button
+                        <div class="px-3 py-4 space-y-4 h-full w-full">
+                            <VisualizationNavigation
                                 v-if="
-                                    globalStore.currentComponent ===
-                                        SwappableComponentType.DataManager &&
-                                    globalStore.previousComponent !== SwappableComponentType.Home
+                                    globalStore.currentComponent !==
+                                    SwappableComponentType.DataManager
                                 "
-                                type="button"
-                                class="btn btn-primary w-full"
-                                @click="globalStore.switchToComponent(SwappableComponentType.Home)"
-                            >
-                                Home
-                            </button>
-                            <slot name="topButtons" />
+                            ></VisualizationNavigation>
+                            <hr />
+
+                            <SearchBar />
+                            <hr />
+
+                            <UniverseSelectionList />
+                            <hr />
+
+                            <ul class="space-y-2">
+                                <slot name="controls"> Controls </slot>
+                            </ul>
                         </div>
-
-                        <hr />
-
-                        <VisualizationNavigation
-                            v-if="
-                                globalStore.currentComponent !== SwappableComponentType.DataManager
-                            "
-                        ></VisualizationNavigation>
-                        <hr />
-
-                        <SearchBar />
-                        <hr />
-
-                        <UniverseSelectionList />
-                        <hr />
-
-                        <ul class="space-y-2">
-                            <slot name="controls"> Controls </slot>
-                        </ul>
                     </template>
-                    <template #tab-content-data-manager
-                        ><button class="btn btn-primary w-full" @click="exportConfig">
-                            <font-awesome-icon icon="fa-file-export" />
-                            Export config
-                        </button></template
-                    >
+                    <template #tab-content-data-manager>
+                        <div class="px-3 py-4 space-y-4 h-full w-full">
+                            <button
+                                class="btn btn-primary w-full justify-between"
+                                @click="exportConfig"
+                            >
+                                <font-awesome-icon icon="fa-file-export" />
+                                Export Config
+                            </button>
+                        </div>
+                    </template>
                 </TabLayout>
             </div>
         </div>
