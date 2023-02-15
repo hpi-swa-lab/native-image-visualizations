@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { VisualizationType } from '../../ts/enums/VisualizationType'
-import { store } from '../../ts/configStore'
+import { globalConfigStore } from '../../ts/configStore'
+
+const store = globalConfigStore()
 
 function applyComponent(event: Event) {
     const currentComponent = parseInt((event.target as HTMLSelectElement).value)
@@ -16,7 +18,7 @@ function applyComponent(event: Event) {
         <select
             id="visualization-dropdown"
             name="Visualization"
-            :value="store.globalConfig.currentComponent"
+            :value="store.currentComponent"
             class="dropdown dropdown-white block w-full"
             @change="applyComponent"
         >

@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import VisualizationNavigation from './navigation/VisualizationNagivation.vue'
 import UniverseSelectionList from './controls/UniverseSelectionList.vue'
-import { store } from '../ts/configStore'
+import {
+    globalConfigStore,
+    vennConfigStore,
+    treeLineConfigStore,
+    sankeyTreeConfigStore,
+    causalityGraphConfigStore
+} from '../ts/configStore'
 
 withDefaults(
     defineProps<{
@@ -12,8 +18,18 @@ withDefaults(
     }
 )
 
+const globalStore = globalConfigStore()
+
 function exportConfig() {
-    const dataString = `data:text/json;charset=utf-8, ${encodeURIComponent(store.toExportString())}`
+    const data = {
+        global: { ...globalStore.toExportDict() },
+        venn: { ...vennConfigStore().toExportDict() },
+        sankey: { ...treeLineConfigStore().toExportDict() },
+        treeLine: { ...sankeyTreeConfigStore().toExportDict() },
+        causalityGraph: { ...causalityGraphConfigStore().toExportDict() }
+    }
+
+    const dataString = `data:text/json;charset=utf-8, ${encodeURIComponent(JSON.stringify(data))}`
 
     const anchor = document.createElement('a')
     anchor.setAttribute('href', dataString)
