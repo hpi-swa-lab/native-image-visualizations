@@ -6,7 +6,7 @@ const store = globalConfigStore()
 function searchChanged(event: Event): void {
     if (!event.target) return
 
-    const input = event.target as HTMLInputElement
+    const input: HTMLInputElement = event.target 
     store.changeSearch(input.value)
 }
 </script>
