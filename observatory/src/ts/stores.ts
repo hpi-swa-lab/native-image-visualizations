@@ -3,6 +3,7 @@ import { Universe } from './UniverseTypes/Universe'
 import { Node } from './UniverseTypes/Node'
 import { createConfigUniverses, createConfigSelections } from './parsing'
 import { SwappableComponentType, componentName } from './enums/SwappableComponentType'
+import { findNodesWithName } from './Math/filters'
 
 export const globalConfigStore = defineStore('globalConfig', {
     state: () => {
@@ -10,7 +11,8 @@ export const globalConfigStore = defineStore('globalConfig', {
             universes: [] as Universe[],
             selections: {} as Record<string, Node[]>,
             currentComponent: SwappableComponentType.Home as SwappableComponentType,
-            previousComponent: undefined as SwappableComponentType | undefined
+            previousComponent: undefined as SwappableComponentType | undefined,
+            search: ''
         }
     },
     getters: {
@@ -44,17 +46,24 @@ export const globalConfigStore = defineStore('globalConfig', {
                 this.switchToComponent(this.previousComponent)
             }
         },
-        searchChange(newSearch: string): void {
+        changeSearch(newSearch: string): void {
+            debugger
             this.search = newSearch
+            this.selections = {}
+
+            this.universes.forEach((universe: Universe) => {
+                this.setSelection(universe.name, findNodesWithName(this.search, universe.root))
+            })
         },
         toExportDict(): Record<
             string,
-            Record<string, Record<string, unknown>> | SwappableComponentType
+            Record<string, Record<string, unknown>> | SwappableComponentType | string
         > {
             return {
                 universes: createConfigUniverses(this.universes),
                 selections: createConfigSelections(this.selections),
-                currentComponent: this.currentComponent
+                currentComponent: this.currentComponent,
+                search: this.search
             }
         }
     }
