@@ -188,6 +188,7 @@
                     Module._free(span.data)
 
                 all_reachable = Module.HEAPU8.subarray(all_method_history_ptr, all_method_history_ptr + codesizes.length)
+                reachable_under_selection = all_reachable
                 prepareListView(generateHierarchyFromReachabilityJsonAndMethodList(reachabilityData, methodList))
             }
         }
@@ -540,6 +541,8 @@
                 nameSpan.title = d.fullname
                 nameSpan.className = "node-text"
                 li.appendChild(nameSpan)
+
+                refreshPurgeValueForImageviewNode(d)
             }
 
             let child_sizes = data.children.map(cn => cn.size)
@@ -574,36 +577,35 @@
             }
         }
 
+        let reachable_under_selection
+
         function updatePurgeValues() {
-            const still_reachable = simulatePurge([...new Set([...selectedForPurging].flatMap(collectCgNodesInSubtree))])
-
-            let purgedMethodNames = ""
-            for (let i = 0; i < codesizes.length; i++)
-                if (all_reachable[i] !== 0xFF && still_reachable[i] === 0xFF)
-                    purgedMethodNames += methodList[i] + "\n"
-
-            document.getElementById("Output_hoverpurge").value = purgedMethodNames
+            reachable_under_selection = simulatePurge([...new Set([...selectedForPurging].flatMap(collectCgNodesInSubtree))])
 
             forEachInSubtree(this.dataRoot, (u) => {
                 if (u.html_imageview) {
-                    let purgedCodesize = 0
-                    forEachInSubtree(u, (v) => {
-                        if (v.cg_nodes)
-                            for (const i of v.cg_nodes)
-                                if (all_reachable[i] !== 0xFF && still_reachable[i] === 0xFF)
-                                    purgedCodesize += codesizes[i]
-                    })
-                    let purgedPercentage = 100 * purgedCodesize / u.size
-                    let barWidth = 0
-                    let percentageText = ""
-                    if (u.size !== 0) {
-                        barWidth = purgedPercentage.toFixed(1) + "%"
-                        percentageText = purgedPercentage.toFixed(1) + " %"
-                    }
-                    u.html_imageview.querySelector(".size-bar-text").textContent = percentageText
-                    u.html_imageview.querySelector(".size-bar-inner").style.width = barWidth
+                    refreshPurgeValueForImageviewNode(u)
                 }
             })
+        }
+
+        function refreshPurgeValueForImageviewNode(u) {
+            let purgedCodesize = 0
+            forEachInSubtree(u, (v) => {
+                if (v.cg_nodes)
+                    for (const i of v.cg_nodes)
+                        if (all_reachable[i] !== 0xFF && reachable_under_selection[i] === 0xFF)
+                            purgedCodesize += codesizes[i]
+            })
+            let purgedPercentage = 100 * purgedCodesize / u.size
+            let barWidth = 0
+            let percentageText = ""
+            if (u.size !== 0) {
+                barWidth = purgedPercentage.toFixed(1) + "%"
+                percentageText = purgedPercentage.toFixed(1) + " %"
+            }
+            u.html_imageview.querySelector(".size-bar-text").textContent = percentageText
+            u.html_imageview.querySelector(".size-bar-inner").style.width = barWidth
         }
     </script>
 </body>
