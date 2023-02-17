@@ -111,14 +111,13 @@ body {
     width: 60px;
 }
 
-.top-panel {
-    float: top;
+.fullscreen {
     width: 100%;
-    height: 4%;
+    height: 100%;
 }
 
-.main-panel {
-    height: 96%;
+#loading-panel {
+    cursor: wait;
 }
 
 .overview-div {
@@ -170,4 +169,12 @@ body {
     grid-row-start: 2;
     grid-column-start: 2;
     grid-column-end: 3;
+}
+
+.center {
+    align-self: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
 }

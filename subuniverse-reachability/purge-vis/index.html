@@ -103,19 +103,30 @@
 
         })();
 
-        function doSomething(){
+        function triggerFileSectionDialog() {
             let fileInput = document.getElementById("file-input");
             fileInput.dispatchEvent(new MouseEvent("click"));
             fileInput.onchange = selectFile;
         }
 
-        async function selectFile() {
+        function selectFile() {
+            const fileInput = document.getElementById("file-input");
+            if (fileInput.files.length > 0) {
+                tryLoadFile(fileInput.files[0])
+            }
+        }
+
+        async function tryLoadFile(file) {
             try {
-                let fileInput = document.getElementById("file-input");
-                let selectedFile = fileInput.files[0];
-                await loadFiles(selectedFile, "utf-8");
+                document.getElementById("fileselect-panel").hidden = true
+                document.getElementById("loading-panel").hidden = false
+                await loadFiles(file, "utf-8");
+                document.getElementById("loading-panel").hidden = true
+                document.getElementById("main-panel").hidden = false
             } catch (error) {
                 alert(error);
+                document.getElementById("loading-panel").hidden = true
+                document.getElementById("fileselect-panel").hidden = false
             }
         }
 
@@ -192,25 +203,33 @@
                 prepareListView(generateHierarchyFromReachabilityJsonAndMethodList(reachabilityData, methodList))
             }
         }
+
+        function allowDrop(ev) {
+            ev.preventDefault();
+        }
+
+        function drop(ev) {
+            if (ev.dataTransfer.files.length > 0) {
+                ev.preventDefault()
+                tryLoadFile(ev.dataTransfer.files[0])
+            }
+        }
     </script>
 
-
-    <details hidden>
-
-        <br/>
-        <label for="Input"></label><textarea id="Input" cols="100" rows="5" spellcheck="false" oninput="pressBtn(this.value)"></textarea>
-        <label for="Input_reachability"></label><textarea id="Input_reachability" cols="100" rows="5" spellcheck="false" oninput="printReachability(this.value)"></textarea>
-        <br/>
-        <label for="Output"></label><textarea id="Output" cols="100" spellcheck="false" rows="20" readonly="readonly"></textarea>
-        <label for="Output_reachability"></label><textarea id="Output_reachability" cols="100" spellcheck="false" rows="20" readonly="readonly"></textarea>
-    </details>
-
-    <div class="top-panel">
+    <div id="fileselect-panel" class="fullscreen" ondragover="allowDrop(event)" ondrop="drop(event)">
         <input type="file" id="file-input" accept="application/zip" hidden>
-        <button title="upload" onClick="doSomething()"><big>Upload CausalityExport</big></button>
+        <div class="center">
+            <big>Drop <button onClick="triggerFileSectionDialog()"><big>or select</big></button> Causality Export</big>
+        </div>
     </div>
 
-    <div class="main-panel">
+    <div id="loading-panel" class="fullscreen" hidden>
+        <div class="center">
+            <big>Causality Graph is being parsed...</big>
+        </div>
+    </div>
+
+    <div id="main-panel" class="fullscreen" hidden>
         <div class="overview-div">
             <span><b>Cut Overview:</b></span>
             <div id="cut-overview-root"></div>
