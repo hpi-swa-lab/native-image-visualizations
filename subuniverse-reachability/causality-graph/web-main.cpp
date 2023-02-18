@@ -64,7 +64,6 @@ extern "C" const uint8_t* EMSCRIPTEN_KEEPALIVE init(
 
     BFS::Result all = bfs->run<true>();
 
-    cerr << " " << std::count(all.method_visited.begin(), all.method_visited.end(), true) << " methods reachable!\n";
     cerr << " " << (all.method_history.size() - std::count(all.method_history.begin(), all.method_history.end(), 0xFF)) << " methods reachable!\n";
 
     ::all.emplace(std::move(all));
@@ -136,8 +135,8 @@ extern "C" const uint8_t* EMSCRIPTEN_KEEPALIVE simulate_purge(const method_id* p
     cerr << ' ' << (elapsed_milliseconds.count()) << "ms elapsed - ";
 
     size_t n_purged = 0;
-    for(size_t i = 1; i < all->method_visited.size(); i++)
-        if(all->method_visited[i] && !after_purge.method_visited[i])
+    for(size_t i = 1; i < all->method_inhibited.size(); i++)
+        if(all->method_inhibited[i] && !after_purge.method_inhibited[i])
             n_purged++;
 
     cerr << n_purged << " method nodes purged!" << endl;
@@ -168,7 +167,7 @@ extern "C" bool EMSCRIPTEN_KEEPALIVE simulate_purges_batched(const span<const me
     {
         BFS::Result r(bfs);
         {
-            auto &method_visited = r.method_visited;
+            auto &method_inhibited = r.method_inhibited;
 
             for(auto ps: span{purge_sets, purge_sets_len})
             {
@@ -180,17 +179,17 @@ extern "C" bool EMSCRIPTEN_KEEPALIVE simulate_purges_batched(const span<const me
                         return false;
                     }
 
-                    if(mid.id >= method_visited.size())
+                    if(mid.id >= method_inhibited.size())
                     {
                         cerr << "Method id out of range: " << mid.id << endl;
                         return false;
                     }
-                    if(method_visited[mid.id])
+                    if(method_inhibited[mid.id])
                     {
                         cerr << "Duplicate method " << m.method_names[mid.id] << '(' << mid.id << ')' << endl;
                         return false;
                     }
-                    method_visited[mid.id] = true;
+                    method_inhibited[mid.id] = true;
                 }
             }
 
@@ -236,7 +235,7 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE show_reachability(const char* methods)
 
     for(method_id mid : purged_mids)
     {
-        if(!bfsresult->method_visited[mid.id])
+        if(bfsresult->method_history[mid.id] == 0xFF)
             continue;
 
         any_reachable = true;

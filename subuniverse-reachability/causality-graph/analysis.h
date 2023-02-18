@@ -153,18 +153,18 @@ public:
     {
         vector<TypeflowHistory> typeflow_visited;
         vector<uint8_t> method_history;
-        vector<bool> method_visited;
+        vector<bool> method_inhibited;
         boost::dynamic_bitset<> allInstantiated;
         vector<vector<typeflow_id>> saturation_uses_by_filter;
         vector<bool> included_in_saturation_uses;
 
         Result(size_t n_methods, size_t n_typeflows, size_t n_types, size_t n_filters) :
-            typeflow_visited(n_typeflows),
-            method_visited(n_methods),
-            method_history(n_methods, numeric_limits<uint8_t>::max()),
-            allInstantiated(n_types),
-            saturation_uses_by_filter(n_filters),
-            included_in_saturation_uses(n_typeflows)
+                typeflow_visited(n_typeflows),
+                method_inhibited(n_methods),
+                method_history(n_methods, numeric_limits<uint8_t>::max()),
+                allInstantiated(n_types),
+                saturation_uses_by_filter(n_filters),
+                included_in_saturation_uses(n_typeflows)
         {}
 
         explicit Result(const BFS& bfs) : Result(bfs.adj.n_methods(), bfs.adj.n_typeflows(), bfs.adj.n_types(), bfs.filter_filters.size())
@@ -174,7 +174,7 @@ public:
         {
             for(method_id m : changes.visited_method_log)
             {
-                method_visited[m.id] = false;
+                method_inhibited[m.id] = false;
                 method_history[m.id] = numeric_limits<uint8_t>::max();
             }
 
@@ -250,7 +250,7 @@ public:
         Result r(*this);
 
         for(method_id purged : purged_methods)
-            r.method_visited[purged.id] = true;
+            r.method_inhibited[purged.id] = true;
 
         method_id root_method = 0;
         typeflow_id root_typeflow = 0;
@@ -258,7 +258,7 @@ public:
         run<dist_matters>(r, {&root_method, 1}, {&root_typeflow, 1});
 
         for(method_id purged : purged_methods)
-            r.method_visited[purged.id] = false;
+            r.method_inhibited[purged.id] = false;
 
         return r;
     }
@@ -268,7 +268,7 @@ public:
     template<bool dist_matters = true, bool track_changes = false>
     auto run(Result& r, span<method_id> method_worklist_init, span<typeflow_id> typeflow_worklist_init) const
     {
-        vector<bool> method_visited(std::move(r.method_visited));
+        vector<bool> method_inhibited(std::move(r.method_inhibited));
         vector<uint8_t> method_history(std::move(r.method_history));
         vector<TypeflowHistory> typeflow_visited(std::move(r.typeflow_visited));
         boost::dynamic_bitset<> allInstantiated(std::move(r.allInstantiated));
@@ -284,7 +284,7 @@ public:
 
         for(method_id root : method_worklist_init)
         {
-            method_visited[root.id] = true;
+            method_inhibited[root.id] = true;
             method_history[root.id] = 0;
         }
 
@@ -341,9 +341,9 @@ public:
 
                     for(auto v: m.forward_edges)
                     {
-                        if(!method_visited[v.id])
+                        if(!method_inhibited[v.id])
                         {
-                            method_visited[v.id] = true;
+                            method_inhibited[v.id] = true;
                             next_method_worklist.push_back(v);
                         }
                     }
@@ -366,9 +366,9 @@ public:
 
                     method_id reaching = adj[u].method.reaching();
 
-                    if(!method_visited[reaching.id])
+                    if(!method_inhibited[reaching.id])
                     {
-                        method_visited[reaching.id] = true;
+                        method_inhibited[reaching.id] = true;
                         method_worklist.push_back(reaching);
                     }
 
@@ -573,7 +573,7 @@ public:
 
         assert(instantiated_since_last_iteration.empty());
 
-        r.method_visited = std::move(method_visited);
+        r.method_inhibited = std::move(method_inhibited);
         r.method_history = std::move(method_history);
         r.typeflow_visited = std::move(typeflow_visited);
         r.allInstantiated = std::move(allInstantiated);
@@ -713,7 +713,7 @@ static void bfs_incremental_rec(const BFS::Result& all_reachable, const BFS& bfs
         BFS::Result r2_copy = r2;
 #endif
 
-        auto& method_visited = r2.method_visited;
+        auto& method_visited = r2.method_inhibited;
         size_t root_methods_capacity = std::accumulate(depurge.begin(), depurge.end(), size_t(0), [](size_t acc, auto mids){ return acc + mids.size(); });
         method_id root_methods[root_methods_capacity];
         size_t root_methods_size = 0;
