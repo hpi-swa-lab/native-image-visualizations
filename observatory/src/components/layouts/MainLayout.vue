@@ -10,7 +10,7 @@ import {
     sankeyTreeConfigStore,
     causalityGraphConfigStore
 } from '../../ts/stores'
-import {FontAwesomeIcon} from "@fortawesome/vue-fontawesome";
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
 withDefaults(
     defineProps<{
@@ -54,14 +54,14 @@ function exportConfig() {
                 <div class="flex flex-row justify-between">
                     <button
                         v-if="
-                              globalStore.currentComponent === SwappableComponentType.DataManager &&
-                              globalStore.previousComponent !== undefined
-                          "
+                            globalStore.currentComponent === SwappableComponentType.DataManager &&
+                            globalStore.previousComponent !== undefined
+                        "
                         class="btn btn-primary mr-2"
                         :title="'go back to ' + globalStore.previousComponentName"
                         @click="globalStore.goToPreviousComponent()"
                     >
-                      <font-awesome-icon icon="fa-arrow-left" />
+                        <font-awesome-icon icon="fa-arrow-left" />
                     </button>
 
                     <button
@@ -84,8 +84,12 @@ function exportConfig() {
                         Data Manager
                     </button>
 
-                    <button class="btn btn-primary ml-2" title="export config" @click="exportConfig">
-                      <font-awesome-icon icon="fa-file-export" />
+                    <button
+                        class="btn btn-primary ml-2"
+                        title="export config"
+                        @click="exportConfig"
+                    >
+                        <font-awesome-icon icon="fa-file-export" />
                     </button>
                     <slot name="topButtons" />
                 </div>
