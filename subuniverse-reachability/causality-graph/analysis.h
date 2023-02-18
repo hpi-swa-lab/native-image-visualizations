@@ -602,8 +602,14 @@ static void assert_reachability_equals(const BFS::Result& r1, const BFS::Result&
     if(!(r1.allInstantiated == r2.allInstantiated))
     {
         cerr << "All Idiot!" << endl;
-        cerr << (r2.allInstantiated & ~r1.allInstantiated).find_first() << endl;
-        exit(1);
+        for(size_t i = 0; i < r1.allInstantiated.size(); i++)
+        {
+            if(r1.allInstantiated[i] != r2.allInstantiated[i])
+            {
+                cerr << i << endl;
+                exit(1);
+            }
+        }
     }
 
     if(r1.method_history.size() != r2.method_history.size())
@@ -672,8 +678,13 @@ static void assert_reachability_equals(const BFS::Result& r1, const BFS::Result&
     }
 }
 
+struct PurgeTreeNode
+{
+    span<const method_id> mids;
+    span<const PurgeTreeNode> children;
+};
 
-static void bfs_incremental_rec(const BFS::Result& all_reachable, const BFS& bfs, BFS::Result& r, span<const span<const method_id>> methods_to_purge, const function<void(const span<const method_id>&, const BFS::Result&)>& callback)
+static void bfs_incremental_rec(const BFS::Result& all_reachable, const BFS& bfs, BFS::Result& r, span<const PurgeTreeNode> methods_to_purge, const function<void(const PurgeTreeNode&, const BFS::Result&)>& callback)
 {
     if(methods_to_purge.empty())
     {
@@ -685,10 +696,12 @@ static void bfs_incremental_rec(const BFS::Result& all_reachable, const BFS& bfs
     else if(methods_to_purge.size() == 1)
     {
 #if REACHABILITY_ASSERTIONS
-        BFS::Result ref = bfs.run(methods_to_purge[0]);
+        BFS::Result ref = bfs.run(methods_to_purge[0].mids);
         assert_reachability_equals(ref, r);
 #endif
         callback(methods_to_purge[0], r);
+        bfs_incremental_rec(all_reachable, bfs, r, methods_to_purge[0].children, callback);
+
 #if !REACHABILITY_ASSERTIONS
         return;
 #endif
@@ -699,26 +712,26 @@ static void bfs_incremental_rec(const BFS::Result& all_reachable, const BFS& bfs
     {
         size_t n_total_methods = 0;
 
-        for(span<const method_id> subset: methods_to_purge)
-            n_total_methods += subset.size();
+        for(const auto node : methods_to_purge)
+            n_total_methods += node.mids.size();
 
         mid_index = 0;
         for(size_t mid_size = 0; mid_index < methods_to_purge.size() && mid_size < n_total_methods / 2; mid_index++)
         {
-            mid_size += methods_to_purge[mid_index].size();
+            mid_size += methods_to_purge[mid_index].mids.size();
             if(mid_size >= n_total_methods / 2)
             {
-                if(n_total_methods - mid_size > mid_size - methods_to_purge[mid_index].size())
+                if(n_total_methods - mid_size > mid_size - methods_to_purge[mid_index].mids.size())
                     mid_index++;
                 break;
             }
         }
     }
 
-    span<const span<const method_id>> first_half = methods_to_purge.subspan(0, mid_index);
-    span<const span<const method_id>> second_half = methods_to_purge.subspan(mid_index);
+    span<const PurgeTreeNode> first_half = methods_to_purge.subspan(0, mid_index);
+    span<const PurgeTreeNode> second_half = methods_to_purge.subspan(mid_index);
 
-    auto search_child = [&](BFS::Result& r2, span<const span<const method_id>> depurge, span<const span<const method_id>> stillpurge)
+    auto search_child = [&](BFS::Result& r2, span<const PurgeTreeNode> depurge, span<const PurgeTreeNode> stillpurge)
     {
 #if REACHABILITY_ASSERTIONS
         if(depurge.empty())
@@ -727,13 +740,13 @@ static void bfs_incremental_rec(const BFS::Result& all_reachable, const BFS& bfs
 #endif
 
         auto& method_visited = r2.method_inhibited;
-        size_t root_methods_capacity = std::accumulate(depurge.begin(), depurge.end(), size_t(0), [](size_t acc, auto mids){ return acc + mids.size(); });
+        size_t root_methods_capacity = std::accumulate(depurge.begin(), depurge.end(), size_t(0), [](size_t acc, const auto& node){ return acc + node.mids.size(); });
         method_id root_methods[root_methods_capacity];
         size_t root_methods_size = 0;
 
-        for(span<const method_id> mids : depurge)
+        for(const PurgeTreeNode& node : depurge)
         {
-            for(method_id mid : mids)
+            for(method_id mid : node.mids)
             {
                 method_visited[mid.id] = false;
 
@@ -758,8 +771,8 @@ static void bfs_incremental_rec(const BFS::Result& all_reachable, const BFS& bfs
         auto incremental_changes = bfs.run<false, true>(r2, {root_methods, root_methods + root_methods_size}, false);
         bfs_incremental_rec(all_reachable, bfs, r2, stillpurge, callback);
         r2.revert(bfs, incremental_changes);
-        for(span<const method_id> mids : depurge)
-            for(method_id mid : mids)
+        for(const PurgeTreeNode& node : depurge)
+            for(method_id mid : node.mids)
                 method_visited[mid.id] = true;
 
 #if REACHABILITY_ASSERTIONS

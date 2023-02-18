@@ -31,8 +31,9 @@
         }
 
         function simulatePurgesBatched(purge_groups, resultCallback) {
-            let subsetsArrPtr = Module._malloc(purge_groups.length * 2 /* {ptr, len} */ * 4 /* (4 byte ptr/len) */)
-            let subsetsArr = Module.HEAPU32.subarray(subsetsArrPtr / 4, subsetsArrPtr / 4 + purge_groups.length * 2)
+            let subsetsArrLen = (1 + purge_groups.length) * 4 /* {{ptr, len}, {child_ptr, child_len}} */
+            let subsetsArrPtr = Module._malloc(subsetsArrLen * 4 /* (4 byte ptr/len) */)
+            let subsetsArr = Module.HEAPU32.subarray(subsetsArrPtr / 4, subsetsArrPtr / 4 + subsetsArrLen)
 
             let totalCount = 0// = purge_groups.reduce((cnt, group) => cnt + group.length, 0)
             for(const group of purge_groups)
@@ -41,29 +42,37 @@
             let midsPtr = Module._malloc(totalCount * 4)
             let midsPos = midsPtr / 4
 
-            for(let i = 0; i < purge_groups.length; i++)
-            {
-                subsetsArr[i*2] /* ptr */ = midsPos * 4
-                subsetsArr[i * 2 + 1] /* len */ = purge_groups[i].length
+            for(let i = 0; i < purge_groups.length; i++) {
+                subsetsArr[(1+i)*4] /* ptr */ = midsPos * 4
+                subsetsArr[(1+i)*4 + 1] /* len */ = purge_groups[i].length
+                subsetsArr[(1+i)*4 + 2] = 0 // no children
+                subsetsArr[(1+i)*4 + 3] = 0 // no children
                 for(const mid of purge_groups[i])
                     Module.HEAPU32[midsPos++] = mid + 1
             }
-
             assert(midsPos * 4 === midsPtr + totalCount * 4)
 
+            // Setup master node
+            subsetsArr[0] = midsPtr
+            subsetsArr[1] = totalCount
+            subsetsArr[2] = subsetsArrPtr + 4 * 4
+            subsetsArr[3] = purge_groups.length
+
             const callback = (iteration, method_history_ptr) => {
+                if (iteration === 0)
+                    return;
                 const still_reachable = Module.HEAPU8.subarray(method_history_ptr, method_history_ptr + codesizes.length)
                 const all_reachable = Module.HEAPU8.subarray(all_reachable_ptr, all_reachable_ptr + codesizes.length)
                 let purged_size = 0
                 for (let i = 0; i < codesizes.length; i++)
                     if (all_reachable[i] !== 0xFF && still_reachable[i] === 0xFF)
                         purged_size += codesizes[i]
-                resultCallback(iteration, purged_size)
+                resultCallback(iteration - 1, purged_size)
                 return 0
             }
 
             const callback_ptr = addFunction(callback, 'iii')
-            const status = simulate_purges_batched(subsetsArrPtr, purge_groups.length, callback_ptr)
+            const status = simulate_purges_batched(subsetsArrPtr, callback_ptr)
             removeFunction(callback_ptr)
 
             Module._free(subsetsArrPtr)

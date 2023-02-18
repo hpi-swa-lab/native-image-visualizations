@@ -148,8 +148,18 @@ extern "C" const uint8_t* EMSCRIPTEN_KEEPALIVE simulate_purge(const method_id* p
 
 using purges_batched_result_callback = uint32_t (*)(uint32_t, const uint8_t*);
 
-extern "C" bool EMSCRIPTEN_KEEPALIVE simulate_purges_batched(const span<const method_id>* purge_sets, size_t purge_sets_len, purges_batched_result_callback result_callback)
+extern "C" bool EMSCRIPTEN_KEEPALIVE simulate_purges_batched(const PurgeTreeNode* purge_root, purges_batched_result_callback result_callback)
 {
+    static_assert(sizeof(PurgeTreeNode) == 16);
+    static_assert(offsetof(PurgeTreeNode, mids) == 0);
+    static_assert(offsetof(PurgeTreeNode, children) == 8);
+
+    if(purge_root->mids.empty())
+    {
+        cerr << "Empty method set!!!" << endl;
+        return false;
+    }
+
     if(!purge_model)
         return false;
 
@@ -169,42 +179,33 @@ extern "C" bool EMSCRIPTEN_KEEPALIVE simulate_purges_batched(const span<const me
         {
             auto &method_inhibited = r.method_inhibited;
 
-            for(auto ps: span{purge_sets, purge_sets_len})
+            for(method_id mid : purge_root->mids)
             {
-                for(method_id mid: ps)
+                if(mid.id >= method_inhibited.size())
                 {
-                    if(ps.empty())
-                    {
-                        cerr << "Empty method set!!!" << endl;
-                        return false;
-                    }
-
-                    if(mid.id >= method_inhibited.size())
-                    {
-                        cerr << "Method id out of range: " << mid.id << endl;
-                        return false;
-                    }
-                    if(method_inhibited[mid.id])
-                    {
-                        cerr << "Duplicate method " << m.method_names[mid.id] << '(' << mid.id << ')' << endl;
-                        return false;
-                    }
-                    method_inhibited[mid.id] = true;
+                    cerr << "Method id out of range: " << mid.id << endl;
+                    return false;
                 }
+                if(method_inhibited[mid.id])
+                {
+                    cerr << "Duplicate method " << m.method_names[mid.id] << '(' << mid.id << ')' << endl;
+                    return false;
+                }
+                method_inhibited[mid.id] = true;
             }
 
             method_id root_method = 0;
             bfs.run<false>(r, {&root_method, 1}, true);
         }
 
-        auto callback = [&](const span<const method_id> &mids, const BFS::Result &r)
+        auto callback = [&](const PurgeTreeNode& node, const BFS::Result &r)
         {
-            size_t iteration = &mids - purge_sets;
+            size_t iteration = &node - purge_root;
             bool cancellation_requested = result_callback(iteration, (const uint8_t*)&r.method_history[1]) != 0;
             // TODO: Enable cancellation
         };
 
-        bfs_incremental_rec(*all, bfs, r, {purge_sets, purge_sets_len}, callback);
+        bfs_incremental_rec(*all, bfs, r, {purge_root, 1}, callback);
     }
 
 #if LOG

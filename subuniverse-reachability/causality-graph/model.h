@@ -208,7 +208,6 @@ struct Adjacency
     size_t _n_types;
     vector<TypeflowInfo> flows;
     vector<MethodInfo> methods;
-    typeflow_id allInstantiated;
 
     Adjacency(size_t n_types, size_t n_methods, size_t n_typeflows, const vector<Edge<typeflow_id>>& interflows, const vector<Edge<method_id>>& direct_invokes, const vector<Bitset>& typestates, const vector<uint32_t>& typeflow_filters, const vector<ContainingMethod>& typeflow_methods, const vector<string>& typeflow_names)
             : _n_types(n_types), flows(n_typeflows), methods(n_methods)
@@ -245,17 +244,12 @@ struct Adjacency
             flows[i].filter = typestates_compressed.at(typeflow_filters[i]);
         }
 
-        allInstantiated = 0;
+#if INCLUDE_LABELS
         for(size_t i = 0; i < typeflow_names.size(); i++)
         {
-#if INCLUDE_LABELS
             flows[i].name = typeflow_names[i];
-#endif
-            if(typeflow_names[i] == "AllInstantiatedTypeFlow: java.lang.Object")
-                allInstantiated = i;
         }
-
-        assert(allInstantiated);
+#endif
 
         for(auto& flow : flows)
         {
@@ -449,8 +443,6 @@ static void remove_redundant(Adjacency& adj)
         for(auto& f : m.virtual_invocation_sources)
             remap(f);
     }
-
-    remap(adj.allInstantiated);
 
     for(auto& f0 : adj.flows)
     {

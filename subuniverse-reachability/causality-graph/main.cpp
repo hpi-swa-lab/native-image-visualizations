@@ -1,5 +1,6 @@
 #define INCLUDE_LABELS 0
 #define LOG 0
+#define REACHABILITY_ASSERTIONS 0
 
 #include <iostream>
 #include <vector>
@@ -101,34 +102,20 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
 
         vector<method_id> all_methods(adj.n_methods() - 1);
         std::iota(all_methods.begin(), all_methods.end(), 1);
-        vector<span<const method_id>> all_method_singletons(adj.n_methods() - 1);
+        vector<PurgeTreeNode> all_method_singletons(adj.n_methods() - 1);
         for(size_t i = 0; i < all_method_singletons.size(); i++)
-            all_method_singletons[i] = {&all_methods[i], 1};
+            all_method_singletons[i] = {{&all_methods[i], 1}, {}};
 
-        auto callback = [&](const span<const method_id>& mids, const BFS::Result& r)
+        auto callback = [&](const PurgeTreeNode& node, const BFS::Result& r)
         {
-            size_t iteration = &mids - &all_method_singletons[0];
+            size_t iteration = &node - &all_method_singletons[0];
 
 
 #define PRINT_CUTOFFS 1
 #if PRINT_CUTOFFS
             cout << '[' << iteration << "] ";
 
-            if(mids.size() == 1)
-            {
-                cout << '"' << method_names[mids[0].id] << '"';
-            }
-            else
-            {
-                cout << '{';
-                for(size_t i = 0; i < mids.size(); i++)
-                {
-                    cout << '"' << method_names[mids[i].id] << '"';
-                    if(i < mids.size() - 1)
-                        cout << ',';
-                }
-                cout << '}';
-            }
+            cout << '"' << method_names[node.mids[0].id] << '"';
 
             cout << ": ";
 
@@ -305,15 +292,15 @@ static void compute_and_write_purge_matrix(const model& m, ostream& out)
 
     vector<method_id> all_methods(m.adj.n_methods() - 1);
     std::iota(all_methods.begin(), all_methods.end(), 1);
-    vector<span<const method_id>> all_method_singletons(m.adj.n_methods() - 1);
+    vector<PurgeTreeNode> all_method_singletons(m.adj.n_methods() - 1);
     for(size_t i = 0; i < all_method_singletons.size(); i++)
-        all_method_singletons[i] = {&all_methods[i], 1};
+        all_method_singletons[i] = {{&all_methods[i], 1}, {}};
 
     size_t cur_iteration = 0;
 
-    auto callback = [&](const span<const method_id>& mids, const BFS::Result& r)
+    auto callback = [&](const PurgeTreeNode& node, const BFS::Result& r)
     {
-        size_t iteration = &mids - &all_method_singletons[0];
+        size_t iteration = &node - &all_method_singletons[0];
 
         if(iteration != cur_iteration)
             exit(99);
@@ -349,13 +336,13 @@ static vector<vector<bool>> compute_purge_matrix(const model& m)
 
     vector<method_id> all_methods(m.adj.n_methods() - 1);
     std::iota(all_methods.begin(), all_methods.end(), 1);
-    vector<span<const method_id>> all_method_singletons(m.adj.n_methods() - 1);
+    vector<PurgeTreeNode> all_method_singletons(m.adj.n_methods() - 1);
     for(size_t i = 0; i < all_method_singletons.size(); i++)
-        all_method_singletons[i] = {&all_methods[i], 1};
+        all_method_singletons[i] = {{&all_methods[i], 1}, {}};
 
-    auto callback = [&](const span<const method_id>& mids, const BFS::Result& r)
+    auto callback = [&](const PurgeTreeNode& node, const BFS::Result& r)
     {
-        size_t iteration = &mids - &all_method_singletons[0];
+        size_t iteration = &node - &all_method_singletons[0];
 
         result[iteration].resize(r.method_history.size());
 
