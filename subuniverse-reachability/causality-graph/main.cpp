@@ -6,7 +6,6 @@
 #include <numeric>
 #include <unordered_map>
 #include <cstring>
-#include <boost/dynamic_bitset.hpp>
 #include <thread>
 #include "model.h"
 #include "input.h"
@@ -225,273 +224,6 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
     }
 }
 
-static void bruteforce_purges__worker_method(const BFS& bfs, const vector<vector<method_id>>& purge_worklist, atomic<size_t>* purged, vector<boost::dynamic_bitset<>>* purge_matrix)
-{
-    size_t i;
-    while((i = (*purged)++) < purge_worklist.size())
-    {
-        BFS::Result after_purge = bfs.run<false>(purge_worklist[i]);
-
-        (*purge_matrix)[i].resize(after_purge.method_visited.size());
-        for(size_t j = 0; j < after_purge.method_visited.size(); j++)
-            (*purge_matrix)[i][j] = !after_purge.method_visited[j];
-    }
-}
-
-static void bruteforce_purges(const Adjacency& adj, const vector<string>& method_names)
-{
-    boost::dynamic_bitset<> all_reachable_bitset(adj.n_methods());
-
-    BFS bfs(adj);
-
-    {
-        BFS::Result all = bfs.run<false>();
-
-        for(size_t i = 0; i < adj.n_methods(); i++)
-        {
-            all_reachable_bitset[i] = all.method_visited[i];
-        }
-    }
-
-    vector<vector<method_id>> purge_worklist;
-    purge_worklist.reserve(adj.n_methods());
-
-    for(size_t i = 1; i < adj.n_methods(); i++)
-    {
-        purge_worklist.emplace_back(1, i);
-    }
-
-    thread workers[8];
-    atomic<size_t> purged = 0;
-    vector<boost::dynamic_bitset<>> purge_matrix(adj.n_methods());
-    purge_matrix[0].resize(adj.n_methods(), true);
-
-    for(thread &worker: workers)
-        worker = thread(bruteforce_purges__worker_method, bfs, purge_worklist, &purged, &purge_matrix);
-
-    size_t last_progress = purged;
-    auto next_t = chrono::system_clock::now();
-
-    for(;;)
-    {
-        next_t += 1s;
-        this_thread::sleep_until(next_t);
-        size_t next_progress = purged;
-
-        if(next_progress >= adj.n_methods())
-            break;
-
-        cerr << (next_progress - last_progress) << " BFS op/s\n";
-        last_progress = next_progress;
-    }
-
-    for(thread &worker: workers)
-        worker.join();
-
-    for(auto &purged: purge_matrix)
-    {
-        purged &= all_reachable_bitset;
-    }
-
-    size_t purge_matrix_ones = 0;
-    for(auto &row: purge_matrix)
-        purge_matrix_ones += row.count();
-
-    cerr << "Purge Matrix Ones: " << purge_matrix_ones << endl;
-
-    vector<method_id> methods_sorted_by_cutvalue(adj.n_methods());
-    for(size_t i = 0; i < adj.n_methods(); i++)
-        methods_sorted_by_cutvalue[i] = i;
-
-    std::sort(methods_sorted_by_cutvalue.begin(), methods_sorted_by_cutvalue.end(), [&](method_id a, method_id b)
-    { return purge_matrix[a.id].count() > purge_matrix[b.id].count(); });
-
-    vector<vector<method_id>> purge_adj(adj.n_methods());
-
-
-    size_t adj_entries = 0;
-    for(size_t i = 1; i < adj.n_methods(); i++)
-    {
-        boost::dynamic_bitset<> remaining = purge_matrix[i];
-        remaining[i] = false;
-
-        for(method_id m: methods_sorted_by_cutvalue)
-        {
-            if(remaining[m.id])
-            {
-                assert(purge_matrix[m.id].is_subset_of(purge_matrix[i]));
-
-                purge_adj[i].push_back(m);
-                adj_entries++;
-                remaining &= ~purge_matrix[m.id];
-            }
-        }
-    }
-
-    cerr << "Adj-Entries: " << adj_entries << endl;
-
-    {
-        ofstream edges("dominator_edges.csv");
-
-        edges << "Source,Target\n";
-        for(size_t src = 0; src < adj.n_methods(); src++)
-        {
-            for(auto dst: purge_adj[src])
-                edges << src << ',' << dst.id << '\n';
-        }
-    }
-    {
-        ofstream nodes("dominator_nodes.csv");
-        nodes << "Id;cut_weight;display\n";
-        for(size_t m = 1; m < adj.n_methods(); m++)
-            nodes << m << ';' << purge_matrix[m].count() << ';' << method_names[m] << '\n';
-    }
-}
-
-static void bruteforce_purges_classes(const Adjacency& adj, const vector<string>& type_names, const vector<string>& method_names)
-{
-    boost::dynamic_bitset<> all_reachable_bitset(adj.n_methods());
-
-    BFS bfs(adj);
-
-    {
-        BFS::Result all = bfs.run<false>();
-
-        for(size_t i = 0; i < adj.n_methods(); i++)
-        {
-            all_reachable_bitset[i] = all.method_visited[i];
-        }
-    }
-
-    vector<string> node_names;
-    vector<vector<method_id>> purge_worklist;
-
-    {
-        unordered_set<string> node_names_set;
-
-        for(const string &type: type_names)
-        {
-            string_view name = type;
-            node_names.emplace_back(name);
-            purge_worklist.emplace_back();
-
-            for(size_t mid = 1; mid < adj.n_methods(); mid++)
-            {
-                if(method_names[mid].starts_with(name))
-                    purge_worklist.back().push_back(mid);
-            }
-
-            continue;
-
-            for(;;)
-            {
-                auto dotpos = name.find_last_of('.');
-
-                if(dotpos == std::string::npos)
-                    break;
-
-                name = name.substr(0, dotpos);
-
-                if(!node_names_set.insert(string(name)).second)
-                    break;
-
-                node_names.emplace_back(name);
-                purge_worklist.emplace_back();
-
-                for(size_t mid = 1; mid < adj.n_methods(); mid++)
-                {
-                    if(method_names[mid].starts_with(name))
-                        purge_worklist.back().push_back(mid);
-                }
-            }
-        }
-    }
-
-    thread workers[8];
-    atomic<size_t> purged = 0;
-    vector<boost::dynamic_bitset<>> purge_matrix(node_names.size());
-    purge_matrix[0].resize(adj.n_methods(), true);
-
-    for(thread &worker: workers)
-        worker = thread(bruteforce_purges__worker_method, bfs, purge_worklist, &purged, &purge_matrix);
-
-    size_t last_progress = purged;
-    auto next_t = chrono::system_clock::now();
-
-    for(;;)
-    {
-        next_t += 1s;
-        this_thread::sleep_until(next_t);
-        size_t next_progress = purged;
-
-        if(next_progress >= purge_worklist.size())
-            break;
-
-        cerr << (next_progress - last_progress) << " BFS op/s\n";
-        last_progress = next_progress;
-    }
-
-    for(thread &worker: workers)
-        worker.join();
-
-    for(auto &purged: purge_matrix)
-    {
-        purged &= all_reachable_bitset;
-    }
-
-    vector<method_id> nodes_sorted_by_cutvalue(node_names.size());
-    for(size_t i = 0; i < node_names.size(); i++)
-        nodes_sorted_by_cutvalue[i] = i;
-
-    std::sort(nodes_sorted_by_cutvalue.begin(), nodes_sorted_by_cutvalue.end(), [&](method_id a, method_id b)
-    { return purge_matrix[a.id].count() > purge_matrix[b.id].count(); });
-
-    vector<vector<method_id>> dominator_adj(node_names.size());
-
-
-    size_t adj_entries = 0;
-    for(size_t i = 0; i < node_names.size(); i++)
-    {
-        boost::dynamic_bitset<> remaining = purge_matrix[i];
-
-        for(method_id m: nodes_sorted_by_cutvalue)
-        {
-            if(!purge_matrix[m.id].any())
-                break;
-
-            if(i == m.id)
-                continue;
-
-            if(purge_matrix[m.id].is_subset_of(remaining))
-            {
-                dominator_adj[i].push_back(m);
-                adj_entries++;
-                if(purge_matrix[m.id] != remaining)
-                    remaining &= ~purge_matrix[m.id];
-            }
-        }
-    }
-
-    cerr << "Adj-Entries: " << adj_entries << endl;
-
-    {
-        ofstream edges("dominator_edges.csv");
-
-        edges << "Source,Target\n";
-        for(size_t src = 0; src < node_names.size(); src++)
-        {
-            for(auto dst: dominator_adj[src])
-                edges << src << ',' << dst.id << '\n';
-        }
-    }
-    {
-        ofstream nodes("dominator_nodes.csv");
-        nodes << "Id;cut_weight;Label\n";
-        for(size_t n = 1; n < node_names.size(); n++)
-            nodes << n << ';' << purge_matrix[n].count() << ';' << node_names[n] << '\n';
-    }
-}
-
 static vector<method_id> parse_methods(const model& m, const char* methods)
 {
     vector<method_id> purged_mids;
@@ -558,7 +290,50 @@ static void print_reachability(const model& m)
         cout << "Not reachable" << endl;
 }
 
-vector<vector<bool>> compute_purge_matrix(const model& m)
+static void compute_and_write_purge_matrix(const model& m, ostream& out)
+{
+    BFS bfs(m.adj);
+    BFS::Result all_reachable = bfs.run<false>();
+
+    BFS::Result r(bfs);
+    {
+        auto& method_visited = r.method_visited;
+        std::fill(method_visited.begin() + 1, method_visited.end(), true);
+        method_id root_method = 0;
+        typeflow_id root_typeflow = 0;
+        bfs.run<false>(r, {&root_method, 1}, {&root_typeflow, 1});
+    }
+
+    vector<method_id> all_methods(m.adj.n_methods() - 1);
+    std::iota(all_methods.begin(), all_methods.end(), 1);
+    vector<span<const method_id>> all_method_singletons(m.adj.n_methods() - 1);
+    for(size_t i = 0; i < all_method_singletons.size(); i++)
+        all_method_singletons[i] = {&all_methods[i], 1};
+
+    size_t cur_iteration = 0;
+
+    auto callback = [&](const span<const method_id>& mids, const BFS::Result& r)
+    {
+        size_t iteration = &mids - &all_method_singletons[0];
+
+        if(iteration != cur_iteration)
+            exit(99);
+        cur_iteration++;
+
+        size_t rawBytesSize = (r.method_history.size() + 7) / 8;
+        uint8_t rawBytes[rawBytesSize];
+        fill(rawBytes, rawBytes + rawBytesSize, 0);
+
+        for(size_t i = 0; i < r.method_history.size(); i++)
+            rawBytes[i / 8] |= (r.method_history[i] != 0xFF) << (i % 8);
+
+        out.write((char*)rawBytes, rawBytesSize);
+    };
+
+    bfs_incremental_rec(all_reachable, bfs, r, all_method_singletons, callback);
+}
+
+static vector<vector<bool>> compute_purge_matrix(const model& m)
 {
     vector<vector<bool>> result(m.adj.n_methods() - 1);
 
@@ -580,12 +355,14 @@ vector<vector<bool>> compute_purge_matrix(const model& m)
     for(size_t i = 0; i < all_method_singletons.size(); i++)
         all_method_singletons[i] = {&all_methods[i], 1};
 
-
-
     auto callback = [&](const span<const method_id>& mids, const BFS::Result& r)
     {
         size_t iteration = &mids - &all_method_singletons[0];
-        result[iteration] = r.method_visited;
+
+        result[iteration].resize(r.method_history.size());
+
+        for(size_t i = 0; i < r.method_history.size(); i++)
+            result[iteration][i] = r.method_history[i] != 0xFF;
     };
 
     bfs_incremental_rec(all_reachable, bfs, r, all_method_singletons, callback);
@@ -615,13 +392,9 @@ void check_redundant_typeflow_correctness(model& m)
 
         for(size_t j = 0; j < mat1[i].size(); j++)
         {
-            if(!mat1[i][j] && mat2[i][j])
+            if(mat1[i][j] != mat2[i][j])
             {
-                cerr << "Result entries dont match:" << endl;
-                cerr << m.method_names[i+1] << endl;
-                cerr << m.method_names[j] << endl;
-                cerr << (mat1[i][j] ? "additional purge" : "lost purge") << endl;
-                exit(3);
+                cerr << m.method_names[i+1] << " - " << m.method_names[j] << " (" << (mat1[i][j] ? "additional purge" : "lost purge") << ')' << endl;
             }
         }
     }
@@ -649,17 +422,14 @@ int main(int argc, const char** argv)
     {
         print_reachability(m);
     }
-    else if(command == "bruteforce_purges")
-    {
-        bruteforce_purges(m.adj, m.method_names);
-    }
-    else if(command == "bruteforce_purges_classes")
-    {
-        bruteforce_purges_classes(m.adj, m.type_names, m.method_names);
-    }
     else if(command == "check_redundant_typeflow_correctness")
     {
         check_redundant_typeflow_correctness(m);
+    }
+    else if(command == "purge_matrix")
+    {
+        iostream::sync_with_stdio(false);
+        compute_and_write_purge_matrix(m, cout);
     }
     else
     {
