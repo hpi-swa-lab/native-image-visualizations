@@ -10,7 +10,7 @@
     <script src="zip.min.js"></script>
     <script>
         let simulate_purge = Module.cwrap("simulate_purge", "number", ["number", "number"]);
-        let simulate_purges_batched = Module.cwrap("simulate_purges_batched", "number", ["number", "number", "number"])
+        let simulate_purges_batched = Module.cwrap("simulate_purges_batched", "number", ["number", "number"])
         let show_reachability = Module.cwrap("show_reachability", "number", ["number"]);
         let init = Module.cwrap("init", "number", ["number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number"]);
 
@@ -30,44 +30,95 @@
             return method_history_ptr
         }
 
-        function simulatePurgesBatched(purge_groups, resultCallback) {
-            let subsetsArrLen = (1 + purge_groups.length) * 4 /* {{ptr, len}, {child_ptr, child_len}} */
+        function calcPurgeNodesCount(purge_root) {
+            let cnt = 1
+            if(purge_root.mids && purge_root.children)
+                cnt++
+            if(purge_root.children)
+                for(const child of purge_root.children)
+                    cnt += calcPurgeNodesCount(child)
+            return cnt
+        }
+
+        function calcMidsCount(purge_root) {
+            let cnt = 0
+            if(purge_root.mids)
+                cnt += purge_root.mids.length
+            if(purge_root.children)
+                for(const child of purge_root.children)
+                    cnt += calcMidsCount(child)
+            return cnt
+        }
+
+        function simulatePurgesBatched(purge_root, resultCallback) {
+
+            let purgeNodesCount = calcPurgeNodesCount(purge_root)
+
+            let subsetsArrLen = (purgeNodesCount) * 4 /* {{ptr, len}, {child_ptr, child_len}} */
             let subsetsArrPtr = Module._malloc(subsetsArrLen * 4 /* (4 byte ptr/len) */)
             let subsetsArr = Module.HEAPU32.subarray(subsetsArrPtr / 4, subsetsArrPtr / 4 + subsetsArrLen)
 
-            let totalCount = 0// = purge_groups.reduce((cnt, group) => cnt + group.length, 0)
-            for(const group of purge_groups)
-                totalCount += group.length
+            let midsCount = calcMidsCount(purge_root)
 
-            let midsPtr = Module._malloc(totalCount * 4)
+            let midsPtr = Module._malloc(midsCount * 4)
             let midsPos = midsPtr / 4
 
-            for(let i = 0; i < purge_groups.length; i++) {
-                subsetsArr[(1+i)*4] /* ptr */ = midsPos * 4
-                subsetsArr[(1+i)*4 + 1] /* len */ = purge_groups[i].length
-                subsetsArr[(1+i)*4 + 2] = 0 // no children
-                subsetsArr[(1+i)*4 + 3] = 0 // no children
-                for(const mid of purge_groups[i])
-                    Module.HEAPU32[midsPos++] = mid + 1
-            }
-            assert(midsPos * 4 === midsPtr + totalCount * 4)
+            let indexToInputNode = Array(purgeNodesCount)
+            {
+                let i = 1
 
-            // Setup master node
-            subsetsArr[0] = midsPtr
-            subsetsArr[1] = totalCount
-            subsetsArr[2] = subsetsArrPtr + 4 * 4
-            subsetsArr[3] = purge_groups.length
+                function layoutChildren(purge_root, offset) {
+                    indexToInputNode[offset] = purge_root
+                    const midsPos_start = midsPos
+
+                    if (purge_root.mids) {
+                        if (purge_root.children) {
+                            subsetsArr[i*4] /* ptr */ = midsPos * 4
+                            subsetsArr[i*4 + 1] /* len */ = purge_root.mids.length
+                            subsetsArr[i*4 + 2] = 0 // no children
+                            subsetsArr[i*4 + 3] = 0 // no children
+                            i++
+                        }
+                        for(const mid of purge_root.mids)
+                            Module.HEAPU32[midsPos++] = mid + 1
+                    }
+
+                    const i_start = i
+
+                    if (purge_root.children) {
+                        let local_i = i
+                        i += purge_root.children.length
+                        for (const child of purge_root.children) {
+                            layoutChildren(child, local_i)
+                            local_i++
+                        }
+                    }
+
+                    const midsPos_end = midsPos
+
+                    const slice = subsetsArr.subarray(offset*4, (offset+1)*4)
+                    slice[0] = midsPos_start * 4
+                    slice[1] = midsPos_end - midsPos_start
+                    slice[2] = subsetsArrPtr + i_start * 16
+                    slice[3] = purge_root.children ? purge_root.children.length : 0
+                }
+
+                layoutChildren(purge_root, 0)
+            }
+            assert(midsPos * 4 === midsPtr + midsCount * 4)
 
             const callback = (iteration, method_history_ptr) => {
-                if (iteration === 0)
+                const inputNode = indexToInputNode[iteration]
+                if (!inputNode)
                     return;
+
                 const still_reachable = Module.HEAPU8.subarray(method_history_ptr, method_history_ptr + codesizes.length)
                 const all_reachable = Module.HEAPU8.subarray(all_reachable_ptr, all_reachable_ptr + codesizes.length)
                 let purged_size = 0
                 for (let i = 0; i < codesizes.length; i++)
                     if (all_reachable[i] !== 0xFF && still_reachable[i] === 0xFF)
                         purged_size += codesizes[i]
-                resultCallback(iteration - 1, purged_size)
+                resultCallback(inputNode, purged_size)
                 return 0
             }
 
@@ -406,20 +457,21 @@
             let purge_groups = node.children.map(collectCgNodesInSubtree)
 
             let res = Array(purge_groups.length)
-
-            // The C++ code doesn't handle empty groups well. Therefore we already handle them here.
-            let nonempty_purge_groups_indexes = []
             for (let i = 0; i < purge_groups.length; i++) {
-                if (purge_groups[i].length > 0)
-                    nonempty_purge_groups_indexes.push(i)
-                else
-                    res[i] = 0
+                res[i] = 0
             }
 
-            let nonempty_purge_groups = purge_groups.filter(g => g.length > 0)
-            nonempty_res = simulatePurgesBatched(nonempty_purge_groups, (iteration, size) => {
-                i = nonempty_purge_groups_indexes[iteration]
-                res[i] = size
+            // The C++ code doesn't handle empty groups well. Therefore we already handle them here.
+            let purge_root = { children: purge_groups.map((g, i) => { return { mids: g, index: i } }).filter(n => n.mids.length > 0) }
+
+            // Optimization for special case where we only want a single purge
+            if (purge_root.children.length === 1) {
+                purge_root = purge_root.children[0]
+            }
+
+            nonempty_res = simulatePurgesBatched(purge_root, (node, size) => {
+                if (node.index !== undefined)
+                    res[node.index] = size
             })
 
             if (node === this.dataRoot)
