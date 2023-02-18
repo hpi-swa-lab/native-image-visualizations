@@ -321,49 +321,35 @@ static bool is_redundant(const Adjacency& adj, typeflow_id typeflow)
     if(f.forward_edges.empty() && !f.method.reaching())
         return true;
 
-    if(!f.method.reaching())
+    if(f.method.reaching())
+        return false;
+
+    if(f.forward_edges.size() == 1 && f.backward_edges.size() == 1)
     {
-        if(f.forward_edges.size() == 1 && f.backward_edges.size() == 1)
-        {
-            method_id M1 = adj[f.backward_edges[0]].method.dependent();
-            method_id M2 = f.method.dependent();
-            method_id M3 = adj[f.forward_edges[0]].method.dependent();
+        method_id M1 = adj[f.backward_edges[0]].method.dependent();
+        method_id M2 = f.method.dependent();
+        method_id M3 = adj[f.forward_edges[0]].method.dependent();
 
-            if((M2 == M1 || M2 == M3 || M2 == 0)
-               && f.filter.is_superset(adj[f.forward_edges[0]].filter))
-                return true;
-        }
+        return (M2 == M1 || M2 == M3 || M2 == 0)
+           && f.filter.is_superset(adj[f.forward_edges[0]].filter);
+    }
 
-        if(f.forward_edges.size() > 1 && f.backward_edges.size() == 1)
-        {
-            method_id M1 = adj[f.backward_edges[0]].method.dependent();
-            method_id M2 = f.method.dependent();
+    if(f.forward_edges.size() > 1 && f.backward_edges.size() == 1)
+    {
+        method_id M1 = adj[f.backward_edges[0]].method.dependent();
+        method_id M2 = f.method.dependent();
 
-            for(auto& next : f.forward_edges)
-            {
-                if(!f.filter.is_superset(adj[next].filter))
-                    return false;
-            }
+        return (M2 == M1 || M2 == 0 || std::all_of(f.forward_edges.begin(), f.forward_edges.end(), [&](typeflow_id next) { return adj[next].method.dependent() == M2; }))
+            && std::all_of(f.forward_edges.begin(), f.forward_edges.end(), [&adj, &f](typeflow_id next){ return f.filter.is_superset(adj[next].filter); });
+    }
 
-            if(M2 == M1 || M2 == 0)
-                return true;
+    if(f.forward_edges.size() == 1 && f.backward_edges.size() > 1)
+    {
+        method_id M2 = f.method.dependent();
+        method_id M3 = adj[f.forward_edges[0]].method.dependent();
 
-            return std::all_of(f.forward_edges.begin(), f.forward_edges.end(), [&](typeflow_id next) { return adj[next].method.dependent() == M2; });
-        }
-
-        if(f.forward_edges.size() == 1 && f.backward_edges.size() > 1)
-        {
-            method_id M2 = f.method.dependent();
-            method_id M3 = adj[f.forward_edges[0]].method.dependent();
-
-            if(!f.filter.is_superset(adj[f.forward_edges[0]].filter))
-                return false;
-
-            if(M2 == M3 || M2 == 0)
-                return true;
-
-            return std::all_of(f.backward_edges.begin(), f.backward_edges.end(), [&](typeflow_id next) { return adj[next].method.dependent() == M2; });
-        }
+        return (M2 == M3 || M2 == 0 || std::all_of(f.backward_edges.begin(), f.backward_edges.end(), [&](typeflow_id next) { return adj[next].method.dependent() == M2; }))
+            && f.filter.is_superset(adj[f.forward_edges[0]].filter);
     }
 
     return false;
@@ -544,12 +530,23 @@ public:
         cerr << "All instantiated types: " << max_typestate_size << endl;
 #endif
 
-        //optimize();
+        optimize();
     }
 
     void optimize()
     {
+#if LOG
+        cerr << "Optimizing typeflow nodes...";
+        auto start = std::chrono::system_clock::now();
+#endif
+
         remove_redundant(adj);
+
+#if LOG
+        auto end = std::chrono::system_clock::now();
+        auto elapsed_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        cerr << ' ' << (elapsed_milliseconds.count()) << "ms elapsed " << endl;
+#endif
     }
 };
 

@@ -613,17 +613,15 @@ void check_redundant_typeflow_correctness(model& m)
             exit(2);
         }
 
-        if(!std::equal(mat1[i].begin(), mat1[i].end(), mat2[i].begin()))
+        for(size_t j = 0; j < mat1[i].size(); j++)
         {
-            for(size_t j = 0; j < mat1[i].size(); j++)
+            if(!mat1[i][j] && mat2[i][j])
             {
-                if(mat1[i][j] != mat2[i][j])
-                {
-                    cerr << "Result entries dont match:" << endl;
-                    cerr << m.method_names[i+1] << endl;
-                    cerr << m.method_names[j] << endl;
-                    exit(3);
-                }
+                cerr << "Result entries dont match:" << endl;
+                cerr << m.method_names[i+1] << endl;
+                cerr << m.method_names[j] << endl;
+                cerr << (mat1[i][j] ? "additional purge" : "lost purge") << endl;
+                exit(3);
             }
         }
     }

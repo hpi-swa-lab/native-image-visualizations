@@ -220,7 +220,7 @@ extern "C" bool EMSCRIPTEN_KEEPALIVE simulate_purges_batched(const span<const me
 
 extern "C" char* EMSCRIPTEN_KEEPALIVE show_reachability(const char* methods)
 {
-    BFS::Result* bfsresult = current_purged_result ? &*current_purged_result : &*all;
+    const BFS::Result* bfsresult = current_purged_result ? &*current_purged_result : &*all;
 
     auto& m = *purge_model;
 
