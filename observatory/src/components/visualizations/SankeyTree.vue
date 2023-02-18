@@ -1,25 +1,27 @@
 <script setup lang="ts">
 import MainLayout from '../layouts/MainLayout.vue'
-import { Universe } from '../../ts/UniverseTypes/Universe'
-import { EventType } from '../../ts/enums/EventType'
-import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
+import COLORS from '../../ts/constants/ColorPalette'
+import { UniverseProps } from '../../ts/interfaces/UniverseProps'
+import SankeyTreeControls from '../controls/SankeyTreeControls.vue'
 
-const emit = defineEmits([EventType.CHANGE_PAGE])
+const universeMetadata: Record<number, UniverseProps> = {
+    '0': { name: 'Universe1', color: COLORS.red },
+    '1': { name: 'Universe2', color: COLORS.green }
+}
 
-withDefaults(
-    defineProps<{
-        universes: Universe[]
-    }>(),
-    { universes: () => [] }
-)
+function handleNodesFilterChanged() {
+    // TODO #39 -> update tree
+}
 </script>
 
 <template>
-    <MainLayout
-        title="Sankey Tree"
-        :component-type="SwappableComponentType.SankeyTree"
-        @change-page="(componentType: SwappableComponentType) => emit(EventType.CHANGE_PAGE, componentType)"
-    >
+    <MainLayout title="Sankey Tree">
+        <template #controls>
+            <SankeyTreeControls
+                :universes-metadata="universeMetadata"
+                @change="handleNodesFilterChanged()"
+            ></SankeyTreeControls>
+        </template>
         <div id="container" />
     </MainLayout>
 </template>

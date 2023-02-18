@@ -6,6 +6,7 @@ parents field at the names, which eslint falsly recognizes
 as an attribute which may not exist*/
 import { Bytes } from './SharedTypes/Size'
 import { Leaf, InitKind } from './UniverseTypes/Leaf'
+import { Universe } from './UniverseTypes/Universe'
 import { Node } from './UniverseTypes/Node'
 
 interface Methods {
@@ -33,6 +34,43 @@ interface TopLevelOrigin {
 }
 
 type JSONScheme = Array<TopLevelOrigin>
+
+export function createConfigSelections(
+    selections: Record<string, Node[]>
+): Record<string, Record<string, unknown>> {
+    const result: Record<string, Record<string, unknown>> = {}
+
+    Object.keys(selections).forEach((name: string) => {
+        const currentSelection: Node[] = selections[name]
+        result[name] = createConfigSelection(name, currentSelection)
+    })
+
+    return result
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function createConfigSelection(name: string, nodes: Node[]): Record<string, unknown> {
+    // TODO: implement this, corresponding issue: [#85](https://github.com/hpi-swa-lab/MPWS2022RH1/issues/85)
+    return {}
+}
+
+export function createConfigUniverses(
+    universes: Universe[]
+): Record<string, Record<string, unknown>> {
+    const result: Record<string, Record<string, unknown>> = {}
+
+    universes.forEach((universe) => {
+        result[universe.name] = createConfigUniverse(universe)
+    })
+
+    return result
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function createConfigUniverse(universe: Universe): Record<string, unknown> {
+    // TODO: implement this, corresponding issue: [#85](https://github.com/hpi-swa-lab/MPWS2022RH1/issues/85v)
+    return {}
+}
 
 export async function loadJson(file: File): Promise<JSONScheme> {
     return new Promise<JSONScheme>((resolve, reject) => {
