@@ -5,12 +5,14 @@ withDefaults(
     defineProps<{
         id: string
         value: string
-        checked: boolean
+        checked?: boolean
+        disabled?: boolean
     }>(),
     {
         id: '',
         value: '',
-        checked: false
+        checked: false,
+        disabled: false
     }
 )
 </script>
@@ -23,6 +25,7 @@ withDefaults(
             type="checkbox"
             class="mr-1"
             :checked="checked"
+            :disabled="disabled"
             @change="$emit(EventType.CHANGE, value)"
         />
         <slot></slot>
