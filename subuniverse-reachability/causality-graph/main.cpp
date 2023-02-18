@@ -73,7 +73,7 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
 
         for(size_t i = 0; i < times; i++)
         {
-            bfs.run<false>();
+            auto _ = bfs.run<false>();
         }
 
         auto end = std::chrono::system_clock::now();
@@ -94,7 +94,7 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
             std::fill(method_visited.begin() + 1, method_visited.end(), true);
             method_id root_method = 0;
             typeflow_id root_typeflow = 0;
-            bfs.run<false>(r, {&root_method, 1}, {&root_typeflow, 1});
+            bfs.run<false>(r, {&root_method, 1}, true);
         }
 
         cerr << "r: " << std::count_if(r.method_history.begin(), r.method_history.end(), [](auto h) { return (bool)h; }) << " methods reachable!\n";
@@ -300,8 +300,7 @@ static void compute_and_write_purge_matrix(const model& m, ostream& out)
         auto& method_visited = r.method_inhibited;
         std::fill(method_visited.begin() + 1, method_visited.end(), true);
         method_id root_method = 0;
-        typeflow_id root_typeflow = 0;
-        bfs.run<false>(r, {&root_method, 1}, {&root_typeflow, 1});
+        bfs.run<false>(r, {&root_method, 1}, true);
     }
 
     vector<method_id> all_methods(m.adj.n_methods() - 1);
@@ -345,8 +344,7 @@ static vector<vector<bool>> compute_purge_matrix(const model& m)
         auto& method_visited = r.method_inhibited;
         std::fill(method_visited.begin() + 1, method_visited.end(), true);
         method_id root_method = 0;
-        typeflow_id root_typeflow = 0;
-        bfs.run<false>(r, {&root_method, 1}, {&root_typeflow, 1});
+        bfs.run<false>(r, {&root_method, 1}, true);
     }
 
     vector<method_id> all_methods(m.adj.n_methods() - 1);

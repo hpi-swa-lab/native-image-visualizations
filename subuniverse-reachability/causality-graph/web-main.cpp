@@ -194,8 +194,7 @@ extern "C" bool EMSCRIPTEN_KEEPALIVE simulate_purges_batched(const span<const me
             }
 
             method_id root_method = 0;
-            typeflow_id root_typeflow = 0;
-            bfs.run<false>(r, {&root_method, 1}, {&root_typeflow, 1});
+            bfs.run<false>(r, {&root_method, 1}, true);
         }
 
         auto callback = [&](const span<const method_id> &mids, const BFS::Result &r)

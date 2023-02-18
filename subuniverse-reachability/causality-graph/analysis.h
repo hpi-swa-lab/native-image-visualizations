@@ -267,9 +267,8 @@ public:
             r.method_inhibited[purged.id] = true;
 
         method_id root_method = 0;
-        typeflow_id root_typeflow = 0;
 
-        run<dist_matters>(r, {&root_method, 1}, {&root_typeflow, 1});
+        run<dist_matters>(r, {&root_method, 1}, true);
 
         for(method_id purged : purged_methods)
             r.method_inhibited[purged.id] = false;
@@ -280,7 +279,7 @@ public:
     /* If dist_matters is asigned false, the BFS gets sped up about x2.
      * However, all dist-values of types in typeflows and methods will be zero. */
     template<bool dist_matters = true, bool track_changes = false>
-    auto run(Result& r, span<method_id> method_worklist_init, span<typeflow_id> typeflow_worklist_init) const
+    auto run(Result& r, span<method_id> method_worklist_init, bool init_typeflows) const
     {
         vector<bool> method_inhibited(std::move(r.method_inhibited));
         vector<DefaultMethodHistory> method_history(std::move(r.method_history));
@@ -308,9 +307,9 @@ public:
         vector<type_t> instantiated_since_last_iteration;
 
         // Handle white-hole typeflow
-        for(typeflow_id root : typeflow_worklist_init)
+        if(init_typeflows)
         {
-            for(auto v: adj[root].forward_edges)
+            for(auto v: adj.flows[0].forward_edges)
             {
                 TypeSet filter = typeflow_filters[v.id];
                 bool changed = false;
@@ -756,7 +755,7 @@ static void bfs_incremental_rec(const BFS::Result& all_reachable, const BFS& bfs
             }
         }
 
-        auto incremental_changes = bfs.run<false, true>(r2, {root_methods, root_methods + root_methods_size}, {});
+        auto incremental_changes = bfs.run<false, true>(r2, {root_methods, root_methods + root_methods_size}, false);
         bfs_incremental_rec(all_reachable, bfs, r2, stillpurge, callback);
         r2.revert(bfs, incremental_changes);
         for(span<const method_id> mids : depurge)
