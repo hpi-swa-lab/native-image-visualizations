@@ -121,6 +121,9 @@ static void print_reachability_of_method(ostream& out, const Adjacency& adj, con
 
         for(typeflow_id flow : adj[m].virtual_invocation_sources)
         {
+            if(all.method_history[adj[flow].method.dependent().id] == 0xFF)
+                continue;
+
             const TypeflowHistory& history = all.typeflow_visited[flow.id];
 
             for(auto pair : history)
@@ -148,6 +151,7 @@ static void print_reachability_of_method(ostream& out, const Adjacency& adj, con
         {
             TreeIndenter::indent i(indentation);
             out << indentation << "Lost due to saturation!" << endl;
+            cerr << "Lost reachability trace due to saturation! (1)" << endl;
             return;
         }
 
@@ -159,34 +163,47 @@ static void print_reachability_of_method(ostream& out, const Adjacency& adj, con
             {
                 TreeIndenter::indent i(indentation);
                 out << indentation << "Lost due to saturation!" << endl;
+                cerr << "Lost reachability trace due to saturation! (2)" << endl;
                 return;
             }
 
             typeflow_id flow = worklist.front();
             worklist.pop();
 
-            if(flow != adj.allInstantiated && all.typeflow_visited[flow.id].is_saturated() && all.typeflow_visited[flow.id].saturated_dist <= dist)
+            if(all.typeflow_visited[flow.id].is_saturated() && all.typeflow_visited[flow.id].saturated_dist <= dist)
             {
-                for(size_t i = 1; i < adj.n_typeflows(); i++)
+                for(size_t v = 1; v < adj.n_typeflows(); v++)
                 {
-                    if(all.typeflow_visited[i].is_saturated() && all.typeflow_visited[i].saturated_dist <= dist)
+                    if(v == flow || parent[v] || all.method_history[adj.flows[v].method.dependent().id] == 0xFF)
+                        continue;
+
+                    if(all.typeflow_visited[v].is_saturated() && all.typeflow_visited[v].saturated_dist <= dist && adj.flows[v].filter[flow_type])
                     {
-                        for(auto type_pair : all.typeflow_visited[i])
+                        for(auto type_pair: all.typeflow_visited[v])
                         {
                             if(type_pair.first == flow_type)
                             {
-                                if(flow.id != i)
+                                parent[v] = flow;
+                                worklist.push(v);
+                            }
+                        }
+
+                        for(typeflow_id u : adj.flows[v].backward_edges)
+                        {
+                            if(u == flow || parent[u.id] || all.method_history[adj[u].method.dependent().id] == 0xFF)
+                                continue;
+
+                            for(auto type_pair : all.typeflow_visited[u.id])
+                            {
+                                if(type_pair.first == flow_type)
                                 {
-                                    parent[i] = flow;
-                                    worklist.emplace(i);
+                                    parent[u.id] = flow;
+                                    worklist.push(u);
                                 }
-                                goto found_saturation_source;
                             }
                         }
                     }
                 }
-
-                found_saturation_source: {}
             }
 
             for(typeflow_id prev : adj[flow].backward_edges)
@@ -264,7 +281,7 @@ static void print_reachability(ostream& out, const Adjacency& adj, const BFS::Re
 {
     string name;
 
-    if(!all.method_visited[m.id])
+    if(all.method_history[m.id] == 0xFF)
     {
         out << "Not reachable" << endl;
     }

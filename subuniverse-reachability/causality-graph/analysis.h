@@ -307,15 +307,9 @@ public:
                     changed |= typeflow_visited[v.id].add_type(t, 0);
 
                     if(typeflow_visited[v.id].is_saturated())
-                        break;
-                }
-
-                for(pair<type_t, uint8_t> type: typeflow_visited[root.id])
-                {
-                    if(!allInstantiated[type.first])
                     {
-                        allInstantiated[type.first] = true;
-                        instantiated_since_last_iteration.push_back(type.first);
+                        assert(false);
+                        break;
                     }
                 }
 
@@ -382,54 +376,42 @@ public:
                     {
                         for(auto v: adj[u].forward_edges)
                         {
-                            if(v == adj.allInstantiated || typeflow_visited[v.id].is_saturated())
+                            if(!typeflow_visited[v.id].is_saturated())
                             {
+                                TypeSet filter = typeflow_filters[v.id];
+
+                                bool changed = false;
+                                TypeflowHistory before = typeflow_visited[v.id];
+
                                 for(pair<type_t, uint8_t> type: typeflow_visited[u.id])
                                 {
-                                    if(!allInstantiated[type.first])
-                                    {
-                                        allInstantiated[type.first] = true;
-                                        instantiated_since_last_iteration.push_back(type.first);
-                                    }
+                                    if(!filter[type.first])
+                                        continue;
+
+                                    changed |= typeflow_visited[v.id].add_type(type.first, dist);
+
+                                    if(typeflow_visited[v.id].is_saturated())
+                                        break;
                                 }
-                            }
 
-                            if(typeflow_visited[v.id].is_saturated())
-                                continue;
+                                if(track_changes && changed)
+                                    typeflow_visited_log.emplace_back(v, before);
 
-                            TypeSet filter = typeflow_filters[v.id];
-
-                            bool changed = false;
-                            TypeflowHistory before = typeflow_visited[v.id];
-
-                            for(pair<type_t, uint8_t> type: typeflow_visited[u.id])
-                            {
-                                if(!filter[type.first])
-                                    continue;
-
-                                changed |= typeflow_visited[v.id].add_type(type.first, dist);
-
-                                if(typeflow_visited[v.id].is_saturated())
-                                    break;
+                                if(changed && method_history[adj[v].method.dependent().id] != numeric_limits<uint8_t>::max())
+                                    typeflow_worklist.push(v);
                             }
 
                             if(typeflow_visited[v.id].is_saturated())
                             {
                                 for(pair<type_t, uint8_t> type: typeflow_visited[u.id])
                                 {
-                                    if(!allInstantiated[type.first])
+                                    if(!allInstantiated[type.first] && adj[v].filter[type.first])
                                     {
                                         allInstantiated[type.first] = true;
                                         instantiated_since_last_iteration.push_back(type.first);
                                     }
                                 }
                             }
-
-                            if(track_changes && changed)
-                                typeflow_visited_log.emplace_back(v, before);
-
-                            if(changed && method_history[adj[v].method.dependent().id] != numeric_limits<uint8_t>::max())
-                                typeflow_worklist.push(v);
                         }
                     }
                     else
