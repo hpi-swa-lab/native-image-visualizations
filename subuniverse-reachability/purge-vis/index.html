@@ -14,7 +14,7 @@
         let show_reachability = Module.cwrap("show_reachability", "number", ["number"]);
         let init = Module.cwrap("init", "number", ["number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number"]);
 
-        let all_reachable
+        let all_reachable_ptr
 
         function simulatePurge(purge_group) {
             let midsPtr = Module._malloc(purge_group.length * 4)
@@ -27,7 +27,7 @@
             // dealloc memory
             Module._free(midsPtr);
 
-            return Module.HEAPU8.subarray(method_history_ptr, method_history_ptr + codesizes.length)
+            return method_history_ptr
         }
 
         function simulatePurgesBatched(purge_groups, resultCallback) {
@@ -53,6 +53,7 @@
 
             const callback = (iteration, method_history_ptr) => {
                 const still_reachable = Module.HEAPU8.subarray(method_history_ptr, method_history_ptr + codesizes.length)
+                const all_reachable = Module.HEAPU8.subarray(all_reachable_ptr, all_reachable_ptr + codesizes.length)
                 let purged_size = 0
                 for (let i = 0; i < codesizes.length; i++)
                     if (all_reachable[i] !== 0xFF && still_reachable[i] === 0xFF)
@@ -70,12 +71,6 @@
 
             if(status === 0)
                 throw new Error("simulate_purges_batched exited with error code " + status)
-        }
-
-        function pressBtn(str) {
-            throw Error("Currently not implemented properly!!!")
-            document.getElementById("Output").value = simulatePurge(str)
-            printReachability(document.getElementById("Input_reachability").value)
         }
 
         function printReachability(str){
@@ -184,7 +179,7 @@
                     filesAsByteArrays[entry.filename] = { data: input_ptr, length: data.length }
                 }
 
-                const all_method_history_ptr = init(filesAsByteArrays["types.txt"].data, filesAsByteArrays["types.txt"].length,
+                all_reachable_ptr = init(filesAsByteArrays["types.txt"].data, filesAsByteArrays["types.txt"].length,
                     filesAsByteArrays["methods.txt"].data, filesAsByteArrays["methods.txt"].length,
                     filesAsByteArrays["typeflows.txt"].data, filesAsByteArrays["typeflows.txt"].length,
                     filesAsByteArrays["typestates.bin"].data, filesAsByteArrays["typestates.bin"].length,
@@ -198,8 +193,7 @@
                 for (const span of Object.values(filesAsByteArrays))
                     Module._free(span.data)
 
-                all_reachable = Module.HEAPU8.subarray(all_method_history_ptr, all_method_history_ptr + codesizes.length)
-                reachable_under_selection = all_reachable
+                reachable_under_selection_ptr = all_reachable_ptr
                 prepareListView(generateHierarchyFromReachabilityJsonAndMethodList(reachabilityData, methodList))
             }
         }
@@ -596,10 +590,10 @@
             }
         }
 
-        let reachable_under_selection
+        let reachable_under_selection_ptr
 
         function updatePurgeValues() {
-            reachable_under_selection = simulatePurge([...new Set([...selectedForPurging].flatMap(collectCgNodesInSubtree))])
+            reachable_under_selection_ptr = simulatePurge([...new Set([...selectedForPurging].flatMap(collectCgNodesInSubtree))])
 
             forEachInSubtree(this.dataRoot, (u) => {
                 if (u.html_imageview) {
@@ -609,6 +603,9 @@
         }
 
         function refreshPurgeValueForImageviewNode(u) {
+            const all_reachable = Module.HEAPU8.subarray(all_reachable_ptr, all_reachable_ptr + codesizes.length)
+            const reachable_under_selection = Module.HEAPU8.subarray(reachable_under_selection_ptr, reachable_under_selection_ptr + codesizes.length)
+
             let purgedCodesize = 0
             forEachInSubtree(u, (v) => {
                 if (v.cg_nodes)
@@ -621,7 +618,7 @@
             let percentageText = ""
             if (u.size !== 0) {
                 barWidth = purgedPercentage.toFixed(1) + "%"
-                percentageText = purgedPercentage.toFixed(1) + " %"
+                percentageText = purgedPercentage === 0 ? "" : purgedPercentage.toFixed(1) + " %"
             }
             u.html_imageview.querySelector(".size-bar-text").textContent = percentageText
             u.html_imageview.querySelector(".size-bar-inner").style.width = barWidth
