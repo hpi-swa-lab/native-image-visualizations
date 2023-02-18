@@ -50,7 +50,7 @@
             return cnt
         }
 
-        function simulatePurgesBatched(purge_root, resultCallback) {
+        function simulatePurgesBatched(purge_root, resultCallback, prepurgeMids = []) {
 
             let purgeNodesCount = calcPurgeNodesCount(purge_root)
 
@@ -58,7 +58,7 @@
             let subsetsArrPtr = Module._malloc(subsetsArrLen * 4 /* (4 byte ptr/len) */)
             let subsetsArr = Module.HEAPU32.subarray(subsetsArrPtr / 4, subsetsArrPtr / 4 + subsetsArrLen)
 
-            let midsCount = calcMidsCount(purge_root)
+            let midsCount = calcMidsCount(purge_root) + prepurgeMids.length
 
             let midsPtr = Module._malloc(midsCount * 4)
             let midsPos = midsPtr / 4
@@ -70,6 +70,8 @@
                 function layoutChildren(purge_root, offset) {
                     indexToInputNode[offset] = purge_root
                     const midsPos_start = midsPos
+
+                    const i_start = i
 
                     if (purge_root.mids) {
                         if (purge_root.children) {
@@ -83,11 +85,12 @@
                             Module.HEAPU32[midsPos++] = mid + 1
                     }
 
-                    const i_start = i
+                    let i_end = i
 
                     if (purge_root.children) {
                         let local_i = i
                         i += purge_root.children.length
+                        i_end = i
                         for (const child of purge_root.children) {
                             layoutChildren(child, local_i)
                             local_i++
@@ -100,10 +103,13 @@
                     slice[0] = midsPos_start * 4
                     slice[1] = midsPos_end - midsPos_start
                     slice[2] = subsetsArrPtr + i_start * 16
-                    slice[3] = purge_root.children ? purge_root.children.length : 0
+                    slice[3] = i_end - i_start
                 }
 
+                for (const mid of prepurgeMids)
+                    Module.HEAPU32[midsPos++] = mid + 1
                 layoutChildren(purge_root, 0)
+                subsetsArr[0] = midsPtr // Also include prepurgeMids
             }
             assert(midsPos * 4 === midsPtr + midsCount * 4)
 
@@ -448,7 +454,8 @@
         function insertChildren(element, node) {
             let list = generateHTML(node)
             element.appendChild(list)
-            calculateAggregateCutWeight(list, node)
+            recalculateCutOverview()
+            //calculateAggregateCutWeight(list, node)
         }
 
         let maxRes
@@ -652,6 +659,60 @@
         }
 
         let reachable_under_selection_ptr
+
+        function createPurgeNodeTree(node) {
+            let root = { src: node }
+
+            let mids = []
+            if (node.cg_nodes)
+                mids = node.cg_nodes
+
+            let children = []
+            if (node.children) {
+                for(const child of node.children) {
+                    if (selectedForPurging.has(child))
+                        continue;
+                    if (child.html) {
+                        const child_root = createPurgeNodeTree(child)
+                        if (child_root)
+                            children.push(child_root)
+                    } else {
+                        mids = mids.concat(collectCgNodesInSubtree(child))
+                    }
+                }
+            }
+
+            if (children.length === 0 && mids.length === 0)
+                return undefined
+
+            if (mids.length !== 0)
+                root.mids = mids
+
+            if (children.length !== 0)
+                root.children = children
+
+            return root
+        }
+
+        function recalculateCutOverview() {
+            const purgeNodeTreeRoot = createPurgeNodeTree(this.dataRoot)
+
+            let maxPurgedSize = 0
+
+            simulatePurgesBatched(purgeNodeTreeRoot, (node, purgedSize) => {
+                node.purgedSize = purgedSize
+                maxPurgedSize = Math.max(maxPurgedSize, purgedSize)
+            })
+
+            forEachInSubtree(purgeNodeTreeRoot, u => {
+                const html = u.src.html
+                if (!html)
+                    return
+
+                html.querySelector('.cut-size-column').textContent = formatByteSizesWithUnitPrefix(u.purgedSize)
+                html.querySelector('.cut-size-bar').style.width = (u.purgedSize / maxPurgedSize * 100) + "%"
+            })
+        }
 
         function updatePurgeValues() {
             reachable_under_selection_ptr = simulatePurge([...new Set([...selectedForPurging].flatMap(collectCgNodesInSubtree))])
