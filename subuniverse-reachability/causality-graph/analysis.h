@@ -110,6 +110,20 @@ static_assert(std::is_trivially_destructible<TypeflowHistory>::value);
 //static_assert(std::is_trivial<TypeflowHistory>::value);
 static_assert(sizeof(TypeflowHistory) == 64);
 
+class DefaultMethodHistory
+{
+public:
+    uint8_t dist = numeric_limits<decltype(dist)>::max();
+
+    explicit DefaultMethodHistory(uint8_t dist) : dist(dist) {}
+    DefaultMethodHistory() = default;
+
+    explicit operator bool() const
+    {
+        return dist != numeric_limits<decltype(dist)>::max();
+    }
+};
+
 
 class BFS
 {
@@ -152,7 +166,7 @@ public:
     struct Result
     {
         vector<TypeflowHistory> typeflow_visited;
-        vector<uint8_t> method_history;
+        vector<DefaultMethodHistory> method_history;
         vector<bool> method_inhibited;
         boost::dynamic_bitset<> allInstantiated;
         vector<vector<typeflow_id>> saturation_uses_by_filter;
@@ -161,7 +175,7 @@ public:
         Result(size_t n_methods, size_t n_typeflows, size_t n_types, size_t n_filters) :
                 typeflow_visited(n_typeflows),
                 method_inhibited(n_methods),
-                method_history(n_methods, numeric_limits<uint8_t>::max()),
+                method_history(n_methods),
                 allInstantiated(n_types),
                 saturation_uses_by_filter(n_filters),
                 included_in_saturation_uses(n_typeflows)
@@ -175,7 +189,7 @@ public:
             for(method_id m : changes.visited_method_log)
             {
                 method_inhibited[m.id] = false;
-                method_history[m.id] = numeric_limits<uint8_t>::max();
+                method_history[m.id] = {};
             }
 
             for(size_t i = changes.typeflow_visited_log.size(); i > 0; i--)
@@ -269,7 +283,7 @@ public:
     auto run(Result& r, span<method_id> method_worklist_init, span<typeflow_id> typeflow_worklist_init) const
     {
         vector<bool> method_inhibited(std::move(r.method_inhibited));
-        vector<uint8_t> method_history(std::move(r.method_history));
+        vector<DefaultMethodHistory> method_history(std::move(r.method_history));
         vector<TypeflowHistory> typeflow_visited(std::move(r.typeflow_visited));
         boost::dynamic_bitset<> allInstantiated(std::move(r.allInstantiated));
         vector<vector<typeflow_id>> saturation_uses_by_filter(std::move(r.saturation_uses_by_filter));
@@ -285,7 +299,7 @@ public:
         for(method_id root : method_worklist_init)
         {
             method_inhibited[root.id] = true;
-            method_history[root.id] = 0;
+            method_history[root.id] = DefaultMethodHistory(0);
         }
 
         vector<method_id> method_worklist(method_worklist_init.begin(), method_worklist_init.end());
@@ -332,7 +346,7 @@ public:
 
                 for(method_id u: method_worklist)
                 {
-                    method_history[u.id] = dist;
+                    method_history[u.id] = DefaultMethodHistory(dist);
                     const auto& m = adj[u];
 
                     for(auto v: m.dependent_typeflows)
@@ -397,7 +411,7 @@ public:
                                 if(track_changes && changed)
                                     typeflow_visited_log.emplace_back(v, before);
 
-                                if(changed && method_history[adj[v].method.dependent().id] != numeric_limits<uint8_t>::max())
+                                if(changed && method_history[adj[v].method.dependent().id])
                                     typeflow_worklist.push(v);
                             }
 
@@ -463,7 +477,7 @@ public:
                             if(track_changes && changed)
                                 typeflow_visited_log.emplace_back(v, before);
 
-                            if(changed && method_history[adj[v].method.dependent().id] != numeric_limits<uint8_t>::max())
+                            if(changed && method_history[adj[v].method.dependent().id])
                                 typeflow_worklist.push(v);
                         }
                     }
@@ -553,7 +567,7 @@ public:
                             if(track_changes && changed)
                                 typeflow_visited_log.emplace_back(v, before);
 
-                            if(changed && method_history[adj[v].method.dependent().id] != numeric_limits<uint8_t>::max())
+                            if(changed && method_history[adj[v].method.dependent().id])
                                 typeflow_worklist.push(v);
 
                             it++;
@@ -651,7 +665,7 @@ static void assert_reachability_equals(const BFS::Result& r1, const BFS::Result&
 
     for(size_t i = 0; i < r1.method_history.size(); i++)
     {
-        if((r1.method_history[i] == 0xFF) != (r2.method_history[i] == 0xFF))
+        if(bool(r1.method_history[i]) != bool(r2.method_history[i]))
         {
             cerr << "Idiot!" << endl;
             exit(1);
@@ -728,7 +742,7 @@ static void bfs_incremental_rec(const BFS::Result& all_reachable, const BFS& bfs
                 if(
                         std::any_of(m.backward_edges.begin(), m.backward_edges.end(), [&](const auto& item)
                         {
-                            return r2.method_history[item.id] != 0xFF;
+                            return (bool)r2.method_history[item.id];
                         })
                         ||
                         std::any_of(m.virtual_invocation_sources.begin(), m.virtual_invocation_sources.end(), [&](const auto& item)

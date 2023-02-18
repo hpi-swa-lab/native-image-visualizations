@@ -79,7 +79,7 @@ static ostream& operator<<(ostream& out, const TreeIndenter& indentation)
 
 static void print_reachability_of_method(ostream& out, const Adjacency& adj, const vector<string>& method_names, const vector<string>& type_names, const BFS::Result& all, method_id m, vector<bool>& visited, TreeIndenter& indentation)
 {
-    size_t dist = all.method_history[m.id];
+    size_t dist = all.method_history[m.id].dist;
 
     if(dist == 0)
     {
@@ -100,7 +100,7 @@ static void print_reachability_of_method(ostream& out, const Adjacency& adj, con
 
     visited[m.id] = true;
 
-    auto it = std::find_if(adj.methods[m.id].backward_edges.begin(), adj.methods[m.id].backward_edges.end(), [&](method_id prev) { return all.method_history[prev.id] < dist; });
+    auto it = std::find_if(adj.methods[m.id].backward_edges.begin(), adj.methods[m.id].backward_edges.end(), [&](method_id prev) { return all.method_history[prev.id].dist < dist; });
 
     TreeIndenter::indent i(indentation);
 
@@ -121,7 +121,7 @@ static void print_reachability_of_method(ostream& out, const Adjacency& adj, con
 
         for(typeflow_id flow : adj[m].virtual_invocation_sources)
         {
-            if(all.method_history[adj[flow].method.dependent().id] == 0xFF)
+            if(!all.method_history[adj[flow].method.dependent().id])
                 continue;
 
             const TypeflowHistory& history = all.typeflow_visited[flow.id];
@@ -174,7 +174,7 @@ static void print_reachability_of_method(ostream& out, const Adjacency& adj, con
             {
                 for(size_t v = 1; v < adj.n_typeflows(); v++)
                 {
-                    if(v == flow || parent[v] || all.method_history[adj.flows[v].method.dependent().id] == 0xFF)
+                    if(v == flow || parent[v] || !all.method_history[adj.flows[v].method.dependent().id])
                         continue;
 
                     if(all.typeflow_visited[v].is_saturated() && all.typeflow_visited[v].saturated_dist <= dist && adj.flows[v].filter[flow_type])
@@ -190,7 +190,7 @@ static void print_reachability_of_method(ostream& out, const Adjacency& adj, con
 
                         for(typeflow_id u : adj.flows[v].backward_edges)
                         {
-                            if(u == flow || parent[u.id] || all.method_history[adj[u].method.dependent().id] == 0xFF)
+                            if(u == flow || parent[u.id] || !all.method_history[adj[u].method.dependent().id])
                                 continue;
 
                             for(auto type_pair : all.typeflow_visited[u.id])
@@ -252,7 +252,7 @@ static void print_reachability_of_method(ostream& out, const Adjacency& adj, con
                 if(parent[prev.id])
                     continue;
 
-                if(adj[prev].method.dependent().id && all.method_history[adj[prev].method.dependent().id] >= dist)
+                if(adj[prev].method.dependent().id && all.method_history[adj[prev].method.dependent().id].dist >= dist)
                     continue;
 
                 if(all.typeflow_visited[prev.id].is_saturated() && all.typeflow_visited[prev.id].saturated_dist <= dist)
@@ -281,7 +281,7 @@ static void print_reachability(ostream& out, const Adjacency& adj, const BFS::Re
 {
     string name;
 
-    if(all.method_history[m.id] == 0xFF)
+    if(!all.method_history[m.id])
     {
         out << "Not reachable" << endl;
     }

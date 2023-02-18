@@ -85,7 +85,7 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
         BFS bfs(adj);
         BFS::Result all_reachable = bfs.run<false>();
         cerr << " " << std::count_if(all_reachable.method_inhibited.begin(), all_reachable.method_inhibited.end(), [](bool b) { return b; }) << " methods reachable!\n";
-        cerr << " " << std::count_if(all_reachable.method_history.begin(), all_reachable.method_history.end(), [](uint8_t b) { return b != 0xFF; }) << " methods reachable!\n";
+        cerr << " " << std::count_if(all_reachable.method_history.begin(), all_reachable.method_history.end(), [](auto h) { return bool(h); }) << " methods reachable!\n";
 
 
         BFS::Result r(bfs);
@@ -97,7 +97,7 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
             bfs.run<false>(r, {&root_method, 1}, {&root_typeflow, 1});
         }
 
-        cerr << "r: " << std::count_if(r.method_history.begin(), r.method_history.end(), [](uint8_t b) { return b != 0xFF; }) << " methods reachable!\n";
+        cerr << "r: " << std::count_if(r.method_history.begin(), r.method_history.end(), [](auto h) { return (bool)h; }) << " methods reachable!\n";
 
         vector<method_id> all_methods(adj.n_methods() - 1);
         std::iota(all_methods.begin(), all_methods.end(), 1);
@@ -134,7 +134,7 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
 
             for(size_t i = 1; i < r.method_history.size(); i++)
             {
-                if(r.method_history[i] == 0xFF && all_reachable.method_history[i] != 0xFF)
+                if(!r.method_history[i] && all_reachable.method_history[i])
                     cout << method_names[i] << ' ';
             }
             cout << endl;
@@ -325,7 +325,7 @@ static void compute_and_write_purge_matrix(const model& m, ostream& out)
         fill(rawBytes, rawBytes + rawBytesSize, 0);
 
         for(size_t i = 0; i < r.method_history.size(); i++)
-            rawBytes[i / 8] |= (r.method_history[i] != 0xFF) << (i % 8);
+            rawBytes[i / 8] |= bool(r.method_history[i]) << (i % 8);
 
         out.write((char*)rawBytes, rawBytesSize);
     };
@@ -362,7 +362,7 @@ static vector<vector<bool>> compute_purge_matrix(const model& m)
         result[iteration].resize(r.method_history.size());
 
         for(size_t i = 0; i < r.method_history.size(); i++)
-            result[iteration][i] = r.method_history[i] != 0xFF;
+            result[iteration][i] = (bool)r.method_history[i];
     };
 
     bfs_incremental_rec(all_reachable, bfs, r, all_method_singletons, callback);

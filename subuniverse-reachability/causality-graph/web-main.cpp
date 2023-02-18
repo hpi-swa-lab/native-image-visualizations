@@ -64,11 +64,11 @@ extern "C" const uint8_t* EMSCRIPTEN_KEEPALIVE init(
 
     BFS::Result all = bfs->run<true>();
 
-    cerr << " " << (all.method_history.size() - std::count(all.method_history.begin(), all.method_history.end(), 0xFF)) << " methods reachable!\n";
+    cerr << " " << (std::count_if(all.method_history.begin(), all.method_history.end(), [](auto h){ return bool(h); })) << " methods reachable!\n";
 
     ::all.emplace(std::move(all));
 
-    return &::all->method_history[1];
+    return (const uint8_t*)&::all->method_history[1];
 }
 
 static vector<method_id> parse_methods(const model& m, const char* methods)
@@ -115,7 +115,7 @@ extern "C" const uint8_t* EMSCRIPTEN_KEEPALIVE simulate_purge(const method_id* p
     if(purge_set_len == 0)
     {
         current_purged_result = all;
-        return &current_purged_result->method_history[1];
+        return (const uint8_t*)&current_purged_result->method_history[1];
     }
 
     auto& m = *purge_model;
@@ -143,7 +143,7 @@ extern "C" const uint8_t* EMSCRIPTEN_KEEPALIVE simulate_purge(const method_id* p
 #endif
 
     current_purged_result.emplace(std::move(after_purge));
-    return &current_purged_result->method_history[1];
+    return (const uint8_t*)&current_purged_result->method_history[1];
 }
 
 using purges_batched_result_callback = uint32_t (*)(uint32_t, const uint8_t*);
@@ -201,7 +201,7 @@ extern "C" bool EMSCRIPTEN_KEEPALIVE simulate_purges_batched(const span<const me
         auto callback = [&](const span<const method_id> &mids, const BFS::Result &r)
         {
             size_t iteration = &mids - purge_sets;
-            bool cancellation_requested = result_callback(iteration, &r.method_history[1]) != 0;
+            bool cancellation_requested = result_callback(iteration, (const uint8_t*)&r.method_history[1]) != 0;
             // TODO: Enable cancellation
         };
 
@@ -235,7 +235,7 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE show_reachability(const char* methods)
 
     for(method_id mid : purged_mids)
     {
-        if(bfsresult->method_history[mid.id] == 0xFF)
+        if(!bfsresult->method_history[mid.id])
             continue;
 
         any_reachable = true;
