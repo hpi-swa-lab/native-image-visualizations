@@ -68,7 +68,7 @@ describe('Node usage', () => {
     })
 
     test('leaf with 0 code size is inlined', () => {
-        expect(new Leaf('Method', 0, InitKind.BUILD_TIME).isInline).toBeTruthy()
+        expect(new Leaf('Method', 0, [InitKind.BUILD_TIME]).isInline).toBeTruthy()
     })
 
     test('childless root returns its name for identifier', () => {
@@ -87,24 +87,24 @@ describe('Node usage', () => {
 
     test('equals should be true for same values and children', () => {
         const simpleTreeCopy = new Node('Class', [
-            new Leaf('methodA', 10, InitKind.BUILD_TIME),
-            new Leaf('methodB', 7, InitKind.BUILD_TIME),
-            new Leaf('methodC', 5, InitKind.RERUN),
-            new Leaf('methodD', 20, InitKind.BUILD_TIME),
-            new Leaf('methodE', 0, InitKind.BUILD_TIME),
-            new Leaf('methodF', 10, InitKind.BUILD_TIME)
+            new Leaf('methodA', 10, [InitKind.BUILD_TIME]),
+            new Leaf('methodB', 7, [InitKind.BUILD_TIME]),
+            new Leaf('methodC', 5, [InitKind.RERUN]),
+            new Leaf('methodD', 20, [InitKind.BUILD_TIME]),
+            new Leaf('methodE', 0, [InitKind.BUILD_TIME]),
+            new Leaf('methodF', 10, [InitKind.BUILD_TIME])
         ])
         expect(simpleTreeCopy.equals(forest.simpleTree)).toBeTruthy()
     })
 
     test('equals should be false if one child differs', () => {
         const simpleTreeCopy = new Node('Class', [
-            new Leaf('methodA', 18, InitKind.BUILD_TIME),
-            new Leaf('methodB', 7, InitKind.BUILD_TIME),
-            new Leaf('methodC', 5, InitKind.RERUN),
-            new Leaf('methodD', 20, InitKind.BUILD_TIME),
-            new Leaf('methodE', 0, InitKind.BUILD_TIME),
-            new Leaf('methodF', 10, InitKind.BUILD_TIME)
+            new Leaf('methodA', 18, [InitKind.BUILD_TIME]),
+            new Leaf('methodB', 7, [InitKind.BUILD_TIME]),
+            new Leaf('methodC', 5, [InitKind.RERUN]),
+            new Leaf('methodD', 20, [InitKind.BUILD_TIME]),
+            new Leaf('methodE', 0, [InitKind.BUILD_TIME]),
+            new Leaf('methodF', 10, [InitKind.BUILD_TIME])
         ])
         expect(simpleTreeCopy.equals(forest.simpleTree)).toBeFalsy()
     })
@@ -114,11 +114,17 @@ describe('Node usage', () => {
         expect(childlessRootCopy.equals(forest.childlessRoot)).toBeTruthy()
     })
 
+    test('equals should be true for permutations of initkind', () => {
+        const leafA = new Leaf('methodA', 10, [InitKind.BUILD_TIME, InitKind.RUN_TIME])
+        const leafB = new Leaf('methodA', 10, [InitKind.RUN_TIME, InitKind.BUILD_TIME])
+        expect(leafA.equals(leafB)).toBeTruthy()
+    })
+
     test('equals should be false for different number children', () => {
         const simpleTreeCopy = new Node('Class', [
-            new Leaf('methodA', 10, InitKind.BUILD_TIME),
-            new Leaf('methodB', 7, InitKind.BUILD_TIME),
-            new Leaf('methodC', 5, InitKind.RERUN)
+            new Leaf('methodA', 10, [InitKind.BUILD_TIME]),
+            new Leaf('methodB', 7, [InitKind.BUILD_TIME]),
+            new Leaf('methodC', 5, [InitKind.BUILD_TIME])
         ])
         expect(simpleTreeCopy.equals(forest.simpleTree)).toBeFalsy()
     })

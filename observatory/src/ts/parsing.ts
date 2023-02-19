@@ -1,80 +1,81 @@
-/* eslint-disable guard-for-in */
-/* Reason for exclulde: In the json file, the name
-of packages, fields, methods etc is a json attribute.
-We iterate through each of them and access the
-parents field at the names, which eslint falsly recognizes
-as an attribute which may not exist*/
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { Bytes } from './SharedTypes/Size'
 import { Leaf, InitKind } from './UniverseTypes/Leaf'
 import { Universe } from './UniverseTypes/Universe'
 import { Node } from './UniverseTypes/Node'
 
-class Methods {
+interface Methods {
     [methodName: string]: { size: Bytes; flags?: string[] }
+}
 
-    static validateMethodData(object: object, name: string) {
-        // explicitly checking for undefined, as size = 0 should not throw error
-        if (object.size === undefined || typeof object.size !== 'number')
-            throw new InvalidReachabilityFormatError(
-                'Missing "size" number attribute for method ' + name
-            )
+function validateMethodData(object: any, name: string) {
+    // explicitly checking for undefined, as size = 0 should not throw error
+    if (object.size === undefined || typeof object.size !== 'number') {
+        throw new InvalidReachabilityFormatError(
+            'Missing "size" number attribute for method ' + name
+        )
+    }
+
+    if (object.flags && !Array.isArray(object.flags)) {
+        throw new InvalidReachabilityFormatError(
+            '"flags" attribute is expected to be an array for method ' + name
+        )
     }
 }
 
-class Fields {
-    [fieldName: string]: { flags?: string[] }
+interface Types {
+    [typeName: string]: { methods: Methods; 'init-kind'?: string[] }
 }
 
-class Types {
-    [typeName: string]: { methods: Methods; fields: Fields; 'init-kind'?: string[] }
+function validateTypeData(object: any, name: string) {
+    if (!object.methods || object.methods.constructor !== Object) {
+        throw new InvalidReachabilityFormatError(
+            'Missing "methods" object attribute for type ' + name
+        )
+    }
 
-    static validateTypeData(object: object, name: string) {
-        if (!object.methods || object.methods.constructor !== Object) {
-            throw new InvalidReachabilityFormatError(
-                'Missing "methods" object attribute for type ' + name
-            )
-        }
+    if (object['init-kind'] && !Array.isArray(object['init-kind'])) {
+        throw new InvalidReachabilityFormatError(
+            '"init-kind" attribute is expected to be an array for type ' + name
+        )
     }
 }
 
-class Packages {
+interface Packages {
     [packageName: string]: { types: Types }
+}
 
-    static validatePackageData(object: object, name: string) {
-        if (!object.types || object.types.constructor !== Object) {
-            throw new InvalidReachabilityFormatError(
-                'Missing "types" object attribute for package ' + name
-            )
-        }
+function validatePackageData(object: any, name: string) {
+    if (!object.types || object.types.constructor !== Object) {
+        throw new InvalidReachabilityFormatError(
+            'Missing "types" object attribute for package ' + name
+        )
     }
 }
 
-class TopLevelOrigin {
+interface TopLevelOrigin {
     name: string
     // Either path or module is set in the serialized data, determining the name
     path?: string
     module?: string
 
     packages: Packages
-
-    static validateTopLevelOrigin(object: object, index: number) {
-        let name = ''
-        if (object.path) name = object.path
-        if (object.module) name = object.module
-
-        if (name.length === 0)
-            throw new InvalidReachabilityFormatError(
-                'Neither "name" or "module" attribute found on item at index ' + index
-            )
-        if (!object.packages || object.packages.constructor !== Object)
-            throw new InvalidReachabilityFormatError(
-                'Missing "packages" attribute for module ' + name
-            )
-        object.name = name
-    }
 }
 
-export type JSONScheme = Array<TopLevelOrigin>
+function validateTopLevelOrigin(object: any, index: number) {
+    let name = ''
+    if (object.path && object.path.constructor === String) name = object.path
+    if (object.module && object.module.constructor === String) name = object.module
+
+    if (name.length === 0)
+        throw new InvalidReachabilityFormatError(
+            'Neither "name" or "module" string attribute found on item at index ' + index
+        )
+    if (!object.packages || object.packages.constructor !== Object)
+        throw new InvalidReachabilityFormatError('Missing "packages" attribute for module ' + name)
+    object.name = name
+}
 
 export class InvalidReachabilityFormatError extends Error {
     constructor(msg: string) {
@@ -138,7 +139,7 @@ export async function loadJson(file: File): Promise<object> {
 }
 
 export function parseReachabilityExport(parsedJSON: object, imageName: string): Node {
-    if (!(parsedJSON instanceof Array)) {
+    if (!Array.isArray(parsedJSON)) {
         throw new InvalidReachabilityFormatError('JSON should be an Array of modules at top level ')
     }
 
@@ -146,7 +147,7 @@ export function parseReachabilityExport(parsedJSON: object, imageName: string): 
 
     root.push(
         ...parsedJSON.map((topLevelOrigin: TopLevelOrigin, index: number) => {
-            TopLevelOrigin.validateTopLevelOrigin(topLevelOrigin, index)
+            validateTopLevelOrigin(topLevelOrigin, index)
 
             return new Node(topLevelOrigin.name, parsePackages(topLevelOrigin.packages))
         })
@@ -156,14 +157,14 @@ export function parseReachabilityExport(parsedJSON: object, imageName: string): 
 
 function parsePackages(packages: Packages): Node[] {
     return Object.entries(packages).map(([packageName, packageData]) => {
-        Packages.validatePackageData(packageData, packageName)
+        validatePackageData(packageData, packageName)
         return new Node(packageName, parseTypes(packageData.types))
     })
 }
 
 function parseTypes(types: Types): Node[] {
     return Object.entries(types).map(([typeName, typeData]) => {
-        Types.validateTypeData(typeData, typeName)
+        validateTypeData(typeData, typeName)
 
         const initKinds = typeData['init-kind'] ? typeData['init-kind'] : []
         return new Node(typeName, parseMethods(typeData.methods, initKinds.map(parseInitKind)))
@@ -172,7 +173,7 @@ function parseTypes(types: Types): Node[] {
 
 function parseMethods(methods: Methods, initKinds: InitKind[]): Node[] {
     return Object.entries(methods).map(([methodName, methodData]) => {
-        Methods.validateMethodData(methodData, methodName)
+        validateMethodData(methodData, methodName)
 
         const flags = methodData.flags ? methodData.flags : []
         return new Leaf(
