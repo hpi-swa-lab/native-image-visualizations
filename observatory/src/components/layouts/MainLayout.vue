@@ -10,6 +10,7 @@ import {
     sankeyTreeConfigStore,
     causalityGraphConfigStore
 } from '../../ts/stores'
+import LayerSelection from '../controls/LayerSelection.vue'
 
 withDefaults(
     defineProps<{
@@ -88,6 +89,11 @@ function exportConfig() {
                 <VisualizationNavigation
                     v-if="globalStore.currentComponent !== SwappableComponentType.DataManager"
                 ></VisualizationNavigation>
+                <hr v-if="globalStore.currentComponent !== SwappableComponentType.DataManager" />
+
+                <LayerSelection
+                    v-if="globalStore.currentComponent !== SwappableComponentType.DataManager"
+                ></LayerSelection>
                 <hr v-if="globalStore.currentComponent !== SwappableComponentType.DataManager" />
 
                 <SearchBar />

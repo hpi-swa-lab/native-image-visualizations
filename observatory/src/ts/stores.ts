@@ -3,8 +3,9 @@ import { Universe } from './UniverseTypes/Universe'
 import { Node } from './UniverseTypes/Node'
 import { createConfigUniverses, createConfigSelections } from './parsing'
 import { SwappableComponentType, componentName } from './enums/SwappableComponentType'
-import { findNodesWithName } from './Math/filters'
+import { findNodesWithName, getNodesOnLevel } from './Math/filters'
 import { SortingOption, SortingOrder } from './enums/Sorting'
+import { Layers } from './enums/Layers'
 import { NodesDiffingFilter, NodesFilter, NodesSortingFilter } from './SharedTypes/NodesFilter'
 
 export const globalConfigStore = defineStore('globalConfig', {
@@ -12,6 +13,7 @@ export const globalConfigStore = defineStore('globalConfig', {
         return {
             universes: [] as Universe[],
             selections: {} as Record<string, Node[]>,
+            currentLayer: Layers.PACKAGES,
             currentComponent: SwappableComponentType.Home as SwappableComponentType,
             previousComponent: undefined as SwappableComponentType | undefined,
             search: ''
@@ -38,6 +40,14 @@ export const globalConfigStore = defineStore('globalConfig', {
         },
         setSelection(universeName: string, selection: Node[]): void {
             this.selections[universeName] = selection
+        },
+        switchToLayer(newLayer: Layers): void {
+            this.currentLayer = newLayer
+
+            const universes = this.universes as Universe[]
+            universes.forEach((universe: Universe) => {
+                this.setSelection(universe.name, getNodesOnLevel(this.currentLayer, universe.root))
+            })
         },
         switchToComponent(newComponent: SwappableComponentType): void {
             this.previousComponent = this.currentComponent
