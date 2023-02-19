@@ -124,7 +124,7 @@ describe('Node usage', () => {
         const simpleTreeCopy = new Node('Class', [
             new Leaf('methodA', 10, [InitKind.BUILD_TIME]),
             new Leaf('methodB', 7, [InitKind.BUILD_TIME]),
-            new Leaf('methodC', 5, [InitKind.BUILD_TIME])
+            new Leaf('methodC', 5, [InitKind.RERUN])
         ])
         expect(simpleTreeCopy.equals(forest.simpleTree)).toBeFalsy()
     })
