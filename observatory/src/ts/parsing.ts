@@ -1,5 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
+/**
+ * Reason for disable: The parsed object from the JSON file can have any properties.
+ * Type unknown is not useful as explicit type checking cannot be done as
+ * the JSONs are parsed at run time. Since we use dynamic properties,
+ * a static type check with the types Methods, Type, etc., cannot be performed.
+ * Even though any is used, the usages do explicitly check for properties before
+ * accessing them.
+ */
 import { Bytes } from './SharedTypes/Size'
 import { Leaf, InitKind } from './UniverseTypes/Leaf'
 import { Universe } from './UniverseTypes/Universe'
@@ -56,7 +63,6 @@ function validatePackageData(object: any, name: string) {
 
 interface TopLevelOrigin {
     name: string
-    // Either path or module is set in the serialized data, determining the name
     path?: string
     module?: string
 
