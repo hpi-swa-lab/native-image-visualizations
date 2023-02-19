@@ -9,31 +9,80 @@ import { Leaf, InitKind } from './UniverseTypes/Leaf'
 import { Universe } from './UniverseTypes/Universe'
 import { Node } from './UniverseTypes/Node'
 
-interface Methods {
+class Methods {
     [methodName: string]: { size: Bytes; flags?: string[] }
+
+    static validateMethodData(object: object, name: string) {
+        // explicitly checking for undefined, as size = 0 should not throw error
+        if (object.size === undefined || typeof object.size !== 'number')
+            throw new InvalidReachabilityFormatError(
+                'Missing "size" number attribute for method ' + name
+            )
+    }
 }
 
-interface Fields {
+class Fields {
     [fieldName: string]: { flags?: string[] }
 }
 
-interface Types {
+class Types {
     [typeName: string]: { methods: Methods; fields: Fields; 'init-kind'?: string[] }
+
+    static validateTypeData(object: object, name: string) {
+        if (!object.methods || object.methods.constructor !== Object) {
+            throw new InvalidReachabilityFormatError(
+                'Missing "methods" object attribute for type ' + name
+            )
+        }
+    }
 }
 
-interface Packages {
+class Packages {
     [packageName: string]: { types: Types }
+
+    static validatePackageData(object: object, name: string) {
+        if (!object.types || object.types.constructor !== Object) {
+            throw new InvalidReachabilityFormatError(
+                'Missing "types" object attribute for package ' + name
+            )
+        }
+    }
 }
 
-interface TopLevelOrigin {
-    // Either path or module is set in the serialized data
+class TopLevelOrigin {
+    name: string
+    // Either path or module is set in the serialized data, determining the name
     path?: string
     module?: string
 
     packages: Packages
+
+    static validateTopLevelOrigin(object: object, index: number) {
+        let name = ''
+        if (object.path) name = object.path
+        if (object.module) name = object.module
+
+        if (name.length === 0)
+            throw new InvalidReachabilityFormatError(
+                'Neither "name" or "module" attribute found on item at index ' + index
+            )
+        if (!object.packages || object.packages.constructor !== Object)
+            throw new InvalidReachabilityFormatError(
+                'Missing "packages" attribute for module ' + name
+            )
+        object.name = name
+    }
 }
 
-type JSONScheme = Array<TopLevelOrigin>
+export type JSONScheme = Array<TopLevelOrigin>
+
+export class InvalidReachabilityFormatError extends Error {
+    constructor(msg: string) {
+        super('Invalid Reachability Format: ' + msg)
+
+        Object.setPrototypeOf(this, InvalidReachabilityFormatError.prototype)
+    }
+}
 
 export function createConfigSelections(
     selections: Record<string, Node[]>
@@ -72,8 +121,8 @@ function createConfigUniverse(universe: Universe): Record<string, unknown> {
     return {}
 }
 
-export async function loadJson(file: File): Promise<JSONScheme> {
-    return new Promise<JSONScheme>((resolve, reject) => {
+export async function loadJson(file: File): Promise<object> {
+    return new Promise<object>((resolve, reject) => {
         const reader = new FileReader()
         reader.readAsText(file)
         reader.onload = () => {
@@ -88,29 +137,34 @@ export async function loadJson(file: File): Promise<JSONScheme> {
     })
 }
 
-export function parseReachabilityExport(reachabilityExport: JSONScheme, imageName: string): Node {
+export function parseReachabilityExport(parsedJSON: object, imageName: string): Node {
+    if (!(parsedJSON instanceof Array)) {
+        throw new InvalidReachabilityFormatError('JSON should be an Array of modules at top level ')
+    }
+
     const root = new Node(imageName)
 
     root.push(
-        ...reachabilityExport.map((topLevelOrigin: TopLevelOrigin) => {
-            let name = ''
-            if (topLevelOrigin.path) name = topLevelOrigin.path
-            if (topLevelOrigin.module) name = topLevelOrigin.module
+        ...parsedJSON.map((topLevelOrigin: TopLevelOrigin, index: number) => {
+            TopLevelOrigin.validateTopLevelOrigin(topLevelOrigin, index)
 
-            return new Node(name, parsePackages(topLevelOrigin.packages))
+            return new Node(topLevelOrigin.name, parsePackages(topLevelOrigin.packages))
         })
     )
     return root
 }
 
 function parsePackages(packages: Packages): Node[] {
-    return Object.entries(packages).map(
-        ([packageName, packageData]) => new Node(packageName, parseTypes(packageData.types))
-    )
+    return Object.entries(packages).map(([packageName, packageData]) => {
+        Packages.validatePackageData(packageData, packageName)
+        return new Node(packageName, parseTypes(packageData.types))
+    })
 }
 
 function parseTypes(types: Types): Node[] {
     return Object.entries(types).map(([typeName, typeData]) => {
+        Types.validateTypeData(typeData, typeName)
+
         const initKinds = typeData['init-kind'] ? typeData['init-kind'] : []
         return new Node(typeName, parseMethods(typeData.methods, initKinds.map(parseInitKind)))
     })
@@ -118,6 +172,8 @@ function parseTypes(types: Types): Node[] {
 
 function parseMethods(methods: Methods, initKinds: InitKind[]): Node[] {
     return Object.entries(methods).map(([methodName, methodData]) => {
+        Methods.validateMethodData(methodData, methodName)
+
         const flags = methodData.flags ? methodData.flags : []
         return new Leaf(
             methodName,

@@ -1,4 +1,4 @@
-s
+
 <script setup lang="ts">
 import { ref } from 'vue'
 
@@ -18,6 +18,7 @@ const dataInput = ref<HTMLInputElement>()
 const formContents = ref<{
     name?: string
     reachabilityExportFile?: File
+    error?: Error
 }>({})
 
 function validateAndUpdateReachabilityExport() {
@@ -54,6 +55,21 @@ function validateAndUpdateName() {
     input.reportValidity()
 }
 
+async function validateFileAndAddUniverseOnSuccess(file: File, universeName: string) {
+    loadJson(file)
+        .then((parsedJSON) => {
+            const newUniverse = new Universe(
+                universeName, 
+                parseReachabilityExport(parsedJSON, universeName)
+                )
+            store.addUniverse(newUniverse)
+            formContents.value.error = undefined
+        })
+        .catch((error) => {
+            formContents.value.error = error
+        }).finally(() => form.value?.checkValidity())
+}
+
 async function addUniverse() {
     validateAndUpdateName()
     validateAndUpdateReachabilityExport()
@@ -62,10 +78,8 @@ async function addUniverse() {
 
     if (!formContents.value.name || !formContents.value.reachabilityExportFile) return
 
-    const rawData = await loadJson(formContents.value.reachabilityExportFile)
-    const newUniverse = new Universe(formContents.value.name, parseReachabilityExport(rawData, formContents.value.name))
-
-    store.addUniverse(newUniverse)
+    validateFileAndAddUniverseOnSuccess(formContents.value.reachabilityExportFile, 
+                                        formContents.value.name)
 }
 </script>
 
@@ -81,7 +95,7 @@ async function addUniverse() {
                     <div
                         v-for="(universe, index) in store.universes"
                         :key="index"
-                        class="flex items-center justify-between"
+                        class="flex items-center justify-between animate-flash"
                     >
                         {{ universe.name }}
                         <button
@@ -124,7 +138,7 @@ async function addUniverse() {
                         ref="dataInput"
                         class="w-full block"
                         type="file"
-                        accept="json"
+                        accept="application/json"
                         required
                         @change="validateAndUpdateReachabilityExport"
                     />
@@ -135,6 +149,9 @@ async function addUniverse() {
                 </div>
 
                 <button class="btn btn-primary">Add Universe</button>
+                <p v-if="formContents.error" class="error-text space-y-4">
+                    {{ formContents.error.message }}
+                </p>
             </ElevatedLayer>
         </form>
     </MainLayout>
