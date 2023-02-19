@@ -12,6 +12,7 @@ export const globalConfigStore = defineStore('globalConfig', {
         return {
             universes: [] as Universe[],
             selections: {} as Record<string, Node[]>,
+            highlights: {} as Record<string, Node[]>,
             currentComponent: SwappableComponentType.Home as SwappableComponentType,
             previousComponent: undefined as SwappableComponentType | undefined,
             search: ''
@@ -39,6 +40,9 @@ export const globalConfigStore = defineStore('globalConfig', {
         setSelection(universeName: string, selection: Node[]): void {
             this.selections[universeName] = selection
         },
+        setHighlights(universeName: string, highlight: Node[]): void {
+            this.highlights[universeName] = highlight
+        },
         switchToComponent(newComponent: SwappableComponentType): void {
             this.previousComponent = this.currentComponent
             this.currentComponent = newComponent
@@ -63,6 +67,7 @@ export const globalConfigStore = defineStore('globalConfig', {
             return {
                 universes: createConfigUniverses(this.universes as Universe[]),
                 selections: createConfigSelections(this.selections),
+                highlights: createConfigSelections(this.highlights),
                 currentComponent: this.currentComponent,
                 search: this.search
             }
