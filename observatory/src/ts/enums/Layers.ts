@@ -1,9 +1,10 @@
 export enum Layers {
-    UNIVERSES = 0,
-    MODULES = 1,
-    PACKAGES = 2,
-    CLASSES = 3,
-    METHODS = 4
+    MULTIVERS = 0,
+    UNIVERSES = 1,
+    MODULES = 2,
+    PACKAGES = 3,
+    CLASSES = 4,
+    METHODS = 5
 }
 
 export function layerName(layer: Layers): string {
