@@ -59,7 +59,7 @@ input {
 }
 
 .error-text {
-    @apply bg-red-100 border-l-4 border-red-500 text-red-700 p-4 animate-flash
+    @apply bg-red-100 border-l-4 border-red-500 text-red-700 p-4 animate-flash;
 }
 
 .dropdown {

@@ -57,10 +57,8 @@ export class Leaf extends Node {
             this.isReflective === another.isReflective &&
             this.isJni === another.isJni &&
             this.isSynthetic === another.isSynthetic &&
-            this.initKinds.length == another.initKinds.length &&
-            this.initKinds.every(
-                (initKind: InitKind, index: number) => initKind === another.initKinds[index]
-            )
+            this.initKinds.length === another.initKinds.length &&
+            this.initKinds.sort().toString() === another.initKinds.sort().toString()
         )
     }
 }

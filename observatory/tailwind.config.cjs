@@ -5,12 +5,12 @@ module.exports = {
         extend: {
             keyframes: {
                 flash: {
-                    '0%': { opacity: '0'},
-                    '100%': { opacity: '1'},
+                    '0%': { opacity: '0' },
+                    '100%': { opacity: '1' }
                 }
             },
             animation: {
-                'flash': 'flash 0.7s ease-out',
+                flash: 'flash 0.7s ease-out'
             }
         }
     },

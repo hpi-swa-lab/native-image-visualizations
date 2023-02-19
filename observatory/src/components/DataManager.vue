@@ -1,4 +1,3 @@
-
 <script setup lang="ts">
 import { ref } from 'vue'
 
@@ -59,15 +58,16 @@ async function validateFileAndAddUniverseOnSuccess(file: File, universeName: str
     loadJson(file)
         .then((parsedJSON) => {
             const newUniverse = new Universe(
-                universeName, 
+                universeName,
                 parseReachabilityExport(parsedJSON, universeName)
-                )
+            )
             store.addUniverse(newUniverse)
             formContents.value.error = undefined
         })
         .catch((error) => {
             formContents.value.error = error
-        }).finally(() => form.value?.checkValidity())
+        })
+        .finally(() => form.value?.checkValidity())
 }
 
 async function addUniverse() {
@@ -78,8 +78,10 @@ async function addUniverse() {
 
     if (!formContents.value.name || !formContents.value.reachabilityExportFile) return
 
-    validateFileAndAddUniverseOnSuccess(formContents.value.reachabilityExportFile, 
-                                        formContents.value.name)
+    validateFileAndAddUniverseOnSuccess(
+        formContents.value.reachabilityExportFile,
+        formContents.value.name
+    )
 }
 </script>
 
