@@ -109,9 +109,6 @@ function exportConfig() {
                 />
                 <hr v-if="globalStore.currentComponent !== SwappableComponentType.DataManager" />
 
-                <button class="btn btn-primary w-full" @click="exportConfig">Export config</button>
-                <hr />
-
                 <ul class="space-y-2">
                     <slot name="controls"> Controls </slot>
                 </ul>
