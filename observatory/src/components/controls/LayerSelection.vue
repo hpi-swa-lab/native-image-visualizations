@@ -17,18 +17,17 @@ function applyLayer(event: Event) {
         >
 
         <div class="slider">
-            <input 
+            <input
                 id="layer-selection"
+                v-model="store.currentLayer"
                 name="Layer"
-                type="range" 
-                class= "block w-full"
-                v-model="store.currentLayer" 
-                :min="Layers.UNIVERSES" 
-                :max="Layers.METHODS" 
-                :step="1" 
+                type="range"
+                class="block w-full"
+                :min="Layers.UNIVERSES"
+                :max="Layers.METHODS"
+                :step="1"
                 @change="applyLayer"
             />
-            
         </div>
     </div>
 </template>
