@@ -53,7 +53,7 @@ export const globalConfigStore = defineStore('globalConfig', {
 
             const universes = this.universes as Universe[]
             universes.forEach((universe: Universe) => {
-                this.setSelection(universe.name, findNodesWithName(this.search, universe.root))
+                this.setHighlights(universe.name, findNodesWithName(this.search, universe.root))
             })
         },
         toExportDict(): Record<
