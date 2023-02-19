@@ -74,13 +74,15 @@ function validateTopLevelOrigin(object: any, index: number) {
     if (object.path && object.path.constructor === String) name = object.path
     if (object.module && object.module.constructor === String) name = object.module
 
-    if (name.length === 0)
+    if (name.length === 0) {
         throw new InvalidReachabilityFormatError(
             'Neither "name" or "module" string attribute found on item at index ' + index
         )
-    if (!object.packages || object.packages.constructor !== Object)
+    }
+    if (!object.packages || object.packages.constructor !== Object) {
         throw new InvalidReachabilityFormatError('Missing "packages" attribute for module ' + name)
-    object.name = name
+        object.name = name
+    }
 }
 
 export class InvalidReachabilityFormatError extends Error {
