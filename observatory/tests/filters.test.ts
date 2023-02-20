@@ -54,7 +54,7 @@ describe('filters', () => {
         })
 
         test('returns array with multiverse on respective layer', () => {
-            const actual = getNodesOnLevel(Layers.MULTIVERS, multiverse)
+            const actual = getNodesOnLevel(Layers.MULTIVERSE, multiverse)
             const expected = [multiverse]
 
             expect(actual.length).toBe(expected.length)

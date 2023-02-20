@@ -1,5 +1,5 @@
 export enum Layers {
-    MULTIVERS = 0,
+    MULTIVERSE = 0,
     UNIVERSES = 1,
     MODULES = 2,
     PACKAGES = 3,
