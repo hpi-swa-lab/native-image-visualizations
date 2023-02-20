@@ -22,7 +22,7 @@ function isDisabled(universeName: string) {
         <label>
             <p class="mb-2">Universes to observe:</p>
 
-            <ElevatedLayer y-spacing="2">
+            <ElevatedLayer :y-spacing="2">
                 <p v-if="store.universes.length === 0">Add universes via the Data Manager.</p>
                 <ToggleSwitch
                     v-for="(universe, index) in store.universes"

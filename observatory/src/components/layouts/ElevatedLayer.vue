@@ -10,6 +10,7 @@ const props = withDefaults(
         ySpacing: 5
     }
 )
+
 const shadowClass = computed(() => {
     switch (props.level) {
         case 1:
