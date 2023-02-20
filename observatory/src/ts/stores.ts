@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { Universe } from './UniverseTypes/Universe'
 import { Node } from './UniverseTypes/Node'
-import { createConfigUniverses, createConfigSelections } from './parsing'
+import { createConfigUniverses, createConfigSelections, createConfigHighlights } from './parsing'
 import { SwappableComponentType, componentName } from './enums/SwappableComponentType'
 import { findNodesWithName } from './Math/filters'
 import { SortingOption, SortingOrder } from './enums/Sorting'
@@ -67,7 +67,7 @@ export const globalConfigStore = defineStore('globalConfig', {
             return {
                 universes: createConfigUniverses(this.universes as Universe[]),
                 selections: createConfigSelections(this.selections),
-                highlights: createConfigSelections(this.highlights),
+                highlights: createConfigHighlights(this.highlights),
                 currentComponent: this.currentComponent,
                 search: this.search
             }

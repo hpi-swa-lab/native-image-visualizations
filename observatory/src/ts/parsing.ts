@@ -7,14 +7,32 @@ export function createConfigSelections(
     const result: Record<string, Record<string, unknown>> = {}
 
     Object.keys(selections).forEach((name: string) => {
-        const currentSelection: Node[] = selections[name]
-        result[name] = createConfigSelection(name, currentSelection)
+        result[name] = createConfigSelection(name, selections[name])
     })
 
     return result
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function createConfigSelection(name: string, nodes: Node[]): Record<string, unknown> {
+    // TODO: implement this, corresponding issue: [#85](https://github.com/hpi-swa-lab/MPWS2022RH1/issues/85)
+    return {}
+}
+
+export function createConfigHighlights(
+    highlights: Record<string, Node[]>
+): Record<string, Record<string, unknown>> {
+    const result: Record<string, Record<string, unknown>> = {}
+
+    Object.keys(highlights).forEach((name: string) => {
+        result[name] = createConfigSelection(name, highlights[name])
+    })
+
+    return result
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function createConfigHighlight(name: string, nodes: Node[]): Record<string, unknown> {
     // TODO: implement this, corresponding issue: [#85](https://github.com/hpi-swa-lab/MPWS2022RH1/issues/85)
     return {}
 }
@@ -31,6 +49,7 @@ export function createConfigUniverses(
     return result
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function createConfigUniverse(universe: Universe): Record<string, unknown> {
     // TODO: implement this, corresponding issue: [#85](https://github.com/hpi-swa-lab/MPWS2022RH1/issues/85v)
     return {}
