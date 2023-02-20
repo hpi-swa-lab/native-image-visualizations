@@ -47,7 +47,8 @@ export const globalConfigStore = defineStore('globalConfig', {
 
             const universes = this.universes as Universe[]
             universes.forEach((universe: Universe) => {
-                this.setSelection(universe.name, getNodesOnLevel(this.currentLayer, universe.root)))
+                this.setSelection(universe.name, getNodesOnLevel(this.currentLayer, universe.root))
+            })
         },
         setHighlights(universeName: string, highlight: Node[]): void {
             this.highlights[universeName] = highlight
