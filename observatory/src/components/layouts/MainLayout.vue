@@ -10,6 +10,7 @@ import {
     sankeyTreeConfigStore,
     causalityGraphConfigStore
 } from '../../ts/stores'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
 withDefaults(
     defineProps<{
@@ -45,19 +46,31 @@ function exportConfig() {
 
 <template>
     <div class="w-full h-full grid grid-cols-12 gap-2">
-        <div class="col-span-2 drop-shadow-xl overflow-y-scroll">
+        <div class="col-span-2 drop-shadow-xl overflow-y-scroll min-w-[250px]">
             <div class="px-3 py-4 rounded bg-gray-50 space-y-4 h-full">
                 <h2>{{ title }}</h2>
                 <hr />
 
-                <div class="space-y-4">
+                <div class="flex flex-row justify-between">
+                    <button
+                        v-if="
+                            globalStore.currentComponent === SwappableComponentType.DataManager &&
+                            globalStore.previousComponent !== undefined
+                        "
+                        class="btn btn-primary mr-2"
+                        :title="'go back to ' + globalStore.previousComponentName"
+                        @click="globalStore.goToPreviousComponent()"
+                    >
+                        <font-awesome-icon icon="fa-arrow-left" />
+                    </button>
+
                     <button
                         v-if="
                             globalStore.currentComponent === SwappableComponentType.DataManager &&
                             globalStore.previousComponent !== SwappableComponentType.Home
                         "
                         type="button"
-                        class="btn btn-primary w-full"
+                        class="btn btn-primary flex-auto"
                         @click="globalStore.switchToComponent(SwappableComponentType.Home)"
                     >
                         Home
@@ -65,20 +78,18 @@ function exportConfig() {
                     <button
                         v-if="globalStore.currentComponent !== SwappableComponentType.DataManager"
                         type="button"
-                        class="btn btn-primary w-full"
+                        class="btn btn-primary flex-auto"
                         @click="globalStore.switchToComponent(SwappableComponentType.DataManager)"
                     >
                         Data Manager
                     </button>
+
                     <button
-                        v-if="
-                            globalStore.currentComponent === SwappableComponentType.DataManager &&
-                            globalStore.previousComponent !== undefined
-                        "
-                        class="btn btn-primary w-full"
-                        @click="globalStore.goToPreviousComponent()"
+                        class="btn btn-primary ml-2"
+                        title="export config"
+                        @click="exportConfig"
                     >
-                        Go back to {{ globalStore.previousComponentName }}
+                        <font-awesome-icon icon="fa-file-export" />
                     </button>
                     <slot name="topButtons" />
                 </div>
@@ -97,9 +108,6 @@ function exportConfig() {
                     v-if="globalStore.currentComponent !== SwappableComponentType.DataManager"
                 />
                 <hr v-if="globalStore.currentComponent !== SwappableComponentType.DataManager" />
-
-                <button class="btn btn-primary w-full" @click="exportConfig">Export config</button>
-                <hr />
 
                 <ul class="space-y-2">
                     <slot name="controls"> Controls </slot>
