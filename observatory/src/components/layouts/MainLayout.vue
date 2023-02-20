@@ -86,23 +86,20 @@ function exportConfig() {
 
                 <hr />
 
-                <VisualizationNavigation
-                    v-if="globalStore.currentComponent !== SwappableComponentType.DataManager"
-                ></VisualizationNavigation>
-                <hr v-if="globalStore.currentComponent !== SwappableComponentType.DataManager" />
-
-                <LayerSelection
-                    v-if="globalStore.currentComponent !== SwappableComponentType.DataManager"
-                ></LayerSelection>
-                <hr v-if="globalStore.currentComponent !== SwappableComponentType.DataManager" />
+                <template v-if="globalStore.currentComponent !== SwappableComponentType.DataManager">
+                    <VisualizationNavigation></VisualizationNavigation>
+                    <hr />
+                    <LayerSelection></LayerSelection>
+                    <hr />
+                </template>
 
                 <SearchBar />
                 <hr />
 
-                <UniverseSelectionList
-                    v-if="globalStore.currentComponent !== SwappableComponentType.DataManager"
-                />
-                <hr v-if="globalStore.currentComponent !== SwappableComponentType.DataManager" />
+                <template v-if="globalStore.currentComponent !== SwappableComponentType.DataManager">
+                    <UniverseSelectionList/>
+                    <hr />
+                </template>
 
                 <button class="btn btn-primary w-full" @click="exportConfig">Export config</button>
                 <hr />
