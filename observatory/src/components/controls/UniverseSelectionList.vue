@@ -3,16 +3,18 @@ import { globalConfigStore } from '../../ts/stores'
 import ToggleSwitch from './ToggleSwitch.vue'
 import ElevatedLayer from '../layouts/ElevatedLayer.vue'
 
+const MAX_OBSERVABLE_UNIVERSES = 2
+
 const store = globalConfigStore()
 
 function isChecked(universeName: string) {
-    return store.observedUniverses.map((universe) => universe.name).includes(universeName)
+    return store.observedUniverses.some((universe) => universe.name == universeName)
 }
 
 function isDisabled(universeName: string) {
     return (
-        store.observedUniverses.length === 2 &&
-        !store.observedUniverses.map((universe) => universe.name).includes(universeName)
+        store.observedUniverses.length === MAX_OBSERVABLE_UNIVERSES &&
+        !store.observedUniverses.some((universe) => universe.name == universeName)
     )
 }
 </script>
