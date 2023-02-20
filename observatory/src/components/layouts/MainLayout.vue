@@ -97,7 +97,9 @@ function exportConfig() {
 
                 <hr />
 
-                <template v-if="globalStore.currentComponent !== SwappableComponentType.DataManager">
+                <template
+                    v-if="globalStore.currentComponent !== SwappableComponentType.DataManager"
+                >
                     <VisualizationNavigation></VisualizationNavigation>
                     <hr />
                     <LayerSelection></LayerSelection>
@@ -107,8 +109,10 @@ function exportConfig() {
                 <SearchBar />
                 <hr />
 
-                <template v-if="globalStore.currentComponent !== SwappableComponentType.DataManager">
-                    <UniverseSelectionList/>
+                <template
+                    v-if="globalStore.currentComponent !== SwappableComponentType.DataManager"
+                >
+                    <UniverseSelectionList />
                     <hr />
                 </template>
 
