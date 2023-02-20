@@ -1,10 +1,7 @@
 s
 <script setup lang="ts">
-import ElevatedLayer from '../layouts/ElevatedLayer.vue'
-
 import { Universe } from '../../ts/UniverseTypes/Universe'
 import { loadJson, parseReachabilityExport } from '../../ts/parsing'
-import MainLayout from '../layouts/MainLayout.vue'
 import {
     globalConfigStore,
     vennConfigStore,

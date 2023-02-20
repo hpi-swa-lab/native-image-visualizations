@@ -4,15 +4,6 @@ import UniverseSelectionList from '../controls/UniverseSelectionList.vue'
 import SearchBar from '../controls/SearchBar.vue'
 import TabLayout from './TabLayout.vue'
 import DataManager from '../controls/DataManager.vue'
-import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
-import {
-    globalConfigStore,
-    vennConfigStore,
-    treeLineConfigStore,
-    sankeyTreeConfigStore,
-    causalityGraphConfigStore
-} from '../../ts/stores'
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
 withDefaults(
     defineProps<{
@@ -22,8 +13,6 @@ withDefaults(
         title: ''
     }
 )
-
-const globalStore = globalConfigStore()
 </script>
 
 <template>
