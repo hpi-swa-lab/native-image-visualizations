@@ -3,7 +3,7 @@ import { Universe } from './UniverseTypes/Universe'
 import { Node } from './UniverseTypes/Node'
 import { createConfigUniverses, createConfigSelections, createConfigHighlights } from './parsing'
 import { SwappableComponentType, componentName } from './enums/SwappableComponentType'
-import { findNodesWithName, getNodesOnLevel } from './Math/filters'
+import { findNodesWithName } from './Math/filters'
 import { SortingOption, SortingOrder } from './enums/Sorting'
 import { Layers } from './enums/Layers'
 import { NodesDiffingFilter, NodesFilter, NodesSortingFilter } from './SharedTypes/NodesFilter'
@@ -44,11 +44,6 @@ export const globalConfigStore = defineStore('globalConfig', {
         },
         switchToLayer(newLayer: Layers): void {
             this.currentLayer = newLayer
-
-            const universes = this.universes as Universe[]
-            universes.forEach((universe: Universe) => {
-                this.setSelection(universe.name, getNodesOnLevel(this.currentLayer, universe.root))
-            })
         },
         setHighlights(universeName: string, highlight: Node[]): void {
             this.highlights[universeName] = highlight
