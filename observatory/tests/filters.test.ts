@@ -33,8 +33,8 @@ describe('filters', () => {
 
     describe('getNodesOnLevel', () => {
         const multiverse = new Node('', [
-            new Node('Univers A', [forest.duplicatedNames]),
-            new Node('Univers B', [forest.layeredTree])
+            new Node('Universe A', [forest.duplicatedNames]),
+            new Node('Universe B', [forest.layeredTree])
         ])
 
         test('returns empty array when level is negative', () => {
