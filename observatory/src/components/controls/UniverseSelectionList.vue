@@ -5,13 +5,13 @@ import ToggleSwitch from './ToggleSwitch.vue'
 const store = globalConfigStore()
 
 function isChecked(universeName: string) {
-    return store.selectedUniverses.map((universe) => universe.name).includes(universeName)
+    return store.observedUniverses.map((universe) => universe.name).includes(universeName)
 }
 
 function isDisabled(universeName: string) {
     return (
-        store.selectedUniverses.length === 2 &&
-        !store.selectedUniverses.map((universe) => universe.name).includes(universeName)
+        store.observedUniverses.length === 2 &&
+        !store.observedUniverses.map((universe) => universe.name).includes(universeName)
     )
 }
 </script>
@@ -19,7 +19,7 @@ function isDisabled(universeName: string) {
 <template>
     <div>
         <label
-            >Universes to diff:
+            >Universes to observe:
             <ToggleSwitch
                 v-for="(universe, index) in store.universes"
                 :id="universe.name + index"
