@@ -8,7 +8,7 @@ import {
     sankeyTreeConfigStore,
     causalityGraphConfigStore
 } from '../../ts/stores'
-import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
 const store = globalConfigStore()
 
@@ -62,7 +62,9 @@ function exportConfig() {
             />
         </div>
 
-      <label for="container-universes">Current Universes: <span v-if="store.universes.length === 0"><br/>None</span></label>
+        <label for="container-universes"
+            >Current Universes: <span v-if="store.universes.length === 0"><br />None</span></label
+        >
         <div id="container-universes" class="space-y-2">
             <div
                 v-for="(universe, index) in store.universes"
@@ -70,7 +72,10 @@ function exportConfig() {
                 class="flex items-center justify-between space-x-2"
             >
                 <p class="overflow-x-hidden ml-2">{{ universe.name }}</p>
-                <button class="btn-small btn-danger" @click="() => store.removeUniverse(universe.name)">
+                <button
+                    class="btn-small btn-danger"
+                    @click="() => store.removeUniverse(universe.name)"
+                >
                     <font-awesome-icon icon="xmark" />
                 </button>
             </div>
