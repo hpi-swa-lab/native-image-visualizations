@@ -15,7 +15,7 @@ function node(name: string, sources: Map<UniverseIndex, Node>, children: Node[] 
 }
 
 function leaf(name: string, occursIn: Map<UniverseIndex, Node>, codeSize: Bytes): Leaf {
-    const leaf = new Leaf(name, codeSize, InitKind.BUILD_TIME)
+    const leaf = new Leaf(name, codeSize, [InitKind.BUILD_TIME])
     leaf.sources = occursIn
     return leaf
 }

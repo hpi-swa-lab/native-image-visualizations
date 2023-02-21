@@ -27,8 +27,6 @@ function onChange(event: MouseEvent): void {
 <template>
     <div id="sankey-tree-controls" class="input-container settings-container">
         <form>
-            <b>Controls</b>
-
             <DiffingUniversesFilterFieldset
                 :universes-metadata="universesMetadata"
             ></DiffingUniversesFilterFieldset>

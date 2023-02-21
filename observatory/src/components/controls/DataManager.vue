@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { Universe } from '../../ts/UniverseTypes/Universe'
 import { loadJson, parseReachabilityExport } from '../../ts/parsing'
 import {
@@ -11,17 +12,30 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
 const store = globalConfigStore()
+const uploadError = ref<Error | undefined>(undefined)
 
-async function addUniverses(event: Event) {
+function validateFileAndAddUniverseOnSuccess(file: File, universeName: string): void {
+    loadJson(file)
+        .then((parsedJSON) => {
+            const newUniverse = new Universe(
+                universeName,
+                parseReachabilityExport(parsedJSON, universeName)
+            )
+            store.addUniverse(newUniverse)
+            uploadError.value = undefined
+        })
+        .catch((error) => {
+            uploadError.value = error
+        })
+}
+
+function addUniverses(event: Event) {
     const input = event.target as HTMLInputElement
     if (!input.files) return
 
-    Array.from(input.files).forEach(async (file: File) => {
-        const rawData = await loadJson(file)
-        const newUniverse = new Universe(file.name, parseReachabilityExport(rawData))
-
-        store.addUniverse(newUniverse)
-    })
+    Array.from(input.files).forEach((file: File) =>
+        validateFileAndAddUniverseOnSuccess(file, file.name)
+    )
 
     input.value = ''
 }
@@ -53,13 +67,17 @@ function exportConfig() {
             <label for="input-report-data">Upload Build Reports:</label>
             <input
                 id="input-report-data"
-                class="w-full"
+                class="w-full space-y-4"
                 type="file"
-                accept="json"
+                accept="application/json"
                 required
                 multiple
                 @change="addUniverses"
             />
+
+            <p v-if="uploadError" class="error-text space-y-4">
+                {{ uploadError.message }}
+            </p>
         </div>
 
         <label for="container-universes"
