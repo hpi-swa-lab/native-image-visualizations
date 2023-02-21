@@ -27,11 +27,10 @@ function onChange(event: MouseEvent): void {
 <template>
     <div id="sankey-tree-controls" class="input-container settings-container">
         <form>
-
             <DiffingUniversesFilterFieldset
                 :universes-metadata="universesMetadata"
             ></DiffingUniversesFilterFieldset>
-            
+
             <SortingFilterFieldset />
 
             <button type="submit" class="btn btn-sm btn-primary m-2" @click="onChange">

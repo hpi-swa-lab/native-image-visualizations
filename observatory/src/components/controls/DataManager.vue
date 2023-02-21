@@ -11,7 +11,7 @@ import {
 } from '../../ts/stores'
 
 const store = globalConfigStore()
-const uploadError = ref<Error|undefined>(undefined)
+const uploadError = ref<Error | undefined>(undefined)
 
 function validateFileAndAddUniverseOnSuccess(file: File, universeName: string): void {
     loadJson(file)

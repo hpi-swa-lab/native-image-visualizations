@@ -35,7 +35,7 @@ withDefaults(
                             <UniverseSelectionList />
                             <hr />
 
-                            <b class = "space-y-4">Controls</b>
+                            <b class="space-y-4">Controls</b>
                             <SearchBar />
                             <LayerSelection />
 
@@ -50,7 +50,6 @@ withDefaults(
                 </TabLayout>
             </div>
         </div>
-            <div class="col-span-10 h-full overflow-y-auto">
-        </div>
+        <div class="col-span-10 h-full overflow-y-auto"></div>
     </div>
 </template>
