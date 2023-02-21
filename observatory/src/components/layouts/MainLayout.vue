@@ -32,17 +32,15 @@ withDefaults(
                             <VisualizationNavigation />
                             <hr />
 
-                            <LayerSelection />
-                            <hr />
-
-                            <SearchBar />
-                            <hr />
-
                             <UniverseSelectionList />
                             <hr />
 
+                            <b class = "space-y-4">Controls</b>
+                            <SearchBar />
+                            <LayerSelection />
+
                             <ul class="space-y-2">
-                                <slot name="controls"> Controls </slot>
+                                <slot name="controls"></slot>
                             </ul>
                         </div>
                     </template>
@@ -52,8 +50,7 @@ withDefaults(
                 </TabLayout>
             </div>
         </div>
-        <div class="col-span-10 h-full overflow-y-auto">
-            <slot />
+            <div class="col-span-10 h-full overflow-y-auto">
         </div>
     </div>
 </template>
