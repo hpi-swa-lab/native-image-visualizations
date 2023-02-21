@@ -146,12 +146,12 @@ export async function loadJson(file: File): Promise<object> {
     })
 }
 
-export function parseReachabilityExport(parsedJSON: object, imageName: string): Node {
+export function parseReachabilityExport(parsedJSON: any, universeName: string): Node {
     if (!Array.isArray(parsedJSON)) {
         throw new InvalidReachabilityFormatError('JSON should be an Array of modules at top level ')
     }
 
-    const root = new Node(imageName)
+    const root = new Node(universeName)
 
     root.push(
         ...parsedJSON.map((topLevelOrigin: TopLevelOrigin, index: number) => {
