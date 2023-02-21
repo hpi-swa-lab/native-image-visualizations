@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { Universe } from './UniverseTypes/Universe'
 import { Node } from './UniverseTypes/Node'
-import { createConfigUniverses, createConfigSelections } from './parsing'
+import { createConfigUniverses, createConfigSelections, createConfigHighlights } from './parsing'
 import { SwappableComponentType, componentName } from './enums/SwappableComponentType'
 import { findNodesWithName } from './Math/filters'
 import { SortingOption, SortingOrder } from './enums/Sorting'
@@ -11,7 +11,9 @@ export const globalConfigStore = defineStore('globalConfig', {
     state: () => {
         return {
             universes: [] as Universe[],
+            observedUniverses: [] as Universe[],
             selections: {} as Record<string, Node[]>,
+            highlights: {} as Record<string, Node[]>,
             currentComponent: SwappableComponentType.Home as SwappableComponentType,
             previousComponent: undefined as SwappableComponentType | undefined,
             search: ''
@@ -36,8 +38,25 @@ export const globalConfigStore = defineStore('globalConfig', {
                 this.universes.splice(this.universes.indexOf(matchingUniverse), 1)
             }
         },
+        toggleUniverseByName(universeName: string): void {
+            const matchingUniverse = this.observedUniverses.find(
+                (universe) => universe.name === universeName
+            )
+
+            if (matchingUniverse) {
+                this.observedUniverses.splice(this.observedUniverses.indexOf(matchingUniverse), 1)
+            } else {
+                const universe = this.universes.find((universe) => universe.name === universeName)
+                if (universe) {
+                    this.observedUniverses.push(universe)
+                }
+            }
+        },
         setSelection(universeName: string, selection: Node[]): void {
             this.selections[universeName] = selection
+        },
+        setHighlights(universeName: string, highlight: Node[]): void {
+            this.highlights[universeName] = highlight
         },
         switchToComponent(newComponent: SwappableComponentType): void {
             this.previousComponent = this.currentComponent
@@ -53,7 +72,7 @@ export const globalConfigStore = defineStore('globalConfig', {
 
             const universes = this.universes as Universe[]
             universes.forEach((universe: Universe) => {
-                this.setSelection(universe.name, findNodesWithName(this.search, universe.root))
+                this.setHighlights(universe.name, findNodesWithName(this.search, universe.root))
             })
         },
         toExportDict(): Record<
@@ -63,6 +82,7 @@ export const globalConfigStore = defineStore('globalConfig', {
             return {
                 universes: createConfigUniverses(this.universes as Universe[]),
                 selections: createConfigSelections(this.selections),
+                highlights: createConfigHighlights(this.highlights),
                 currentComponent: this.currentComponent,
                 search: this.search
             }

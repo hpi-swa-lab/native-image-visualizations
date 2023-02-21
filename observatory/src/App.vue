@@ -7,8 +7,6 @@ import TreeLine from './components/visualizations/TreeLine.vue'
 import Venn from './components/visualizations/VennSets.vue'
 import { globalConfigStore } from './ts/stores'
 
-import DataManager from './components/DataManager.vue'
-
 const store = globalConfigStore()
 </script>
 
@@ -22,7 +20,4 @@ const store = globalConfigStore()
         v-else-if="store.currentComponent === SwappableComponentType.CausalityGraph"
     ></CausalityGraph>
     <Home v-else-if="store.currentComponent === SwappableComponentType.Home"></Home>
-    <DataManager
-        v-else-if="store.currentComponent === SwappableComponentType.DataManager"
-    ></DataManager>
 </template>

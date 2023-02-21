@@ -2,14 +2,8 @@
 import VisualizationNavigation from '../navigation/VisualizationNagivation.vue'
 import UniverseSelectionList from '../controls/UniverseSelectionList.vue'
 import SearchBar from '../controls/SearchBar.vue'
-import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
-import {
-    globalConfigStore,
-    vennConfigStore,
-    treeLineConfigStore,
-    sankeyTreeConfigStore,
-    causalityGraphConfigStore
-} from '../../ts/stores'
+import TabLayout from './TabLayout.vue'
+import DataManager from '../controls/DataManager.vue'
 
 withDefaults(
     defineProps<{
@@ -19,91 +13,39 @@ withDefaults(
         title: ''
     }
 )
-
-const globalStore = globalConfigStore()
-
-function exportConfig() {
-    const data = {
-        global: globalStore.toExportDict(),
-        venn: vennConfigStore().toExportDict(),
-        sankey: treeLineConfigStore().toExportDict(),
-        treeLine: sankeyTreeConfigStore().toExportDict(),
-        causalityGraph: causalityGraphConfigStore().toExportDict()
-    }
-
-    const dataString = `data:text/json;charset=utf-8, ${encodeURIComponent(JSON.stringify(data))}`
-
-    const anchor = document.createElement('a')
-    anchor.setAttribute('href', dataString)
-    anchor.setAttribute('download', 'data-config.json')
-
-    document.body.appendChild(anchor)
-    anchor.click()
-    document.body.removeChild(anchor)
-}
 </script>
 
 <template>
     <div class="w-full h-full grid grid-cols-12 gap-2">
-        <div class="col-span-2 drop-shadow-xl overflow-y-scroll">
-            <div class="px-3 py-4 rounded bg-gray-50 space-y-4 h-full">
-                <h2>{{ title }}</h2>
-                <hr />
+        <div class="col-span-2 drop-shadow-xl">
+            <div class="rounded bg-gray-50 space-y-4 h-full">
+                <h2 class="text-center">{{ title }}</h2>
 
-                <div class="space-y-4">
-                    <button
-                        v-if="
-                            globalStore.currentComponent === SwappableComponentType.DataManager &&
-                            globalStore.previousComponent !== SwappableComponentType.Home
-                        "
-                        type="button"
-                        class="btn btn-primary w-full"
-                        @click="globalStore.switchToComponent(SwappableComponentType.Home)"
-                    >
-                        Home
-                    </button>
-                    <button
-                        v-if="globalStore.currentComponent !== SwappableComponentType.DataManager"
-                        type="button"
-                        class="btn btn-primary w-full"
-                        @click="globalStore.switchToComponent(SwappableComponentType.DataManager)"
-                    >
-                        Data Manager
-                    </button>
-                    <button
-                        v-if="
-                            globalStore.currentComponent === SwappableComponentType.DataManager &&
-                            globalStore.previousComponent !== undefined
-                        "
-                        class="btn btn-primary w-full"
-                        @click="globalStore.goToPreviousComponent()"
-                    >
-                        Go back to {{ globalStore.previousComponentName }}
-                    </button>
-                    <slot name="topButtons" />
-                </div>
+                <TabLayout
+                    :selected-index="1"
+                    :tab-names="['controls', 'data-manager']"
+                    :button-names="['Controls', 'Data Manager']"
+                >
+                    <template #tab-content-controls>
+                        <div class="px-3 py-4 space-y-4 h-full w-full">
+                            <VisualizationNavigation />
+                            <hr />
 
-                <hr />
+                            <SearchBar />
+                            <hr />
 
-                <VisualizationNavigation
-                    v-if="globalStore.currentComponent !== SwappableComponentType.DataManager"
-                ></VisualizationNavigation>
-                <hr v-if="globalStore.currentComponent !== SwappableComponentType.DataManager" />
+                            <UniverseSelectionList />
+                            <hr />
 
-                <SearchBar />
-                <hr />
-
-                <UniverseSelectionList
-                    v-if="globalStore.currentComponent !== SwappableComponentType.DataManager"
-                />
-                <hr v-if="globalStore.currentComponent !== SwappableComponentType.DataManager" />
-
-                <button class="btn btn-primary w-full" @click="exportConfig">Export config</button>
-                <hr />
-
-                <ul class="space-y-2">
-                    <slot name="controls"> Controls </slot>
-                </ul>
+                            <ul class="space-y-2">
+                                <slot name="controls"> Controls </slot>
+                            </ul>
+                        </div>
+                    </template>
+                    <template #tab-content-data-manager>
+                        <DataManager class="px-3 py-4 h-full w-full" />
+                    </template>
+                </TabLayout>
             </div>
         </div>
         <div class="col-span-10 h-full overflow-y-auto">
