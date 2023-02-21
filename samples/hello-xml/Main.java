@@ -3,18 +3,25 @@ import javax.xml.parsers.*;
 import java.io.*;
 
 public class Main {
-    public static void main(String[] args) {
-        try {
-            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            DocumentBuilder builder = factory.newDocumentBuilder();
+    public static void doStdioStuff()
+    {
+        System.out.println("Is System.out.println() increasing my image size???");
+    }
 
-            StringBuilder xmlStringBuilder = new StringBuilder();
-            xmlStringBuilder.append("<?xml version=\"1.0\"?> <class> </class>");
-            ByteArrayInputStream input = new ByteArrayInputStream(
-            xmlStringBuilder.toString().getBytes("UTF-8"));
+    public static void doXmlStuff()
+    {
+        String xmlData = "<?xml version=\"1.0\"?> <class> Is XML increasing my image size??? </class>";
+
+        try {
+            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+            ByteArrayInputStream input = new ByteArrayInputStream(xmlData.getBytes("UTF-8"));
             Document doc = builder.parse(input);
         } catch(Exception e) {
-            System.err.println("Leck mich am Arsch: " + e.getMessage());
         }
+    }
+
+    public static void main(String[] args) {
+        doStdioStuff();
+        doXmlStuff();
     }
 }
