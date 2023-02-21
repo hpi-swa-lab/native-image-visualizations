@@ -11,9 +11,7 @@ import {
 } from '../../ts/stores'
 
 const store = globalConfigStore()
-const errors = ref<{
-    upload?: Error
-}>({})
+const uploadError = ref<Error|undefined>(undefined)
 
 function validateFileAndAddUniverseOnSuccess(file: File, universeName: string): void {
     loadJson(file)
@@ -23,10 +21,10 @@ function validateFileAndAddUniverseOnSuccess(file: File, universeName: string): 
                 parseReachabilityExport(parsedJSON, universeName)
             )
             store.addUniverse(newUniverse)
-            errors.value.upload = undefined
+            uploadError.value = undefined
         })
         .catch((error) => {
-            errors.value.upload = error
+            uploadError.value = error
         })
 }
 
@@ -76,8 +74,8 @@ function exportConfig() {
                 @change="addUniverses"
             />
 
-            <p v-if="errors.upload" class="error-text space-y-4">
-                {{ errors.upload.message }}
+            <p v-if="uploadError" class="error-text space-y-4">
+                {{ uploadError.message }}
             </p>
         </div>
         <hr />
