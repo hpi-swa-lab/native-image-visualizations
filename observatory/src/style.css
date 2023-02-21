@@ -58,6 +58,10 @@ input {
     @apply mt-2 text-sm text-gray-500 dark:text-gray-400;
 }
 
+.error-text {
+    @apply bg-red-100 border-l-4 border-red-500 text-red-700 p-4 animate-flash;
+}
+
 .dropdown {
     @apply border text-sm rounded-lg p-2.5;
 }
