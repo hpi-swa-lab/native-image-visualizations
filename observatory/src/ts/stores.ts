@@ -11,6 +11,7 @@ export const globalConfigStore = defineStore('globalConfig', {
     state: () => {
         return {
             universes: [] as Universe[],
+            observedUniverses: [] as Universe[],
             selections: {} as Record<string, Node[]>,
             highlights: {} as Record<string, Node[]>,
             currentComponent: SwappableComponentType.Home as SwappableComponentType,
@@ -35,6 +36,20 @@ export const globalConfigStore = defineStore('globalConfig', {
 
             if (matchingUniverse) {
                 this.universes.splice(this.universes.indexOf(matchingUniverse), 1)
+            }
+        },
+        toggleUniverseByName(universeName: string): void {
+            const matchingUniverse = this.observedUniverses.find(
+                (universe) => universe.name === universeName
+            )
+
+            if (matchingUniverse) {
+                this.observedUniverses.splice(this.observedUniverses.indexOf(matchingUniverse), 1)
+            } else {
+                const universe = this.universes.find((universe) => universe.name === universeName)
+                if (universe) {
+                    this.observedUniverses.push(universe)
+                }
             }
         },
         setSelection(universeName: string, selection: Node[]): void {
