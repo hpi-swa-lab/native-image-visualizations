@@ -5,6 +5,7 @@ import { createConfigUniverses, createConfigSelections, createConfigHighlights }
 import { SwappableComponentType, componentName } from './enums/SwappableComponentType'
 import { findNodesWithName } from './Math/filters'
 import { SortingOption, SortingOrder } from './enums/Sorting'
+import { Layers } from './enums/Layers'
 import { NodesDiffingFilter, NodesFilter, NodesSortingFilter } from './SharedTypes/NodesFilter'
 
 export const globalConfigStore = defineStore('globalConfig', {
@@ -13,6 +14,7 @@ export const globalConfigStore = defineStore('globalConfig', {
             universes: [] as Universe[],
             observedUniverses: [] as Universe[],
             selections: {} as Record<string, Node[]>,
+            currentLayer: Layers.PACKAGES,
             highlights: {} as Record<string, Node[]>,
             currentComponent: SwappableComponentType.Home as SwappableComponentType,
             previousComponent: undefined as SwappableComponentType | undefined,
@@ -54,6 +56,9 @@ export const globalConfigStore = defineStore('globalConfig', {
         },
         setSelection(universeName: string, selection: Node[]): void {
             this.selections[universeName] = selection
+        },
+        switchToLayer(newLayer: Layers): void {
+            this.currentLayer = newLayer
         },
         setHighlights(universeName: string, highlight: Node[]): void {
             this.highlights[universeName] = highlight

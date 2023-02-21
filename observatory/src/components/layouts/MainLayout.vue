@@ -4,6 +4,7 @@ import UniverseSelectionList from '../controls/UniverseSelectionList.vue'
 import SearchBar from '../controls/SearchBar.vue'
 import TabLayout from './TabLayout.vue'
 import DataManager from '../controls/DataManager.vue'
+import LayerSelection from '../controls/LayerSelection.vue'
 
 withDefaults(
     defineProps<{
@@ -31,14 +32,15 @@ withDefaults(
                             <VisualizationNavigation />
                             <hr />
 
-                            <SearchBar />
-                            <hr />
-
                             <UniverseSelectionList />
                             <hr />
 
+                            <b>Controls</b>
+                            <SearchBar />
+                            <LayerSelection />
+
                             <ul class="space-y-2">
-                                <slot name="controls"> Controls </slot>
+                                <slot name="controls"></slot>
                             </ul>
                         </div>
                     </template>
@@ -48,8 +50,6 @@ withDefaults(
                 </TabLayout>
             </div>
         </div>
-        <div class="col-span-10 h-full overflow-y-auto">
-            <slot />
-        </div>
+        <div class="col-span-10 h-full overflow-y-auto"></div>
     </div>
 </template>

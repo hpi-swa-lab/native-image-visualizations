@@ -58,6 +58,22 @@ export const forestFactory = () => ({
         new Node('ClassA', [new Leaf('methodAC', 15, [InitKind.BUILD_TIME])]),
         new Node('ClassX', [new Leaf('methodXA', 30, [InitKind.BUILD_TIME])]),
         new Node('ClassY', [new Leaf('methodYA', 200, [InitKind.BUILD_TIME])])
+    ]),
+    duplicatedNames: new Node('module', [
+        new Node('packageA', [
+            new Node('ClassA', [new Leaf('methodA', 10, [InitKind.BUILD_TIME])]),
+            new Node('ClassB', [
+                new Leaf('methodA', 7, [InitKind.BUILD_TIME]),
+                new Leaf('methodB', 5, [InitKind.RERUN])
+            ])
+        ]),
+        new Node('packageB', [
+            new Node('ClassB', [
+                new Leaf('methodA', 20, [InitKind.BUILD_TIME]),
+                new Leaf('methodB', 0, [InitKind.BUILD_TIME]),
+                new Leaf('methodC', 10, [InitKind.BUILD_TIME])
+            ])
+        ])
     ])
 })
 
