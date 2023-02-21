@@ -61,19 +61,6 @@ describe('parsing', () => {
                 expectThrow(json)
             })
 
-            test('throws error when no module name could be found', () => {
-                brokenJSON[0].module = undefined
-
-                expectThrow(brokenJSON)
-            })
-
-            test('throws error when module and path are not strings', () => {
-                brokenJSON[0].module = ['not a string but array']
-                brokenJSON[0].path = { anObject: 'but not a string' }
-
-                expectThrow(brokenJSON)
-            })
-
             test('throws error when no packages attribute', () => {
                 brokenJSON[0].packages = undefined
 
@@ -217,7 +204,6 @@ describe('parsing', () => {
                 {
                     jsonObject: [
                         {
-                            module: 'Module',
                             packages: {
                                 package: {
                                     types: {
@@ -231,7 +217,7 @@ describe('parsing', () => {
                         }
                     ],
                     expected: new Node('universe', [
-                        new Node('Module', [
+                        new Node('', [
                             new Node('package', [
                                 new Node('Class', [
                                     new Leaf('<init>()', 0, [InitKind.NO_CLASS_CONSTRUCTOR])
