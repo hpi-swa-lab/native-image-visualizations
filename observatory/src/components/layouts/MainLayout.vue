@@ -22,13 +22,13 @@ withDefaults(
                 <h2 class="text-center">{{ title }}</h2>
 
                 <TabLayout
-                    :selected-index="0"
+                    :selected-index="1"
                     :tab-names="['controls', 'data-manager']"
                     :button-names="['Controls', 'Data Manager']"
                 >
                     <template #tab-content-controls>
                         <div class="px-3 py-4 space-y-4 h-full w-full">
-                            <VisualizationNavigation></VisualizationNavigation>
+                            <VisualizationNavigation />
                             <hr />
 
                             <SearchBar />

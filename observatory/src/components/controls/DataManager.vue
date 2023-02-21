@@ -49,15 +49,6 @@ function exportConfig() {
 
 <template>
     <div class="space-y-4">
-        <label for="container-config-operations">Config Operations:</label>
-        <div id="container-config-operations" class="space-y-4">
-            <button class="btn btn-primary w-full" @click="exportConfig">
-                <font-awesome-icon icon="fa-file-export" />
-                Export config
-            </button>
-        </div>
-        <hr />
-
         <div>
             <label for="input-report-data">Upload Build Reports:</label>
             <input
@@ -84,6 +75,15 @@ function exportConfig() {
                     X
                 </button>
             </div>
+        </div>
+
+        <hr />
+        <label for="container-config-operations">Config Operations:</label>
+        <div id="container-config-operations" class="space-y-4">
+            <button class="btn btn-primary w-full" @click="exportConfig">
+                <font-awesome-icon icon="fa-file-export" />
+                Export config
+            </button>
         </div>
     </div>
 </template>
