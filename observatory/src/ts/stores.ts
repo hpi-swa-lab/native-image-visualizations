@@ -51,9 +51,9 @@ export const globalConfigStore = defineStore('globalConfig', {
                 const universe = this.universes.find((universe) => universe.name === universeName)
                 if (universe) {
                     this.observedUniverses.push(universe)
-                    if (this.observedUniverses.length == 2) {
-                        this.multiverse = new Multiverse(this.observedUniverses as Universe[])
-                    }
+                    this.multiverse = this.observedUniverses.length == 2
+                        ? new Multiverse(this.observedUniverses as Universe[])
+                        : new Multiverse([])
                 }
             }
         },
