@@ -145,6 +145,11 @@ body {
     visibility: hidden;
 }
 
+.hovered-for-purge {
+    border: 1px solid #8080FF80;
+    background-color: #0000FF10;
+}
+
 .selected-for-purge {
     border: 1px solid #8080FF;
     background-color: #0000FF20;
