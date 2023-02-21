@@ -83,7 +83,7 @@ function findNameForParsedTopLevelOrigin(object: any): string | undefined {
 }
 
 function validateTopLevelOrigin(object: any, index: number): void {
-    const name = findNameForParsedTopLevelOrigin
+    const name = findNameForParsedTopLevelOrigin(object)
 
     if (!name) {
         throw new InvalidReachabilityFormatError(
