@@ -6,7 +6,7 @@ import { SwappableComponentType, componentName } from './enums/SwappableComponen
 import { findNodesWithName } from './Math/filters'
 import { SortingOption, SortingOrder } from './enums/Sorting'
 import { NodesDiffingFilter, NodesFilter, NodesSortingFilter } from './SharedTypes/NodesFilter'
-import {Multiverse} from './UniverseTypes/Multiverse';
+import { Multiverse } from './UniverseTypes/Multiverse'
 
 export const globalConfigStore = defineStore('globalConfig', {
     state: () => {
