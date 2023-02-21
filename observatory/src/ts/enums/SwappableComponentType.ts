@@ -4,7 +4,6 @@ export enum SwappableComponentType {
     TreeLine,
     CausalityGraph,
     Home,
-    DataManager,
     None
 }
 
@@ -20,8 +19,6 @@ export function componentName(component: SwappableComponentType | undefined) {
             return 'Causality Graph'
         case SwappableComponentType.Home:
             return 'Home'
-        case SwappableComponentType.DataManager:
-            return 'Data Manager'
         default:
             return '<Error>'
     }
