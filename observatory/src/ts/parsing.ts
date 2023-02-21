@@ -12,11 +12,11 @@ import { Leaf, InitKind } from './UniverseTypes/Leaf'
 import { Universe } from './UniverseTypes/Universe'
 import { Node } from './UniverseTypes/Node'
 
-interface Methods {
+type Methods = {
     [methodName: string]: { size: Bytes; flags?: string[] }
 }
 
-function validateMethodData(object: any, name: string) {
+function validateMethodData(object: any, name: string): void {
     // explicitly checking for undefined, as size = 0 should not throw error
     if (object.size === undefined || typeof object.size !== 'number') {
         throw new InvalidReachabilityFormatError(
@@ -31,11 +31,11 @@ function validateMethodData(object: any, name: string) {
     }
 }
 
-interface Types {
+type Types = {
     [typeName: string]: { methods: Methods; 'init-kind'?: string[] }
 }
 
-function validateTypeData(object: any, name: string) {
+function validateTypeData(object: any, name: string): void {
     if (!object.methods || object.methods.constructor !== Object) {
         throw new InvalidReachabilityFormatError(
             'Missing "methods" object attribute for type ' + name
@@ -49,11 +49,11 @@ function validateTypeData(object: any, name: string) {
     }
 }
 
-interface Packages {
+type Packages = {
     [packageName: string]: { types: Types }
 }
 
-function validatePackageData(object: any, name: string) {
+function validatePackageData(object: any, name: string): void {
     if (!object.types || object.types.constructor !== Object) {
         throw new InvalidReachabilityFormatError(
             'Missing "types" object attribute for package ' + name
@@ -61,28 +61,39 @@ function validatePackageData(object: any, name: string) {
     }
 }
 
-interface TopLevelOrigin {
-    name: string
-    path?: string
-    module?: string
+export type TopLevelOrigin =
+    | {
+          path: string
+          module?: string
 
-    packages: Packages
-}
+          packages: Packages
+      }
+    | {
+          path?: string
+          module: string
 
-function validateTopLevelOrigin(object: any, index: number) {
-    let name = ''
+          packages: Packages
+      }
+
+function findNameForParsedTopLevelOrigin(object: any): string | undefined {
+    let name = undefined
     if (object.path && object.path.constructor === String) name = object.path
     if (object.module && object.module.constructor === String) name = object.module
+    return name
+}
 
-    if (name.length === 0) {
+function validateTopLevelOrigin(object: any, index: number): void {
+    const name = findNameForParsedTopLevelOrigin
+
+    if (!name) {
         throw new InvalidReachabilityFormatError(
             'Neither "name" or "module" string attribute found on item at index ' + index
         )
     }
     if (!object.packages || object.packages.constructor !== Object) {
         throw new InvalidReachabilityFormatError('Missing "packages" attribute for module ' + name)
-        object.name = name
     }
+    object.name = name
 }
 
 export class InvalidReachabilityFormatError extends Error {
@@ -157,7 +168,10 @@ export function parseReachabilityExport(parsedJSON: any, universeName: string): 
         ...parsedJSON.map((topLevelOrigin: TopLevelOrigin, index: number) => {
             validateTopLevelOrigin(topLevelOrigin, index)
 
-            return new Node(topLevelOrigin.name, parsePackages(topLevelOrigin.packages))
+            return new Node(
+                findNameForParsedTopLevelOrigin(topLevelOrigin) ?? '',
+                parsePackages(topLevelOrigin.packages)
+            )
         })
     )
     return root
