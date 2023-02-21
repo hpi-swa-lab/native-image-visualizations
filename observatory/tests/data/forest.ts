@@ -3,28 +3,28 @@ import { Leaf, InitKind } from '../../src/ts/UniverseTypes/Leaf'
 
 export const forestFactory = () => ({
     childlessRoot: new Node('Native Image'),
-    method: new Leaf('method', 10, InitKind.BUILD_TIME),
+    method: new Leaf('method', 10, [InitKind.BUILD_TIME]),
     simpleTree: new Node('Class', [
-        new Leaf('methodA', 10, InitKind.BUILD_TIME),
-        new Leaf('methodB', 7, InitKind.BUILD_TIME),
-        new Leaf('methodC', 5, InitKind.RERUN),
-        new Leaf('methodD', 20, InitKind.BUILD_TIME),
-        new Leaf('methodE', 0, InitKind.BUILD_TIME),
-        new Leaf('methodF', 10, InitKind.BUILD_TIME)
+        new Leaf('methodA', 10, [InitKind.BUILD_TIME]),
+        new Leaf('methodB', 7, [InitKind.BUILD_TIME]),
+        new Leaf('methodC', 5, [InitKind.RERUN]),
+        new Leaf('methodD', 20, [InitKind.BUILD_TIME]),
+        new Leaf('methodE', 0, [InitKind.BUILD_TIME]),
+        new Leaf('methodF', 10, [InitKind.BUILD_TIME])
     ]),
     layeredTree: new Node('module', [
         new Node('packageA', [
-            new Node('ClassAA', [new Leaf('methodAAA', 10, InitKind.BUILD_TIME)]),
+            new Node('ClassAA', [new Leaf('methodAAA', 10, [InitKind.BUILD_TIME])]),
             new Node('ClassAB', [
-                new Leaf('methodABA', 7, InitKind.BUILD_TIME),
-                new Leaf('methodABB', 5, InitKind.RERUN)
+                new Leaf('methodABA', 7, [InitKind.BUILD_TIME]),
+                new Leaf('methodABB', 5, [InitKind.RERUN])
             ])
         ]),
         new Node('packageB', [
             new Node('ClassBA', [
-                new Leaf('methodBAA', 20, InitKind.BUILD_TIME),
-                new Leaf('methodBAB', 0, InitKind.BUILD_TIME),
-                new Leaf('methodBAC', 10, InitKind.BUILD_TIME)
+                new Leaf('methodBAA', 20, [InitKind.BUILD_TIME]),
+                new Leaf('methodBAB', 0, [InitKind.BUILD_TIME]),
+                new Leaf('methodBAC', 10, [InitKind.BUILD_TIME])
             ])
         ])
     ]),
@@ -47,17 +47,17 @@ export const forestFactory = () => ({
         new Node('ClassY', [new Node('methodYA')])
     ]),
     overlappingImageA: new Node('packageA', [
-        new Node('ClassA', [new Leaf('methodAA', 10, InitKind.BUILD_TIME)]),
-        new Node('ClassB', [new Leaf('methodBA', 10, InitKind.BUILD_TIME)])
+        new Node('ClassA', [new Leaf('methodAA', 10, [InitKind.BUILD_TIME])]),
+        new Node('ClassB', [new Leaf('methodBA', 10, [InitKind.BUILD_TIME])])
     ]),
     overlappingImageB: new Node('packageA', [
-        new Node('ClassA', [new Leaf('methodAC', 15, InitKind.BUILD_TIME)]),
-        new Node('ClassC', [new Leaf('methodCA', 20, InitKind.BUILD_TIME)])
+        new Node('ClassA', [new Leaf('methodAC', 15, [InitKind.BUILD_TIME])]),
+        new Node('ClassC', [new Leaf('methodCA', 20, [InitKind.BUILD_TIME])])
     ]),
     overlappingImageC: new Node('packageA', [
-        new Node('ClassA', [new Leaf('methodAC', 15, InitKind.BUILD_TIME)]),
-        new Node('ClassX', [new Leaf('methodXA', 30, InitKind.BUILD_TIME)]),
-        new Node('ClassY', [new Leaf('methodYA', 200, InitKind.BUILD_TIME)])
+        new Node('ClassA', [new Leaf('methodAC', 15, [InitKind.BUILD_TIME])]),
+        new Node('ClassX', [new Leaf('methodXA', 30, [InitKind.BUILD_TIME])]),
+        new Node('ClassY', [new Leaf('methodYA', 200, [InitKind.BUILD_TIME])])
     ])
 })
 
