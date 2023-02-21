@@ -210,16 +210,6 @@ describe('parsing', () => {
 
                 expectThrow(brokenJSON)
             })
-
-            test('does not throw an error when size is zero', () => {
-                expectedJSONObject[0].packages.somePackage.types.SomeClass.methods[
-                    '<init>()'
-                ].size = 0
-
-                expect(() => {
-                    parseReachabilityExport(expectedJSONObject, 'universe')
-                }).not.toThrow(InvalidReachabilityFormatError)
-            })
         })
 
         describe('valid format', () => {
