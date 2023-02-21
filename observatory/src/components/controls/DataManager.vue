@@ -15,7 +15,6 @@ const errors = ref<{
     upload?: Error
 }>({})
 
-
 function validateFileAndAddUniverseOnSuccess(file: File, universeName: string): void {
     loadJson(file)
         .then((parsedJSON) => {
@@ -35,7 +34,7 @@ function addUniverses(event: Event) {
     const input = event.target as HTMLInputElement
     if (!input.files) return
 
-    Array.from(input.files).forEach((file: File) => 
+    Array.from(input.files).forEach((file: File) =>
         validateFileAndAddUniverseOnSuccess(file, file.name)
     )
 
