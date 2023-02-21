@@ -13,7 +13,7 @@ function applyComponent(event: Event) {
 <template>
     <div>
         <label for="visualization-dropdown" class="block mb-2 text-sm font-medium"
-            >Choose Visualization:</label
+            >Visualization:</label
         >
         <select
             id="visualization-dropdown"

@@ -15,7 +15,6 @@ function searchChanged(event: Event): void {
 
 <template>
     <div>
-        <label for="default-search">Search</label>
         <div class="relative">
             <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                 <svg
@@ -37,7 +36,7 @@ function searchChanged(event: Event): void {
             <input
                 ref="searchText"
                 type="search"
-                class="p-4 pl-10 w-full"
+                class="p-2 pl-10 w-full"
                 placeholder="Search nodes"
                 :value="store.search"
                 required

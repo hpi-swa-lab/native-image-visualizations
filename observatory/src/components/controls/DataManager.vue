@@ -1,4 +1,3 @@
-s
 <script setup lang="ts">
 import { Universe } from '../../ts/UniverseTypes/Universe'
 import { loadJson, parseReachabilityExport } from '../../ts/parsing'
@@ -9,6 +8,7 @@ import {
     sankeyTreeConfigStore,
     causalityGraphConfigStore
 } from '../../ts/stores'
+import {FontAwesomeIcon} from '@fortawesome/vue-fontawesome';
 
 const store = globalConfigStore()
 
@@ -48,8 +48,8 @@ function exportConfig() {
 </script>
 
 <template>
-    <div class="space-y-4">
-        <div>
+    <div class="space-y-2">
+        <div class="mb-2">
             <label for="input-report-data">Upload Build Reports:</label>
             <input
                 id="input-report-data"
@@ -61,24 +61,22 @@ function exportConfig() {
                 @change="addUniverses"
             />
         </div>
-        <hr />
 
-        <label for="container-universes">Current Universes:</label>
-        <div id="container-universes" class="space-y-4">
+      <label for="container-universes">Current Universes: <span v-if="store.universes.length === 0"><br/>None</span></label>
+        <div id="container-universes" class="space-y-2">
             <div
                 v-for="(universe, index) in store.universes"
                 :key="index"
                 class="flex items-center justify-between space-x-2"
             >
-                <p class="overflow-x-hidden">{{ universe.name }}</p>
-                <button class="btn btn-danger" @click="() => store.removeUniverse(universe.name)">
-                    X
+                <p class="overflow-x-hidden ml-2">{{ universe.name }}</p>
+                <button class="btn-small btn-danger" @click="() => store.removeUniverse(universe.name)">
+                    <font-awesome-icon icon="xmark" />
                 </button>
             </div>
         </div>
 
         <hr />
-        <label for="container-config-operations">Config Operations:</label>
         <div id="container-config-operations" class="space-y-4">
             <button class="btn btn-primary w-full" @click="exportConfig">
                 <font-awesome-icon icon="fa-file-export" />

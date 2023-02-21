@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { globalConfigStore } from '../../ts/stores'
 import ToggleSwitch from './ToggleSwitch.vue'
-import ElevatedLayer from '../layouts/ElevatedLayer.vue'
 
 const MAX_OBSERVABLE_UNIVERSES = 2
 
@@ -24,7 +23,7 @@ function isDisabled(universeName: string) {
         <label>
             <p class="mb-2">Universes to observe:</p>
 
-            <ElevatedLayer :y-spacing="2">
+            <div class="space-y-2">
                 <p v-if="store.universes.length === 0">Add universes via the Data Manager.</p>
                 <ToggleSwitch
                     v-for="(universe, index) in store.universes"
@@ -36,13 +35,11 @@ function isDisabled(universeName: string) {
                     class="flex flex-row justify-between"
                     @change="store.toggleUniverseByName"
                 >
-                    <template #preceding>
-                        <label :for="universe.name + index" class="flex-auto">
-                            {{ universe.name }}
-                        </label>
-                    </template>
+                    <label :for="universe.name + index" class="flex-auto overflow-x-hidden ml-1">
+                        {{ universe.name }}
+                    </label>
                 </ToggleSwitch>
-            </ElevatedLayer>
+            </div>
         </label>
     </div>
 </template>
