@@ -54,7 +54,7 @@ function validateAndUpdateName() {
     input.reportValidity()
 }
 
-async function validateFileAndAddUniverseOnSuccess(file: File, universeName: string) {
+function validateFileAndAddUniverseOnSuccess(file: File, universeName: string): void {
     loadJson(file)
         .then((parsedJSON) => {
             const newUniverse = new Universe(
@@ -70,7 +70,7 @@ async function validateFileAndAddUniverseOnSuccess(file: File, universeName: str
         .finally(() => form.value?.checkValidity())
 }
 
-async function addUniverse() {
+function addUniverse(): void {
     validateAndUpdateName()
     validateAndUpdateReachabilityExport()
 
