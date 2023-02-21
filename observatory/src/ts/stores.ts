@@ -6,12 +6,14 @@ import { SwappableComponentType, componentName } from './enums/SwappableComponen
 import { findNodesWithName } from './Math/filters'
 import { SortingOption, SortingOrder } from './enums/Sorting'
 import { NodesDiffingFilter, NodesFilter, NodesSortingFilter } from './SharedTypes/NodesFilter'
+import {Multiverse} from './UniverseTypes/Multiverse';
 
 export const globalConfigStore = defineStore('globalConfig', {
     state: () => {
         return {
             universes: [] as Universe[],
             observedUniverses: [] as Universe[],
+            multiverse: new Multiverse([]),
             selections: {} as Record<string, Node[]>,
             highlights: {} as Record<string, Node[]>,
             currentComponent: SwappableComponentType.Home as SwappableComponentType,
@@ -49,6 +51,9 @@ export const globalConfigStore = defineStore('globalConfig', {
                 const universe = this.universes.find((universe) => universe.name === universeName)
                 if (universe) {
                     this.observedUniverses.push(universe)
+                    if (this.observedUniverses.length == 2) {
+                        this.multiverse = new Multiverse(this.observedUniverses as Universe[])
+                    }
                 }
             }
         },
