@@ -1,5 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Reason for disable: @see {@link '../src/ts/parsing'}
 import { describe, expect, test } from '@jest/globals'
-import { parseReachabilityExport, InvalidReachabilityFormatError } from '../src/ts/parsing'
+import {
+    parseReachabilityExport,
+    InvalidReachabilityFormatError,
+    TopLevelOrigin
+} from '../src/ts/parsing'
 import { InitKind, Leaf } from '../src/ts/UniverseTypes/Leaf'
 import { Node } from '../src/ts/UniverseTypes/Node'
 
@@ -14,10 +20,34 @@ describe('parsing', () => {
          * which may seem redundant.
          */
         describe('error thrown on invalid format', () => {
-            test('throws error for empty json', () => {
+            let expectedJSONObject: Array<TopLevelOrigin>
+            let brokenJSON: any
+            beforeEach(() => {
+                expectedJSONObject = [
+                    {
+                        module: 'Module',
+                        packages: {
+                            somePackage: {
+                                types: {
+                                    SomeClass: {
+                                        methods: { '<init>()': { size: 0 } }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                ]
+                brokenJSON = expectedJSONObject as any
+            })
+
+            function expectThrow(object: any) {
                 expect(() => {
-                    parseReachabilityExport({}, 'universe')
+                    parseReachabilityExport(object, 'universe')
                 }).toThrow(InvalidReachabilityFormatError)
+            }
+
+            test('throws error for empty json', () => {
+                expectThrow({})
             })
 
             test('throws error when not array on top level', () => {
@@ -28,591 +58,291 @@ describe('parsing', () => {
                     phone: '555-1234'
                 }
 
-                expect(() => {
-                    parseReachabilityExport(json, 'universe')
-                }).toThrow(InvalidReachabilityFormatError)
+                expectThrow(json)
             })
 
             test('throws error when no module name could be found', () => {
-                const json = [
-                    {
-                        packages: {
-                            package: {
-                                types: {
-                                    Class: {
-                                        methods: { '<init>()': { size: 0 } },
-                                        fields: {}
-                                    }
-                                }
-                            }
-                        }
-                    }
-                ]
+                brokenJSON[0].module = undefined
 
-                expect(() => {
-                    parseReachabilityExport(json, 'universe')
-                }).toThrow(InvalidReachabilityFormatError)
+                expectThrow(brokenJSON)
             })
 
             test('throws error when module and path are not strings', () => {
-                const json = [
-                    {
-                        module: ['not a string but array'],
-                        path: { anObject: 'but not a string' },
-                        packages: {
-                            package: {
-                                types: {
-                                    Class: {
-                                        methods: { '<init>()': { size: 0 } },
-                                        fields: {}
-                                    }
-                                }
-                            }
-                        }
-                    }
-                ]
+                brokenJSON[0].module = ['not a string but array']
+                brokenJSON[0].path = { anObject: 'but not a string' }
 
-                expect(() => {
-                    parseReachabilityExport(json, 'universe')
-                }).toThrow(InvalidReachabilityFormatError)
+                expectThrow(brokenJSON)
             })
 
             test('throws error when no packages attribute', () => {
-                const json = [
-                    {
-                        module: 'Module',
-                        notNamedProperly: {
-                            package: {
-                                types: {
-                                    Class: {
-                                        methods: { '<init>()': { size: 0 } },
-                                        fields: {}
-                                    }
-                                }
-                            }
-                        }
-                    }
-                ]
+                brokenJSON[0].packages = undefined
 
-                expect(() => {
-                    parseReachabilityExport(json, 'universe')
-                }).toThrow(InvalidReachabilityFormatError)
+                expectThrow(brokenJSON)
             })
 
             test('throws error when packages is an array', () => {
-                const json = [
+                brokenJSON[0].packages = [
                     {
-                        module: 'Module',
-                        packages: [
-                            {
-                                types: {
-                                    Class: {
-                                        methods: { '<init>()': { size: 0 } },
-                                        fields: {}
-                                    }
-                                }
+                        types: {
+                            Class: {
+                                methods: { '<init>()': { size: 0 } },
+                                fields: {}
                             }
-                        ]
+                        }
                     }
                 ]
 
-                expect(() => {
-                    parseReachabilityExport(json, 'universe')
-                }).toThrow(InvalidReachabilityFormatError)
+                expectThrow(brokenJSON)
             })
 
             test('throws error when packages is a number', () => {
-                const json = [
-                    {
-                        module: 'Module',
-                        packages: 3
-                    }
-                ]
+                brokenJSON[0].packages = 4
 
-                expect(() => {
-                    parseReachabilityExport(json, 'universe')
-                }).toThrow(InvalidReachabilityFormatError)
+                expectThrow(brokenJSON)
             })
 
             test('throws error when packages is a string', () => {
-                const json = [
-                    {
-                        module: 'Module',
-                        packages: 'I should be an object type'
-                    }
-                ]
+                brokenJSON[0].packages = 'I should be an object type'
 
-                expect(() => {
-                    parseReachabilityExport(json, 'universe')
-                }).toThrow(InvalidReachabilityFormatError)
+                expectThrow(brokenJSON)
             })
 
             test('throws error when packages is a boolean', () => {
-                const json = [
-                    {
-                        module: 'Module',
-                        packages: true
-                    }
-                ]
+                brokenJSON[0].packages = false
 
-                expect(() => {
-                    parseReachabilityExport(json, 'universe')
-                }).toThrow(InvalidReachabilityFormatError)
+                expectThrow(brokenJSON)
             })
 
             test('throws error when packages is null', () => {
-                const json = [
-                    {
-                        module: 'Module',
-                        packages: null
-                    }
-                ]
+                brokenJSON[0].packages = null
 
-                expect(() => {
-                    parseReachabilityExport(json, 'universe')
-                }).toThrow(InvalidReachabilityFormatError)
+                expectThrow(brokenJSON)
             })
 
             test('throws error when package does not have types attribute', () => {
-                const json = [
-                    {
-                        module: 'Module',
-                        packages: {
-                            package: {
-                                notNamedProperly: {
-                                    Class: {
-                                        methods: { '<init>()': { size: 0 } },
-                                        fields: {}
-                                    }
-                                }
-                            }
-                        }
-                    }
-                ]
+                brokenJSON[0].packages.somePackage.types = undefined
 
-                expect(() => {
-                    parseReachabilityExport(json, 'universe')
-                }).toThrow(InvalidReachabilityFormatError)
+                expectThrow(brokenJSON)
             })
 
             test('throws error when types is an array', () => {
-                const json = [
+                brokenJSON[0].packages.somePackage.types = [
                     {
-                        module: 'Module',
-                        packages: {
-                            package: {
-                                types: [
-                                    {
-                                        methods: { '<init>()': { size: 0 } },
-                                        fields: {}
-                                    }
-                                ]
-                            }
-                        }
+                        methods: { '<init>()': { size: 0 } },
+                        fields: {}
                     }
                 ]
 
-                expect(() => {
-                    parseReachabilityExport(json, 'universe')
-                }).toThrow(InvalidReachabilityFormatError)
+                expectThrow(brokenJSON)
             })
 
             test('throws error when types is a string', () => {
-                const json = [
-                    {
-                        module: 'Module',
-                        packages: {
-                            package: {
-                                types: 'wrong type'
-                            }
-                        }
-                    }
-                ]
+                brokenJSON[0].packages.somePackage.types = 'I should be an object type'
 
-                expect(() => {
-                    parseReachabilityExport(json, 'universe')
-                }).toThrow(InvalidReachabilityFormatError)
+                expectThrow(brokenJSON)
             })
 
             test('throws error when types is a number', () => {
-                const json = [
-                    {
-                        module: 'Module',
-                        packages: {
-                            package: {
-                                types: 3
-                            }
-                        }
-                    }
-                ]
+                brokenJSON[0].packages.somePackage.types = 3
 
-                expect(() => {
-                    parseReachabilityExport(json, 'universe')
-                }).toThrow(InvalidReachabilityFormatError)
+                expectThrow(brokenJSON)
             })
 
             test('throws error when types is a boolean', () => {
-                const json = [
-                    {
-                        module: 'Module',
-                        packages: {
-                            package: {
-                                types: true
-                            }
-                        }
-                    }
-                ]
+                brokenJSON[0].packages.somePackage.types = false
 
-                expect(() => {
-                    parseReachabilityExport(json, 'universe')
-                }).toThrow(InvalidReachabilityFormatError)
+                expectThrow(brokenJSON)
             })
 
             test('throws error when types is null', () => {
-                const json = [
-                    {
-                        module: 'Module',
-                        packages: {
-                            package: {
-                                types: null
-                            }
-                        }
-                    }
-                ]
+                brokenJSON[0].packages.somePackage.types = null
 
-                expect(() => {
-                    parseReachabilityExport(json, 'universe')
-                }).toThrow(InvalidReachabilityFormatError)
+                expectThrow(brokenJSON)
             })
 
             test('throws error when type does not have methods attribute', () => {
-                const json = [
-                    {
-                        module: 'Module',
-                        packages: {
-                            package: {
-                                types: {
-                                    Class: {
-                                        notNamedProperly: { '<init>()': { size: 0 } },
-                                        fields: {}
-                                    }
-                                }
-                            }
-                        }
-                    }
-                ]
+                brokenJSON[0].packages.somePackage.types.SomeClass.methods = undefined
 
-                expect(() => {
-                    parseReachabilityExport(json, 'universe')
-                }).toThrow(InvalidReachabilityFormatError)
+                expectThrow(brokenJSON)
             })
 
             test('throws error when methods is an array', () => {
-                const json = [
-                    {
-                        module: 'Module',
-                        packages: {
-                            package: {
-                                types: {
-                                    Class: {
-                                        methods: [{ size: 0 }],
-                                        fields: {}
-                                    }
-                                }
-                            }
-                        }
-                    }
-                ]
+                brokenJSON[0].packages.somePackage.types.SomeClass.methods = [{ size: 0 }]
 
-                expect(() => {
-                    parseReachabilityExport(json, 'universe')
-                }).toThrow(InvalidReachabilityFormatError)
+                expectThrow(brokenJSON)
             })
 
             test('throws error when methods is a string', () => {
-                const json = [
-                    {
-                        module: 'Module',
-                        packages: {
-                            package: {
-                                types: {
-                                    Class: {
-                                        methods: 'wrong type',
-                                        fields: {}
-                                    }
-                                }
-                            }
-                        }
-                    }
-                ]
+                brokenJSON[0].packages.somePackage.types.SomeClass.methods =
+                    'I should be an object type'
 
-                expect(() => {
-                    parseReachabilityExport(json, 'universe')
-                }).toThrow(InvalidReachabilityFormatError)
+                expectThrow(brokenJSON)
             })
 
             test('throws error when methods is a number', () => {
-                const json = [
-                    {
-                        module: 'Module',
-                        packages: {
-                            package: {
-                                types: {
-                                    Class: {
-                                        methods: 3,
-                                        fields: {}
-                                    }
-                                }
-                            }
-                        }
-                    }
-                ]
+                brokenJSON[0].packages.somePackage.types.SomeClass.methods = 3
 
-                expect(() => {
-                    parseReachabilityExport(json, 'universe')
-                }).toThrow(InvalidReachabilityFormatError)
+                expectThrow(brokenJSON)
             })
 
             test('throws error when methods is a boolean', () => {
-                const json = [
-                    {
-                        module: 'Module',
-                        packages: {
-                            package: {
-                                types: {
-                                    Class: {
-                                        methods: true,
-                                        fields: {}
-                                    }
-                                }
-                            }
-                        }
-                    }
-                ]
+                brokenJSON[0].packages.somePackage.types.SomeClass.methods = false
 
-                expect(() => {
-                    parseReachabilityExport(json, 'universe')
-                }).toThrow(InvalidReachabilityFormatError)
+                expectThrow(brokenJSON)
             })
 
             test('throws error when methods is null', () => {
-                const json = [
-                    {
-                        module: 'Module',
-                        packages: {
-                            package: {
-                                types: {
-                                    Class: {
-                                        methods: null,
-                                        fields: {}
-                                    }
-                                }
-                            }
-                        }
-                    }
-                ]
+                brokenJSON[0].packages.somePackage.types.SomeClass.methods = null
 
-                expect(() => {
-                    parseReachabilityExport(json, 'universe')
-                }).toThrow(InvalidReachabilityFormatError)
+                expectThrow(brokenJSON)
             })
 
             test('throws error when method does not have size', () => {
-                const json = [
-                    {
-                        module: 'Module',
-                        packages: {
-                            package: {
-                                types: {
-                                    Class: {
-                                        methods: { '<init>()': { somethingElse: 0 } },
-                                        fields: {}
-                                    }
-                                }
-                            }
-                        }
-                    }
-                ]
+                brokenJSON[0].packages.somePackage.types.SomeClass.methods['<init>()'].size =
+                    undefined
 
-                expect(() => {
-                    parseReachabilityExport(json, 'universe')
-                }).toThrow(InvalidReachabilityFormatError)
+                expectThrow(brokenJSON)
             })
 
             test('throws error when size is not a number', () => {
-                const json = [
-                    {
-                        module: 'Module',
-                        packages: {
-                            package: {
-                                types: {
-                                    Class: {
-                                        methods: { '<init>()': { size: 'string' } },
-                                        fields: {}
-                                    }
-                                }
-                            }
-                        }
-                    }
-                ]
+                brokenJSON[0].packages.somePackage.types.SomeClass.methods['<init>()'].size =
+                    'I should be a number'
 
-                expect(() => {
-                    parseReachabilityExport(json, 'universe')
-                }).toThrow(InvalidReachabilityFormatError)
+                expectThrow(brokenJSON)
             })
 
             test('does not throw an error when size is zero', () => {
-                const json = [
-                    {
-                        module: 'Module',
-                        packages: {
-                            package: {
-                                types: {
-                                    Class: {
-                                        methods: { '<init>()': { size: 0 } },
-                                        fields: {}
-                                    }
-                                }
-                            }
-                        }
-                    }
-                ]
+                expectedJSONObject[0].packages.somePackage.types.SomeClass.methods[
+                    '<init>()'
+                ].size = 0
 
                 expect(() => {
-                    parseReachabilityExport(json, 'universe')
+                    parseReachabilityExport(expectedJSONObject, 'universe')
                 }).not.toThrow(InvalidReachabilityFormatError)
             })
         })
 
         describe('valid format', () => {
-            test('Simple Image with one object each layer is parsed to equal tree', () => {
-                const json = [
-                    {
-                        module: 'Module',
-                        packages: {
-                            package: {
-                                types: {
-                                    Class: {
-                                        methods: { '<init>()': { size: 0 } },
-                                        fields: {}
+            test.each([
+                {
+                    jsonObject: [
+                        {
+                            module: 'Module',
+                            packages: {
+                                package: {
+                                    types: {
+                                        Class: {
+                                            methods: { '<init>()': { size: 0 } },
+                                            fields: {}
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                ]
-
-                const expected = new Node('universe', [
-                    new Node('Module', [
-                        new Node('package', [
-                            new Node('Class', [
-                                new Leaf('<init>()', 0, [InitKind.NO_CLASS_CONSTRUCTOR])
+                    ],
+                    expected: new Node('universe', [
+                        new Node('Module', [
+                            new Node('package', [
+                                new Node('Class', [
+                                    new Leaf('<init>()', 0, [InitKind.NO_CLASS_CONSTRUCTOR])
+                                ])
                             ])
                         ])
                     ])
-                ])
-
-                expect(() => {
-                    parseReachabilityExport(json, 'universe').equals(expected)
-                }).toBeTruthy()
-            })
-
-            test('Simple Image with a few objects, different attributes each', () => {
-                const json = [
-                    {
-                        module: 'java.base',
-                        packages: {
-                            'java.lang.constant': {
-                                types: {
-                                    ConstantUtils: {
-                                        'init-kind': ['build-time'],
-                                        methods: {
-                                            'arrayDepth(java.lang.String)': { size: 192 },
-                                            'skipOverFieldSignature(java.lang.String, int, int, boolean)':
-                                                {
-                                                    size: 1720
-                                                },
-                                            'validateMemberName(java.lang.String, boolean)': {
-                                                flags: ['synthetic'],
-                                                size: 3088
-                                            }
-                                        },
-                                        fields: { pointyNames: {} }
+                },
+                {
+                    jsonObject: [
+                        {
+                            module: 'java.base',
+                            packages: {
+                                'java.lang.constant': {
+                                    types: {
+                                        ConstantUtils: {
+                                            'init-kind': ['build-time'],
+                                            methods: {
+                                                'arrayDepth(java.lang.String)': { size: 192 },
+                                                'skipOverFieldSignature(java.lang.String, int, int, boolean)':
+                                                    {
+                                                        size: 1720
+                                                    },
+                                                'validateMemberName(java.lang.String, boolean)': {
+                                                    flags: ['synthetic'],
+                                                    size: 3088
+                                                }
+                                            },
+                                            fields: { pointyNames: {} }
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                ]
-
-                const expected = new Node('universe', [
-                    new Node('java.base', [
-                        new Node('java.lang.constant', [
-                            new Node('ConstantUtils', [
-                                new Leaf('arrayDepth(java.lang.String)', 192, [
-                                    InitKind.BUILD_TIME
-                                ]),
-                                new Leaf(
-                                    'skipOverFieldSignature(java.lang.String, int, int, boolean)',
-                                    1720,
-                                    [InitKind.BUILD_TIME]
-                                ),
-                                new Leaf(
-                                    'validateMemberName(java.lang.String, boolean)',
-                                    3088,
-                                    [InitKind.BUILD_TIME],
-                                    false,
-                                    false,
-                                    true
-                                )
+                    ],
+                    expected: new Node('universe', [
+                        new Node('java.base', [
+                            new Node('java.lang.constant', [
+                                new Node('ConstantUtils', [
+                                    new Leaf('arrayDepth(java.lang.String)', 192, [
+                                        InitKind.BUILD_TIME
+                                    ]),
+                                    new Leaf(
+                                        'skipOverFieldSignature(java.lang.String, int, int, boolean)',
+                                        1720,
+                                        [InitKind.BUILD_TIME]
+                                    ),
+                                    new Leaf(
+                                        'validateMemberName(java.lang.String, boolean)',
+                                        3088,
+                                        [InitKind.BUILD_TIME],
+                                        false,
+                                        false,
+                                        true
+                                    )
+                                ])
                             ])
                         ])
                     ])
-                ])
-
-                expect(() => {
-                    parseReachabilityExport(json, 'universe').equals(expected)
-                }).toBeTruthy()
-            })
-
-            test('Multiple init kinds in class', () => {
-                const json = [
-                    {
-                        module: 'java.base',
-                        packages: {
-                            'java.util.zip': {
-                                types: {
-                                    CRC32: {
-                                        'init-kind': ['run-time', 'build-time'],
-                                        methods: {
-                                            '<clinit>()': { size: 92 },
-                                            '<init>()': { size: 0 }
-                                        },
-                                        fields: { pointyNames: {} }
+                },
+                {
+                    jsonObject: [
+                        {
+                            module: 'java.base',
+                            packages: {
+                                'java.util.zip': {
+                                    types: {
+                                        CRC32: {
+                                            'init-kind': ['run-time', 'build-time'],
+                                            methods: {
+                                                '<clinit>()': { size: 92 },
+                                                '<init>()': { size: 0 }
+                                            },
+                                            fields: { pointyNames: {} }
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                ]
-
-                const expected = new Node('universe', [
-                    new Node('java.base', [
-                        new Node('java.util.zip', [
-                            new Node('CRC32', [
-                                new Leaf('<clinit>()', 92, [
-                                    InitKind.RUN_TIME,
-                                    InitKind.BUILD_TIME
-                                ]),
-                                new Leaf('<init>()', 0, [InitKind.RUN_TIME, InitKind.BUILD_TIME])
+                    ],
+                    expected: new Node('universe', [
+                        new Node('java.base', [
+                            new Node('java.util.zip', [
+                                new Node('CRC32', [
+                                    new Leaf('<clinit>()', 92, [
+                                        InitKind.RUN_TIME,
+                                        InitKind.BUILD_TIME
+                                    ]),
+                                    new Leaf('<init>()', 0, [
+                                        InitKind.RUN_TIME,
+                                        InitKind.BUILD_TIME
+                                    ])
+                                ])
                             ])
                         ])
                     ])
-                ])
-
-                expect(() => {
-                    parseReachabilityExport(json, 'universe').equals(expected)
-                }).toBeTruthy()
+                }
+            ])('.Parse($jsonObject)', ({ jsonObject, expected }) => {
+                expect(
+                    parseReachabilityExport(jsonObject, 'universe').equals(expected)
+                ).toBeTruthy()
             })
         })
     })
