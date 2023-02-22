@@ -30,12 +30,16 @@ function validateFileAndAddUniverseOnSuccess(file: File, universeName: string): 
         })
 }
 
+function trimJsonEnding(fileName: string) {
+  return fileName.split('.json')[0]
+}
+
 function addUniverses(event: Event) {
     const input = event.target as HTMLInputElement
     if (!input.files) return
 
     Array.from(input.files).forEach((file: File) =>
-        validateFileAndAddUniverseOnSuccess(file, file.name)
+        validateFileAndAddUniverseOnSuccess(file, trimJsonEnding(file.name))
     )
 
     input.value = ''
