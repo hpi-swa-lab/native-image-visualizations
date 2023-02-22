@@ -35,7 +35,6 @@ withDefaults(
                             <UniverseSelectionList />
                             <hr />
 
-                            <b>Controls</b>
                             <SearchBar />
                             <LayerSelection />
 

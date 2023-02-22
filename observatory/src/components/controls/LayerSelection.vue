@@ -12,7 +12,7 @@ function applyLayer(event: Event) {
 
 <template>
     <div>
-        <label for="layer-selection" class="block mb-2 text-sm font-medium"
+        <label for="layer-selection"
             >Currently Zooming in on: {{ layerName(store.currentLayer).toLocaleLowerCase() }}</label
         >
 
