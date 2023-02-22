@@ -52,7 +52,7 @@ export const globalConfigStore = defineStore('globalConfig', {
         },
         updateUniverseName(oldName: string, newName: string): void {
             const universe = this.universes.find((universe) => universe.name === oldName)
-            if (universe !== undefined) {
+            if (universe) {
                 universe.name = newName
             }
         },
