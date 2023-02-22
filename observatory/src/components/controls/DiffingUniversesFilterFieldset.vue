@@ -17,8 +17,8 @@ const sankeyTreeStore = sankeyTreeConfigStore()
 </script>
 
 <template>
-    <fieldset class="border rounded p-2 w-auto">
-        <legend class="w-auto float-none p-2 fs-5">Universes to display:</legend>
+    <fieldset class="w-auto">
+        <label class="block">Universe nodes to display:</label>
 
         <ToggleSwitch
             v-for="key in Object.keys(universesMetadata)"
@@ -29,6 +29,7 @@ const sankeyTreeStore = sankeyTreeConfigStore()
             @input="sankeyTreeStore.changeUniverseSelection($event.target.id)"
         >
             <ColorLabel
+                :for-element="key"
                 :label="universesMetadata[key].name"
                 :color="universesMetadata[key].color"
             ></ColorLabel>
@@ -40,9 +41,17 @@ const sankeyTreeStore = sankeyTreeConfigStore()
             :checked="sankeyTreeStore.diffingFilter.showUnmodified"
             @input="sankeyTreeStore.setShowUnmodified($event.target.checked)"
         >
-            <ColorLabel label="unmodified packages" :color="COLOR_UNMODIFIED"></ColorLabel>
+            <ColorLabel
+                :for-element="UNMODIFIED"
+                label="unmodified packages"
+                :color="COLOR_UNMODIFIED"
+            ></ColorLabel>
         </ToggleSwitch>
 
-        <ColorLabel label="modified packages" :color="COLOR_MODIFIED"></ColorLabel>
+        <ColorLabel
+            label="modified packages"
+            :color="COLOR_MODIFIED"
+            class="ml-[29px]"
+        ></ColorLabel>
     </fieldset>
 </template>

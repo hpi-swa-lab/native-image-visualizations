@@ -19,7 +19,6 @@ withDefaults(
 
 <template>
     <div>
-        <slot name="preceding"></slot>
         <input
             :id="id"
             :value="value"

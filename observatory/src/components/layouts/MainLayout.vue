@@ -18,7 +18,7 @@ withDefaults(
 
 <template>
     <div class="w-full h-full grid grid-cols-12 gap-2">
-        <div class="col-span-2 drop-shadow-xl">
+        <div class="col-span-2 drop-shadow-xl overflow-y-scroll min-w-[300px]">
             <div class="rounded bg-gray-50 space-y-4 h-full">
                 <h2 class="text-center">{{ title }}</h2>
 

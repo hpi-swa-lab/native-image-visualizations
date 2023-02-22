@@ -25,17 +25,15 @@ function onChange(event: MouseEvent): void {
 </script>
 
 <template>
-    <div id="sankey-tree-controls" class="input-container settings-container">
-        <form>
+    <div id="sankey-tree-controls" class="input-container settings-container space-y-4">
+        <form class="space-y-4 border rounded p-2">
             <DiffingUniversesFilterFieldset
                 :universes-metadata="universesMetadata"
             ></DiffingUniversesFilterFieldset>
 
             <SortingFilterFieldset />
 
-            <button type="submit" class="btn btn-sm btn-primary m-2" @click="onChange">
-                update
-            </button>
+            <button type="submit" class="btn btn-sm btn-primary" @click="onChange">update</button>
 
             <button
                 id="expand-tree-btn"
@@ -45,8 +43,8 @@ function onChange(event: MouseEvent): void {
             >
                 expand full tree
             </button>
-
-            <AlertBox title="Shortcuts" :alert-infos="SHORTCUTS"></AlertBox>
         </form>
+
+        <AlertBox title="Shortcuts" :alert-infos="SHORTCUTS"></AlertBox>
     </div>
 </template>
