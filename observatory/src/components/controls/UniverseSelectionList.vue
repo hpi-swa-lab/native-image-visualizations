@@ -43,8 +43,8 @@ function isDisabled(universeName: string) {
 </template>
 
 <style scoped>
->>> input {
-    width: 25px;
-    height: 25px;
+:deep(input) {
+    min-width: 25px;
+    min-height: 25px;
 }
 </style>

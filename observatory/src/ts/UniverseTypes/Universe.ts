@@ -13,6 +13,10 @@ export class Universe {
         return this._name
     }
 
+    public set name(name: string) {
+        this._name = name
+    }
+
     public get root(): Node {
         return this._root
     }

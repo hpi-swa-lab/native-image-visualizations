@@ -10,6 +10,7 @@ import {
     causalityGraphConfigStore
 } from '../../ts/stores'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import InlineEditableField from "./InlineEditableField.vue";
 
 const store = globalConfigStore()
 const uploadError = ref<Error | undefined>(undefined)
@@ -89,7 +90,7 @@ function exportConfig() {
                     :key="index"
                     class="flex items-center justify-between space-x-2"
                 >
-                    <label class="overflow-x-hidden ml-2 my-auto">{{ universe.name }}</label>
+                    <InlineEditableField :label="universe.name" class="flex-auto"></InlineEditableField>
                     <button
                         class="btn-sm btn-danger"
                         @click="() => store.removeUniverse(universe.name)"
