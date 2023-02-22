@@ -58,6 +58,10 @@ input {
     @apply bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5;
 }
 
+input[type=checkbox], input[type=radio] {
+    @apply min-w-[25px] min-h-[25px] align-middle
+}
+
 .help-text {
     @apply mt-2 text-sm text-gray-500 dark:text-gray-400;
 }

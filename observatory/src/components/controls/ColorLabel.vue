@@ -18,7 +18,7 @@ withDefaults(
         <input
             v-if="color"
             type="color"
-            class="mr-1 w-4 h-4 align-middle p-0 border-none"
+            class="mr-1 w-[25px] h-[25px] p-0 align-middle border-none"
             :value="color"
             disabled
         />

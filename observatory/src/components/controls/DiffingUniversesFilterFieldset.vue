@@ -48,6 +48,6 @@ const sankeyTreeStore = sankeyTreeConfigStore()
             ></ColorLabel>
         </ToggleSwitch>
 
-        <ColorLabel label="modified packages" :color="COLOR_MODIFIED"></ColorLabel>
+        <ColorLabel label="modified packages" :color="COLOR_MODIFIED" class="ml-[29px]"></ColorLabel>
     </fieldset>
 </template>
