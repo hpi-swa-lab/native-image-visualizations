@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { globalConfigStore } from '../../ts/stores';
 import { Multiverse } from '../../ts/UniverseTypes/Multiverse';
+import { Universe } from '../../ts/UniverseTypes/Universe';
 import { TreeLine } from '../../ts/Visualizations/TreeLine';
 import MainLayout from '../layouts/MainLayout.vue';
 
@@ -10,20 +11,23 @@ import MainLayout from '../layouts/MainLayout.vue';
 const store = globalConfigStore()
 
 console.log('Universes: ', store.universes)
-const multiverse = new Multiverse(store.universes)
+console.log('Calculating multiverse...')
+const multiverse = new Multiverse(store.universes as Universe[])
 
 const container = ref<HTMLDivElement>()
-let visualization: TreeLine = new TreeLine(
-    container.value!,
-    new Map([[0, '#1b9e77'], [1, '#72286f']])
-)
-visualization.setMultiverse(multiverse)
+
+onMounted(() => {
+    let visualization: TreeLine = new TreeLine(
+        container.value!,
+        new Map([[0, '#1b9e77'], [1, '#72286f']])
+    )
+    visualization.setMultiverse(multiverse)
+})
+
 </script>
 
 <template>
     <MainLayout title="Tree Line">
-        <div id="container">
-            <div id="tree-line-container" ref="container" class="w-full h-full" />
-        </div>
+        <div ref="container" class="w-full h-full" />
     </MainLayout>
 </template>

@@ -7,39 +7,11 @@ import { clamp, lightenColor, powerSet } from '../utils'
 // import { clamp, lightenColor, powerSet } from '../utils'
 import { MultiverseVisualization } from './MultiverseVisualization'
 
-type UniverseCombination = UniverseIndex[]
+type UniverseCombination = string
 type ExclusiveSizes = Map<UniverseCombination, Bytes>
 
-function computeExclusiveSizes(
-    allExclusiveSizes: Map<Node, ExclusiveSizes>,
-    universeIndices: UniverseIndex[],
-    mergedNode: Node
-) {
-    const exclusiveSizes = new Map()
-
-    if (mergedNode.children.length == 0) {
-        const combination: UniverseIndex[] = []
-        for (const index of universeIndices) {
-            if (mergedNode.sources.get(index)!.codeSize > 0) {
-                combination.push(index)
-            }
-        }
-
-        exclusiveSizes.set(combination, 1) // TODO: Method size hardcoded to 1.
-    } else {
-        mergedNode.children.forEach((child: Node) =>
-            computeExclusiveSizes(allExclusiveSizes, universeIndices, child)
-        )
-
-        for (const child of mergedNode.children) {
-            allExclusiveSizes.get(child)!.forEach((size, combination) => {
-                if (!exclusiveSizes.get(combination)) exclusiveSizes.set(combination, 0)
-                exclusiveSizes.set(combination, exclusiveSizes.get(combination)! + size)
-            })
-        }
-    }
-
-    allExclusiveSizes.set(mergedNode, exclusiveSizes)
+function universeCombination(indices: UniverseIndex[]): UniverseCombination {
+    return indices.sort().join(',')
 }
 
 const MIX_ALPHA = 0.4
@@ -48,7 +20,7 @@ const EXPLOSION_THRESHOLD = 100 // at this height, entities explode into childre
 const LINE_WIDTH = 256
 const LINE_PADDING = 16
 
-const FONT_SIZE = 16
+const FONT_SIZE = 11
 const TEXT_HORIZONTAL_PADDING = 8
 const TEXT_VERTICAL_PADDING = 2
 const HIERARCHY_GAPS = 2 // used between boxes of the hierarchy
@@ -68,31 +40,38 @@ export class TreeLine implements MultiverseVisualization {
     context: CanvasRenderingContext2D | null = null
 
     constructor(container: HTMLDivElement, colors: Map<UniverseIndex, string>) {
+        // console.log('Container', container)
         this.container = container
         this.colors = colors
     }
 
     setMultiverse(multiverse: Multiverse): void {
         this.multiverse = multiverse
+        console.log('Set multiverse', this.multiverse)
 
         const indices: UniverseIndex[] = multiverse.sources.map((_, i) => i)
         if (indices.length == 1) {
-            this.combinations = [indices]
+            this.combinations = [universeCombination(indices)]
         } else if (indices.length == 2) {
-            this.combinations = [[0], [0, 1], [1]]
+            this.combinations = [
+                universeCombination([0]),
+                universeCombination([0, 1]),
+                universeCombination([1])
+            ]
         } else {
             this.combinations = []
             for (const combination of powerSet(indices)) {
                 if (combination.length > 0) {
-                    this.combinations.push(combination)
+                    this.combinations.push(universeCombination(combination))
                 }
             }
         }
 
         this.exclusiveSizes = new Map()
-        computeExclusiveSizes(this.exclusiveSizes, indices, multiverse.root)
+        this.computeExclusiveSizes(indices, multiverse.root)
+        console.log('Exclusive sizes', this.exclusiveSizes)
 
-        console.log('Set multiverse', this.multiverse)
+        this.generate()
     }
     setSelection(selection: Node[]): void {
         // TODO
@@ -100,11 +79,88 @@ export class TreeLine implements MultiverseVisualization {
     setHighlights(highlights: Node[]): void {
         // TODO
     }
+
+    computeExclusiveSizes(universeIndices: UniverseIndex[], mergedNode: Node) {
+        const exclusiveSizes = new Map<UniverseCombination, Bytes>()
+
+        if (mergedNode.children.length == 0) {
+            // At the lowest level in the tree, the concept of code shared
+            // between universes becomes a bit blurry. For example, a method
+            // `foo` may have a code size of 10 bytes in universe A and only 7
+            // bytes in universe B. Now, what amount of code is shared? The
+            // correct answer is that we can't tell – the method may have a
+            // completely different implementation, or perhaps it's the same
+            // code but the GraalVM analysis had a bit more information about
+            // type flows and was able to simplify the code.
+            //
+            // It would make no sense to treat the implementation of methods as
+            // entirely different (the visualization would just not report any
+            // shared code whatsoever), but it also doesn't make sense to treat
+            // it like the unioned code size is in all universes – after all, a
+            // smaller universe should be reported as so.
+            //
+            // What we do here is a "share-as-much-as-is-reasonable" approach:
+            // Let's say there's a method with the following code sizes in three
+            // universes:
+            //
+            // - 2 bytes in universe A
+            // - 5 bytes in universe B
+            // - 8 bytes in universe C
+            //
+            // We treat the minimum size (2 bytes) as being shared among all
+            // universes. We then repeat this process with the remaining code
+            // sizes for the universes that still contain more code. In the end,
+            // we end up with this result:
+            //
+            // - 2 bytes shared among A, B, and C
+            // - 3 bytes shared among B and C
+            // - 3 bytes exclusively in C
+
+            const remainingSizes = new Map()
+            for (const index of universeIndices) {
+                remainingSizes.set(index, mergedNode.sources.get(index)?.codeSize ?? 0)
+            }
+
+            while (true) {
+                for (const [index, size] of remainingSizes.entries()) {
+                    if (size == 0) {
+                        remainingSizes.delete(index)
+                    }
+                }
+                if (remainingSizes.size == 0) {
+                    break
+                }
+
+                const minimum = Array.from(remainingSizes.values()).reduce((a, b) => Math.min(a, b))
+                const combination = universeCombination(Array.from(remainingSizes.keys()))
+                exclusiveSizes.set(combination, minimum)
+
+                for (const index of remainingSizes.keys()) {
+                    remainingSizes.set(index, remainingSizes.get(index) - minimum)
+                }
+            }
+        } else {
+            mergedNode.children.forEach((child: Node) =>
+                this.computeExclusiveSizes(universeIndices, child)
+            )
+
+            for (const child of mergedNode.children) {
+                this.exclusiveSizes.get(child)!.forEach((size, combination) => {
+                    if (!exclusiveSizes.get(combination)) exclusiveSizes.set(combination, 0)
+                    exclusiveSizes.set(combination, exclusiveSizes.get(combination)! + size)
+                })
+            }
+        }
+
+        this.exclusiveSizes.set(mergedNode, exclusiveSizes)
+    }
+
     generate(): void {
-        const container = document.getElementById('tree-line-container')!
+        console.log('Generating diagram')
+        this.container.innerHTML = ''
 
         this.canvas = document.createElement('canvas') as HTMLCanvasElement
-        container.appendChild(this.canvas)
+        this.container.appendChild(this.canvas)
         this.context = this.canvas.getContext('2d', { alpha: false })
 
         const fitToScreen = () => {
@@ -165,13 +221,18 @@ export class TreeLine implements MultiverseVisualization {
         })
 
         for (const combination of this.combinations) {
-            console.log(`Creating fill style for ${combination}`)
-            if (combination.length == 1) {
-                this.fillStyles.set(combination, this.colors.get(combination[0])!)
+            // console.log(`Creating fill style for ${combination}`)
+            if (!combination.includes(',')) {
+                this.fillStyles.set(combination, this.colors.get(parseInt(combination))!)
                 continue
             }
 
-            const gradientColors = combination.map((universe) => lightenedColors.get(universe))
+            // this.fillStyles.set(combination, '#ff00ff')
+            // continue
+
+            const gradientColors = combination
+                .split(',')
+                .map((universe) => lightenedColors.get(parseInt(universe)))
             const size = Math.max(this.canvas.width, this.canvas.height)
             const gradient = this.context.createLinearGradient(0, 0, size, size)
             const numSteps = Math.sqrt(2 * Math.pow(size, 2)) / 5
@@ -189,6 +250,8 @@ export class TreeLine implements MultiverseVisualization {
 
             this.fillStyles.set(combination, gradient)
         }
+
+        console.log('Fill styles', this.fillStyles)
     }
 
     drawDiagram(
@@ -209,6 +272,10 @@ export class TreeLine implements MultiverseVisualization {
         if (top > this.canvas.height || top + height < 0) {
             return // Outside of the visible area.
         }
+
+        // if (height < 5) {
+        //     return
+        // }
 
         // Show the hierarchy on the right.
         let leftOfSubHierarchy = undefined
@@ -247,18 +314,27 @@ export class TreeLine implements MultiverseVisualization {
             }
         } else {
             let offsetFromLeft = LINE_PADDING
+            const exclusiveSizes = this.exclusiveSizes.get(tree)!
+            const totalSize = Array.from(exclusiveSizes.values()).reduce((a, b) => a + b, 0)
+
             for (const combination of this.combinations) {
-                const size = this.exclusiveSizes.get(tree)!.get(combination) ?? 0
-                const width = (LINE_WIDTH * size) / tree.codeSize
+                const size = exclusiveSizes.get(combination) ?? 0
+                const width = (LINE_WIDTH * size) / totalSize // tree.codeSize
+
+                // TODO before merge: Make sure codeSize is the sum of all exclusiveSizes.
 
                 // Note: Floating point calculations are never accurate, so
                 // `floor` and `ceil` are used to avoid the background
                 // peeking through the gaps.
+                // console.log(
+                //     `Drawing at ${offsetFromLeft}, top ${top}, width ${width}, height ${height}`
+                // )
                 this.context.fillStyle = this.fillStyles.get(combination)!
                 this.context.fillRect(offsetFromLeft, Math.floor(top), width, Math.ceil(height))
 
                 offsetFromLeft += width
             }
+            2
         }
     }
 
@@ -282,6 +358,7 @@ export class TreeLine implements MultiverseVisualization {
             containingCombinations.length == 1
                 ? this.fillStyles.get(containingCombinations[0])!
                 : '#cccccc'
+        // console.debug(containingCombinations, this.context.fillStyle)
         this.context.fillRect(left, top, boxWidth, height - HIERARCHY_GAPS)
 
         const visibleStart = clamp(top, 0, this.canvas.height)

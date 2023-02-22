@@ -1,8 +1,8 @@
 import { defineStore } from 'pinia'
-import { Universe } from './UniverseTypes/Universe'
+import { componentName, SwappableComponentType } from './enums/SwappableComponentType'
+import { createConfigSelections, createConfigUniverses } from './parsing'
 import { Node } from './UniverseTypes/Node'
-import { createConfigUniverses, createConfigSelections } from './parsing'
-import { SwappableComponentType, componentName } from './enums/SwappableComponentType'
+import { Universe } from './UniverseTypes/Universe'
 
 export const globalConfigStore = defineStore('globalConfig', {
     state: () => {
