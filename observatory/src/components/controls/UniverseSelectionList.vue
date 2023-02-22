@@ -34,7 +34,7 @@ function isDisabled(universeName: string) {
                 class="flex flex-row justify-between"
                 @change.self="store.toggleUniverseByName"
             >
-                <label :for="universe.name + index" class="flex-auto overflow-x-hidden ml-1">
+                <label :for="universe.name + index" class="flex-auto overflow-x-hidden ml-1 my-auto block">
                     {{ universe.name }}
                 </label>
             </ToggleSwitch>

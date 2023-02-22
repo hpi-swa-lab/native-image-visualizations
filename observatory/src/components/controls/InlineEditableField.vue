@@ -4,7 +4,7 @@
         <input type="text" v-model="inputValue" ref="inputElement" class="p-1 m-0 w-full" @focusout="saveEdit" @keyup.enter="saveEdit"/>
       </template>
       <template v-else>
-        <label class="mx-1 hover:cursor-text block" @click="toggleEdit">
+        <label class="mx-1 hover:cursor-text block my-auto" @click="toggleEdit">
           {{ inputValue }}
         </label>
       </template>
