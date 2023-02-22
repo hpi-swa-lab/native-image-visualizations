@@ -29,7 +29,14 @@ export const globalConfigStore = defineStore('globalConfig', {
     },
     actions: {
         addUniverse(newUniverse: Universe): void {
-            if (this.universes.find((universe) => universe.name === newUniverse.name)) return
+            let matchingUniverse = this.universes.find((universe) => universe.name === newUniverse.name)
+            if (matchingUniverse) {
+                let i = 1
+                while(matchingUniverse = this.universes.find((universe) => universe.name === newUniverse.name + ` (${i})`)) {
+                    i++
+                }
+                newUniverse.name = newUniverse.name + ` (${i})`
+            }
 
             this.universes.push(newUniverse)
         },
