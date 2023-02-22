@@ -1,10 +1,12 @@
 <script setup lang="ts">
 withDefaults(
     defineProps<{
+        forElement: string
         label: string
         color: string
     }>(),
     {
+      forElement: '',
         label: '',
         color: '#ffffff'
     }
@@ -20,6 +22,6 @@ withDefaults(
             :value="color"
             disabled
         />
-        <label> {{ label }} </label>
+        <label :for="forElement"> {{ label }} </label>
     </div>
 </template>
