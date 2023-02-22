@@ -10,7 +10,7 @@ import {
     causalityGraphConfigStore
 } from '../../ts/stores'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import InlineEditableField from "./InlineEditableField.vue";
+import InlineEditableField from './InlineEditableField.vue'
 
 const store = globalConfigStore()
 const uploadError = ref<Error | undefined>(undefined)
@@ -31,7 +31,7 @@ function validateFileAndAddUniverseOnSuccess(file: File, universeName: string): 
 }
 
 function trimJsonEnding(fileName: string) {
-  return fileName.split('.json')[0]
+    return fileName.split('.json')[0]
 }
 
 function addUniverses(event: Event) {
@@ -94,7 +94,10 @@ function exportConfig() {
                     :key="index"
                     class="flex items-center justify-between space-x-2"
                 >
-                    <InlineEditableField :label="universe.name" class="flex-auto"></InlineEditableField>
+                    <InlineEditableField
+                        :label="universe.name"
+                        class="flex-auto"
+                    ></InlineEditableField>
                     <button
                         class="btn-sm btn-danger"
                         @click="() => store.removeUniverse(universe.name)"
