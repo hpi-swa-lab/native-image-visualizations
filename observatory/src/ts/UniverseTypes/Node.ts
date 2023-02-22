@@ -8,7 +8,7 @@ export const INVALID_SIZE: Bytes = -1
 export class Node {
     protected _name: string
     protected _parent: Node | undefined
-    protected readonly _children: Node[]
+    protected _children: Node[]
     protected _codeSize: Bytes = INVALID_SIZE
     protected _sources: Map<UniverseIndex, Node> = new Map()
 
@@ -85,14 +85,17 @@ export class Node {
         this._parent = newParent
     }
 
-    public clone(): Node {
-        const parent = this.parent
+    public cloneIgnoringReferences(): Node {
+        const state = [this.parent, this.children, this.sources]
         this.parent = undefined
+        this._children = []
+        this.sources = new Map()
 
         const newInstance = clone(this)
 
-        newInstance.parent = parent
-        this.parent = parent
+        this.parent = state[0] as Node
+        this._children = state[1] as Node[]
+        this.sources = state[2] as Map<UniverseIndex, Node>
 
         return newInstance
     }
