@@ -127,7 +127,7 @@ extern "C" const uint8_t* EMSCRIPTEN_KEEPALIVE simulate_purge(const method_id* p
     auto start = std::chrono::system_clock::now();
 #endif
 
-    BFS::Result after_purge = bfs->run<false>(purged_mids);
+    BFS::Result after_purge = bfs->run<true>(purged_mids);
 
 #if LOG
     auto end = std::chrono::system_clock::now();
@@ -251,4 +251,29 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE show_reachability(const char* methods)
     copy(s.begin(), s.end(), res);
     res[s.size()] = 0;
     return res;
+}
+
+struct EdgeBuffer
+{
+    uint32_t len;
+    pair<method_id, method_id> edges[0];
+
+    static EdgeBuffer* allocate_for(span<pair<method_id, method_id>> edges)
+    {
+        void* buf = (void*)malloc(sizeof(EdgeBuffer) + sizeof(pair<method_id, method_id>) * edges.size());
+        if(!buf)
+            exit(666);
+        EdgeBuffer* edgeBuf = (EdgeBuffer*)buf;
+        edgeBuf->len = edges.size();
+        std::copy(edges.begin(), edges.end(), edgeBuf->edges);
+        return edgeBuf;
+    }
+};
+
+extern "C" EdgeBuffer* EMSCRIPTEN_KEEPALIVE get_reachability_hyperpath(method_id mid)
+{
+    const BFS::Result* bfsresult = current_purged_result ? &*current_purged_result : &*all;
+    auto& m = *purge_model;
+    auto edges = get_reachability(m.adj, *bfsresult, mid);
+    return EdgeBuffer::allocate_for(edges);
 }

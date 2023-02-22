@@ -122,7 +122,7 @@ body {
 
 .overview-div {
     float: left;
-    width: 43%;
+    width: 20%;
     height: 100%;
     margin-right: 1%;
     overflow-y: scroll;
@@ -131,7 +131,7 @@ body {
 
 .imageview-div {
     float: left;
-    width: 55%;
+    width: 40%;
     height: 100%;
     margin-right: 1%;
     overflow-y: scroll;
@@ -140,9 +140,9 @@ body {
 
 .detail-div {
     float: left;
-    width: 0%;
+    width: 38%;
     height: 100%;
-    visibility: hidden;
+    /*visibility: hidden;*/
 }
 
 .hovered-for-purge {
@@ -183,4 +183,12 @@ body {
     justify-content: center;
     align-items: center;
     height: 100%;
+}
+
+.node {
+    fill: black;
+    stroke: black;
+    stroke-opacity: 0;
+    opacity: 0.8;
+    stroke-width: 5;
 }
