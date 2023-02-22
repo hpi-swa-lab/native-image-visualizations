@@ -23,7 +23,7 @@ function applyLayer(event: Event) {
                 name="Layer"
                 type="range"
                 class="block w-full"
-                :min="Layers.UNIVERSES"
+                :min="Layers.MODULES"
                 :max="Layers.METHODS"
                 :step="1"
                 @change="applyLayer"

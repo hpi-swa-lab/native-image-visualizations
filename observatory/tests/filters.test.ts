@@ -32,10 +32,7 @@ describe('filters', () => {
     })
 
     describe('getNodesOnLevel', () => {
-        const multiverse = new Node('', [
-            new Node('Universe A', [forest.duplicatedNames]),
-            new Node('Universe B', [forest.layeredTree])
-        ])
+        const multiverse = new Node('', [forest.duplicatedNames, forest.layeredTree])
 
         test('returns empty array when level is negative', () => {
             expect(getNodesOnLevel(-1, forest.layeredTree)).toEqual([])
@@ -62,28 +59,18 @@ describe('filters', () => {
         })
 
         test('returns array with universes on respective layer', () => {
-            const actual = getNodesOnLevel(Layers.UNIVERSES, multiverse)
+            const actual = getNodesOnLevel(Layers.MODULES, multiverse)
             const expected = [multiverse.children[0], multiverse.children[1]]
 
             expect(actual.length).toBe(expected.length)
             expected.forEach((value, index) => expect(actual[index].equals(value)).toBeTruthy())
         })
 
-        test('returns array with modules on respective layer', () => {
-            const actual = getNodesOnLevel(Layers.MODULES, multiverse)
-            const expected = [
-                multiverse.children[0].children[0],
-                multiverse.children[1].children[0]
-            ]
-
-            expect(actual.length).toBe(expected.length)
-            expected.forEach((value, index) => expect(actual[index].equals(value)).toBeTruthy())
-        })
-
         test('returns array with packages on respective layer', () => {
-            const moduleA = multiverse.children[0].children[0]
-            const moduleB = multiverse.children[1].children[0]
+            const moduleA = multiverse.children[0]
+            const moduleB = multiverse.children[1]
             const actual = getNodesOnLevel(Layers.PACKAGES, multiverse)
+
             const expected = [
                 moduleA.children[0],
                 moduleA.children[1],
@@ -96,10 +83,10 @@ describe('filters', () => {
         })
 
         test('returns array with classes on respective layer', () => {
-            const packageAA = multiverse.children[0].children[0].children[0]
-            const packageAB = multiverse.children[0].children[0].children[1]
-            const packageBA = multiverse.children[1].children[0].children[0]
-            const packageBB = multiverse.children[1].children[0].children[1]
+            const packageAA = multiverse.children[0].children[0]
+            const packageAB = multiverse.children[0].children[1]
+            const packageBA = multiverse.children[1].children[0]
+            const packageBB = multiverse.children[1].children[1]
             const actual = getNodesOnLevel(Layers.CLASSES, multiverse)
             const expected = [
                 packageAA.children[0],
@@ -115,10 +102,10 @@ describe('filters', () => {
         })
 
         test('returns array with methods on respective layer', () => {
-            const packageAA = multiverse.children[0].children[0].children[0]
-            const packageAB = multiverse.children[0].children[0].children[1]
-            const packageBA = multiverse.children[1].children[0].children[0]
-            const packageBB = multiverse.children[1].children[0].children[1]
+            const packageAA = multiverse.children[0].children[0]
+            const packageAB = multiverse.children[0].children[1]
+            const packageBA = multiverse.children[1].children[0]
+            const packageBB = multiverse.children[1].children[1]
             const actual = getNodesOnLevel(Layers.METHODS, multiverse)
             const expected = [
                 packageAA.children[0].children[0],

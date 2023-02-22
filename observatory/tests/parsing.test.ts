@@ -314,6 +314,28 @@ describe('parsing', () => {
                             ])
                         ])
                     ])
+                },
+                {
+                    jsonObject: [
+                        {
+                            module: 'org.graalvm.truffle',
+                            packages: {
+                                'com.oracle.truffle.api.dsl': {
+                                    types: {
+                                        GeneratedBy: {
+                                            methods: {},
+                                            fields: {}
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    ],
+                    expected: new Node('universe', [
+                        new Node('org.graalvm.truffle', [
+                            new Node('com.oracle.truffle.api.dsl', [new Node('GeneratedBy', [])])
+                        ])
+                    ])
                 }
             ])('.Parse($jsonObject)', ({ jsonObject, expected }) => {
                 expect(

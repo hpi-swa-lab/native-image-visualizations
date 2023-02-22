@@ -30,10 +30,13 @@ describe('Multiverse', () => {
     /* eslint-disable @typescript-eslint/no-non-null-assertion */
     describe('Merging universes', () => {
         test('Two trees without overlap stay separated in result', () => {
-            const c = forest.overlappingTreeC
-            const d = forest.differentPackageTree
+            const multiverse = new Multiverse([
+                new Universe('c', forest.overlappingTreeC),
+                new Universe('d', forest.differentPackageTree)
+            ])
 
-            const multiverse = new Multiverse([new Universe('c', c), new Universe('d', d)])
+            const c = forest.overlappingTreeC.children[0]
+            const d = forest.differentPackageTree.children[0]
 
             const expected = node('', new Map(), [
                 node('packageA', new Map([[0, c]]), [
@@ -58,9 +61,8 @@ describe('Multiverse', () => {
         })
 
         test('Should have the occurences set to the only tree given', () => {
-            const a = forest.overlappingTreeA
-
-            const multiverse = new Multiverse([new Universe('a', a)])
+            const multiverse = new Multiverse([new Universe('a', forest.overlappingTreeA)])
+            const a = forest.overlappingTreeA.children[0]
 
             const expected = node('', new Map(), [
                 node('packageA', new Map([[0, a]]), [
@@ -77,9 +79,11 @@ describe('Multiverse', () => {
         })
 
         test('Merging two equal trees results in the same tree with both indexes', () => {
-            const a = forest.overlappingTreeA
-
-            const multiverse = new Multiverse([new Universe('a', a), new Universe('anotherA', a)])
+            const multiverse = new Multiverse([
+                new Universe('a', forest.overlappingTreeA),
+                new Universe('anotherA', forest.overlappingTreeA)
+            ])
+            const a = forest.overlappingTreeA.children[0]
 
             const expected = node('', new Map(), [
                 node(
@@ -129,10 +133,12 @@ describe('Multiverse', () => {
         })
 
         test('should merge 2 overlapping trees into one tree', () => {
-            const a = forest.overlappingTreeA
-            const b = forest.overlappingTreeB
-
-            const multiverse = new Multiverse([new Universe('a', a), new Universe('b', b)])
+            const multiverse = new Multiverse([
+                new Universe('a', forest.overlappingTreeA),
+                new Universe('b', forest.overlappingTreeB)
+            ])
+            const a = forest.overlappingTreeA.children[0]
+            const b = forest.overlappingTreeB.children[0]
 
             const expected = node('', new Map(), [
                 node(
@@ -167,15 +173,15 @@ describe('Multiverse', () => {
         })
 
         test('should merge 3 overlapping trees into one tree', () => {
-            const a = forest.overlappingTreeA
-            const b = forest.overlappingTreeB
-            const c = forest.overlappingTreeC
-
             const multiverse = new Multiverse([
-                new Universe('a', a),
-                new Universe('b', b),
-                new Universe('c', c)
+                new Universe('a', forest.overlappingTreeA),
+                new Universe('b', forest.overlappingTreeB),
+                new Universe('c', forest.overlappingTreeC)
             ])
+
+            const a = forest.overlappingTreeA.children[0]
+            const b = forest.overlappingTreeB.children[0]
+            const c = forest.overlappingTreeC.children[0]
 
             const expected = node('', new Map(), [
                 node(
@@ -214,15 +220,15 @@ describe('Multiverse', () => {
         })
 
         test('should merge 2 overlapping trees, append the different package with the same method name', () => {
-            const a = forest.overlappingTreeA
-            const b = forest.overlappingTreeB
-            const d = forest.differentPackageTree
-
             const multiverse = new Multiverse([
-                new Universe('a', a),
-                new Universe('b', b),
-                new Universe('d', d)
+                new Universe('a', forest.overlappingTreeA),
+                new Universe('b', forest.overlappingTreeB),
+                new Universe('d', forest.differentPackageTree)
             ])
+
+            const a = forest.overlappingTreeA.children[0]
+            const b = forest.overlappingTreeB.children[0]
+            const d = forest.differentPackageTree.children[0]
 
             const expected = node('', new Map(), [
                 node(
@@ -286,10 +292,12 @@ describe('Multiverse', () => {
         })
 
         test('should merge 2 overlapping images into one image', () => {
-            const a = forest.overlappingImageA
-            const b = forest.overlappingImageB
-
-            const multiverse = new Multiverse([new Universe('a', a), new Universe('b', b)])
+            const multiverse = new Multiverse([
+                new Universe('a', forest.overlappingImageA),
+                new Universe('b', forest.overlappingImageB)
+            ])
+            const a = forest.overlappingImageA.children[0]
+            const b = forest.overlappingImageB.children[0]
             const expected = node('', new Map(), [
                 node(
                     'packageA',
@@ -323,15 +331,15 @@ describe('Multiverse', () => {
         })
 
         test('should merge 3 overlapping trees into one tree', () => {
-            const a = forest.overlappingImageA
-            const b = forest.overlappingImageB
-            const c = forest.overlappingImageC
-
             const multiverse = new Multiverse([
-                new Universe('a', a),
-                new Universe('b', b),
-                new Universe('c', c)
+                new Universe('a', forest.overlappingImageA),
+                new Universe('b', forest.overlappingImageB),
+                new Universe('c', forest.overlappingImageC)
             ])
+
+            const a = forest.overlappingImageA.children[0]
+            const b = forest.overlappingImageB.children[0]
+            const c = forest.overlappingImageC.children[0]
             const expected = node('', new Map(), [
                 node(
                     'packageA',

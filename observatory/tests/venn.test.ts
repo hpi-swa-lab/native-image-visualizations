@@ -3,10 +3,13 @@ import { Multiverse } from '../src/ts/UniverseTypes/Multiverse'
 import { forest } from './data/forest'
 import { Universe } from '../src/ts/UniverseTypes/Universe'
 import { createVennPartitions } from '../src/ts/Math/Sets'
+import { Node } from '../src/ts/UniverseTypes/Node'
 
 describe('Venn', () => {
     test('For a tree with only occurences in one universe, has one set with count equal to tree size', () => {
-        const multiverse = new Multiverse([new Universe('simpleTree', forest.simpleTree)])
+        const multiverse = new Multiverse([
+            new Universe('simpleTree', new Node('Universe', [forest.simpleTree]))
+        ])
 
         const actual = createVennPartitions(multiverse)
         const expected = {
@@ -19,8 +22,8 @@ describe('Venn', () => {
 
     test('One merged tree with two equal trees has same amount of single combinations and double combinations', () => {
         const multiverse = new Multiverse([
-            new Universe('simpleTree', forest.simpleTree),
-            new Universe('simpleTree2', forest.simpleTree)
+            new Universe('simpleTree', new Node('Universe', [forest.simpleTree])),
+            new Universe('simpleTree2', new Node('Universe', [forest.simpleTree]))
         ])
 
         const actual = createVennPartitions(multiverse)
