@@ -23,7 +23,7 @@ withDefaults(
                 <h2 class="text-center">{{ title }}</h2>
 
                 <TabLayout
-                    :selected-index="1"
+                    :selected-index="0"
                     :tab-names="['controls', 'data-manager']"
                     :button-names="['Controls', 'Data Manager']"
                 >
@@ -49,6 +49,6 @@ withDefaults(
                 </TabLayout>
             </div>
         </div>
-        <div class="col-span-10 h-full overflow-y-auto"></div>
+        <div class="col-span-10 h-full overflow-y-auto"><slot /></div>
     </div>
 </template>
