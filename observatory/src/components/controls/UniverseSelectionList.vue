@@ -34,7 +34,7 @@ function isDisabled(universeName: string) {
                     :checked="isChecked(universe.name)"
                     :disabled="isDisabled(universe.name)"
                     class="flex flex-row justify-between"
-                    @change="store.toggleUniverseByName"
+                    @change.self="store.toggleUniverseByName"
                 >
                     <template #preceding>
                         <label :for="universe.name + index" class="flex-auto">
