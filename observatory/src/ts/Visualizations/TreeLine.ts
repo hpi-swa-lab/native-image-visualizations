@@ -250,8 +250,6 @@ export class TreeLine implements MultiverseVisualization {
 
             this.fillStyles.set(combination, gradient)
         }
-
-        console.log('Fill styles', this.fillStyles)
     }
 
     drawDiagram(
