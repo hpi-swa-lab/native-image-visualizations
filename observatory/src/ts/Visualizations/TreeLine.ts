@@ -78,11 +78,13 @@ export class TreeLine implements MultiverseVisualization {
 
         this.generate()
     }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     setSelection(selection: Node[]): void {
-        // TODO
+        // TODO; https://github.com/hpi-swa-lab/MPWS2022RH1/issues/95
     }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     setHighlights(highlights: Node[]): void {
-        // TODO
+        // TODO; https://github.com/hpi-swa-lab/MPWS2022RH1/issues/95
     }
 
     computeExclusiveSizes(universeIndices: UniverseIndex[], mergedNode: Node) {
@@ -150,9 +152,10 @@ export class TreeLine implements MultiverseVisualization {
             )
 
             for (const child of mergedNode.children) {
+                // The exclusive sizes are calculated for all nodes.
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 this.exclusiveSizes.get(child)!.forEach((size, combination) => {
-                    if (!exclusiveSizes.get(combination)) exclusiveSizes.set(combination, 0)
-                    exclusiveSizes.set(combination, exclusiveSizes.get(combination)! + size)
+                    exclusiveSizes.set(combination, exclusiveSizes.get(combination) ?? 0 + size)
                 })
             }
         }
@@ -183,14 +186,16 @@ export class TreeLine implements MultiverseVisualization {
         }
         fitToScreen()
 
-        let initialBarHeight = this.canvas.height - LINE_PADDING * 2
-        let initialPixelsPerByte = initialBarHeight / this.multiverse!.root.codeSize
-        let initialTop = LINE_PADDING
+        const initialBarHeight = this.canvas.height - LINE_PADDING * 2
+        const initialPixelsPerByte = initialBarHeight / this.multiverse.root.codeSize
+        const initialTop = LINE_PADDING
 
         const multiverse = this.multiverse
+        // `d3.zoom().on(..., ...)` expects a function accepting `any`.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const redraw = (event: any | undefined) => {
             if (!this.canvas || !this.context) {
-                throw "Canvas doesn't exist yet."
+                throw new Error('Canvas doesn\'t exist yet.')
             }
 
             const transform = event?.transform ?? { x: 0, y: 0, k: 1 }
@@ -209,14 +214,13 @@ export class TreeLine implements MultiverseVisualization {
         }
         redraw(undefined)
 
-        // const selection =  // as d3.Selection<Element, unknown, null, undefined>
         d3.select(this.canvas as Element).call(d3.zoom().on('zoom', redraw))
         window.addEventListener('resize', redraw)
     }
 
     buildFillStyles() {
         if (!this.canvas || !this.context) {
-            throw "Canvas doesn't exist yet."
+            throw new Error('Canvas doesn\'t exist yet.')
         }
 
         const lightenedColors: Map<UniverseIndex, string> = new Map()
@@ -226,6 +230,9 @@ export class TreeLine implements MultiverseVisualization {
 
         for (const combination of this.combinations) {
             if (!combination.includes(',')) {
+                // There's only a single universe in this combination and there
+                // exists a color in `this.colors` for every universe.
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 this.fillStyles.set(combination, this.colors.get(parseInt(combination))!)
                 continue
             }
@@ -239,10 +246,16 @@ export class TreeLine implements MultiverseVisualization {
 
             for (let i = 0; i < numSteps; i += 1) {
                 const d = (1 / numSteps) * i
+                // Because we calculate mod the length of the colors, the access
+                // definitely succeeds.
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 gradient.addColorStop(d, gradientColors[i % gradientColors.length]!)
                 if (d + 0.001 <= 1) {
                     gradient.addColorStop(
                         d + 0.001,
+                        // Because we calculate mod the length of the colors,
+                        // the access definitely succeeds.
+                        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                         gradientColors[(i + 1) % gradientColors.length]!
                     )
                 }
@@ -260,7 +273,7 @@ export class TreeLine implements MultiverseVisualization {
         leftOfHierarchy: number
     ) {
         if (!this.canvas || !this.context) {
-            throw "Canvas doesn't exist yet."
+            throw new Error('Canvas doesn\'t exist yet.')
         }
 
         const height = tree.codeSize * pixelsPerByte
@@ -274,8 +287,12 @@ export class TreeLine implements MultiverseVisualization {
         if (path.length == 0) {
             leftOfSubHierarchy = leftOfHierarchy
         } else {
-            let containingCombinations = Array.from(this.exclusiveSizes.get(tree)!.entries())
+            // The exclusive sizes are calculated for all nodes.
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const containingCombinations = Array.from(this.exclusiveSizes.get(tree)!.entries())
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 .filter(([_, size]) => size > 0)
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 .map(([combination, _]) => combination)
 
             const widthOfBox = this.drawHierarchyBox(
@@ -293,7 +310,7 @@ export class TreeLine implements MultiverseVisualization {
         if (shouldExplode) {
             let childOffsetFromTop = top
             for (const child of tree.children) {
-                let childPath = path.slice()
+                const childPath = path.slice()
                 childPath.push(child.name)
                 this.drawDiagram(
                     child,
@@ -306,6 +323,8 @@ export class TreeLine implements MultiverseVisualization {
             }
         } else {
             let offsetFromLeft = LINE_PADDING
+            // The exclusive sizes are calculated for all nodes.
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const exclusiveSizes = this.exclusiveSizes.get(tree)!
             const totalSize = Array.from(exclusiveSizes.values()).reduce((a, b) => a + b, 0)
 
@@ -316,6 +335,9 @@ export class TreeLine implements MultiverseVisualization {
                 // Note: Floating point calculations are never accurate, so
                 // `floor` and `ceil` are used to avoid the background
                 // peeking through the gaps.
+
+                // The fill styles are calculated for all nodes.
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 this.context.fillStyle = this.fillStyles.get(combination)!
                 this.context.fillRect(offsetFromLeft, Math.floor(top), width, Math.ceil(height))
 
@@ -333,7 +355,7 @@ export class TreeLine implements MultiverseVisualization {
         containingCombinations: UniverseCombination[]
     ): number {
         if (!this.canvas || !this.context) {
-            throw "Canvas doesn't exist yet."
+            throw new Error('Canvas doesn\'t exist yet.')
         }
 
         this.context.font = `${FONT_SIZE}px sans-serif`
@@ -343,7 +365,9 @@ export class TreeLine implements MultiverseVisualization {
 
         this.context.fillStyle =
             containingCombinations.length == 1
-                ? this.fillStyles.get(containingCombinations[0])!
+                ? // The fill styles are calculated for all nodes.
+                  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                  this.fillStyles.get(containingCombinations[0])!
                 : DEFAULT_FILL_STYLE
         this.context.fillRect(left, top, boxWidth, height - HIERARCHY_GAPS)
 

@@ -11,8 +11,8 @@ export function powerSet<T>(l: T[]) {
         if (list.length === 0) {
             return [[]]
         }
-        var head = list.pop()
-        var tailPS = ps(list)
+        const head = list.pop()
+        const tailPS = ps(list)
         return tailPS.concat(
             tailPS.map(function (e) {
                 return [head].concat(e)
@@ -21,11 +21,11 @@ export function powerSet<T>(l: T[]) {
     })(l.slice())
 }
 
-/// Lightens up a color by moving it closer to white.
+// / Lightens up a color by moving it closer to white.
 export function lightenColor(color: string, alpha: number): string {
-    let r = parseInt(color.substring(1, 3), 16)
-    let g = parseInt(color.substring(3, 5), 16)
-    let b = parseInt(color.substring(5, 7), 16)
+    const r = parseInt(color.substring(1, 3), 16)
+    const g = parseInt(color.substring(3, 5), 16)
+    const b = parseInt(color.substring(5, 7), 16)
 
     const rr = Math.round(r * alpha + 255 * (1 - alpha))
     const gg = Math.round(g * alpha + 255 * (1 - alpha))
