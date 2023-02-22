@@ -17,8 +17,8 @@ const sankeyTreeStore = sankeyTreeConfigStore()
 </script>
 
 <template>
-    <fieldset class="border rounded p-2 w-auto">
-        <legend class="w-auto float-none p-2 fs-5">Universes to display:</legend>
+    <fieldset class="w-auto">
+        <label class="block">Universe nodes to display:</label>
 
         <ToggleSwitch
             v-for="key in Object.keys(universesMetadata)"

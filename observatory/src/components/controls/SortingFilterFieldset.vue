@@ -7,8 +7,8 @@ const isSortedAscending = sankeyTreeStore.sortingFilter.order === SortingOrder.A
 </script>
 
 <template>
-    <fieldset class="border rounded p-2 w-auto">
-        <legend class="w-auto float-none p-2 fs-5">Node Sorting:</legend>
+    <fieldset class="w-auto">
+      <label class="block">Node sorting:</label>
 
         <div>
             <template v-for="(option, index) in Object.values(SortingOption)" :key="index">
