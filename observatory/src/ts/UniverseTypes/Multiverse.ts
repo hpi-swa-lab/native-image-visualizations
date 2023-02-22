@@ -46,7 +46,11 @@ export class Multiverse {
     protected mergeUniverses(...universes: Universe[]): Node {
         const mergeResult: Node = new Node('')
 
-        universes.forEach((universe, i) => this.mergeNode(mergeResult, universe.root, i))
+        // If we have gotten valid native images, the first layer of the universes
+        // is a node with the name of the application. We want to ignore that first layer.
+        universes.forEach((universe, i) =>
+            universe.root.children.forEach((child) => this.mergeNode(mergeResult, child, i))
+        )
 
         return mergeResult
     }
@@ -55,7 +59,7 @@ export class Multiverse {
         const matchingChild = mergeResult.children.find((child: Node) => child.name == node.name)
 
         if (!matchingChild) {
-            const nodeToMerge = node.clone()
+            const nodeToMerge = node.cloneIgnoringReferences()
             this.setSourcesRecursively(nodeToMerge, node, treeIndex)
             mergeResult.push(nodeToMerge)
         } else {
@@ -68,8 +72,9 @@ export class Multiverse {
 
     protected setSourcesRecursively(copy: Node, original: Node, index: UniverseIndex) {
         copy.sources = new Map([[index, original]])
-        copy.children.forEach((child: Node, i: number) =>
-            this.setSourcesRecursively(child, original.children[i], index)
-        )
+        original.children.forEach((originalChild: Node, i: number) => {
+            copy.push(originalChild.cloneIgnoringReferences())
+            this.setSourcesRecursively(copy.children[i], originalChild, index)
+        })
     }
 }
