@@ -13,6 +13,37 @@ export function findNodesWithName(name: string, root: Node): Node[] {
     )
 }
 
+export function findNodeWithIdentifyer(identifyer: string, root: Node): Node | undefined {
+    const result: Node | undefined = undefined
+
+    if (root.identifier === identifyer) {
+        return root
+    } else {
+        const childrenWithId = root.children
+            .map((child) => findNodeWithIdentifyer(identifyer, child))
+            .filter((value: Node | undefined) => value !== undefined)
+
+        if (childrenWithId.length > 0) {
+            return childrenWithId[0]
+        }
+    }
+
+    return result
+}
+
+export function findNodesWithIdentifiers(identifiers: string[], root: Node): Node[] {
+    const result: Node[] = []
+
+    identifiers.forEach((identifyer: string) => {
+        const node = findNodeWithIdentifyer(identifyer, root)
+        if (node) {
+            result.push(node)
+        }
+    })
+
+    return result
+}
+
 export function getNodesOnLevel(level: number, root: Node): Node[] {
     if (level < 0) return []
     if (level === 0) return [root]
