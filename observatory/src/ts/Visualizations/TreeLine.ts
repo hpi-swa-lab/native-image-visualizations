@@ -210,7 +210,7 @@ export class TreeLine implements MultiverseVisualization {
         }
         redraw(undefined)
 
-        d3.select(this.canvas).call(d3.zoom().scaleExtent([1, 10000]).on('zoom', redraw))
+        d3.select(this.canvas).call(d3.zoom().on('zoom', redraw))
         window.addEventListener('resize', redraw)
     }
 
