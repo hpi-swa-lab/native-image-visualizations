@@ -6,7 +6,7 @@
     @apply py-2 px-4 rounded;
 }
 
-.btn-small {
+.btn-sm {
     @apply px-2 rounded;
 }
 

@@ -81,17 +81,18 @@ function exportConfig() {
         </div>
 
         <label for="container-universes"
-            >Current Universes: <span v-if="store.universes.length === 0"><br />None</span></label
+            >Current Universes:</label
         >
+        <p v-if="store.universes.length === 0" class="ml-2">None</p>
         <div id="container-universes" class="space-y-2">
             <div
                 v-for="(universe, index) in store.universes"
                 :key="index"
                 class="flex items-center justify-between space-x-2"
             >
-                <p class="overflow-x-hidden ml-2">{{ universe.name }}</p>
+                <label class="overflow-x-hidden ml-2 my-auto">{{ universe.name }}</label>
                 <button
-                    class="btn-small btn-danger"
+                    class="btn-sm btn-danger"
                     @click="() => store.removeUniverse(universe.name)"
                 >
                     <font-awesome-icon icon="xmark" />
