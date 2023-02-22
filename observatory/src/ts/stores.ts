@@ -33,15 +33,10 @@ export const globalConfigStore = defineStore('globalConfig', {
                 (universe) => universe.name === newUniverse.name
             )
             if (matchingUniverse) {
-                let i = 1
-                while (
-                    this.universes.find(
-                        (universe) => universe.name === newUniverse.name + ` (${i})`
-                    )
-                ) {
-                    i += 1
-                }
-                newUniverse.name = newUniverse.name + ` (${i})`
+                const matches = this.universes.filter((universe) =>
+                    universe.name.match(`${newUniverse.name}(\s\([0-9]+\))?`)
+                )
+                newUniverse.name = newUniverse.name + ` (${matches.length})`
             }
 
             this.universes.push(newUniverse)

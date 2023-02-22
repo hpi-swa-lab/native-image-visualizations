@@ -35,7 +35,7 @@ function addUniverses(event: Event) {
     if (!input.files) return
 
     Array.from(input.files).forEach((file: File) =>
-        validateFileAndAddUniverseOnSuccess(file, file.name)
+        validateFileAndAddUniverseOnSuccess(file, file.name.split('.json')[0])
     )
 
     input.value = ''
@@ -93,7 +93,11 @@ function exportConfig() {
                     <InlineEditableField
                         :label="universe.name"
                         class="flex-auto"
-                    ></InlineEditableField>
+                        @change.self="
+                            (newUniverseName) =>
+                                store.updateUniverseName(universe.name, newUniverseName)
+                        "
+                    />
                     <button
                         class="btn-sm btn-danger"
                         @click="() => store.removeUniverse(universe.name)"

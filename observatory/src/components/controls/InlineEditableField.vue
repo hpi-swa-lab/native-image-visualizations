@@ -6,8 +6,8 @@
                 v-model="inputValue"
                 type="text"
                 class="p-1 m-0 w-full"
-                @focusout="saveEdit"
-                @keyup.enter="saveEdit"
+                @focusout="onInputUpdate"
+                @keyup.enter="onInputUpdate"
             />
         </template>
         <template v-else>
@@ -20,7 +20,7 @@
 
 <script setup lang="ts">
 import { nextTick, ref } from 'vue'
-import { globalConfigStore } from '../../ts/stores'
+import { EventType } from '../../ts/enums/EventType'
 
 const props = withDefaults(
     defineProps<{
@@ -31,17 +31,15 @@ const props = withDefaults(
     }
 )
 
+const emit = defineEmits([EventType.CHANGE])
+
 const inputElement = ref<HTMLInputElement>()
 const inputValue = ref(props.label)
-const oldUniverseName = ref(props.label)
-
-const store = globalConfigStore()
 const isEditEnabled = ref<boolean>(false)
 
-function saveEdit() {
+function onInputUpdate() {
     isEditEnabled.value = false
-    store.updateUniverseName(oldUniverseName.value, inputValue.value)
-    oldUniverseName.value = inputValue.value
+    emit(EventType.CHANGE, inputValue.value)
 }
 function toggleEdit() {
     isEditEnabled.value = true
