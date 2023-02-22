@@ -189,7 +189,6 @@ export class TreeLine implements MultiverseVisualization {
 
         const multiverse = this.multiverse
         const redraw = (event: any | undefined) => {
-            console.log('redrawing')
             if (!this.canvas || !this.context) {
                 throw "Canvas doesn't exist yet."
             }
@@ -225,7 +224,6 @@ export class TreeLine implements MultiverseVisualization {
         })
 
         for (const combination of this.combinations) {
-            // console.log(`Creating fill style for ${combination}`)
             if (!combination.includes(',')) {
                 this.fillStyles.set(combination, this.colors.get(parseInt(combination))!)
                 continue
