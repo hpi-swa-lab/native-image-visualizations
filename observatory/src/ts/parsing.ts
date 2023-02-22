@@ -61,44 +61,31 @@ function validatePackageData(object: any, name: string): void {
     }
 }
 
-export type TopLevelOrigin =
-    | {
-          path: string
-          module?: string
+export type TopLevelOrigin = {
+    path?: string
+    module?: string
 
-          packages: Packages
-      }
-    | {
-          path?: string
-          module: string
+    packages: Packages
+}
 
-          packages: Packages
-      }
-
-function findNameForParsedTopLevelOrigin(object: any): string | undefined {
-    let name = undefined
+function getNameForParsedTopLevelOrigin(object: any): string {
+    let name = ''
     if (object.path && object.path.constructor === String) name = object.path
     if (object.module && object.module.constructor === String) name = object.module
     return name
 }
 
-function validateTopLevelOrigin(object: any, index: number): void {
-    const name = findNameForParsedTopLevelOrigin(object)
+function validateTopLevelOrigin(object: any): void {
+    const name = getNameForParsedTopLevelOrigin(object)
 
-    if (!name) {
-        throw new InvalidReachabilityFormatError(
-            'Neither "name" or "module" string attribute found on item at index ' + index
-        )
-    }
     if (!object.packages || object.packages.constructor !== Object) {
         throw new InvalidReachabilityFormatError('Missing "packages" attribute for module ' + name)
     }
-    object.name = name
 }
 
 export class InvalidReachabilityFormatError extends Error {
-    constructor(msg: string) {
-        super('Invalid Reachability Format: ' + msg)
+    constructor(message: string) {
+        super('Invalid Reachability Format: ' + message)
 
         Object.setPrototypeOf(this, InvalidReachabilityFormatError.prototype)
     }
@@ -182,11 +169,11 @@ export function parseReachabilityExport(parsedJSON: any, universeName: string): 
     const root = new Node(universeName)
 
     root.push(
-        ...parsedJSON.map((topLevelOrigin: TopLevelOrigin, index: number) => {
-            validateTopLevelOrigin(topLevelOrigin, index)
+        ...parsedJSON.map((topLevelOrigin: TopLevelOrigin) => {
+            validateTopLevelOrigin(topLevelOrigin)
 
             return new Node(
-                findNameForParsedTopLevelOrigin(topLevelOrigin) ?? '',
+                getNameForParsedTopLevelOrigin(topLevelOrigin),
                 parsePackages(topLevelOrigin.packages)
             )
         })
