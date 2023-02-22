@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { SortingOption, SortingOrder } from '../../ts/enums/Sorting.js'
 import { sankeyTreeConfigStore } from '../../ts/stores'
-import ToggleSwitch from "./ToggleSwitch.vue";
+import ToggleSwitch from './ToggleSwitch.vue'
 
 const sankeyTreeStore = sankeyTreeConfigStore()
 const isSortedAscending = sankeyTreeStore.sortingFilter.order === SortingOrder.ASCENDING
@@ -38,7 +38,7 @@ const isSortedAscending = sankeyTreeStore.sortingFilter.order === SortingOrder.A
                         )
                     "
                 />
-                    {{ SortingOrder.ASCENDING }}
+                {{ SortingOrder.ASCENDING }}
             </label>
         </div>
     </fieldset>
