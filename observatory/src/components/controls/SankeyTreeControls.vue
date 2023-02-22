@@ -33,9 +33,7 @@ function onChange(event: MouseEvent): void {
 
             <SortingFilterFieldset />
 
-            <button type="submit" class="btn btn-sm btn-primary" @click="onChange">
-                update
-            </button>
+            <button type="submit" class="btn btn-sm btn-primary" @click="onChange">update</button>
 
             <button
                 id="expand-tree-btn"

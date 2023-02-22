@@ -81,9 +81,7 @@ function exportConfig() {
         </div>
 
         <div>
-            <label for="container-universes" class="block"
-                >Current Universes:</label
-            >
+            <label for="container-universes" class="block">Current Universes:</label>
             <p v-if="store.universes.length === 0" class="ml-2">None</p>
             <div id="container-universes" class="space-y-2">
                 <div

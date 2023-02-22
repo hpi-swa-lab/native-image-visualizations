@@ -6,7 +6,7 @@ withDefaults(
         color: string
     }>(),
     {
-      forElement: '',
+        forElement: '',
         label: '',
         color: '#ffffff'
     }

@@ -41,7 +41,11 @@ const sankeyTreeStore = sankeyTreeConfigStore()
             :checked="sankeyTreeStore.diffingFilter.showUnmodified"
             @input="sankeyTreeStore.setShowUnmodified($event.target.checked)"
         >
-            <ColorLabel :for-element="UNMODIFIED" label="unmodified packages" :color="COLOR_UNMODIFIED"></ColorLabel>
+            <ColorLabel
+                :for-element="UNMODIFIED"
+                label="unmodified packages"
+                :color="COLOR_UNMODIFIED"
+            ></ColorLabel>
         </ToggleSwitch>
 
         <ColorLabel label="modified packages" :color="COLOR_MODIFIED"></ColorLabel>

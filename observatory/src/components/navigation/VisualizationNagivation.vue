@@ -12,9 +12,7 @@ function applyComponent(event: Event) {
 
 <template>
     <div>
-        <label for="visualization-dropdown" class="block"
-            >Visualization:</label
-        >
+        <label for="visualization-dropdown" class="block">Visualization:</label>
         <select
             id="visualization-dropdown"
             name="Visualization"
