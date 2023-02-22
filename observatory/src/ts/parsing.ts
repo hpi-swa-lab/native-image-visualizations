@@ -1,13 +1,95 @@
-/* eslint-disable guard-for-in */
-/* Reason for exclulde: In the json file, the name
-of packages, fields, methods etc is a json attribute.
-We iterate through each of them and access the
-parents field at the names, which eslint falsly recognizes
-as an attribute which may not exist*/
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * Reason for disable: The parsed object from the JSON file can have any properties.
+ * Type unknown is not useful as explicit type checking cannot be done as
+ * the JSONs are parsed at run time. Since we use dynamic properties,
+ * a static type check with the types Methods, Type, etc., cannot be performed.
+ * Even though any is used, the usages do explicitly check for properties before
+ * accessing them.
+ */
 import { Bytes } from './SharedTypes/Size'
 import { InitKind, Leaf } from './UniverseTypes/Leaf'
 import { Node } from './UniverseTypes/Node'
 import { Universe } from './UniverseTypes/Universe'
+
+type Methods = {
+    [methodName: string]: { size: Bytes; flags?: string[] }
+}
+
+function validateMethodData(object: any, name: string): void {
+    // explicitly checking for undefined, as size = 0 should not throw error
+    if (object.size === undefined || typeof object.size !== 'number') {
+        throw new InvalidReachabilityFormatError(
+            'Missing "size" number attribute for method ' + name
+        )
+    }
+
+    if (object.flags && !Array.isArray(object.flags)) {
+        throw new InvalidReachabilityFormatError(
+            '"flags" attribute is expected to be an array for method ' + name
+        )
+    }
+}
+
+type Types = {
+    [typeName: string]: { methods: Methods; 'init-kind'?: string[] }
+}
+
+function validateTypeData(object: any, name: string): void {
+    if (!object.methods || object.methods.constructor !== Object) {
+        throw new InvalidReachabilityFormatError(
+            'Missing "methods" object attribute for type ' + name
+        )
+    }
+
+    if (object['init-kind'] && !Array.isArray(object['init-kind'])) {
+        throw new InvalidReachabilityFormatError(
+            '"init-kind" attribute is expected to be an array for type ' + name
+        )
+    }
+}
+
+type Packages = {
+    [packageName: string]: { types: Types }
+}
+
+function validatePackageData(object: any, name: string): void {
+    if (!object.types || object.types.constructor !== Object) {
+        throw new InvalidReachabilityFormatError(
+            'Missing "types" object attribute for package ' + name
+        )
+    }
+}
+
+export type TopLevelOrigin = {
+    path?: string
+    module?: string
+
+    packages: Packages
+}
+
+function getNameForParsedTopLevelOrigin(object: any): string {
+    let name = ''
+    if (object.path && object.path.constructor === String) name = object.path
+    if (object.module && object.module.constructor === String) name = object.module
+    return name
+}
+
+function validateTopLevelOrigin(object: any): void {
+    const name = getNameForParsedTopLevelOrigin(object)
+
+    if (!object.packages || object.packages.constructor !== Object) {
+        throw new InvalidReachabilityFormatError('Missing "packages" attribute for module ' + name)
+    }
+}
+
+export class InvalidReachabilityFormatError extends Error {
+    constructor(message: string) {
+        super('Invalid Reachability Format: ' + message)
+
+        Object.setPrototypeOf(this, InvalidReachabilityFormatError.prototype)
+    }
+}
 
 export function createConfigSelections(
     selections: Record<string, Node[]>
@@ -15,14 +97,32 @@ export function createConfigSelections(
     const result: Record<string, Record<string, unknown>> = {}
 
     Object.keys(selections).forEach((name: string) => {
-        const currentSelection: Node[] = selections[name]
-        result[name] = createConfigSelection(name, currentSelection)
+        result[name] = createConfigSelection(name, selections[name])
     })
 
     return result
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function createConfigSelection(name: string, nodes: Node[]): Record<string, unknown> {
+    // TODO: implement this, corresponding issue: [#85](https://github.com/hpi-swa-lab/MPWS2022RH1/issues/85)
+    return {}
+}
+
+export function createConfigHighlights(
+    highlights: Record<string, Node[]>
+): Record<string, Record<string, unknown>> {
+    const result: Record<string, Record<string, unknown>> = {}
+
+    Object.keys(highlights).forEach((name: string) => {
+        result[name] = createConfigSelection(name, highlights[name])
+    })
+
+    return result
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function createConfigHighlight(name: string, nodes: Node[]): Record<string, unknown> {
     // TODO: implement this, corresponding issue: [#85](https://github.com/hpi-swa-lab/MPWS2022RH1/issues/85)
     return {}
 }
@@ -39,39 +139,14 @@ export function createConfigUniverses(
     return result
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function createConfigUniverse(universe: Universe): Record<string, unknown> {
     // TODO: implement this, corresponding issue: [#85](https://github.com/hpi-swa-lab/MPWS2022RH1/issues/85v)
     return {}
 }
 
-interface Methods {
-    [methodName: string]: { size: Bytes; flags?: string[] }
-}
-
-interface Fields {
-    [fieldName: string]: { flags?: string[] }
-}
-
-interface Types {
-    [typeName: string]: { methods: Methods; fields: Fields; 'init-kind'?: string[] }
-}
-
-interface Packages {
-    [packageName: string]: { types: Types }
-}
-
-interface TopLevelOrigin {
-    // Either path or module is set in the serialized data
-    path?: string
-    module?: string
-
-    packages: Packages
-}
-
-type JSONScheme = Array<TopLevelOrigin>
-
-export async function loadJson(file: File): Promise<JSONScheme> {
-    return new Promise<JSONScheme>((resolve, reject) => {
+export async function loadJson(file: File): Promise<object> {
+    return new Promise<object>((resolve, reject) => {
         const reader = new FileReader()
         reader.readAsText(file)
         reader.onload = () => {
@@ -86,29 +161,37 @@ export async function loadJson(file: File): Promise<JSONScheme> {
     })
 }
 
-export function parseReachabilityExport(reachabilityExport: JSONScheme, imageName: string): Node {
-    const root = new Node(imageName)
+export function parseReachabilityExport(parsedJSON: any, universeName: string): Node {
+    if (!Array.isArray(parsedJSON)) {
+        throw new InvalidReachabilityFormatError('JSON should be an Array of modules at top level ')
+    }
+
+    const root = new Node(universeName)
 
     root.push(
-        ...reachabilityExport.map((topLevelOrigin: TopLevelOrigin) => {
-            let name = ''
-            if (topLevelOrigin.path) name = topLevelOrigin.path
-            if (topLevelOrigin.module) name = topLevelOrigin.module
+        ...parsedJSON.map((topLevelOrigin: TopLevelOrigin) => {
+            validateTopLevelOrigin(topLevelOrigin)
 
-            return new Node(name, parsePackages(topLevelOrigin.packages))
+            return new Node(
+                getNameForParsedTopLevelOrigin(topLevelOrigin),
+                parsePackages(topLevelOrigin.packages)
+            )
         })
     )
     return root
 }
 
 function parsePackages(packages: Packages): Node[] {
-    return Object.entries(packages).map(
-        ([packageName, packageData]) => new Node(packageName, parseTypes(packageData.types))
-    )
+    return Object.entries(packages).map(([packageName, packageData]) => {
+        validatePackageData(packageData, packageName)
+        return new Node(packageName, parseTypes(packageData.types))
+    })
 }
 
 function parseTypes(types: Types): Node[] {
     return Object.entries(types).map(([typeName, typeData]) => {
+        validateTypeData(typeData, typeName)
+
         const initKinds = typeData['init-kind'] ? typeData['init-kind'] : []
         return new Node(typeName, parseMethods(typeData.methods, initKinds.map(parseInitKind)))
     })
@@ -116,6 +199,8 @@ function parseTypes(types: Types): Node[] {
 
 function parseMethods(methods: Methods, initKinds: InitKind[]): Node[] {
     return Object.entries(methods).map(([methodName, methodData]) => {
+        validateMethodData(methodData, methodName)
+
         const flags = methodData.flags ? methodData.flags : []
         return new Leaf(
             methodName,

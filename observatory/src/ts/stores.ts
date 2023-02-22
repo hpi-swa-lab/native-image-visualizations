@@ -1,6 +1,11 @@
 import { defineStore } from 'pinia'
+import { Layers } from './enums/Layers'
+import { SortingOption, SortingOrder } from './enums/Sorting'
 import { componentName, SwappableComponentType } from './enums/SwappableComponentType'
-import { createConfigSelections, createConfigUniverses } from './parsing'
+import { findNodesWithName } from './Math/filters'
+import { createConfigHighlights, createConfigSelections, createConfigUniverses } from './parsing'
+import { NodesDiffingFilter, NodesFilter, NodesSortingFilter } from './SharedTypes/NodesFilter'
+import { Multiverse } from './UniverseTypes/Multiverse'
 import { Node } from './UniverseTypes/Node'
 import { Universe } from './UniverseTypes/Universe'
 
@@ -8,9 +13,14 @@ export const globalConfigStore = defineStore('globalConfig', {
     state: () => {
         return {
             universes: [] as Universe[],
+            observedUniverses: [] as Universe[],
+            multiverse: new Multiverse([]),
             selections: {} as Record<string, Node[]>,
+            currentLayer: Layers.PACKAGES,
+            highlights: {} as Record<string, Node[]>,
             currentComponent: SwappableComponentType.Home as SwappableComponentType,
-            previousComponent: undefined as SwappableComponentType | undefined
+            previousComponent: undefined as SwappableComponentType | undefined,
+            search: ''
         }
     },
     getters: {
@@ -32,8 +42,30 @@ export const globalConfigStore = defineStore('globalConfig', {
                 this.universes.splice(this.universes.indexOf(matchingUniverse), 1)
             }
         },
+        toggleUniverseByName(universeName: string): void {
+            const matchingUniverse = this.observedUniverses.find(
+                (universe) => universe.name === universeName
+            )
+
+            if (matchingUniverse) {
+                this.observedUniverses.splice(this.observedUniverses.indexOf(matchingUniverse), 1)
+            } else {
+                const universe = this.universes.find((universe) => universe.name === universeName)
+                if (universe) {
+                    this.observedUniverses.push(universe)
+                }
+            }
+
+            this.multiverse = new Multiverse(this.observedUniverses as Universe[])
+        },
         setSelection(universeName: string, selection: Node[]): void {
             this.selections[universeName] = selection
+        },
+        switchToLayer(newLayer: Layers): void {
+            this.currentLayer = newLayer
+        },
+        setHighlights(universeName: string, highlight: Node[]): void {
+            this.highlights[universeName] = highlight
         },
         switchToComponent(newComponent: SwappableComponentType): void {
             this.previousComponent = this.currentComponent
@@ -44,17 +76,24 @@ export const globalConfigStore = defineStore('globalConfig', {
                 this.switchToComponent(this.previousComponent)
             }
         },
-        searchChange(newSearch: string): void {
+        changeSearch(newSearch: string): void {
             this.search = newSearch
+
+            const universes = this.universes as Universe[]
+            universes.forEach((universe: Universe) => {
+                this.setHighlights(universe.name, findNodesWithName(this.search, universe.root))
+            })
         },
         toExportDict(): Record<
             string,
-            Record<string, Record<string, unknown>> | SwappableComponentType
+            Record<string, Record<string, unknown>> | SwappableComponentType | string
         > {
             return {
-                universes: createConfigUniverses(this.universes),
+                universes: createConfigUniverses(this.universes as Universe[]),
                 selections: createConfigSelections(this.selections),
-                currentComponent: this.currentComponent
+                highlights: createConfigHighlights(this.highlights),
+                currentComponent: this.currentComponent,
+                search: this.search
             }
         }
     }
@@ -69,9 +108,51 @@ export const vennConfigStore = defineStore('vennConfig', {
 })
 
 export const sankeyTreeConfigStore = defineStore('sankeyTreeConfig', {
+    state: () => {
+        return {
+            diffingFilter: {
+                universes: new Set(['0', '1']),
+                showUnmodified: false
+            } as NodesDiffingFilter,
+            sortingFilter: {
+                option: SortingOption.NAME,
+                order: SortingOrder.ASCENDING
+            } as NodesSortingFilter
+        }
+    },
+    getters: {
+        nodesFilter: (state) =>
+            ({
+                diffing: state.diffingFilter,
+                sorting: state.sortingFilter
+            } as NodesFilter),
+        isUniverseFiltered: (state) => (universeId: string) =>
+            state.diffingFilter.universes.has(universeId),
+        isFilteredSortingOption: (state) => (option: string) =>
+            option === state.sortingFilter.option
+    },
     actions: {
         toExportDict(): Record<string, unknown> {
             return {}
+        },
+        changeUniverseSelection(universeId: string) {
+            if (this.diffingFilter.universes.has(universeId)) {
+                this.diffingFilter.universes.delete(universeId)
+            } else {
+                this.diffingFilter.universes.add(universeId)
+            }
+        },
+        setSortingOption(option: string) {
+            const sortingOption = Object.values(SortingOption).find(
+                (item) => item.toString() === option
+            )
+            this.sortingFilter.option = sortingOption ? sortingOption : SortingOption.NAME
+        },
+        setSortingOrder(order: SortingOrder) {
+            this.sortingFilter.order = order
+        },
+        setShowUnmodified(show: boolean) {
+            this.diffingFilter.showUnmodified = show
         }
     }
 })
