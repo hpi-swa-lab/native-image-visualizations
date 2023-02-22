@@ -313,8 +313,7 @@ export class TreeLine implements MultiverseVisualization {
 
             for (const combination of this.combinations) {
                 const size = exclusiveSizes.get(combination) ?? 0
-                // TODO before merge: Make sure codeSize is the sum of all exclusiveSizes.
-                const width = (LINE_WIDTH * size) / totalSize // tree.codeSize
+                const width = (LINE_WIDTH * size) / totalSize
 
                 // Note: Floating point calculations are never accurate, so
                 // `floor` and `ceil` are used to avoid the background
