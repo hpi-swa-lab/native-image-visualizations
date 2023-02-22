@@ -4,7 +4,6 @@ import { Bytes } from '../SharedTypes/Size'
 import { Multiverse } from '../UniverseTypes/Multiverse'
 import { Node } from '../UniverseTypes/Node'
 import { clamp, lightenColor, powerSet } from '../utils'
-// import { clamp, lightenColor, powerSet } from '../utils'
 import { MultiverseVisualization } from './MultiverseVisualization'
 
 type UniverseCombination = string
@@ -14,16 +13,23 @@ function universeCombination(indices: UniverseIndex[]): UniverseCombination {
     return indices.sort().join(',')
 }
 
-const MIX_ALPHA = 0.4
-const EXPLOSION_THRESHOLD = 100 // at this height, entities explode into children
-
+// Constants for the line on the left
 const LINE_WIDTH = 256
 const LINE_PADDING = 16
 
+// At this height, entities explode into children.
+const EXPLOSION_THRESHOLD = 100
+
+// Constants for the hierarchy on the right
+const HIERARCHY_GAPS = 2
 const FONT_SIZE = 11
 const TEXT_HORIZONTAL_PADDING = 8
 const TEXT_VERTICAL_PADDING = 2
-const HIERARCHY_GAPS = 2 // used between boxes of the hierarchy
+
+// Colors
+const STRIPED_MIX_ALPHA = 0.4
+const DEFAULT_FILL_STYLE = '#cccccc'
+const TEXT_COLOR = 'black'
 
 export class TreeLine implements MultiverseVisualization {
     multiverse: Multiverse = new Multiverse([])
@@ -40,15 +46,15 @@ export class TreeLine implements MultiverseVisualization {
     context: CanvasRenderingContext2D | null = null
 
     constructor(container: HTMLDivElement, colors: Map<UniverseIndex, string>) {
-        // console.log('Container', container)
         this.container = container
         this.colors = colors
     }
 
     setMultiverse(multiverse: Multiverse): void {
         this.multiverse = multiverse
-        console.log('Set multiverse', this.multiverse)
 
+        // Create a list of combinations sorted in a way that is visually
+        // pleasing. The order is hand-picked for few universes.
         const indices: UniverseIndex[] = multiverse.sources.map((_, i) => i)
         if (indices.length == 1) {
             this.combinations = [universeCombination(indices)]
@@ -69,7 +75,6 @@ export class TreeLine implements MultiverseVisualization {
 
         this.exclusiveSizes = new Map()
         this.computeExclusiveSizes(indices, multiverse.root)
-        console.log('Exclusive sizes', this.exclusiveSizes)
 
         this.generate()
     }
@@ -86,35 +91,35 @@ export class TreeLine implements MultiverseVisualization {
         if (mergedNode.children.length == 0) {
             // At the lowest level in the tree, the concept of code shared
             // between universes becomes a bit blurry. For example, a method
-            // `foo` may have a code size of 10 bytes in universe A and only 7
-            // bytes in universe B. Now, what amount of code is shared? The
+            // `foo` may have a code size of 300 bytes in universe A and only
+            // 120 bytes in universe B. Now, what amount of code is shared? The
             // correct answer is that we can't tell – the method may have a
             // completely different implementation, or perhaps it's the same
             // code but the GraalVM analysis had a bit more information about
             // type flows and was able to simplify the code.
             //
             // It would make no sense to treat the implementation of methods as
-            // entirely different (the visualization would just not report any
-            // shared code whatsoever), but it also doesn't make sense to treat
-            // it like the unioned code size is in all universes – after all, a
-            // smaller universe should be reported as so.
+            // entirely different (this would make the visualization useless),
+            // but it also doesn't make sense to treat the unioned code size as
+            // being in all universes – after all, a smaller universe should be
+            // reported to be smaller.
             //
             // What we do here is a "share-as-much-as-is-reasonable" approach:
             // Let's say there's a method with the following code sizes in three
             // universes:
             //
-            // - 2 bytes in universe A
-            // - 5 bytes in universe B
-            // - 8 bytes in universe C
+            // - 20 bytes in universe A
+            // - 50 bytes in universe B
+            // - 80 bytes in universe C
             //
-            // We treat the minimum size (2 bytes) as being shared among all
-            // universes. We then repeat this process with the remaining code
-            // sizes for the universes that still contain more code. In the end,
+            // We treat the minimum size (20 bytes) as being shared among all
+            // universes. We then repeat this process for the universes that
+            // still contain more code with the remaining code sizes. Finally,
             // we end up with this result:
             //
-            // - 2 bytes shared among A, B, and C
-            // - 3 bytes shared among B and C
-            // - 3 bytes exclusively in C
+            // - 20 bytes shared among A, B, and C
+            // - 30 bytes shared among B and C
+            // - 30 bytes exclusively in C
 
             const remainingSizes = new Map()
             for (const index of universeIndices) {
@@ -156,7 +161,6 @@ export class TreeLine implements MultiverseVisualization {
     }
 
     generate(): void {
-        console.log('Generating diagram')
         this.container.innerHTML = ''
 
         this.canvas = document.createElement('canvas') as HTMLCanvasElement
@@ -217,7 +221,7 @@ export class TreeLine implements MultiverseVisualization {
 
         const lightenedColors: Map<UniverseIndex, string> = new Map()
         this.colors.forEach((color, index) => {
-            lightenedColors.set(index, lightenColor(color, MIX_ALPHA))
+            lightenedColors.set(index, lightenColor(color, STRIPED_MIX_ALPHA))
         })
 
         for (const combination of this.combinations) {
@@ -226,9 +230,6 @@ export class TreeLine implements MultiverseVisualization {
                 this.fillStyles.set(combination, this.colors.get(parseInt(combination))!)
                 continue
             }
-
-            // this.fillStyles.set(combination, '#ff00ff')
-            // continue
 
             const gradientColors = combination
                 .split(',')
@@ -265,17 +266,11 @@ export class TreeLine implements MultiverseVisualization {
             throw "Canvas doesn't exist yet."
         }
 
-        // console.log('Drawing diagram of tree')
-        // console.log(tree)
         const height = tree.codeSize * pixelsPerByte
 
         if (top > this.canvas.height || top + height < 0) {
             return // Outside of the visible area.
         }
-
-        // if (height < 5) {
-        //     return
-        // }
 
         // Show the hierarchy on the right.
         let leftOfSubHierarchy = undefined
@@ -319,16 +314,12 @@ export class TreeLine implements MultiverseVisualization {
 
             for (const combination of this.combinations) {
                 const size = exclusiveSizes.get(combination) ?? 0
-                const width = (LINE_WIDTH * size) / totalSize // tree.codeSize
-
                 // TODO before merge: Make sure codeSize is the sum of all exclusiveSizes.
+                const width = (LINE_WIDTH * size) / totalSize // tree.codeSize
 
                 // Note: Floating point calculations are never accurate, so
                 // `floor` and `ceil` are used to avoid the background
                 // peeking through the gaps.
-                // console.log(
-                //     `Drawing at ${offsetFromLeft}, top ${top}, width ${width}, height ${height}`
-                // )
                 this.context.fillStyle = this.fillStyles.get(combination)!
                 this.context.fillRect(offsetFromLeft, Math.floor(top), width, Math.ceil(height))
 
@@ -357,8 +348,7 @@ export class TreeLine implements MultiverseVisualization {
         this.context.fillStyle =
             containingCombinations.length == 1
                 ? this.fillStyles.get(containingCombinations[0])!
-                : '#cccccc'
-        // console.debug(containingCombinations, this.context.fillStyle)
+                : DEFAULT_FILL_STYLE
         this.context.fillRect(left, top, boxWidth, height - HIERARCHY_GAPS)
 
         const visibleStart = clamp(top, 0, this.canvas.height)
@@ -372,7 +362,7 @@ export class TreeLine implements MultiverseVisualization {
                 top + height - textRadius - TEXT_VERTICAL_PADDING
             )
 
-            this.context.fillStyle = 'black'
+            this.context.fillStyle = TEXT_COLOR
             this.context.textBaseline = 'middle'
             this.context.fillText(text, left + TEXT_HORIZONTAL_PADDING, textCenterY)
         }
