@@ -46,7 +46,11 @@ export class Multiverse {
     protected mergeUniverses(...universes: Universe[]): Node {
         const mergeResult: Node = new Node('')
 
-        universes.forEach((universe, i) => this.mergeNode(mergeResult, universe.root, i))
+        // If we have gotten valid native images, the first layer of the universes
+        // is a node with the name of the application. We want to ignore that first layer.
+        universes.forEach((universe, i) =>
+            universe.root.children.forEach((child) => this.mergeNode(mergeResult, child, i))
+        )
 
         return mergeResult
     }
