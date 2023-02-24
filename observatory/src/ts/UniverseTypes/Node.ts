@@ -1,7 +1,6 @@
 import { HIERARCHY_NAME_SEPARATOR } from '../globals'
 import { UniverseIndex } from '../SharedTypes/Indices'
 import { Bytes } from '../SharedTypes/Size'
-import clone from 'clone'
 
 export const INVALID_SIZE: Bytes = -1
 
@@ -85,21 +84,6 @@ export class Node {
         this._parent = newParent
     }
 
-    public cloneIgnoringReferences(): Node {
-        const state = [this.parent, this.children, this.sources]
-        this.parent = undefined
-        this._children = []
-        this.sources = new Map()
-
-        const newInstance = clone(this)
-
-        this.parent = state[0] as Node
-        this._children = state[1] as Node[]
-        this.sources = state[2] as Map<UniverseIndex, Node>
-
-        return newInstance
-    }
-
     public push(...children: Node[]): number {
         for (const child of children) {
             this._children.push(child)
@@ -132,6 +116,10 @@ export class Node {
             this === another ||
             (this.equalsComparingOnlyParents(another) && this.equalsIgnoringParents(another))
         )
+    }
+
+    public clonePrimitive(): Node {
+        return new Node(this.name, [], undefined, this._codeSize)
     }
 
     protected equalsIgnoringParents(another: Node): boolean {
