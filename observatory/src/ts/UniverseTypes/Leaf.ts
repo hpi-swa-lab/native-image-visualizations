@@ -61,4 +61,15 @@ export class Leaf extends Node {
             this.initKinds.sort().toString() === another.initKinds.sort().toString()
         )
     }
+
+    public clonePrimitive(): Leaf {
+        return new Leaf(
+            this.name,
+            this.codeSize,
+            [...this.initKinds],
+            this.isReflective,
+            this.isJni,
+            this.isSynthetic
+        )
+    }
 }
