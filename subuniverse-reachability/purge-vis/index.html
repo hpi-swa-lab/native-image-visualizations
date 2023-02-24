@@ -324,7 +324,7 @@
             <div id="imageview-root"></div>
         </div>
         <div class="detail-div">
-            <svg width="100%" height="100%" viewBox="0 0 800 800">
+            <svg id="detail-svg" width="100%" height="100%">
                 <marker id="arrowhead" markerWidth="10" markerHeight="7"
                         refX="10" refY="3.5" orient="auto">
                     <polygon points="0 0, 10 3.5, 0 7" />
@@ -338,7 +338,8 @@
         </div>
     </div>
 
-    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://unpkg.com/d3-dag@0.8.2"></script>
 
     <script>
         class Trie {
@@ -575,6 +576,19 @@
                     updatePurgeValues()
 
                     await new Promise(resolve => setTimeout(resolve, 0))
+
+                    if (selected) {
+                        // refresh internal purge result for detail view
+                        simulatePurge([...new Set([...selectedForPurging].flatMap(collectCgNodesInSubtree))])
+                    }
+
+                    await new Promise(resolve => setTimeout(resolve, 0))
+
+                    if (detailMid) {
+                        const edges = getReachabilityHyperpath(detailMid)
+                        renderGraphOnDetailView(edges, detailMid)
+                    }
+
                     recalculateCutOverview()
                 })
             }
@@ -583,6 +597,7 @@
         }
 
         let maxCodeSize
+        let detailMid
 
         function generateHtmlImageview(data) {
             let ul = document.createElement("ul")
@@ -652,6 +667,7 @@
                     if (!mid)
                         return
 
+                    detailMid = mid
                     const edges = getReachabilityHyperpath(mid)
                     renderGraphOnDetailView(edges, mid)
                 })
@@ -855,23 +871,17 @@
         }
 
         function renderGraphOnDetailView(edges, targetMid) {
-            // Layout-Konstanten:
-            const width = 800;
-            const height = 800;
-            const x0 = 0;
-            const x1 = width;
-            const y0 = 0;
-            const y1 = height;
-
             const htmlSvg = document.getElementById("chart")
             htmlSvg.textContent = ""
 
-            const svg = d3.select("#chart");
 
             // Graph construction
             graph = {nodes: new Set(), links: []};
 
             edges.forEach(function (e) {
+                if(e.src === -1 || e.dst === -1)
+                    return
+
                 graph.nodes.add(e.src);
                 graph.nodes.add(e.dst);
                 graph.links.push({ source: e.src, target: e.dst });
@@ -921,6 +931,125 @@
                 if(depth > maxDepth)
                     maxDepth = depth
             }
+
+            for(let v of graph.nodes) {
+                v.parentIds = v.adj.map(id => id.toString())
+                v.id = v.index.toString()
+            }
+
+            const dag = d3.dagStratify()(graph.nodes);
+            const nodeRadius = 20;
+            const layout = d3
+                .sugiyama() // base layout
+                .decross(d3.decrossOpt()) // minimize number of crossings
+                .nodeSize((node) => [(node ? 3.6 : 0.25) * nodeRadius, 3 * nodeRadius]); // set node size instead of constraining to fit
+            const { width, height } = layout(dag);
+            const x0 = 0;
+            const x1 = width;
+            const y0 = 0;
+            const y1 = height;
+
+            // --------------------------------
+            // This code only handles rendering
+            // --------------------------------
+            const outerSvg = d3.select("#detail-svg")
+            outerSvg.attr("viewBox", [0, 0, width, height].join(" "));
+            const svgSelection = d3.select("#chart");
+            const defs = svgSelection.append("defs"); // For gradients
+
+            const steps = dag.size();
+            const interp = d3.interpolateRainbow;
+            const colorMap = new Map();
+            for (const [i, node] of dag.idescendants().entries()) {
+                colorMap.set(node.data.id, interp(i / steps));
+            }
+
+            // How to draw edges
+            const line = d3
+                .line()
+                .curve(d3.curveCatmullRom)
+                .x((d) => d.x)
+                .y((d) => d.y);
+
+            // Plot edges
+            svgSelection
+                .append("g")
+                .selectAll("path")
+                .data(dag.links())
+                .enter()
+                .append("path")
+                .attr("d", ({ points }) => line(points))
+                .attr("fill", "none")
+                .attr("stroke-width", 3)
+                .attr("stroke", ({ source, target }) => {
+                    // encodeURIComponents for spaces, hope id doesn't have a `--` in it
+                    const gradId = encodeURIComponent(`${source.data.id}--${target.data.id}`);
+                    const grad = defs
+                        .append("linearGradient")
+                        .attr("id", gradId)
+                        .attr("gradientUnits", "userSpaceOnUse")
+                        .attr("x1", source.x)
+                        .attr("x2", target.x)
+                        .attr("y1", source.y)
+                        .attr("y2", target.y);
+                    grad
+                        .append("stop")
+                        .attr("offset", "0%")
+                        .attr("stop-color", colorMap.get(source.data.id));
+                    grad
+                        .append("stop")
+                        .attr("offset", "100%")
+                        .attr("stop-color", colorMap.get(target.data.id));
+                    return `url(#${gradId})`;
+                });
+
+            // Select nodes
+            const nodes = svgSelection
+                .append("g")
+                .selectAll("g")
+                .data(dag.descendants())
+                .enter()
+                .append("g")
+                .attr("transform", ({ x, y }) => `translate(${x}, ${y})`);
+
+            // Plot node circles
+            nodes
+                .append("circle")
+                .attr("r", nodeRadius)
+                .attr("fill", (n) => colorMap.get(n.data.id))
+                .append("title")
+                .text(d => d.data.name)
+
+            const textSize = Math.max(width, height) / 100
+
+            // Add text to nodes
+            nodes
+                .append("text")
+                .text((d) => d.data.name)
+                .attr("font-family", "sans-serif")
+                .attr("text-anchor", "middle")
+                .attr("alignment-baseline", "middle")
+                .attr("fill", "black")
+                .attr("font-size", textSize)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+return
+            const svg = d3.select("#chart");
+            svg.attr("viewBox", [x0, y0, x1, y1].join(" "));
+
 
             // Draw nodes
             const node = svg.append("g")
