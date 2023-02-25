@@ -275,5 +275,8 @@ extern "C" EdgeBuffer* EMSCRIPTEN_KEEPALIVE get_reachability_hyperpath(method_id
     const BFS::Result* bfsresult = current_purged_result ? &*current_purged_result : &*all;
     auto& m = *purge_model;
     auto edges = get_reachability(m.adj, *bfsresult, mid);
-    return EdgeBuffer::allocate_for(edges);
+    auto edges_raw = span<uint64_t>{(uint64_t*)edges.data(), edges.size()};
+    sort(edges_raw.begin(), edges_raw.end());
+    size_t new_length = unique(edges_raw.begin(), edges_raw.end()) - edges_raw.begin();
+    return EdgeBuffer::allocate_for({edges.data(), new_length});
 }
