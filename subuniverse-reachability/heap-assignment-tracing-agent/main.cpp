@@ -77,6 +77,23 @@ static void JNICALL onBreakpoint(
         jmethodID method,
         jlocation location);
 
+#if LOG_METHOD_ENTRY_EXIT_EVENTS
+static void JNICALL onMethodEntry
+        (jvmtiEnv *jvmti_env,
+         JNIEnv* jni_env,
+         jthread thread,
+         jmethodID method);
+
+static void JNICALL onMethodExit
+        (jvmtiEnv *jvmti_env,
+         JNIEnv* jni_env,
+         jthread thread,
+         jmethodID method,
+         jboolean was_popped_by_exception,
+         jvalue return_value);
+#endif
+
+
 class AgentThreadContext
 {
     vector<jclass> runningClassInitializations;
@@ -443,6 +460,10 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
     cap.can_generate_breakpoint_events = true;
     cap.can_generate_field_modification_events = true;
 #endif
+#if LOG_METHOD_ENTRY_EXIT_EVENTS
+    cap.can_generate_method_entry_events = true;
+    cap.can_generate_method_exit_events = true;
+#endif
 
     check_code(1, env->AddCapabilities(&cap));
 
@@ -456,6 +477,10 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
     callbacks.ThreadEnd = onThreadEnd;
     callbacks.ObjectFree = onObjectFree;
     callbacks.Breakpoint = onBreakpoint;
+#if LOG_METHOD_ENTRY_EXIT_EVENTS
+    callbacks.MethodEntry = onMethodEntry;
+    callbacks.MethodExit = onMethodExit;
+#endif
     check_code(1, env->SetEventCallbacks(&callbacks, sizeof(callbacks)));
     check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_VM_INIT, nullptr));
     check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_FRAME_POP, nullptr));
@@ -500,10 +525,13 @@ static void processClass(jvmtiEnv* jvmti_env, jclass klass)
         if(field_signature[0] != 'L' && field_signature[0] != '[')
             continue;
 
-        check(jvmti_env->SetFieldModificationWatch(klass, fields[i]));
+        auto return_code = jvmti_env->SetFieldModificationWatch(klass, fields[i]);
+        if(return_code == JVMTI_ERROR_DUPLICATE)
+            return; // Silently ignore if the class had already been processed
+        check(return_code);
 
 #if LOG
-        cerr << "SetFieldModificationWatch: success: " << field_signature << "\n";
+        cerr << "SetFieldModificationWatch: " << class_signature << " . " << field_name << " (" << field_signature << ")\n";
 #endif
     }
 
@@ -615,6 +643,11 @@ static void JNICALL onVMInit(jvmtiEnv *jvmti_env, JNIEnv* jni_env, jthread threa
         check(jvmti_env->IsModifiableClass(clazz, &is_modifiable));
         if(is_modifiable)
             check(jvmti_env->RetransformClasses(1, &clazz));
+
+        jint status;
+        check(jvmti_env->GetClassStatus(clazz, &status));
+        if(status & JVMTI_CLASS_STATUS_PREPARED)
+            processClass(jvmti_env, clazz);
     }
 #endif // BREAKPOINTS_ENABLE
 
@@ -805,6 +838,10 @@ static void JNICALL onFramePop(
     if(tc->clinit_empty())
     {
         check(jvmti_env->SetEventNotificationMode(JVMTI_DISABLE, JVMTI_EVENT_FIELD_MODIFICATION, thread));
+#if LOG_METHOD_ENTRY_EXIT_EVENTS
+        check(jvmti_env->SetEventNotificationMode(JVMTI_DISABLE, JVMTI_EVENT_METHOD_ENTRY, thread));
+        check(jvmti_env->SetEventNotificationMode(JVMTI_DISABLE, JVMTI_EVENT_METHOD_EXIT, thread));
+#endif
     }
 #endif
 
@@ -852,12 +889,6 @@ static void JNICALL onClassFileLoad(
     || string_view(name) == "com/oracle/svm/core/jni/functions/JNIFunctionTables") // Crashes during late compile phase
         return;
 
-    if(string_view(name) == "java/util/ArrayList")
-    {
-        ofstream classfile("ArrayList.class");
-        classfile.write((const char*)class_data, class_data_len);
-    }
-
     add_clinit_hook(jvmti_env, class_data, class_data_len, new_class_data, new_class_data_len);
 }
 
@@ -890,6 +921,10 @@ extern "C" JNIEXPORT void JNICALL Java_HeapAssignmentTracingHooks_onClinitStart(
     if(tc->clinit_empty())
     {
         check(jvmti_env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_FIELD_MODIFICATION, thread));
+#if LOG_METHOD_ENTRY_EXIT_EVENTS
+        check(jvmti_env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_METHOD_ENTRY, thread));
+        check(jvmti_env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_METHOD_EXIT, thread));
+#endif
     }
 #endif
 
@@ -1201,3 +1236,58 @@ static void JNICALL onBreakpoint(
         }
     }
 }
+
+
+#if LOG_METHOD_ENTRY_EXIT_EVENTS
+static void JNICALL onMethodEntry(jvmtiEnv *jvmti_env, JNIEnv* jni_env, jthread thread, jmethodID method)
+{
+    auto jvmti_env_guard = _jvmti_env;
+    if(!jvmti_env_guard)
+        return;
+
+    AgentThreadContext* tc = AgentThreadContext::from_thread(jvmti_env, thread);
+
+    if(!tc || tc->clinit_empty())
+        return;
+
+    char outer_clinit_name[1024];
+    get_class_name(jvmti_env, tc->clinit_top(), outer_clinit_name);
+
+    char declaringClassName[1024];
+
+    jclass declaringClass;
+    check(jvmti_env->GetMethodDeclaringClass(method, &declaringClass));
+    get_class_name(jvmti_env, declaringClass, declaringClassName);
+
+    char *name, *signature, *generic;
+    check(jvmti_env->GetMethodName(method, &name, &signature, &generic));
+
+    cerr << outer_clinit_name << ": Entering " << declaringClassName << '.' << name << '(' << signature << ")\n";
+}
+
+static void JNICALL onMethodExit(jvmtiEnv *jvmti_env, JNIEnv* jni_env, jthread thread, jmethodID method, jboolean was_popped_by_exception, jvalue return_value)
+{
+    auto jvmti_env_guard = _jvmti_env;
+    if(!jvmti_env_guard)
+        return;
+
+    AgentThreadContext* tc = AgentThreadContext::from_thread(jvmti_env, thread);
+
+    if(!tc || tc->clinit_empty())
+        return;
+
+    char outer_clinit_name[1024];
+    get_class_name(jvmti_env, tc->clinit_top(), outer_clinit_name);
+
+    char declaringClassName[1024];
+
+    jclass declaringClass;
+    check(jvmti_env->GetMethodDeclaringClass(method, &declaringClass));
+    get_class_name(jvmti_env, declaringClass, declaringClassName);
+
+    char *name, *signature, *generic;
+    check(jvmti_env->GetMethodName(method, &name, &signature, &generic));
+
+    cerr << outer_clinit_name << ": Exiting " << declaringClassName << '.' << name << '(' << signature << ")\n";
+}
+#endif
