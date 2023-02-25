@@ -29,7 +29,15 @@ export const globalConfigStore = defineStore('globalConfig', {
     },
     actions: {
         addUniverse(newUniverse: Universe): void {
-            if (this.universes.find((universe) => universe.name === newUniverse.name)) return
+            const matchingUniverse = this.universes.find(
+                (universe) => universe.name === newUniverse.name
+            )
+            if (matchingUniverse) {
+                const matches = this.universes.filter((universe) =>
+                    universe.name.match(`${newUniverse.name}(\s\([0-9]+\))?`)
+                )
+                newUniverse.name = newUniverse.name + ` (${matches.length})`
+            }
 
             this.universes.push(newUniverse)
         },
@@ -40,6 +48,12 @@ export const globalConfigStore = defineStore('globalConfig', {
 
             if (matchingUniverse) {
                 this.universes.splice(this.universes.indexOf(matchingUniverse), 1)
+            }
+        },
+        updateUniverseName(oldName: string, newName: string): void {
+            const universe = this.universes.find((universe) => universe.name === oldName)
+            if (universe) {
+                universe.name = newName
             }
         },
         toggleUniverseByName(universeName: string): void {
