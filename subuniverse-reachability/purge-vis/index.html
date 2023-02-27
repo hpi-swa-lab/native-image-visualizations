@@ -545,13 +545,13 @@
                 d.html = li
                 ul.appendChild(li)
 
-                let out = document.createElement("span")
-                out.className = "cut-size-column"
-                li.appendChild(out)
+                let cutSizeColumn = document.createElement("span")
+                cutSizeColumn.className = "cut-size-column"
+                li.appendChild(cutSizeColumn)
 
-                let sizebar = document.createElement("div")
-                sizebar.className = "cut-size-bar"
-                li.appendChild(sizebar)
+                let cutSizeBar = document.createElement("div")
+                cutSizeBar.className = "cut-size-bar"
+                li.appendChild(cutSizeBar)
 
                 let node = d
                 let span = document.createElement("span")
@@ -660,23 +660,37 @@
                 let span = document.createElement("span")
                 li.appendChild(span)
 
-                let out3 = document.createElement("span")
-                out3.className = "total-size-column"
-                out3.textContent = formatByteSizesWithUnitPrefix(d.size)
-                li.appendChild(out3)
+                {
+                    let totalSizeColumn = document.createElement("span")
+                    totalSizeColumn.className = "total-size-column"
+                    totalSizeColumn.textContent = formatByteSizesWithUnitPrefix(d.size)
+                    li.appendChild(totalSizeColumn)
+                }
 
-                let out4 = document.createElement("div")
-                out4.className = "size-bar-outer"
-                out4.style.width = (d.size / maxCodeSize * 100) + "%"
-                li.appendChild(out4)
+                {
+                    let sizeBarOuter = document.createElement("div")
+                    sizeBarOuter.className = "size-bar-outer"
+                    sizeBarOuter.style.width = (d.size / maxCodeSize * 100) + "%"
+                    li.appendChild(sizeBarOuter)
 
-                let out5 = document.createElement("div")
-                out5.className = "size-bar-inner"
-                out4.appendChild(out5)
+                    let sizeBarInner = document.createElement("div")
+                    sizeBarInner.className = "size-bar-inner"
+                    sizeBarOuter.appendChild(sizeBarInner)
+                }
 
-                let out2 = document.createElement("span")
-                out2.className = "size-bar-text"
-                li.appendChild(out2)
+                {
+                    let purgePercentageBarOuter = document.createElement("div")
+                    purgePercentageBarOuter.className = "purge-percentage-bar-outer"
+                    li.appendChild(purgePercentageBarOuter)
+
+                    let purgePercentageBarInner = document.createElement("div")
+                    purgePercentageBarInner.className = "purge-percentage-bar-inner"
+                    purgePercentageBarOuter.appendChild(purgePercentageBarInner)
+
+                    let purgePercentageBarText = document.createElement("span")
+                    purgePercentageBarText.className = "purge-percentage-bar-text"
+                    purgePercentageBarOuter.appendChild(purgePercentageBarText)
+                }
 
                 let node = d
                 span.className = "caret"
@@ -902,7 +916,8 @@
                 barWidth = purgedPercentage.toFixed(1) + "%"
                 percentageText = purgedPercentage === 0 ? "" : purgedPercentage.toFixed(1) + " %"
             }
-            u.html_imageview.querySelector(".size-bar-text").textContent = percentageText
+            u.html_imageview.querySelector(".purge-percentage-bar-text").textContent = percentageText
+            u.html_imageview.querySelector(".purge-percentage-bar-inner").style.width = barWidth
             u.html_imageview.querySelector(".size-bar-inner").style.width = barWidth
         }
 
