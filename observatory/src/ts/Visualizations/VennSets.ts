@@ -61,6 +61,7 @@ export class VennSets implements MultiverseVisualization {
             .attr('height', bounds.height)
 
         this.layer = layer
+        this.initialiseZoom()
     }
 
     public setMultiverse(multiverse: Multiverse): void {
@@ -99,11 +100,12 @@ export class VennSets implements MultiverseVisualization {
 
     private startForceSimulationFor(nodesContainer: any, visualisationContainer: any) {
         const focii: Force[] = this.calculateFociiFor(this.vennPartitions.inclusive)
-        const width = this.container.node().getBoundingClientRect().width
-        const height = this.container.node().getBoundingClientRect().height
         const force = d3
             .forceSimulation(nodesContainer.data())
-            .force('center', d3.forceCenter(0.75 * width, 0.75 * height))
+            .force(
+                'center',
+                d3.forceCenter(0.5 * this.containerWidth(), 0.5 * this.containerHeight())
+            )
             .force('charge', d3.forceManyBody())
             .force('x', d3.forceX().strength(0.13))
             .force('y', d3.forceY().strength(0.13))
@@ -125,7 +127,9 @@ export class VennSets implements MultiverseVisualization {
                 nodesContainer
                     .transition()
                     .duration(TRANSITION_DURATION)
-                    .attr('cx', (data: any) => data.x)
+                    .attr('cx', (data: any) => {
+                        return data.x
+                    })
                     .attr('cy', (data: any) => data.y)
 
                 force.stop()
@@ -179,14 +183,20 @@ export class VennSets implements MultiverseVisualization {
     private drawLoadingText() {
         if (this.multiverse.sources.length === 0) return
 
-        const width = this.container.node().getBoundingClientRect().width
-        const height = this.container.node().getBoundingClientRect().height
         this.container
             .append('svg:text')
             .attr('class', 'loading')
-            .attr('x', width / 2 - 200)
-            .attr('y', height / 2)
+            .attr('x', this.containerWidth() / 2 - 200)
+            .attr('y', this.containerHeight() / 2)
             .text('Drawing Bubbles')
+    }
+
+    private initialiseZoom() {
+        const zoom = d3
+            .zoom()
+            .scaleExtent([0.01, 4])
+            .on('zoom', ({ transform }) => this.container.select('g').attr('transform', transform))
+        this.container.call(zoom)
     }
 
     private asVisualNodes(nodes: Node[]): VisualNode[] {
@@ -216,8 +226,8 @@ export class VennSets implements MultiverseVisualization {
         const solution = venn.venn(set)
         const circles = venn.scaleSolution(
             solution,
-            this.container.node().getBoundingClientRect().width,
-            this.container.node().getBoundingClientRect().height,
+            this.containerWidth(),
+            this.containerHeight(),
             10
         )
         const focii: { [set: string]: venn.IPoint } = venn.computeTextCentres(circles, set, false)
@@ -253,5 +263,13 @@ export class VennSets implements MultiverseVisualization {
 
     private cleanContainer() {
         this.container.selectAll('*').remove()
+    }
+
+    private containerWidth(): number {
+        return this.container.node().getBoundingClientRect().width
+    }
+
+    private containerHeight(): number {
+        return this.container.node().getBoundingClientRect().height
     }
 }
