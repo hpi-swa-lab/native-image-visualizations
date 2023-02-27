@@ -237,10 +237,37 @@
             return dict
         }
 
+        class ModuleHeapZipWriter extends zip.Uint8ArrayWriter {
+            init(e = 0) {
+                super.init()
+                this.offset = 0
+                this.arrayPtr = Module._malloc(e)
+                this.arrayLen = e
+            }
+
+            writeUint8Array(e) {
+                const t = this;
+                if (t.offset + e.length > t.arrayLen) {
+                    const n = t.arrayPtr;
+                    const oldLen = t.arrayLen
+                    t.arrayLen += e.length
+                    t.arrayPtr = Module._malloc(t.arrayLen)
+                    const newArray = Module.HEAPU8.subarray(t.arrayPtr, t.arrayPtr + t.arrayLen)
+                    newArray.set(Module.HEAPU8.subarray(n, t.offset))
+                    Module._free(n)
+                }
+                Module.HEAPU8.subarray(t.arrayPtr + t.offset, t.arrayPtr + t.arrayLen).set(e)
+                t.offset += e.length
+            }
+
+            getData() {
+                return { data: this.arrayPtr, length: this.offset}
+            }
+        }
+
         async function loadFiles(selectedFile, filenameEncoding) {
             let entries = await model.getEntries(selectedFile, { filenameEncoding });
             if (entries && entries.length) {
-                filesAsByteArrays = {}
 
                 let reachabilityData = JSON.parse(await entries.find(e => e.filename === "reachability.json").getData(new zip.TextWriter()))
                 let methods = await entries.find(e => e.filename === "methods.txt").getData(new zip.TextWriter())
@@ -262,16 +289,12 @@
 
                 const parameterFiles = ["typestates.bin", "interflows.bin", "direct_invokes.bin", "typeflow_methods.bin", "typeflow_filters.bin"]
 
+                filesAsByteArrays = {}
                 for (const entry of entries) {
                     if(parameterFiles.some(name => name === entry.filename))
                     {
-                        const zipFileWriter = new zip.Uint8ArrayWriter()
-                        const data = await entry.getData(zipFileWriter)
-
-                        let input_ptr = Module._malloc(data.length);
-                        Module.HEAPU8.set(data, input_ptr);
-
-                        filesAsByteArrays[entry.filename] = { data: input_ptr, length: data.length }
+                        const zipFileWriter = new ModuleHeapZipWriter()
+                        filesAsByteArrays[entry.filename] = await entry.getData(zipFileWriter)
                     }
                 }
 
