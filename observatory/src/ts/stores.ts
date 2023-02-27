@@ -8,6 +8,7 @@ import { SortingOption, SortingOrder } from './enums/Sorting'
 import { Layers } from './enums/Layers'
 import { NodesDiffingFilter, NodesFilter, NodesSortingFilter } from './SharedTypes/NodesFilter'
 import { Multiverse } from './UniverseTypes/Multiverse'
+import { objectMap } from './helpers'
 
 export const globalConfigStore = defineStore('globalConfig', {
     state: () => {
@@ -98,14 +99,15 @@ export const globalConfigStore = defineStore('globalConfig', {
                 this.setHighlights(universe.name, findNodesWithName(this.search, universe.root))
             })
         },
-        toExportDict(): Record<
-            string,
-            Record<string, Record<string, unknown>> | SwappableComponentType | string
-        > {
+        toExportDict(): Record<string, string> {
             return {
                 universes: createConfigUniverses(this.universes as Universe[]),
-                selections: createConfigSelections(this.selections),
-                highlights: createConfigHighlights(this.highlights),
+                selections: objectMap<string[]>(this.selections, (_, selection: Node[]) => {
+                    return selection.map((node: Node) => node.identifier)
+                }),
+                highlights: objectMap<string[]>(this.highlights, (_, highlight: Node[]) => {
+                    return highlight.map((node: Node) => node.identifier)
+                }),
                 currentComponent: this.currentComponent,
                 search: this.search
             }
