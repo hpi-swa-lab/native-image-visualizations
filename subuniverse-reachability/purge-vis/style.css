@@ -70,7 +70,7 @@ body {
     margin-right: 5px;
     margin-left: 5px;
     color: #606060;
-    width: 70px;
+    width: 60px;
 }
 
 .cut-size-column {
@@ -80,6 +80,8 @@ body {
     color: #B02020;
     grid-row-start: 1;
     grid-column-start: 3;
+    text-align: right;
+    width: 60px;
 }
 
 .size-bar-outer {

@@ -324,6 +324,12 @@
                 tryLoadFile(ev.dataTransfer.files[0])
             }
         }
+
+        let precomputeCutoffs = true
+
+        function changePrecomputeCutoffs(enable) {
+            precomputeCutoffs = enable
+        }
     </script>
 
     <div id="fileselect-panel" class="fullscreen" ondragover="allowDrop(event)" ondrop="drop(event)">
@@ -343,8 +349,8 @@
         <div class="overview-div">
             <span><b>Cut Overview:</b></span>
             <label>
-                <input type="checkbox" checked="true">
-                Preview cutoffs
+                <input type="checkbox" checked="checked" onchange="changePrecomputeCutoffs(this.checked)">
+                Precompute cutoffs
             </label>
             <div id="cut-overview-root"></div>
         </div>
@@ -521,7 +527,6 @@
         function insertChildren(element, node) {
             let list = generateHTML(node)
             element.appendChild(list)
-            //recalculateCutOverview()
             recalculateCutOverviewForSubtree(list, node)
         }
 
@@ -572,13 +577,15 @@
                 li.appendChild(nameSpan)
 
                 nameSpan.addEventListener("mouseenter", async () => {
-                    nameSpan.classList.add("hovered-for-purge")
-
                     if(selectedForPurging.has(node))
                         return;
 
-                    reachable_in_image_view = node.still_reachable
-                    updatePurgeValues()
+                    const maybe_reachable_in_image_view = selectedForPurging.size === 0 ? node.reachable_after_cutting_this : node.reachable_after_additionally_cutting_this
+                    if (maybe_reachable_in_image_view) {
+                        reachable_in_image_view = maybe_reachable_in_image_view.arr
+                        updatePurgeValues()
+                        nameSpan.classList.add("hovered-for-purge")
+                    }
                 })
 
                 nameSpan.addEventListener("mouseleave", async () => {
@@ -586,8 +593,11 @@
 
                     if(selectedForPurging.has(node))
                         return;
-                    reachable_in_image_view = reachable_under_selection
-                    updatePurgeValues()
+
+                    if(reachable_in_image_view !== reachable_under_selection) {
+                        reachable_in_image_view = reachable_under_selection
+                        updatePurgeValues()
+                    }
                 })
 
                 nameSpan.addEventListener("click", async () =>  {
@@ -595,21 +605,17 @@
                     let selected = nameSpan.classList.toggle("selected-for-purge")
                     if (selected) {
                         selectedForPurging.add(node)
-                        reachable_in_image_view = reachable_under_selection = node.still_reachable
-                    }
-                    else {
+                    } else {
                         selectedForPurging.delete(node)
+                    }
+
+                    if (selected && node.reachable_after_additionally_cutting_this && /* When details are shown, we need simulatePurge anyway for path data */ !detailMid) {
+                        reachable_in_image_view = reachable_under_selection = node.reachable_after_additionally_cutting_this.arr
+                    } else {
                         reachable_in_image_view = reachable_under_selection = simulatePurge([...new Set([...selectedForPurging].flatMap(collectCgNodesInSubtree))])
                     }
 
                     updatePurgeValues()
-
-                    await new Promise(resolve => setTimeout(resolve, 0))
-
-                    if (selected) {
-                        // refresh internal purge result for detail view
-                        simulatePurge([...new Set([...selectedForPurging].flatMap(collectCgNodesInSubtree))])
-                    }
 
                     await new Promise(resolve => setTimeout(resolve, 0))
 
@@ -622,7 +628,15 @@
                         }
                     }
 
-                    recalculateCutOverview()
+                    await new Promise(resolve => setTimeout(resolve, 0))
+
+                    if(precomputeCutoffs) {
+                        precomputeCutOverview()
+                    } else {
+                        forEachInSubtree(this.dataRoot, u => {
+                            delete u.reachable_after_additionally_cutting_this
+                        })
+                    }
                 })
             }
 
@@ -793,40 +807,40 @@
 
         let maxPurgedSize
 
-        function recalculateCutOverview() {
-            for (const node of [...selectedForPurging]) {
-                node.still_reachable = reachable_under_selection
-                node.purgedSize = 0
-            }
-
-            const purgeNodeTreeRoot = createPurgeNodeTree(this.dataRoot)
-
-            let maxPurgedSize = 0
-
+        function recalculateCutOverviewCustom(purgeNodeTreeRoot, additionalPurges, callback) {
             simulatePurgesBatched(purgeNodeTreeRoot, (node, still_reachable) => {
-                node.src.still_reachable = still_reachable.slice()
                 let purgedSize = 0
                 for (let i = 0; i < codesizes.length; i++)
                     if (reachable_under_selection[i] !== 0xFF && still_reachable[i] === 0xFF)
                         purgedSize += codesizes[i]
+                if (node.src)
+                    callback(node.src, { arr: still_reachable.slice(), size: purgedSize })
+            }, additionalPurges)
+        }
 
-                node.src.purgedSize = purgedSize
-                maxPurgedSize = Math.max(maxPurgedSize, purgedSize)
-            }, [...new Set([...selectedForPurging].flatMap(collectCgNodesInSubtree))])
-
-            if(selectedForPurging.size === 0) {
-                this.maxPurgedSize = maxPurgedSize
+        function precomputeCutOverview() {
+            for (const node of [...selectedForPurging]) {
+                node.reachable_after_additionally_cutting_this = { arr: reachable_under_selection, size: 0 }
             }
+
+            const purgeNodeTreeRoot = createPurgeNodeTree(this.dataRoot)
+
+            recalculateCutOverviewCustom(purgeNodeTreeRoot, [...new Set([...selectedForPurging].flatMap(collectCgNodesInSubtree))], (node, data) => {
+                node.reachable_after_additionally_cutting_this = data
+            })
+
+            assert(this.maxPurgedSize)
 
             forEachInSubtree(this.dataRoot, u => {
                 const html = u.html
                 if (!html)
                     return
-                if (u.purgedSize === undefined)
+                const purged = u.reachable_after_additionally_cutting_this
+                if (!purged)
                     return
 
-                html.querySelector('.cut-size-column').textContent = formatByteSizesWithUnitPrefix(u.purgedSize)
-                html.querySelector('.cut-size-bar').style.width = (u.purgedSize / this.maxPurgedSize * 100) + "%"
+                html.querySelector('.cut-size-column').textContent = formatByteSizesWithUnitPrefix(purged.size)
+                html.querySelector('.cut-size-bar').style.width = (purged.size / this.maxPurgedSize * 100) + "%"
             })
 
             /* sorting...
@@ -850,44 +864,43 @@
         }
 
         function recalculateCutOverviewForSubtree(list, node) {
-            let res = Array(node.children.length)
-            for (let i = 0; i < node.children.length; i++) {
-                res[i] = 0
-            }
-
             // The C++ code doesn't handle empty groups well. Therefore we already handle them here.
-            let purge_root = { children: node.children.map((c, i) => { return { mids: collectCgNodesInSubtree(c), index: i, src: c } }).filter(n => n.mids.length > 0) }
+            let purgeNodeTreeRoot = { children: node.children.map((c, i) => { return { mids: collectCgNodesInSubtree(c), index: i, src: c } }).filter(n => n.mids.length > 0) }
 
-            simulatePurgesBatched(purge_root, (node, still_reachable) => {
-                if(!node.src)
-                    return;
-
-                node.src.still_reachable = still_reachable.slice()
-
-                let purgedSize = 0
-                for (let i = 0; i < codesizes.length; i++)
-                    if (reachable_under_selection[i] !== 0xFF && still_reachable[i] === 0xFF)
-                        purgedSize += codesizes[i]
-
-                res[node.index] = purgedSize
-            }, [...new Set([...selectedForPurging].flatMap(collectCgNodesInSubtree))])
+            let maxPurgedSize = 0
+            recalculateCutOverviewCustom(purgeNodeTreeRoot, [], (node, data) => {
+                node.reachable_after_cutting_this = data
+                maxPurgedSize = Math.max(maxPurgedSize, data.size)
+            })
 
             if (node === this.dataRoot)
-                this.maxPurgedSize = Math.max(...res)
+                this.maxPurgedSize = maxPurgedSize
 
             assert(this.maxPurgedSize)
 
-            for (let i = 0; i < list.children.length; i++) {
-                list.children[i].querySelector('.cut-size-column').textContent = formatByteSizesWithUnitPrefix(res[i])
-                list.children[i].querySelector('.cut-size-bar').style.width = (res[i] / this.maxPurgedSize * 100) + "%"
+            function sortKey(a) {
+                if(a.reachable_after_cutting_this)
+                    return a.reachable_after_cutting_this.size
+                else
+                    return -1
             }
 
-            let order = new Array(list.children.length)
-            for(let i = 0; i < order.length; i++)
-                order[i] = i
+            node.children.sort((a, b) => sortKey(b) - sortKey(a)).map(n => n.html).forEach(node => list.appendChild(node))
 
-            let nodes = list.children
-            order.sort((a, b) => res[b] - res[a]).map(i => nodes[i]).forEach(node => list.appendChild(node))
+            if (precomputeCutoffs && selectedForPurging.size > 0) {
+                recalculateCutOverviewCustom(purgeNodeTreeRoot, [...new Set([...selectedForPurging].flatMap(collectCgNodesInSubtree))], (node, data) => {
+                    node.reachable_after_additionally_cutting_this = data
+                })
+            }
+
+            for (const c of node.children) {
+                const purged = c.reachable_after_additionally_cutting_this ?? c.reachable_after_cutting_this
+                if(!purged)
+                    return;
+                const purgedSize = purged.size
+                c.html.querySelector('.cut-size-column').textContent = formatByteSizesWithUnitPrefix(purgedSize)
+                c.html.querySelector('.cut-size-bar').style.width = (purgedSize / this.maxPurgedSize * 100) + "%"
+            }
         }
 
         function updatePurgeValues() {
