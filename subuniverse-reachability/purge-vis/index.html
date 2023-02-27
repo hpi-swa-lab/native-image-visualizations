@@ -731,9 +731,16 @@
                     if (!mid)
                         return
 
-                    detailMid = mid
-                    const edges = getReachabilityHyperpath(mid)
-                    renderGraphOnDetailView(edges, mid)
+                    if (detailMid === mid) {
+                        nameSpan.classList.remove("selected-for-detail")
+                        detailMid = undefined
+                    } else {
+                        nameSpan.classList.add("selected-for-detail")
+                        detailMid = mid
+                    }
+
+                    const edges = detailMid ? getReachabilityHyperpath(detailMid) : []
+                    renderGraphOnDetailView(edges, detailMid)
                 })
             }
 
@@ -969,6 +976,9 @@
         function renderGraphOnDetailView(edges, targetMid) {
             const htmlSvg = document.getElementById("chart")
             htmlSvg.textContent = ""
+
+            if (edges.length === 0)
+                return
 
 
             // Graph construction

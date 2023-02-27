@@ -181,6 +181,11 @@ body {
     background-color: #0000FF20;
 }
 
+.selected-for-detail {
+    border: 1px solid #80FF80;
+    background-color: #00FF0020;
+}
+
 .cut-row {
     display: grid;
     grid-template-columns: max-content 1fr max-content;
