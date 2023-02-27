@@ -16,6 +16,8 @@
         let get_reachability_hyperpath = Module.cwrap("get_reachability_hyperpath", "number", ["number"])
 
 
+        let methodList
+        let typeList
         let all_reachable_ptr
 
         function simulatePurge(purge_group) {
@@ -276,7 +278,7 @@
                     methodList.pop()
                 }
                 let types = await entries.find(e => e.filename === "types.txt").getData(new zip.TextWriter())
-                let typeList = types.split('\n')
+                typeList = types.split('\n')
                 if(typeList[typeList.length-1].length === 0)
                     typeList.pop()
 
@@ -1059,7 +1061,7 @@
                 .attr("fill", "none")
                 .attr("stroke-width", 3)
                 .attr("stroke", ({source, target, data}) => {
-                    if(data.via_type) {
+                    if(data.via_type !== undefined) {
                         return "#40FF40"
                     } else {
                         return "#808080"
@@ -1087,6 +1089,10 @@
                     return `url(#${gradId})`;
                 });
 
+            links
+                .append("title")
+                .text(({data}) => data.via_type !== undefined ? typeList[data.via_type] : undefined)
+
             // Select nodes
             const nodes = svgSelection
                 .append("g")
@@ -1103,6 +1109,8 @@
             nodeCircles
                 .attr("r", nodeRadius)
                 .attr("fill", d => getColorAccordingToCausalityGraphNodeType(d.data.name))
+
+            nodes
                 .append("title")
                 .text(d => d.data.name)
 
