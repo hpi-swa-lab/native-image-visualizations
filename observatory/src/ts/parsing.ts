@@ -8,7 +8,8 @@
  * accessing them.
  */
 import { Bytes } from './SharedTypes/Size'
-import { Leaf, InitKind } from './UniverseTypes/Leaf'
+import { Leaf } from './UniverseTypes/Leaf'
+import { InitKind } from './enums/InitKind'
 import { Universe } from './UniverseTypes/Universe'
 import { Node } from './UniverseTypes/Node'
 

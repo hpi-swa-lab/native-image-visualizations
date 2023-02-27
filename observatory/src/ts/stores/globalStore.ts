@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { Universe } from '../UniverseTypes/Universe'
 import { Node } from '../UniverseTypes/Node'
-import { createConfigUniverses } from '../parsing'
 import {
     SwappableComponentType,
     componentName,
@@ -11,8 +10,14 @@ import { findNodesWithName } from '../Math/filters'
 import { Layers } from '../enums/Layers'
 import { Multiverse } from '../UniverseTypes/Multiverse'
 import { objectMap } from '../helpers'
+import { Leaf } from '../UniverseTypes/Leaf'
+import { InitKind, initKindForExport } from '../enums/InitKind'
 
-export type GlobalConfig = Record<string, string | Record<string, string[]>>
+type NodeIdentifiersPerUniverse = Record<string, string[]>
+type NodeExport = Record<string, string | string[] | number | Record<string, string> | boolean>
+type UniverseExport = Record<string, string | NodeExport[]>
+
+export type GlobalConfig = Record<string, string | NodeIdentifiersPerUniverse | UniverseExport[]>
 
 export const useGlobalStore = defineStore('globalConfig', {
     state: () => {
@@ -105,7 +110,7 @@ export const useGlobalStore = defineStore('globalConfig', {
         },
         toExportDict(): GlobalConfig {
             return {
-                universes: createConfigUniverses(this.universes as Universe[]),
+                universes: universesForExport(this.universes as Universe[]),
                 selections: objectMap<string[]>(this.selections, (_, selection: Node[]) => {
                     return selection.map((node: Node) => node.identifier)
                 }),
@@ -118,3 +123,36 @@ export const useGlobalStore = defineStore('globalConfig', {
         }
     }
 })
+
+function universesForExport(universes: Universe[]): UniverseExport[] {
+    return universes.map((universe: Universe) => ({
+        name: universe.name,
+        root: universe.root.identifier,
+        nodes: nodeListForExport(universe.root)
+    }))
+}
+
+function nodeListForExport(root: Node): NodeExport[] {
+    let result: NodeExport[] = []
+
+    const tmp: NodeExport = {
+        name: root.name,
+        parent: root.parent ? root.parent.identifier : '',
+        children: root.children.map((child: Node) => child.identifier),
+        codeSize: root.codeSize,
+        sources: objectMap(root.sources, (_, sourceNode: Node) => sourceNode.identifier)
+    }
+    if (root instanceof Leaf) {
+        tmp['reflective'] = root.isReflective
+        tmp['jni'] = root.isJni
+        tmp['synthetic'] = root.isSynthetic
+        tmp['initKinds'] = root.initKinds.map((initKind: InitKind) => initKindForExport(initKind))
+    }
+    result.push(tmp)
+
+    root.children.forEach((child: Node) => {
+        result = result.concat(nodeListForExport(child))
+    })
+
+    return result
+}
