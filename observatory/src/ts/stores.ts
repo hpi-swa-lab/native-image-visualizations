@@ -8,6 +8,7 @@ import { SortingOption, SortingOrder } from './enums/Sorting'
 import { Layers } from './enums/Layers'
 import { NodesDiffingFilter, NodesFilter, NodesSortingFilter } from './SharedTypes/NodesFilter'
 import { Multiverse } from './UniverseTypes/Multiverse'
+import { ColorScheme, TABLEAU_10 } from './SharedTypes/Colors'
 
 export const globalConfigStore = defineStore('globalConfig', {
     state: () => {
@@ -20,6 +21,7 @@ export const globalConfigStore = defineStore('globalConfig', {
             highlights: {} as Record<string, Node[]>,
             currentComponent: SwappableComponentType.Home as SwappableComponentType,
             previousComponent: undefined as SwappableComponentType | undefined,
+            colorScheme: TABLEAU_10,
             search: ''
         }
     },
@@ -80,6 +82,9 @@ export const globalConfigStore = defineStore('globalConfig', {
         },
         setHighlights(universeName: string, highlight: Node[]): void {
             this.highlights[universeName] = highlight
+        },
+        switchColorScheme(newScheme: ColorScheme): void {
+            this.colorScheme = newScheme
         },
         switchToComponent(newComponent: SwappableComponentType): void {
             this.previousComponent = this.currentComponent
