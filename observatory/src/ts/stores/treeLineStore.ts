@@ -1,8 +1,10 @@
 import { defineStore } from 'pinia'
 
+export type TreeLineConfig = Record<string, unknown>
+
 export const useTreeLineStore = defineStore('treeLineConfig', {
     actions: {
-        toExportDict(): Record<string, unknown> {
+        toExportDict(): TreeLineConfig {
             return {}
         }
     }
