@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { globalConfigStore } from '../../ts/stores'
+import { globalConfigStore } from '../../ts/globalStoreStore'
 import ToggleSwitch from './ToggleSwitch.vue'
 
 const MAX_OBSERVABLE_UNIVERSES = 2

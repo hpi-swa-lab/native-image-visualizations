@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { globalConfigStore } from '../../ts/stores'
+import { globalConfigStore } from '../../ts/globalStoreStore'
 
 const store = globalConfigStore()
 let typingTimer: string | number | NodeJS.Timeout | undefined

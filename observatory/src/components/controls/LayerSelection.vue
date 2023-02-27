@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Layers, layerName } from '../../ts/enums/Layers'
-import { globalConfigStore } from '../../ts/stores'
+import { globalConfigStore } from '../../ts/globalStoreStore'
 
 const store = globalConfigStore()
 

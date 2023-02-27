@@ -2,13 +2,11 @@
 import { ref } from 'vue'
 import { Universe } from '../../ts/UniverseTypes/Universe'
 import { loadJson, parseReachabilityExport } from '../../ts/parsing'
-import {
-    globalConfigStore,
-    vennConfigStore,
-    treeLineConfigStore,
-    sankeyTreeConfigStore,
-    causalityGraphConfigStore
-} from '../../ts/stores'
+import { globalConfigStore } from '../../ts/globalStoreStore'
+import { vennConfigStore } from '../../ts/stores/vennConfigStoreigStore'
+import { sankeyTreeConfigStore } from '../../ts/stores/sankeyTreeConfigStoreigStore'
+import { treeLineConfigStore } from '../../ts/stores/treeLineConfigStoreigStore'
+import { causalityGraphConfigStore } from '../../ts/stores/causalityGraphConfigStoreigStore'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import InlineEditableField from './InlineEditableField.vue'
 
