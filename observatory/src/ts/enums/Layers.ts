@@ -6,6 +6,10 @@ export enum Layers {
     METHODS = 4
 }
 
+export function layerForExport(layer: Layers): string {
+    return layer.toString()
+}
+
 export function layerName(layer: Layers): string {
     return Layers[layer]
 }
