@@ -157,12 +157,17 @@
             const edgeBufPtr = get_reachability_hyperpath(mid+1)
             const edgeBufU32index = edgeBufPtr / Module.HEAPU32.BYTES_PER_ELEMENT
             const len = Module.HEAPU32.at(edgeBufU32index)
-            const arr = Module.HEAPU32.subarray(edgeBufU32index + 1, edgeBufU32index + 1 + 2 * len)
+            const arr = Module.HEAPU32.subarray(edgeBufU32index + 1, edgeBufU32index + 1 + 3 * len)
 
             let edges = Array(len)
 
             for(let i = 0; i < edges.length; i++)
-                edges[i] = { src: arr[i*2] - 1, dst: arr[i*2+1] - 1 }
+            {
+                edges[i] = { src: arr[i*3] - 1, dst: arr[i*3+1] - 1 }
+                const type = arr[i*3+2]
+                if(type !== 0xFFFFFFFF)
+                    edges[i].via_type = type
+            }
 
             Module._free(edgeBufPtr)
 
@@ -331,7 +336,7 @@
                 </marker>
 
                 <g id="chartpanel">
-                    <rect id="zoom-opfer" fill="black" opacity="0" height="600" width="1200"></rect>
+                    <rect id="zoom-opfer" fill="black" opacity="0" height="100%" width="100%"></rect>
                     <g id="chart"></g>
                 </g>
             </svg>
@@ -586,7 +591,11 @@
 
                     if (detailMid) {
                         const edges = getReachabilityHyperpath(detailMid)
-                        renderGraphOnDetailView(edges, detailMid)
+                        try {
+                            renderGraphOnDetailView(edges, detailMid)
+                        } catch {
+                            // Ignore
+                        }
                     }
 
                     recalculateCutOverview()
@@ -870,6 +879,38 @@
             u.html_imageview.querySelector(".size-bar-inner").style.width = barWidth
         }
 
+        function getUnqualifiedCausalityGraphNodeName(fullyQualifiedName) {
+            return fullyQualifiedName.replaceAll(/(?<![A-Za-z0-9])([a-z]\w+\.)+/g, "")
+        }
+
+        function getColorAccordingToCausalityGraphNodeType(fullyQualifiedName) {
+            if(fullyQualifiedName.endsWith("[Instantiated]"))
+                return "#FF4040"
+            if(fullyQualifiedName.endsWith("[Reflection Registration]"))
+                return "#D0A000"
+            if(fullyQualifiedName.endsWith("[JNI Registration]"))
+                return "#904040"
+            if(fullyQualifiedName.endsWith("[Configuration File]"))
+                return "#505050"
+            if(fullyQualifiedName.endsWith("[Initial Registrations]"))
+                return "#C0C0C0"
+            if(fullyQualifiedName.endsWith("[User-Requrested Feature Registration"))
+                return "#808080"
+            if(fullyQualifiedName.endsWith("[Automatic Feature Registration]"))
+                return "#A0A0A0"
+            if(fullyQualifiedName.endsWith("[Unknown Heap Object]"))
+                return "#1010E0"
+            if(fullyQualifiedName.endsWith("[Build-Time]"))
+                return "#4040FF"
+            if(fullyQualifiedName.endsWith("[Reachability Callback]"))
+                return "#E0E000"
+            if(fullyQualifiedName.includes("(")) // Method reachable
+                return "#20C020"
+
+            // Class reachable
+            return "#40A0DF"
+        }
+
         function renderGraphOnDetailView(edges, targetMid) {
             const htmlSvg = document.getElementById("chart")
             htmlSvg.textContent = ""
@@ -884,7 +925,10 @@
 
                 graph.nodes.add(e.src);
                 graph.nodes.add(e.dst);
-                graph.links.push({ source: e.src, target: e.dst });
+                let newObj = { source: e.src, target: e.dst }
+                if (e.via_type)
+                    newObj.via_type = e.via_type
+                graph.links.push(newObj);
             });
 
             graph.nodes = [...graph.nodes]
@@ -901,8 +945,8 @@
             });
 
             graph.links.forEach(l => {
-                graph.nodes[l.target].adj.push(l.source)
-                graph.nodes[l.source].in_deg++
+                graph.nodes[l.source].adj.push(l)
+                graph.nodes[l.target].in_deg++
             })
 
             let order = []
@@ -911,7 +955,8 @@
                 if(graph.nodes[v].in_deg === 0)
                     order.push(v)
             for(let i = 0; i < order.length; i++)
-                for(const v of graph.nodes[order[i]].adj) {
+                for(const e of graph.nodes[order[i]].adj) {
+                    const v = e.target
                     graph.nodes[v].in_deg--
                     if(graph.nodes[v].in_deg === 0)
                         order.push(v)
@@ -923,7 +968,8 @@
 
             for(const u of order) {
                 let depth = 0
-                for(const v of graph.nodes[u].adj) {
+                for(const e of graph.nodes[u].adj) {
+                    const v = e.target
                     if(graph.nodes[v].depth + 1 > depth)
                         depth = graph.nodes[v].depth + 1
                 }
@@ -932,16 +978,25 @@
                     maxDepth = depth
             }
 
-            for(let v of graph.nodes) {
-                v.parentIds = v.adj.map(id => id.toString())
-                v.id = v.index.toString()
+            function applyLayering(n) {
+                if(!n)
+                    return
+                n.value = n.data.depth
+                if(n.dataChildren)
+                    for(const c of n.dataChildren) {
+                        applyLayering(c.child)
+                    }
             }
 
-            const dag = d3.dagStratify()(graph.nodes);
+            const dag = d3.dagStratify()
+                .id(({index}) => index.toString())
+                .parentData(({adj}) => adj.map(e => [e.target.toString(), e]))
+                (graph.nodes);
             const nodeRadius = 20;
             const layout = d3
                 .sugiyama() // base layout
-                .decross(d3.decrossOpt()) // minimize number of crossings
+                //.layering(applyLayering)
+                .decross(d3.decrossTwoLayer()) // minimize number of crossings
                 .nodeSize((node) => [(node ? 3.6 : 0.25) * nodeRadius, 3 * nodeRadius]); // set node size instead of constraining to fit
             const { width, height } = layout(dag);
             const x0 = 0;
@@ -972,7 +1027,7 @@
                 .y((d) => d.y);
 
             // Plot edges
-            svgSelection
+            const links = svgSelection
                 .append("g")
                 .selectAll("path")
                 .data(dag.links())
@@ -981,7 +1036,14 @@
                 .attr("d", ({ points }) => line(points))
                 .attr("fill", "none")
                 .attr("stroke-width", 3)
-                .attr("stroke", ({ source, target }) => {
+                .attr("stroke", ({source, target, data}) => {
+                    if(data.via_type) {
+                        return "#40FF40"
+                    } else {
+                        return "#808080"
+                    }
+
+
                     // encodeURIComponents for spaces, hope id doesn't have a `--` in it
                     const gradId = encodeURIComponent(`${source.data.id}--${target.data.id}`);
                     const grad = defs
@@ -1013,10 +1075,12 @@
                 .attr("transform", ({ x, y }) => `translate(${x}, ${y})`);
 
             // Plot node circles
-            nodes
+            const nodeCircles = nodes
                 .append("circle")
+
+            nodeCircles
                 .attr("r", nodeRadius)
-                .attr("fill", (n) => colorMap.get(n.data.id))
+                .attr("fill", d => getColorAccordingToCausalityGraphNodeType(d.data.name))
                 .append("title")
                 .text(d => d.data.name)
 
@@ -1025,87 +1089,19 @@
             // Add text to nodes
             nodes
                 .append("text")
-                .text((d) => d.data.name)
+                .text((d) => getUnqualifiedCausalityGraphNodeName(d.data.name))
                 .attr("font-family", "sans-serif")
-                .attr("text-anchor", "middle")
-                .attr("alignment-baseline", "middle")
+                .attr("text-anchor", "left")
                 .attr("fill", "black")
                 .attr("font-size", textSize)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-return
-            const svg = d3.select("#chart");
-            svg.attr("viewBox", [x0, y0, x1, y1].join(" "));
-
-
-            // Draw nodes
-            const node = svg.append("g")
-                .attr("id", "nodes")
-                .selectAll("circle")
-                .data(graph.nodes)
-                .enter()
-                .append("circle")
-                .attr("class", "node")
-                .attr("r", 10)
-                .style("fill", "#FF0000");
-
-            // Draw edges
-            const link = svg.append("g")
-                .attr("id", "links")
-                .selectAll("line")
-                .data(graph.links)
-                .enter()
-                .append("line")
-                .style("stroke", "#080808")
-                .style("opacity", 0.5)
-                .style("stroke-width", 1)
-                .attr("marker-end", "url(#arrowhead)");
-
-            node
-                .append("title")
-                .text(d => d.name);
-
-            const nodeTextG = svg.append("g")
-                .attr("id", "labels");
-
-            const nodeText = nodeTextG
-                .selectAll("text")
-                .data(graph.nodes)
-                .enter()
-                .append("text")
-                .style("text-anchor", "middle")
-                .style("pointer-events", "none")
-                .style("font-size", "14px")
-                .attr("dy", -4 - 10)
-                .text(d => d.name);
-
-            // Force simulation
-            var simulation = d3.forceSimulation(graph.nodes)
-                .force("link", d3.forceLink(graph.links).distance(0).strength(0.000001))
-                .force("charge", d3.forceManyBody().strength(-1000))
-                .force("center", d3.forceCenter(width / 2, height / 2))
-                .force("y", d3.forceY().y(d => ((maxDepth - d.depth) / maxDepth) * height))
-                .force("x", d3.forceX().x(width / 2))
-                .on("tick", () => onZoom({ x: 0, y: 0, k: 1}))
 
             function onZoom() {
                 transform = d3.zoomTransform(d3.select("#chartpanel").node());
 
                 function transX(num)
                 {
+                    return num
                     return num * transform.k + transform.x;
                 }
 
@@ -1114,6 +1110,14 @@ return
                     return num * transform.k + transform.y;
                 }
 
+                nodes
+                    .attr("transform", ({x, y}) => `translate(${transX(x)}, ${transY(y)})`)
+                nodeCircles
+                    .attr("r", transform.k * nodeRadius)
+
+                links.attr("d", ({ points }) => line(points.map(({x, y}) => {return {x: transX(x), y: transY(y)}})))
+                    .attr("stroke-width", transform.k * 3)
+                /*
                 link
                     .attr("x1", d => transX(d.source.x * 0.9 + d.target.x * 0.1))
                     .attr("y1", d => transY(d.source.y * 0.9 + d.target.y * 0.1))
@@ -1127,6 +1131,8 @@ return
                 nodeText
                     .attr("x", d => transX(d.x))
                     .attr("y", d => transY(d.y));
+
+                 */
             }
 
             var zoom = d3.zoom().on("zoom", onZoom);

@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <vector>
+#include <ranges>
 #include "model.h"
 #include "analysis.h"
 
@@ -303,7 +304,25 @@ static void print_reachability(ostream& out, const Adjacency& adj, const BFS::Re
 
 
 
-static void get_reachability_of_method(vector<pair<method_id, method_id>>& edges, const Adjacency& adj, const BFS::Result& all, method_id m, vector<bool>& visited)
+struct ReachabilityEdge
+{
+    method_id from, to;
+    uint32_t via_type = numeric_limits<uint32_t>::max();
+
+    bool operator==(const ReachabilityEdge& o) const = default;
+};
+
+namespace std {
+    template <>
+    struct hash<pair<method_id, method_id>> {
+        auto operator()(pair<method_id, method_id> e) const {
+            return hash<uint32_t>{}(e.first.id) ^ hash<uint32_t>{}(e.second.id);
+        }
+    };
+}  // namespace std
+
+
+static void get_reachability_of_method(unordered_map<pair<method_id, method_id>, uint32_t>& edges, const Adjacency& adj, const BFS::Result& all, method_id m, vector<bool>& visited)
 {
     size_t dist = all.method_history[m.id].dist;
 
@@ -323,7 +342,7 @@ static void get_reachability_of_method(vector<pair<method_id, method_id>>& edges
 
     if(it != adj.methods[m.id].backward_edges.end())
     {
-        edges.push_back({*it, m});
+        edges.insert({{*it, m}, numeric_limits<uint32_t>::max()});
         get_reachability_of_method(edges, adj, all, *it, visited);
     }
     else
@@ -424,36 +443,30 @@ static void get_reachability_of_method(vector<pair<method_id, method_id>>& edges
             {
                 if(prev == 0)
                 {
-                    vector<method_id> methods;
+                    vector<typeflow_id> history;
 
                     for(typeflow_id cur = flow; parent[cur.id] != numeric_limits<typeflow_id>::max(); cur = parent[cur.id])
+                        history.push_back(cur);
+                    std::reverse(history.begin(), history.end());
+
+                    bool searching_for_invoker = true;
+
+                    for(typeflow_id f : history)
                     {
-                        if(all.typeflow_visited[cur.id].is_saturated() && !(!methods.empty() && methods.back() == numeric_limits<method_id>::max()))
-                            methods.push_back(numeric_limits<method_id>::max());
-                        else
+                        if(all.typeflow_visited[f.id].is_saturated())
+                            searching_for_invoker = false;
+
+                        auto containing_method = adj[f].method.dependent();
+                        if(containing_method)
                         {
-                            method_id cur_container = adj[cur].method.dependent();
-                            if(cur_container && !(!methods.empty() && methods.back() == cur_container))
-                                methods.push_back(cur_container);
-                        }
-                    }
+                            auto inserted = edges.insert({{containing_method, m}, flow_type});;
 
-                    //out << indentation << "(Virtually called through " << type_names[flow_type] << ')' << endl;
+                            if(searching_for_invoker)
+                            {
+                                inserted.second = numeric_limits<uint32_t>::max();
+                                searching_for_invoker = false;
+                            }
 
-                    size_t i = methods.size();
-                    std::reverse(methods.begin(), methods.end());
-
-                    for(method_id containing_method : methods)
-                    {
-                        //if(--i == 0) indentation.end_bars(); // last method
-
-                        if(containing_method == numeric_limits<method_id>::max())
-                        {
-                            //out << indentation << "(Saturated)" << endl;
-                        }
-                        else
-                        {
-                            edges.push_back({containing_method, m});
                             get_reachability_of_method(edges, adj, all, containing_method, visited);
                         }
                     }
@@ -489,9 +502,9 @@ static void get_reachability_of_method(vector<pair<method_id, method_id>>& edges
     }
 }
 
-static vector<pair<method_id, method_id>> get_reachability(const Adjacency& adj, const BFS::Result& all, method_id m)
+static vector<ReachabilityEdge> get_reachability(const Adjacency& adj, const BFS::Result& all, method_id m)
 {
-    vector<pair<method_id, method_id>> edges;
+    unordered_map<pair<method_id, method_id>, uint32_t> edges;
 
     if(!all.method_history[m.id])
     {
@@ -502,7 +515,11 @@ static vector<pair<method_id, method_id>> get_reachability(const Adjacency& adj,
         get_reachability_of_method(edges, adj, all, m, visited);
     }
 
-    return edges;
+    vector<ReachabilityEdge> result;
+    result.reserve(edges.size());
+    for(auto kv : edges)
+        result.push_back({kv.first.first, kv.first.second, kv.second});
+    return result;
 }
 
 #endif //CAUSALITY_GRAPH_REACHABILITY_H
