@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 
-export const vennConfigStore = defineStore('vennConfig', {
+export const useCausalityGraphStore = defineStore('causalityGraphConfig', {
     actions: {
         toExportDict(): Record<string, unknown> {
             return {}

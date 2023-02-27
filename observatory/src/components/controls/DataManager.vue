@@ -2,15 +2,20 @@
 import { ref } from 'vue'
 import { Universe } from '../../ts/UniverseTypes/Universe'
 import { loadJson, parseReachabilityExport } from '../../ts/parsing'
-import { globalConfigStore } from '../../ts/globalStoreStore'
-import { vennConfigStore } from '../../ts/stores/vennConfigStoreigStore'
-import { sankeyTreeConfigStore } from '../../ts/stores/sankeyTreeConfigStoreigStore'
-import { treeLineConfigStore } from '../../ts/stores/treeLineConfigStoreigStore'
-import { causalityGraphConfigStore } from '../../ts/stores/causalityGraphConfigStoreigStore'
+import { useGlobalStore } from '../../ts/stores/globalStore'
+import { useVennStore } from '../../ts/stores/vennStore'
+import { useSankeyStore } from '../../ts/stores/sankeyTreeStore'
+import { useTreeLineStore } from '../../ts/stores/treeLineStore'
+import { useCausalityGraphStore } from '../../ts/stores/causalityGraphStore'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import InlineEditableField from './InlineEditableField.vue'
 
-const store = globalConfigStore()
+const globalStore = useGlobalStore()
+const vennStore = useVennStore()
+const treeLineStore = useTreeLineStore()
+const causalityGraphStore = useCausalityGraphStore()
+const sankeyStore = useSankeyStore()
+
 const uploadError = ref<Error | undefined>(undefined)
 
 function validateFileAndAddUniverseOnSuccess(file: File, universeName: string): void {
@@ -20,7 +25,7 @@ function validateFileAndAddUniverseOnSuccess(file: File, universeName: string): 
                 universeName,
                 parseReachabilityExport(parsedJSON, universeName)
             )
-            store.addUniverse(newUniverse)
+            globalStore.addUniverse(newUniverse)
             uploadError.value = undefined
         })
         .catch((error) => {
@@ -41,11 +46,11 @@ function addUniverses(event: Event) {
 
 function exportConfig() {
     const data = {
-        global: store.toExportDict(),
-        venn: vennConfigStore().toExportDict(),
-        sankey: treeLineConfigStore().toExportDict(),
-        treeLine: sankeyTreeConfigStore().toExportDict(),
-        causalityGraph: causalityGraphConfigStore().toExportDict()
+        global: globalStore.toExportDict(),
+        venn: vennStore.toExportDict(),
+        sankey: sankeyStore.toExportDict(),
+        treeLine: treeLineStore.toExportDict(),
+        causalityGraph: causalityGraphStore.toExportDict()
     }
 
     const dataString = `data:text/json;charset=utf-8, ${encodeURIComponent(JSON.stringify(data))}`
@@ -81,10 +86,10 @@ function exportConfig() {
 
         <div>
             <label for="container-universes" class="block">Current Universes:</label>
-            <p v-if="store.universes.length === 0" class="ml-2">None</p>
+            <p v-if="globalStore.universes.length === 0" class="ml-2">None</p>
             <div id="container-universes" class="space-y-2">
                 <div
-                    v-for="(universe, index) in store.universes"
+                    v-for="(universe, index) in globalStore.universes"
                     :key="index"
                     class="flex items-center justify-between space-x-2"
                 >
@@ -93,12 +98,12 @@ function exportConfig() {
                         class="flex-auto"
                         @change.self="
                             (newUniverseName) =>
-                                store.updateUniverseName(universe.name, newUniverseName)
+                                globalStore.updateUniverseName(universe.name, newUniverseName)
                         "
                     />
                     <button
                         class="btn-sm btn-danger"
-                        @click="() => store.removeUniverse(universe.name)"
+                        @click="() => globalStore.removeUniverse(universe.name)"
                     >
                         <font-awesome-icon icon="xmark" />
                     </button>

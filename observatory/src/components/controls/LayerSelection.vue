@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Layers, layerName } from '../../ts/enums/Layers'
-import { globalConfigStore } from '../../ts/globalStoreStore'
+import { useGlobalStore } from '../../ts/stores/globalStore'
 
-const store = globalConfigStore()
+const store = useGlobalStore()
 
 function applyLayer(event: Event) {
     const currentLayer = parseInt((event.target as HTMLSelectElement).value)

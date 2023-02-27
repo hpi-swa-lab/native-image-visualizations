@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { globalConfigStore } from '../../ts/globalStoreStore'
+import { useGlobalStore } from '../../ts/stores/globalStore'
 
-const store = globalConfigStore()
+const store = useGlobalStore()
 let typingTimer: string | number | NodeJS.Timeout | undefined
 
 function searchChanged(event: Event): void {

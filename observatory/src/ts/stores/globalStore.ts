@@ -14,7 +14,7 @@ import { objectMap } from '../helpers'
 
 export type GlobalConfig = Record<string, string | Record<string, string[]>>
 
-export const globalConfigStore = defineStore('globalConfig', {
+export const useGlobalStore = defineStore('globalConfig', {
     state: () => {
         return {
             universes: [] as Universe[],

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 
-export const causalityGraphConfigStore = defineStore('causalityGraphConfig', {
+export const useTreeLineStore = defineStore('treeLineConfig', {
     actions: {
         toExportDict(): Record<string, unknown> {
             return {}

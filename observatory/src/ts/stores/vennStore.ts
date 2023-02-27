@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 
-export const treeLineConfigStore = defineStore('treeLineConfig', {
+export const useVennStore = defineStore('vennConfig', {
     actions: {
         toExportDict(): Record<string, unknown> {
             return {}

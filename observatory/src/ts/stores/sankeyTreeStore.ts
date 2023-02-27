@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { SortingOption, SortingOrder } from '../enums/Sorting'
 import { NodesDiffingFilter, NodesFilter, NodesSortingFilter } from '../SharedTypes/NodesFilter'
 
-export const sankeyTreeConfigStore = defineStore('sankeyTreeConfig', {
+export const useSankeyStore = defineStore('sankeyTreeConfig', {
     state: () => {
         return {
             diffingFilter: {
