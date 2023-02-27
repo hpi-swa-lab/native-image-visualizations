@@ -682,7 +682,10 @@
                 span.className = "caret"
                 if (d.children) {
                     span.addEventListener("click", () => {
-                        expandClickHandler(span, node, () => li.appendChild(generateHtmlImageview(node)));
+                        expandClickHandler(span, node, () => {
+                            li.appendChild(generateHtmlImageview(node))
+                            node.children.forEach(refreshPurgeValueForImageviewNode)
+                        });
                     });
                 } else {
                     span.style.visibility = "hidden"
