@@ -1,5 +1,6 @@
 import { Node } from '../../src/ts/UniverseTypes/Node'
-import { Leaf, InitKind } from '../../src/ts/UniverseTypes/Leaf'
+import { Leaf } from '../../src/ts/UniverseTypes/Leaf'
+import { InitKind } from '../../src/ts/enums/InitKind'
 
 export const forestFactory = () => ({
     childlessRoot: new Node('Native Image'),
