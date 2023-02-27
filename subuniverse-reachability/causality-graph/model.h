@@ -521,8 +521,6 @@ public:
 #if LOG
         cerr << "All instantiated types: " << max_typestate_size << endl;
 #endif
-
-        optimize();
     }
 
     void optimize()

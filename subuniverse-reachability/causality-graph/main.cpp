@@ -385,6 +385,25 @@ void check_redundant_typeflow_correctness(model& m)
     }
 }
 
+static void show_data_info(model& m)
+{
+    {
+        size_t singleton_filter_count = std::count_if(m.adj.flows.begin(), m.adj.flows.end(), [](const auto& f){ return f.filter.count() == 1; });
+        cout << "singleton_filter: " << (100.0 * singleton_filter_count / m.adj.n_typeflows()) << endl;
+    }
+
+    BFS bfs(m.adj);
+    BFS::Result res = bfs.run();
+
+    {
+        size_t singleton_filter_count = 0;
+        for(size_t i = 0; i < m.adj.n_typeflows(); i++)
+            singleton_filter_count += res.typeflow_visited[i].any() && m.adj.flows[i].filter.count() == 1;
+        size_t all_count = std::count_if(res.typeflow_visited.begin(), res.typeflow_visited.end(), [](const auto& h){ return h.any(); });
+        cout << "singleton_filter for reachable nodes: " << (100.0 * singleton_filter_count / all_count) << endl;
+    }
+}
+
 int main(int argc, const char** argv)
 {
     model_data data;
@@ -400,10 +419,15 @@ int main(int argc, const char** argv)
     read_buffer(data.declaring_types, "declaring_types.bin");
 
     model m(std::move(data));
-    
+    m.optimize();
+
     string_view command = argv[1];
 
-    if(command == "reachability")
+    if(command == "data_info")
+    {
+        show_data_info(m);
+    }
+    else if(command == "reachability")
     {
         print_reachability(m);
     }
