@@ -92,24 +92,6 @@ export class InvalidReachabilityFormatError extends Error {
     }
 }
 
-export function createConfigUniverses(
-    universes: Universe[]
-): Record<string, Record<string, unknown>> {
-    const result: Record<string, Record<string, unknown>> = {}
-
-    universes.forEach((universe) => {
-        result[universe.name] = createConfigUniverse(universe)
-    })
-
-    return result
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function createConfigUniverse(universe: Universe): Record<string, unknown> {
-    // TODO: implement this, corresponding issue: [#85](https://github.com/hpi-swa-lab/MPWS2022RH1/issues/85v)
-    return {}
-}
-
 export async function loadJson(file: File): Promise<object> {
     return new Promise<object>((resolve, reject) => {
         const reader = new FileReader()
