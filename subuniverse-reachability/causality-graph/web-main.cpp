@@ -37,30 +37,31 @@ public:
 };
 
 extern "C" const uint8_t* EMSCRIPTEN_KEEPALIVE init(
-        const uint8_t* types_data, size_t types_len,
-        const uint8_t* methods_data, size_t methods_len,
-        const uint8_t* typeflows_data, size_t typeflows_len,
+        size_t n_types,
+        size_t n_methods,
         const uint8_t* typestates_data, size_t typestates_len,
         const uint8_t* interflows_data, size_t interflows_len,
         const uint8_t* direct_invokes_data, size_t direct_invokes_len,
         const uint8_t* typeflow_methods_data, size_t typeflow_methods_len,
-        const uint8_t* typeflow_filters_data, size_t typeflow_filters_len,
-        const uint8_t* declaring_types_data, size_t declaring_types_len)
+        const uint8_t* typeflow_filters_data, size_t typeflow_filters_len)
 {
+    size_t n_typeflows = typeflow_methods_len / sizeof(ContainingMethod);
+
     {
         ProcessingStage s("Data reading");
 
         model_data data;
 
-        read_lines(data.type_names, types_data, types_len);
-        read_lines(data.method_names, methods_data, methods_len);
-        read_lines(data.typeflow_names, typeflows_data, typeflows_len);
+        auto increase_by = [](auto& vector, size_t inc){ vector.resize(vector.size() + inc); };
+
+        increase_by(data.type_names, n_types);
+        increase_by(data.method_names, n_methods);
+        increase_by(data.typeflow_names, n_typeflows);
         read_typestate_bitsets(data.type_names.size(), data.typestates, typestates_data, typestates_len);
         read_buffer(data.interflows, interflows_data, interflows_len);
         read_buffer(data.direct_invokes, direct_invokes_data, direct_invokes_len);
         read_buffer(data.containing_methods, typeflow_methods_data, typeflow_methods_len);
         read_buffer(data.typeflow_filters, typeflow_filters_data, typeflow_filters_len);
-        read_buffer(data.declaring_types, declaring_types_data, declaring_types_len);
 
         purge_model.emplace(std::move(data));
     }

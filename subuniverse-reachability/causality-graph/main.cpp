@@ -416,7 +416,6 @@ int main(int argc, const char** argv)
     read_buffer(data.direct_invokes, "direct_invokes.bin");
     read_buffer(data.containing_methods, "typeflow_methods.bin");
     read_buffer(data.typeflow_filters, "typeflow_filters.bin");
-    read_buffer(data.declaring_types, "declaring_types.bin");
 
     model m(std::move(data));
     m.optimize();

@@ -530,9 +530,8 @@ struct model_data
     vector<Edge<method_id>> direct_invokes;
     vector<ContainingMethod> containing_methods;
     vector<uint32_t> typeflow_filters;
-    vector<uint32_t> declaring_types;
 
-    model_data() : method_names(1), typeflow_names(1), declaring_types(1), typeflow_filters(1), containing_methods(1) {}
+    model_data() : method_names(1), typeflow_names(1), typeflow_filters(1), containing_methods(1) {}
 };
 
 struct model

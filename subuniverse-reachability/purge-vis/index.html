@@ -12,7 +12,7 @@
         let simulate_purge = Module.cwrap("simulate_purge", "number", ["number", "number"]);
         let simulate_purges_batched = Module.cwrap("simulate_purges_batched", "number", ["number", "number"])
         let show_reachability = Module.cwrap("show_reachability", "number", ["number"]);
-        let init = Module.cwrap("init", "number", ["number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number"]);
+        let init = Module.cwrap("init", "number", ["number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number"]);
         let get_reachability_hyperpath = Module.cwrap("get_reachability_hyperpath", "number", ["number"])
 
 
@@ -211,6 +211,7 @@
                 alert(error);
                 document.getElementById("loading-panel").hidden = true
                 document.getElementById("fileselect-panel").hidden = false
+                return
             }
 
             prepareListView(this.dataRoot)
@@ -247,6 +248,11 @@
                 if(methodList[methodList.length-1].length === 0) {
                     methodList.pop()
                 }
+                let types = await entries.find(e => e.filename === "types.txt").getData(new zip.TextWriter())
+                let typeList = types.split('\n')
+                if(typeList[typeList.length-1].length === 0)
+                    typeList.pop()
+
                 let codesizesDict = getMethodCodesizeDictFromReachabilityJson(reachabilityData)
                 codesizes = new Array(methodList.length)
 
@@ -254,31 +260,24 @@
                     codesizes[i] = codesizesDict[methodList[i]] ?? 0
                 }
 
+                const parameterFiles = ["typestates.bin", "interflows.bin", "direct_invokes.bin", "typeflow_methods.bin", "typeflow_filters.bin"]
 
                 for (const entry of entries) {
-                    if(entry.filename === "reachability.json")
+                    if(parameterFiles.some(name => name === entry.filename))
                     {
-                        continue;
+                        const zipFileWriter = new zip.Uint8ArrayWriter()
+                        const data = await entry.getData(zipFileWriter)
+
+                        let input_ptr = Module._malloc(data.length);
+                        Module.HEAPU8.set(data, input_ptr);
+
+                        filesAsByteArrays[entry.filename] = { data: input_ptr, length: data.length }
                     }
-
-                    const zipFileWriter = new zip.Uint8ArrayWriter()
-                    const data = await entry.getData(zipFileWriter)
-
-                    let input_ptr = Module._malloc(data.length);
-                    Module.HEAPU8.set(data, input_ptr);
-
-                    filesAsByteArrays[entry.filename] = { data: input_ptr, length: data.length }
                 }
 
-                all_reachable_ptr = init(filesAsByteArrays["types.txt"].data, filesAsByteArrays["types.txt"].length,
-                    filesAsByteArrays["methods.txt"].data, filesAsByteArrays["methods.txt"].length,
-                    filesAsByteArrays["typeflows.txt"].data, filesAsByteArrays["typeflows.txt"].length,
-                    filesAsByteArrays["typestates.bin"].data, filesAsByteArrays["typestates.bin"].length,
-                    filesAsByteArrays["interflows.bin"].data, filesAsByteArrays["interflows.bin"].length,
-                    filesAsByteArrays["direct_invokes.bin"].data, filesAsByteArrays["direct_invokes.bin"].length,
-                    filesAsByteArrays["typeflow_methods.bin"].data, filesAsByteArrays["typeflow_methods.bin"].length,
-                    filesAsByteArrays["typeflow_filters.bin"].data, filesAsByteArrays["typeflow_filters.bin"].length,
-                    filesAsByteArrays["declaring_types.bin"].data, filesAsByteArrays["declaring_types.bin"].length,
+                all_reachable_ptr = init(typeList.length,
+                    methodList.length,
+                    ...parameterFiles.flatMap(name => [filesAsByteArrays[name].data, filesAsByteArrays[name].length])
                 )
 
                 for (const span of Object.values(filesAsByteArrays))
