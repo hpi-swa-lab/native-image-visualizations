@@ -6,7 +6,6 @@
 #include <iostream>
 #include <span>
 #include <vector>
-#include "Bitset.h"
 #include "model.h"
 #include "input.h"
 #include "analysis.h"
@@ -19,6 +18,24 @@ static std::optional<BFS::Result> all;
 
 static std::optional<BFS::Result> current_purged_result;
 
+class ProcessingStage
+{
+    const char *name;
+    std::chrono::time_point<std::chrono::system_clock> start;
+public:
+    explicit ProcessingStage(const char* name) : name(name), start(std::chrono::system_clock::now())
+    {
+        cerr << name << " starts." << endl;
+    }
+
+    ~ProcessingStage()
+    {
+        auto end = std::chrono::system_clock::now();
+        auto elapsed_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        cerr << name << " ended. " << (elapsed_milliseconds.count() / 1000.0f) << "s elapsed" << endl;
+    }
+};
+
 extern "C" const uint8_t* EMSCRIPTEN_KEEPALIVE init(
         const uint8_t* types_data, size_t types_len,
         const uint8_t* methods_data, size_t methods_len,
@@ -30,43 +47,48 @@ extern "C" const uint8_t* EMSCRIPTEN_KEEPALIVE init(
         const uint8_t* typeflow_filters_data, size_t typeflow_filters_len,
         const uint8_t* declaring_types_data, size_t declaring_types_len)
 {
-    cerr << "Data reading starts." << endl;
-    auto start = std::chrono::system_clock::now();
+    {
+        ProcessingStage s("Data reading");
 
-    model_data data;
+        model_data data;
 
-    read_lines(data.type_names, types_data, types_len);
-    read_lines(data.method_names, methods_data, methods_len);
-    read_lines(data.typeflow_names, typeflows_data, typeflows_len);
-    read_typestate_bitsets(data.type_names.size(), data.typestates, typestates_data, typestates_len);
-    read_buffer(data.interflows, interflows_data, interflows_len);
-    read_buffer(data.direct_invokes, direct_invokes_data, direct_invokes_len);
-    read_buffer(data.containing_methods, typeflow_methods_data, typeflow_methods_len);
-    read_buffer(data.typeflow_filters, typeflow_filters_data, typeflow_filters_len);
-    read_buffer(data.declaring_types, declaring_types_data, declaring_types_len);
+        read_lines(data.type_names, types_data, types_len);
+        read_lines(data.method_names, methods_data, methods_len);
+        read_lines(data.typeflow_names, typeflows_data, typeflows_len);
+        read_typestate_bitsets(data.type_names.size(), data.typestates, typestates_data, typestates_len);
+        read_buffer(data.interflows, interflows_data, interflows_len);
+        read_buffer(data.direct_invokes, direct_invokes_data, direct_invokes_len);
+        read_buffer(data.containing_methods, typeflow_methods_data, typeflow_methods_len);
+        read_buffer(data.typeflow_filters, typeflow_filters_data, typeflow_filters_len);
+        read_buffer(data.declaring_types, declaring_types_data, declaring_types_len);
 
-    purge_model.emplace(std::move(data));
+        purge_model.emplace(std::move(data));
+    }
+
+    {
+        ProcessingStage s("Typeflow optimizing");
+        purge_model->optimize();
 
 #if LOG
-    cerr << "Adjacency memory usage: " << purge_model->adj.used_memory_size() << endl;
+        cerr << "Adjacency memory usage: " << purge_model->adj.used_memory_size() << endl;
 #endif
+    }
 
-    bfs.emplace(purge_model->adj);
+    {
+        ProcessingStage s("Typeflow name deletion");
+        purge_model->typeflow_names.clear();
+        purge_model->typeflow_names.shrink_to_fit();
+    }
 
-    purge_model->typeflow_names.clear();
-    purge_model->typeflow_names.shrink_to_fit();
-
-    auto end = std::chrono::system_clock::now();
-    auto elapsed_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    cerr << "Data reading ended. " << (elapsed_milliseconds.count() / 1000.0f) << "s elapsed" << endl;
-
-    cerr << "Running DFS on original graph...";
-
-    BFS::Result all = bfs->run<true>();
-
-    cerr << " " << (std::count_if(all.method_history.begin(), all.method_history.end(), [](auto h){ return bool(h); })) << " methods reachable!\n";
-
-    ::all.emplace(std::move(all));
+    {
+        ProcessingStage s("BFS on original graph");
+        bfs.emplace(purge_model->adj);
+        BFS::Result all = bfs->run<true>();
+#if LOG
+        cerr << " " << (std::count_if(all.method_history.begin(), all.method_history.end(), [](auto h){ return bool(h); })) << " methods reachable!\n";
+#endif
+        ::all.emplace(std::move(all));
+    }
 
     return (const uint8_t*)&::all->method_history[1];
 }
@@ -118,31 +140,21 @@ extern "C" const uint8_t* EMSCRIPTEN_KEEPALIVE simulate_purge(const method_id* p
         return (const uint8_t*)&current_purged_result->method_history[1];
     }
 
-    auto& m = *purge_model;
-
-    span<const method_id> purged_mids = {purge_set_ptr, purge_set_len};
-
-#if LOG
-    cerr << "Running DFS on purged graph...";
-    auto start = std::chrono::system_clock::now();
-#endif
-
-    BFS::Result after_purge = bfs->run<true>(purged_mids);
+    {
+        ProcessingStage s("BFS on purged graph");
+        span<const method_id> purged_mids = {purge_set_ptr, purge_set_len};
+        current_purged_result.emplace(std::move(bfs->run<true>(purged_mids)));
+    }
 
 #if LOG
-    auto end = std::chrono::system_clock::now();
-    auto elapsed_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    cerr << ' ' << (elapsed_milliseconds.count()) << "ms elapsed - ";
-
     size_t n_purged = 0;
     for(size_t i = 1; i < all->method_inhibited.size(); i++)
-        if(all->method_inhibited[i] && !after_purge.method_inhibited[i])
+        if(all->method_inhibited[i] && !current_purged_result->method_inhibited[i])
             n_purged++;
 
     cerr << n_purged << " method nodes purged!" << endl;
 #endif
 
-    current_purged_result.emplace(std::move(after_purge));
     return (const uint8_t*)&current_purged_result->method_history[1];
 }
 
@@ -166,13 +178,10 @@ extern "C" bool EMSCRIPTEN_KEEPALIVE simulate_purges_batched(const PurgeTreeNode
     if(!bfs)
         return false;
 
+    ProcessingStage s("Running batched purges");
+
     auto &m = *purge_model;
     auto &bfs = *::bfs;
-
-#if LOG
-    cerr << "Running batch purges...";
-    auto start = std::chrono::system_clock::now();
-#endif
 
     {
         BFS::Result r(bfs);
@@ -207,12 +216,6 @@ extern "C" bool EMSCRIPTEN_KEEPALIVE simulate_purges_batched(const PurgeTreeNode
 
         bfs_incremental_rec(*all, bfs, r, {purge_root, 1}, callback);
     }
-
-#if LOG
-    auto end = std::chrono::system_clock::now();
-    auto elapsed_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    cerr << ' ' << (elapsed_milliseconds.count()) << "ms elapsed" << endl;
-#endif
 
     return true;
 }

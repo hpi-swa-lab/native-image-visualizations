@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include "Bitset.h"
 #include <span>
+#include <queue>
 
 using namespace std;
 
@@ -305,61 +306,66 @@ struct Adjacency
     }
 };
 
-static bool is_redundant(const Adjacency& adj, typeflow_id typeflow)
+static vector<bool> calc_typeflows_without_sideeffects(const Adjacency& adj)
+{
+    vector<bool> marked(adj.n_typeflows(), true);
+
+    queue<typeflow_id> worklist;
+    for(size_t i = 1; i < adj.n_typeflows(); i++) {
+        if(adj.flows[i].method.reaching())
+        {
+            marked[i] = false;
+            worklist.push(i);
+        }
+    }
+
+    while(!worklist.empty())
+    {
+        typeflow_id u = worklist.front();
+        worklist.pop();
+
+        for(typeflow_id v : adj[u].backward_edges)
+        {
+            if(marked[v.id])
+            {
+                marked[v.id] = false;
+                worklist.push(v);
+            }
+        }
+    }
+
+    return marked;
+}
+
+static bool can_be_contracted(const Adjacency& adj, typeflow_id typeflow)
 {
     const auto& f = adj[typeflow];
-
-    if(f.backward_edges.empty())
-        return true;
-
-    if(f.forward_edges.empty() && !f.method.reaching())
-        return true;
 
     if(f.method.reaching())
         return false;
 
-    if(f.forward_edges.size() == 1 && f.backward_edges.size() == 1)
-    {
-        method_id M1 = adj[f.backward_edges[0]].method.dependent();
-        method_id M2 = f.method.dependent();
-        method_id M3 = adj[f.forward_edges[0]].method.dependent();
+    if(f.forward_edges.size() > 1 && f.backward_edges.size() > 1)
+        return false;
 
-        return (M2 == M1 || M2 == M3 || M2 == 0)
-           && f.filter.is_superset(adj[f.forward_edges[0]].filter);
-    }
-
-    if(f.forward_edges.size() > 1 && f.backward_edges.size() == 1)
-    {
-        method_id M1 = adj[f.backward_edges[0]].method.dependent();
-        method_id M2 = f.method.dependent();
-
-        return (M2 == M1 || M2 == 0 || std::all_of(f.forward_edges.begin(), f.forward_edges.end(), [&](typeflow_id next) { return adj[next].method.dependent() == M2; }))
-            && std::all_of(f.forward_edges.begin(), f.forward_edges.end(), [&adj, &f](typeflow_id next){ return f.filter.is_superset(adj[next].filter); });
-    }
-
-    if(f.forward_edges.size() == 1 && f.backward_edges.size() > 1)
-    {
-        method_id M2 = f.method.dependent();
-        method_id M3 = adj[f.forward_edges[0]].method.dependent();
-
-        return (M2 == M3 || M2 == 0 || std::all_of(f.backward_edges.begin(), f.backward_edges.end(), [&](typeflow_id next) { return adj[next].method.dependent() == M2; }))
-            && f.filter.is_superset(adj[f.forward_edges[0]].filter);
-    }
-
-    return false;
+    method_id M2 = f.method.dependent();
+    return (M2 == 0
+        || std::all_of(f.backward_edges.begin(), f.backward_edges.end(), [&](typeflow_id next) { return adj[next].method.dependent() == M2; })
+        || std::all_of(f.forward_edges.begin() , f.forward_edges.end() , [&](typeflow_id next) { return adj[next].method.dependent() == M2; }))
+           && std::all_of(f.forward_edges.begin(), f.forward_edges.end(), [&adj, &f](typeflow_id next){ return f.filter.is_superset(adj[next].filter); });
 }
 
-static void remove_redundant(Adjacency& adj)
+// Returns the number of iterations
+static size_t contract_typeflow_nodes(Adjacency& adj, vector<bool>& redundant_typeflows)
 {
-    boost::dynamic_bitset<> redundant_typeflows(adj.n_typeflows());
-
+    size_t iterations = 0;
     size_t useless_iterations = 0;
 
     for(typeflow_id typeflow = 1; useless_iterations <= adj.n_typeflows(); typeflow = typeflow.id == adj.n_typeflows() - 1 ? 1 : typeflow.id + 1)
     {
-        if(!redundant_typeflows[typeflow.id] && is_redundant(adj, typeflow))
+        if(!redundant_typeflows[typeflow.id] && can_be_contracted(adj, typeflow))
         {
             redundant_typeflows[typeflow.id] = true;
+
             auto& f = adj[typeflow];
 
             for(auto next : f.forward_edges)
@@ -403,10 +409,52 @@ static void remove_redundant(Adjacency& adj)
         {
             useless_iterations++;
         }
+
+        iterations++;
     }
 
-#if LOG
-    cerr << "Redundant typeflows: " << redundant_typeflows.count() << "/" << (adj.n_typeflows() - 1) << "=" << ((float) redundant_typeflows.count() / (adj.n_typeflows() - 1)) << endl;
+    return iterations;
+}
+
+static void remove_redundant(Adjacency& adj)
+{
+    vector<bool> redundant_typeflows = calc_typeflows_without_sideeffects(adj);
+
+    // Batch remove
+    {
+        auto is_redundant = [&redundant_typeflows](typeflow_id w){ return redundant_typeflows[w.id]; };
+
+        for(size_t i = 0; i < adj.n_typeflows(); i++)
+        {
+            if(!redundant_typeflows[i])
+                continue;
+
+            auto& f = adj.flows[i];
+            f.forward_edges.clear();
+            f.backward_edges.clear();
+            f.method = {};
+        }
+
+        for(auto& f : adj.flows)
+        {
+            erase_if(f.forward_edges, is_redundant);
+
+            // Currently not necessary, bc successors of redundant typeflows are also redundant
+            // erase_if(f.backward_edges, [&redundant_typeflows](typeflow_id w){ return redundant_typeflows[w.id]; });
+        }
+
+        for(auto& m : adj.methods)
+        {
+            erase_if(m.dependent_typeflows, is_redundant);
+        }
+    }
+
+    size_t iterations = 0;
+    iterations = contract_typeflow_nodes(adj, redundant_typeflows);
+    size_t redundant_typeflows_count = std::count(redundant_typeflows.begin(), redundant_typeflows.end(), true);
+
+#if LOG || 1
+    cerr << "Redundant typeflows: " << redundant_typeflows_count << "/" << (adj.n_typeflows() - 1) << "=" << ((float)redundant_typeflows_count / (adj.n_typeflows() - 1)) << ", iterations: " << iterations << endl;
 #endif
 
     assert(!redundant_typeflows[0]);
@@ -454,7 +502,7 @@ static void remove_redundant(Adjacency& adj)
     }
 
     vector<Adjacency::TypeflowInfo> new_flows;
-    new_flows.reserve(redundant_typeflows.size() - redundant_typeflows.count());
+    new_flows.reserve(redundant_typeflows.size() - redundant_typeflows_count);
 
     for(size_t i = 0; i < adj.n_typeflows(); i++)
     {
@@ -525,18 +573,7 @@ public:
 
     void optimize()
     {
-#if LOG
-        cerr << "Optimizing typeflow nodes...";
-        auto start = std::chrono::system_clock::now();
-#endif
-
         remove_redundant(adj);
-
-#if LOG
-        auto end = std::chrono::system_clock::now();
-        auto elapsed_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-        cerr << ' ' << (elapsed_milliseconds.count()) << "ms elapsed " << endl;
-#endif
     }
 };
 
