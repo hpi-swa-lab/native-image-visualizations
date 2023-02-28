@@ -354,11 +354,7 @@
             </label>
             <div id="cut-overview-root"></div>
         </div>
-        <div class="imageview-div">
-            <span><b>In-Image Overview:</b></span>
-            <div id="imageview-root"></div>
-        </div>
-        <div class="detail-div">
+        <div class="detail-div" hidden>
             <svg id="detail-svg" width="100%" height="100%">
                 <marker id="arrowhead" markerWidth="10" markerHeight="7"
                         refX="10" refY="3.5" orient="auto">
@@ -370,6 +366,10 @@
                     <g id="chart"></g>
                 </g>
             </svg>
+        </div>
+        <div class="imageview-div">
+            <span><b>In-Image Overview:</b></span>
+            <div id="imageview-root"></div>
         </div>
     </div>
 
@@ -573,7 +573,7 @@
                 let nameSpan = document.createElement("span")
                 nameSpan.appendChild(document.createTextNode(d.name))
                 //nameSpan.title = d.fullname
-                nameSpan.className = "node-text"
+                nameSpan.classList.add("node-text", "selectable")
                 li.appendChild(nameSpan)
 
                 nameSpan.addEventListener("mouseenter", async () => {
@@ -609,7 +609,7 @@
                         selectedForPurging.delete(node)
                     }
 
-                    if (selected && node.reachable_after_additionally_cutting_this && /* When details are shown, we need simulatePurge anyway for path data */ !detailMid) {
+                    if (selected && node.reachable_after_additionally_cutting_this && /* When details are shown, we need simulatePurge anyway for path data */ !detailMid && false /* TODO: Consider the scenario when selection changes, and details are later on selected */) {
                         reachable_in_image_view = reachable_under_selection = node.reachable_after_additionally_cutting_this.arr
                     } else {
                         reachable_in_image_view = reachable_under_selection = simulatePurge([...new Set([...selectedForPurging].flatMap(collectCgNodesInSubtree))])
@@ -645,6 +645,7 @@
 
         let maxCodeSize
         let detailMid
+        let detailSelectedNode
 
         function generateHtmlImageview(data) {
             let ul = document.createElement("ul")
@@ -726,22 +727,28 @@
                 nameSpan.className = "node-text"
                 li.appendChild(nameSpan)
 
-                nameSpan.addEventListener("click", async () =>  {
-                    const mid = node.cg_nodes[0]
-                    if (!mid)
-                        return
+                const mid = node.cg_nodes[0]
 
-                    if (detailMid === mid) {
-                        nameSpan.classList.remove("selected-for-detail")
-                        detailMid = undefined
-                    } else {
-                        nameSpan.classList.add("selected-for-detail")
-                        detailMid = mid
-                    }
+                if (mid) {
+                    nameSpan.classList.add("selectable")
+                    nameSpan.addEventListener("click", async () =>  {
+                        if (detailMid === mid) {
+                            nameSpan.classList.remove("selected-for-detail")
+                            detailMid = undefined
+                            detailSelectedNode = undefined
+                        } else {
+                            if(detailSelectedNode && detailSelectedNode.html_imageview) {
+                                detailSelectedNode.html_imageview.querySelector(".node-text").classList.remove("selected-for-detail")
+                            }
+                            nameSpan.classList.add("selected-for-detail")
+                            detailMid = mid
+                            detailSelectedNode = node
+                        }
 
-                    const edges = detailMid ? getReachabilityHyperpath(detailMid) : []
-                    renderGraphOnDetailView(edges, detailMid)
-                })
+                        const edges = detailMid ? getReachabilityHyperpath(detailMid) : []
+                        renderGraphOnDetailView(edges, detailMid)
+                    })
+                }
             }
 
             let child_sizes = data.children.map(cn => cn.size)
@@ -814,25 +821,35 @@
 
         let maxPurgedSize
 
-        function recalculateCutOverviewCustom(purgeNodeTreeRoot, additionalPurges, callback) {
+        function recalculateCutOverviewCustom(purgeNodeTreeRoot, additionalPurges, comparison_array, callback) {
             simulatePurgesBatched(purgeNodeTreeRoot, (node, still_reachable) => {
                 let purgedSize = 0
                 for (let i = 0; i < codesizes.length; i++)
-                    if (reachable_under_selection[i] !== 0xFF && still_reachable[i] === 0xFF)
+                    if (comparison_array[i] !== 0xFF && still_reachable[i] === 0xFF)
                         purgedSize += codesizes[i]
                 if (node.src)
                     callback(node.src, { arr: still_reachable.slice(), size: purgedSize })
             }, additionalPurges)
         }
 
+        function recalculateCutOverviewWithSelection(purgeNodeTreeRoot, callback) {
+            recalculateCutOverviewCustom(purgeNodeTreeRoot, [...new Set([...selectedForPurging].flatMap(collectCgNodesInSubtree))], reachable_under_selection, callback)
+        }
+
+        function recalculateCutOverviewWithoutSelection(purgeNodeTreeRoot, callback) {
+            recalculateCutOverviewCustom(purgeNodeTreeRoot, [], Module.HEAPU8.subarray(all_reachable_ptr, all_reachable_ptr + codesizes.length), callback)
+        }
+
         function precomputeCutOverview() {
             for (const node of [...selectedForPurging]) {
-                node.reachable_after_additionally_cutting_this = { arr: reachable_under_selection, size: 0 }
+                forEachInSubtree(node, u => {
+                    u.reachable_after_additionally_cutting_this = { arr: reachable_under_selection, size: 0 }
+                })
             }
 
             const purgeNodeTreeRoot = createPurgeNodeTree(this.dataRoot)
 
-            recalculateCutOverviewCustom(purgeNodeTreeRoot, [...new Set([...selectedForPurging].flatMap(collectCgNodesInSubtree))], (node, data) => {
+            recalculateCutOverviewWithSelection(purgeNodeTreeRoot, (node, data) => {
                 node.reachable_after_additionally_cutting_this = data
             })
 
@@ -875,7 +892,7 @@
             let purgeNodeTreeRoot = { children: node.children.map((c, i) => { return { mids: collectCgNodesInSubtree(c), index: i, src: c } }).filter(n => n.mids.length > 0) }
 
             let maxPurgedSize = 0
-            recalculateCutOverviewCustom(purgeNodeTreeRoot, [], (node, data) => {
+            recalculateCutOverviewWithoutSelection(purgeNodeTreeRoot, (node, data) => {
                 node.reachable_after_cutting_this = data
                 maxPurgedSize = Math.max(maxPurgedSize, data.size)
             })
@@ -895,9 +912,23 @@
             node.children.sort((a, b) => sortKey(b) - sortKey(a)).map(n => n.html).forEach(node => list.appendChild(node))
 
             if (precomputeCutoffs && selectedForPurging.size > 0) {
-                recalculateCutOverviewCustom(purgeNodeTreeRoot, [...new Set([...selectedForPurging].flatMap(collectCgNodesInSubtree))], (node, data) => {
-                    node.reachable_after_additionally_cutting_this = data
-                })
+                let containedInSelection = false
+                for (const u of [...selectedForPurging]) {
+                    forEachInSubtree(u, v => {
+                        if(v === node)
+                            containedInSelection = true
+                    })
+                }
+
+                if(containedInSelection) {
+                    for (const u of node.children) {
+                        u.reachable_after_additionally_cutting_this = { arr: reachable_under_selection, size: 0 }
+                    }
+                } else {
+                    recalculateCutOverviewWithSelection(purgeNodeTreeRoot, (node, data) => {
+                        node.reachable_after_additionally_cutting_this = data
+                    })
+                }
             }
 
             for (const c of node.children) {
@@ -976,10 +1007,13 @@
         function renderGraphOnDetailView(edges, targetMid) {
             const htmlSvg = document.getElementById("chart")
             htmlSvg.textContent = ""
+            const detailDiv = document.querySelector(".detail-div")
+            detailDiv.hidden = true
 
             if (edges.length === 0)
                 return
 
+            detailDiv.hidden = false
 
             // Graph construction
             graph = {nodes: new Set(), links: []};
@@ -1100,35 +1134,14 @@
                 .append("path")
                 .attr("d", ({ points }) => line(points))
                 .attr("fill", "none")
-                .attr("stroke-width", 3)
-                .attr("stroke", ({source, target, data}) => {
+                .attr("stroke-width", 2)
+                .attr("class", ({source, target, data}) => {
                     if(data.via_type !== undefined) {
-                        return "#40FF40"
+                        return "support-edge"
                     } else {
-                        return "#808080"
+                        return "direct-edge"
                     }
-
-
-                    // encodeURIComponents for spaces, hope id doesn't have a `--` in it
-                    const gradId = encodeURIComponent(`${source.data.id}--${target.data.id}`);
-                    const grad = defs
-                        .append("linearGradient")
-                        .attr("id", gradId)
-                        .attr("gradientUnits", "userSpaceOnUse")
-                        .attr("x1", source.x)
-                        .attr("x2", target.x)
-                        .attr("y1", source.y)
-                        .attr("y2", target.y);
-                    grad
-                        .append("stop")
-                        .attr("offset", "0%")
-                        .attr("stop-color", colorMap.get(source.data.id));
-                    grad
-                        .append("stop")
-                        .attr("offset", "100%")
-                        .attr("stop-color", colorMap.get(target.data.id));
-                    return `url(#${gradId})`;
-                });
+                })
 
             links
                 .append("title")
@@ -1172,8 +1185,7 @@
 
                 function transX(num)
                 {
-                    return num
-                    return num * transform.k + transform.x;
+                    return num * transform.k + transform.x
                 }
 
                 function transY(num)
@@ -1207,6 +1219,7 @@
             }
 
             var zoom = d3.zoom().on("zoom", onZoom);
+            d3.select("#chartpanel").call(zoom.transform, d3.zoomIdentity)
             d3.select("#chartpanel").call(zoom);
         }
     </script>
