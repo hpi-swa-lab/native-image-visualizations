@@ -247,3 +247,7 @@ body {
 .direct-edge {
     stroke: #808080;
 }
+
+body.waiting * {
+    cursor: progress;
+}
