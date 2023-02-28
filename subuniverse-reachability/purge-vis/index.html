@@ -54,6 +54,9 @@
         }
 
         function simulatePurgesBatched(purge_root, resultCallback, prepurgeMids = []) {
+            if(purge_root.children.length === 0 && prepurgeMids.length === 0)
+                return
+
             const prepurgeMidsSet = new Set(prepurgeMids)
 
             const overlap = purge_root.children.flatMap(c => c.mids).some(mid => prepurgeMidsSet.has(mid))
@@ -888,7 +891,7 @@
         function precomputeCutOverview() {
             for (const node of [...selectedForPurging]) {
                 forEachInSubtree(node, u => {
-                    u.reachable_after_additionally_cutting_this = { arr: reachable_under_selection, size: 0 }
+                    delete u.reachable_after_additionally_cutting_this
                 })
             }
 
@@ -905,11 +908,15 @@
                 if (!html)
                     return
                 const purged = u.reachable_after_additionally_cutting_this
-                if (!purged)
-                    return
 
-                html.querySelector('.cut-size-column').textContent = formatByteSizesWithUnitPrefix(purged.size)
-                html.querySelector('.cut-size-bar').style.width = (purged.size / this.maxPurgedSize * 100) + "%"
+                let text = undefined
+                let width = 0
+                if(purged) {
+                    text = formatByteSizesWithUnitPrefix(purged.size)
+                    width = (purged.size / this.maxPurgedSize * 100) + "%"
+                }
+                html.querySelector('.cut-size-column').textContent = text
+                html.querySelector('.cut-size-bar').style.width = width
             })
 
             /* sorting...
@@ -967,7 +974,7 @@
 
                 if(containedInSelection) {
                     for (const u of node.children) {
-                        u.reachable_after_additionally_cutting_this = { arr: reachable_under_selection, size: 0 }
+                        delete u.reachable_after_additionally_cutting_this
                     }
                 } else {
                     recalculateCutOverviewWithSelection(purgeNodeTreeRoot, (node, data) => {
@@ -978,11 +985,15 @@
 
             for (const c of node.children) {
                 const purged = c.reachable_after_additionally_cutting_this ?? c.reachable_after_cutting_this
-                if(!purged)
-                    return;
-                const purgedSize = purged.size
-                c.html.querySelector('.cut-size-column').textContent = formatByteSizesWithUnitPrefix(purgedSize)
-                c.html.querySelector('.cut-size-bar').style.width = (purgedSize / this.maxPurgedSize * 100) + "%"
+
+                let text = undefined
+                let width = 0
+                if(purged) {
+                    text = formatByteSizesWithUnitPrefix(purged.size)
+                    width = (purged.size / this.maxPurgedSize * 100) + "%"
+                }
+                c.html.querySelector('.cut-size-column').textContent = text
+                c.html.querySelector('.cut-size-bar').style.width = width
             }
         }
 
