@@ -673,6 +673,8 @@
                         } catch {
                             // Ignore
                         }
+                    } else {
+                        renderGraphOnDetailView(undefined, undefined)
                     }
 
                     await new Promise(resolve => setTimeout(resolve, 0))
@@ -799,7 +801,7 @@
                             detailSelectedNode = node
                         }
 
-                        const edges = detailMid ? getReachabilityHyperpath(detailMid) : []
+                        const edges = detailMid ? getReachabilityHyperpath(detailMid) : undefined
                         renderGraphOnDetailView(edges, detailMid)
                     })
                 }
@@ -1041,13 +1043,11 @@
         function renderGraphOnDetailView(edges, targetMid) {
             const htmlSvg = document.getElementById("chart")
             htmlSvg.textContent = ""
-            const detailDiv = document.querySelector(".detail-div")
-            detailDiv.hidden = true
 
-            if (edges.length === 0)
+            const nothingSelected = !edges
+            document.querySelector(".detail-div").hidden = nothingSelected
+            if(nothingSelected)
                 return
-
-            detailDiv.hidden = false
 
             // Graph construction
             graph = {nodes: new Set(), links: []};
