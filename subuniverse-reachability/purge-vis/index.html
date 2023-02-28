@@ -1202,15 +1202,19 @@
                 .append("title")
                 .text(d => d.data.name)
 
-            const textSize = Math.max(width, height) / 100
+            const textSize = 20
 
             // Add text to nodes
-            nodes
+            const nodeLabels = nodes
                 .append("text")
+
+            nodeLabels
                 .text((d) => getUnqualifiedCausalityGraphNodeName(d.data.name))
                 .attr("font-family", "sans-serif")
                 .attr("text-anchor", "left")
                 .attr("fill", "black")
+                .attr("dominant-baseline", "middle")
+                .attr("x", nodeRadius * 1.2)
                 .attr("font-size", textSize)
 
 
@@ -1234,6 +1238,10 @@
 
                 links.attr("d", ({ points }) => line(points.map(({x, y}) => {return {x: transX(x), y: transY(y)}})))
                     .attr("stroke-width", transform.k * 3)
+
+                nodeLabels
+                    .attr("font-size", transform.k * textSize)
+                    .attr("x", transform.k * nodeRadius * 1.2)
                 /*
                 link
                     .attr("x1", d => transX(d.source.x * 0.9 + d.target.x * 0.1))
