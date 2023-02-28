@@ -11,7 +11,6 @@
     <script>
         let simulate_purge = Module.cwrap("simulate_purge", "number", ["number", "number"]);
         let simulate_purges_batched = Module.cwrap("simulate_purges_batched", "number", ["number", "number"])
-        let show_reachability = Module.cwrap("show_reachability", "number", ["number"]);
         let init = Module.cwrap("init", "number", ["number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number"]);
         let get_reachability_hyperpath = Module.cwrap("get_reachability_hyperpath", "number", ["number"])
 
@@ -141,18 +140,6 @@
 
             if(status === 0)
                 throw new Error("simulate_purges_batched exited with error code " + status)
-        }
-
-        function printReachability(str){
-            let ptr  = allocateUTF8(str)
-
-            let retPtr = show_reachability(ptr)
-
-            document.getElementById("Output_reachability").value = UTF8ToString(retPtr)
-
-            // dealloc memory
-            Module._free(ptr);
-            Module._free(retPtr);
         }
 
         function getReachabilityHyperpath(mid) {

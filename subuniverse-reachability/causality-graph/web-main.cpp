@@ -217,44 +217,8 @@ extern "C" bool EMSCRIPTEN_KEEPALIVE simulate_purges_batched(const PurgeTreeNode
 
         bfs_incremental_rec(*all, bfs, r, {purge_root, 1}, callback);
     }
-
+    
     return true;
-}
-
-extern "C" char* EMSCRIPTEN_KEEPALIVE show_reachability(const char* methods)
-{
-    const BFS::Result* bfsresult = current_purged_result ? &*current_purged_result : &*all;
-
-    auto& m = *purge_model;
-
-    vector<method_id> purged_mids = parse_methods(m, methods);
-
-    if(purged_mids.empty())
-        return nullptr;
-
-    stringstream output;
-
-    vector<bool> visited(m.adj.n_methods());
-    bool any_reachable = false;
-
-    for(method_id mid : purged_mids)
-    {
-        if(!bfsresult->method_history[mid.id])
-            continue;
-
-        any_reachable = true;
-        TreeIndenter indentation;
-        print_reachability_of_method(output, m.adj, m.method_names, m.type_names, *bfsresult, mid, visited, indentation);
-    }
-
-    if(!any_reachable)
-        output << "Not reachable" << endl;
-
-    string s(output.str());
-    char* res = new char[s.size() + 1];
-    copy(s.begin(), s.end(), res);
-    res[s.size()] = 0;
-    return res;
 }
 
 struct EdgeBuffer
