@@ -226,6 +226,10 @@ body {
     height: 100%;
 }
 
+.cg-only {
+    color: #606060;
+}
+
 .node {
     fill: black;
     stroke: black;
@@ -233,7 +237,6 @@ body {
     opacity: 0.8;
     stroke-width: 5;
 }
-
 
 /* For detail view: */
 .support-edge {

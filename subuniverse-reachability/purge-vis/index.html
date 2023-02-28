@@ -139,7 +139,7 @@
             Module._free(midsPtr)
 
             if(status === 0)
-                throw new Error("simulate_purges_batched exited with error code " + status)
+                throw new Error("simulate_purges_batched exited with error")
         }
 
         function getReachabilityHyperpath(mid) {
@@ -190,10 +190,11 @@
         }
 
         async function tryLoadFile(file) {
+            let reachabilityData
             try {
                 document.getElementById("fileselect-panel").hidden = true
                 document.getElementById("loading-panel").hidden = false
-                await loadFiles(file, "utf-8");
+                reachabilityData = await loadFiles(file, "utf-8");
                 document.getElementById("loading-panel").hidden = true
                 document.getElementById("main-panel").hidden = false
             } catch (error) {
@@ -202,7 +203,7 @@
                 document.getElementById("fileselect-panel").hidden = false
                 return
             }
-
+            this.dataRoot = generateHierarchyFromReachabilityJsonAndMethodList(reachabilityData, methodList)
             prepareListView(this.dataRoot)
         }
 
@@ -297,7 +298,7 @@
 
                 reachable_under_selection = Module.HEAPU8.slice(all_reachable_ptr, all_reachable_ptr + codesizes.length)
                 reachable_in_image_view = reachable_under_selection
-                this.dataRoot = generateHierarchyFromReachabilityJsonAndMethodList(reachabilityData, methodList)
+                return reachabilityData
             }
         }
 
@@ -365,18 +366,22 @@
 
     <script>
         class Trie {
+            root = { next: {} }
+
             constructor(dict) {
-                this.root = { next: {} }
-                for (const str in dict) {
-                    let node = this.root
-                    for (const c of str) {
-                        if (!node.next[c]) {
-                            node.next[c] = { next: {} }
-                        }
-                        node = node.next[c]
+                for (const str in dict)
+                    this.add(str, dict[str])
+            }
+
+            add(key, value) {
+                let node = this.root
+                for (const c of key) {
+                    if (!node.next[c]) {
+                        node.next[c] = { next: {} }
                     }
-                    node.val = dict[str]
+                    node = node.next[c]
                 }
+                node.val = value
             }
 
             find(str) {
@@ -457,9 +462,12 @@
 
                     for (const typeName in package.types) {
                         const type = package.types[typeName]
-                        let l3 = { children: [], fullname: prefix + typeName, name: typeName, cg_nodes: [] }
+                        let l3 = { fullname: prefix + typeName, name: typeName, cg_nodes: [] }
                         prefixToNode[l3.fullname] = l3
                         l2.children.push(l3)
+
+                        if (Object.keys(type.methods).length > 0)
+                            l3.children = []
 
                         for (const method in type.methods) {
                             let l4 = { fullname: l3.fullname + "." + method, name: method, cg_nodes: [] }
@@ -475,8 +483,51 @@
             for (let i = 0; i < cgNodes.length; i++) {
                 const cgNodeName = cgNodes[i]
                 const node = trie.find(cgNodeName)
-                if (node)
-                    node.cg_nodes.push(i)
+                if (node) {
+                    if (node.fullname === cgNodeName) {
+                        node.cg_nodes.push(i)
+                    } else {
+                        let curNode = node
+                        let offset = node.fullname.length
+                        let name = cgNodeName.substring(offset).trimStart()
+                        if (name.startsWith(".")) {
+                            offset++
+                            name = name.substring(1)
+                        }
+                        while(true) {
+                            let dotIndex = name.indexOf(".")
+                            let semanticChangingSymbols = ["(", "[", "/"]
+                            let semanticChangingIndexes = semanticChangingSymbols.map(s => name.indexOf(s))
+
+                            if(dotIndex !== -1 && semanticChangingIndexes.every(i => i === -1 || i > dotIndex)) {
+                            } else {
+                                break
+                            }
+
+                            const newNode = { cg_only: true, fullname: cgNodeName.substring(0, offset + dotIndex), name: name.substring(0, dotIndex), cg_nodes: [] }
+                            if(!curNode.children)
+                                curNode.children = []
+                            curNode.children.push(newNode)
+                            trie.add(newNode.fullname, newNode)
+
+                            offset += dotIndex + 1
+                            name = name.substring(dotIndex + 1)
+                            curNode = newNode
+                        }
+
+                        // Handle ".../reflect-config.json"
+                        let pathSepIndex = name.lastIndexOf("/")
+                        if (pathSepIndex !== -1) {
+                            name = name.substring(pathSepIndex+1)
+                        }
+
+                        const newNode = { cg_only: true, fullname: cgNodeName, name: name, cg_nodes: [i] }
+                        if(!curNode.children)
+                            curNode.children = []
+                        curNode.children.push(newNode)
+                        trie.add(newNode.fullname, newNode)
+                    }
+                }
             }
 
             return dict
@@ -512,7 +563,7 @@
         }
 
         function insertChildren(element, node) {
-            let list = generateHTML(node)
+            let list = generateHtmlCutview(node)
             element.appendChild(list)
             recalculateCutOverviewForSubtree(list, node)
         }
@@ -527,7 +578,7 @@
             element.parentElement.querySelector(".nested").classList.toggle("active");
         }
 
-        function generateHTML(data) {
+        function generateHtmlCutview(data) {
             let ul = document.createElement("ul")
             ul.className = "nested"
 
@@ -561,6 +612,10 @@
                 nameSpan.appendChild(document.createTextNode(d.name))
                 //nameSpan.title = d.fullname
                 nameSpan.classList.add("node-text", "selectable")
+
+                if(node.cg_only)
+                    nameSpan.classList.add("cg-only")
+
                 li.appendChild(nameSpan)
 
                 nameSpan.addEventListener("mouseenter", async () => {
@@ -655,6 +710,9 @@
             assert(maxCodeSize)
 
             for(const d of data.children) {
+                if(d.cg_only)
+                    continue
+
                 let li = document.createElement("li")
                 li.className = "image-row"
                 d.html_imageview = li
@@ -696,7 +754,7 @@
 
                 let node = d
                 span.className = "caret"
-                if (d.children) {
+                if (d.children && d.children.some(c => !c.cg_only)) {
                     span.addEventListener("click", () => {
                         expandClickHandler(span, node, () => {
                             li.appendChild(generateHtmlImageview(node))
@@ -738,9 +796,9 @@
                 }
             }
 
-            let child_sizes = data.children.map(cn => cn.size)
+            let child_sizes = data.children.filter(d => !d.cg_only).map(cn => cn.size)
 
-            let order = new Array(data.children.length)
+            let order = new Array(child_sizes.length)
             for(let i = 0; i < order.length; i++)
                 order[i] = i
 
@@ -929,14 +987,13 @@
         }
 
         function updatePurgeValues() {
-            forEachInSubtree(this.dataRoot, (u) => {
-                if (u.html_imageview) {
-                    refreshPurgeValueForImageviewNode(u)
-                }
-            })
+            forEachInSubtree(this.dataRoot, refreshPurgeValueForImageviewNode)
         }
 
         function refreshPurgeValueForImageviewNode(u) {
+            if(!u.html_imageview)
+                return
+
             const all_reachable = Module.HEAPU8.subarray(all_reachable_ptr, all_reachable_ptr + codesizes.length)
             const still_reachable = reachable_in_image_view ?? all_reachable
 
