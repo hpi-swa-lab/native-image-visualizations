@@ -13,7 +13,7 @@ export function findNodesWithName(name: string, root: Node): Node[] {
     )
 }
 
-export function findNodeWithIdentifyer(identifyer: string, root: Node): Node | undefined {
+export function findNodeWithIdentifier(identifier: string, root: Node): Node | undefined {
     const result: Node | undefined = undefined
 
     if (root.identifier === identifyer) {

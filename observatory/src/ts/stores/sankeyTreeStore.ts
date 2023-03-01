@@ -55,7 +55,7 @@ export const useSankeyStore = defineStore('sankeyTreeConfig', {
             const sortingOption = Object.values(SortingOption).find(
                 (item) => item.toString() === option
             )
-            this.sortingFilter.option = sortingOption ? sortingOption : SortingOption.NAME
+            this.sortingFilter.option = sortingOption ?? SortingOption.NAME
         },
         setSortingOrder(order: SortingOrder) {
             this.sortingFilter.order = order

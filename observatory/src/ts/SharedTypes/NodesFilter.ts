@@ -18,7 +18,7 @@ export function nodesFilterForExport(
 
     return {
         diffingUniverses: diffingExport.universes,
-        diffingSowUnmodified: diffingExport.showUnmodified,
+        diffingShowUnmodified: diffingExport.showUnmodified,
         sortingOption: sortingExport.option,
         sortingOrder: sortingExport.order
     }
