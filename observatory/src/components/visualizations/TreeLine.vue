@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { ColorScheme } from '../../ts/SharedTypes/Colors'
 import { globalConfigStore } from '../../ts/stores'
 import { Multiverse } from '../../ts/UniverseTypes/Multiverse'
 import { TreeLine } from '../../ts/Visualizations/TreeLine'
@@ -7,6 +8,7 @@ import MainLayout from '../layouts/MainLayout.vue'
 
 const store = globalConfigStore()
 const multiverse = computed(() => store.multiverse)
+const colorScheme = computed(() => store.colorScheme)
 
 const container = ref<HTMLDivElement>()
 let visualization: TreeLine | undefined = undefined
@@ -17,10 +19,9 @@ onMounted(() => {
         // `ref` exists below and this code is executed after mounting.
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         container.value!,
-        new Map([
-            [0, '#1b9e77'],
-            [1, '#72286f']
-        ])
+        // We always have a color scheme.
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        colorScheme.value!,
     )
     visualization.setMultiverse(multiverse.value as Multiverse)
 })
@@ -29,6 +30,10 @@ watch(multiverse, (newMultiverse) => {
     // Mount is executed first, so visualization is set.
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     visualization!.setMultiverse(newMultiverse as Multiverse)
+})
+
+watch(colorScheme, (newColorScheme) => {
+    visualization!.setColorScheme(newColorScheme as ColorScheme)
 })
 </script>
 

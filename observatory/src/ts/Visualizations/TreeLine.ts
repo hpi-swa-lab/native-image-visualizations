@@ -3,6 +3,7 @@ import { lightenColor } from '../Math/Colors'
 import { clamp } from '../Math/Numbers'
 import { powerSet } from '../Math/Sets'
 import { computeExclusiveSizes, ExclusiveSizes } from '../Math/Universes'
+import { ColorScheme } from '../SharedTypes/Colors'
 import { UniverseIndex } from '../SharedTypes/Indices'
 import { Multiverse, universeCombination, UniverseCombination } from '../UniverseTypes/Multiverse'
 import { Node } from '../UniverseTypes/Node'
@@ -14,21 +15,43 @@ const HIERARCHY_GAPS = 2
 
 export class TreeLine implements MultiverseVisualization {
     multiverse: Multiverse = new Multiverse([])
+    colorScheme: ColorScheme
     selection: Node[] = []
+    highlights: Node[] = []
 
     combinations: UniverseCombination[] = []
-    exclusiveSizes: Map<Node, ExclusiveSizes> = new Map()
+    exclusiveSizes: Map<Node, ExclusiveSizes> = new Map([[this.multiverse.root, new Map([])]])
 
     colors: Map<UniverseIndex, string> = new Map()
     fillStyles: Map<UniverseCombination, string | CanvasGradient> = new Map()
 
-    container: HTMLDivElement
-    canvas: HTMLCanvasElement | null = null
-    context: CanvasRenderingContext2D | null = null
+    canvas: HTMLCanvasElement
+    context: CanvasRenderingContext2D
+    transform = { y: 0, k: 1 }
 
-    constructor(container: HTMLDivElement, colors: Map<UniverseIndex, string>) {
-        this.container = container
-        this.colors = colors
+    constructor(container: HTMLDivElement, colorScheme: ColorScheme) {
+        this.colorScheme = colorScheme
+
+        this.canvas = document.createElement('canvas') as HTMLCanvasElement
+        container.appendChild(this.canvas)
+
+        // The canvas's `getContext` may return `null` if we already requested
+        // a different context from it (such as a "webgl" context for 3D
+        // rendering). We don't ever do this, so this succeeds.
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        this.context = this.canvas.getContext('2d', { alpha: false })!
+
+        this.redraw()
+
+        // `d3.zoom().on(..., ...)` expects a function accepting `any`.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        d3.select(this.canvas as Element).call(
+            d3.zoom().on('zoom', (event) => {
+                this.transform = event?.transform ?? this.transform
+                return this.redraw(event)
+            })
+        )
+        window.addEventListener('resize', (_) => this.redraw())
     }
 
     setMultiverse(multiverse: Multiverse): void {
@@ -56,8 +79,18 @@ export class TreeLine implements MultiverseVisualization {
 
         this.exclusiveSizes = computeExclusiveSizes(multiverse)
 
-        this.generate()
+        this.buildColors()
+        this.buildFillStyles()
+        this.redraw()
     }
+
+    setColorScheme(colorScheme: ColorScheme) {
+        this.colorScheme = colorScheme
+        this.buildColors()
+        this.buildFillStyles()
+        this.redraw()
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     setSelection(selection: Node[]): void {
         // TODO; https://github.com/hpi-swa-lab/MPWS2022RH1/issues/118
@@ -67,64 +100,13 @@ export class TreeLine implements MultiverseVisualization {
         // TODO; https://github.com/hpi-swa-lab/MPWS2022RH1/issues/118
     }
 
-    generate(): void {
-        this.container.innerHTML = ''
-
-        this.canvas = document.createElement('canvas') as HTMLCanvasElement
-        this.container.appendChild(this.canvas)
-
-        // The canvas's `getContext` may return `null` if we already requested
-        // a different context from it (such as a "webgl" context for 3D
-        // rendering). We don't ever do this, so this succeeds.
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        this.context = this.canvas.getContext('2d', { alpha: false })!
-
-        const fitToScreen = () => {
-            if (!this.canvas) {
-                throw Error('canvas not ready')
-            }
-
-            const targetWidth = window.innerWidth
-            const targetHeight = window.innerHeight
-
-            if (this.canvas.width != targetWidth || this.canvas.height != targetHeight) {
-                this.canvas.width = targetWidth
-                this.canvas.height = targetHeight
-                this.buildFillStyles()
-            }
+    buildColors() {
+        const indices: UniverseIndex[] = this.multiverse.sources.map((_, i) => i)
+        this.colors = new Map()
+        for (const index of indices) {
+            this.colors.set(index, this.colorScheme[index % this.colorScheme.length])
+            console.log(`Color ${index} set to ${this.colors.get(index)!}`)
         }
-        fitToScreen()
-
-        const initialBarHeight = this.canvas.height - LINE_PADDING * 2
-        const initialPixelsPerByte = initialBarHeight / this.multiverse.root.codeSize
-        const initialTop = LINE_PADDING
-
-        const multiverse = this.multiverse
-        // `d3.zoom().on(..., ...)` expects a function accepting `any`.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const redraw = (event: any | undefined) => {
-            if (!this.canvas || !this.context) {
-                throw Error('canvas or context not ready')
-            }
-
-            const transform = event?.transform ?? { x: 0, y: 0, k: 1 }
-
-            fitToScreen()
-
-            this.context.fillStyle = 'white'
-            this.context.fillRect(0, 0, this.canvas.width, this.canvas.height)
-
-            const top = initialTop + transform.y
-            const pixelsPerByte = initialPixelsPerByte * transform.k
-
-            const leftOfHierarchy = LINE_PADDING + LINE_WIDTH + LINE_PADDING
-
-            this.drawDiagram(multiverse.root, top, pixelsPerByte, [], leftOfHierarchy)
-        }
-        redraw(undefined)
-
-        d3.select(this.canvas as Element).call(d3.zoom().on('zoom', redraw))
-        window.addEventListener('resize', redraw)
     }
 
     buildFillStyles() {
@@ -172,6 +154,46 @@ export class TreeLine implements MultiverseVisualization {
 
             this.fillStyles.set(combination, gradient)
         }
+    }
+
+    fitToScreen() {
+        if (!this.canvas) {
+            throw Error('canvas not ready')
+        }
+
+        const targetWidth = window.innerWidth
+        const targetHeight = window.innerHeight
+
+        if (this.canvas.width != targetWidth || this.canvas.height != targetHeight) {
+            this.canvas.width = targetWidth
+            this.canvas.height = targetHeight
+            this.buildFillStyles()
+        }
+    }
+
+    redraw(event: any | undefined = undefined) {
+        if (!this.canvas || !this.context) {
+            console.log(this.canvas, this.context)
+            throw Error('canvas or context not ready')
+        }
+
+        this.fitToScreen()
+
+        const initialBarHeight = this.canvas.height - LINE_PADDING * 2
+        const initialPixelsPerByte = initialBarHeight / this.multiverse.root.codeSize
+        const initialTop = LINE_PADDING
+
+        const multiverse = this.multiverse
+
+        this.context.fillStyle = 'white'
+        this.context.fillRect(0, 0, this.canvas.width, this.canvas.height)
+
+        const top = initialTop + this.transform.y
+        const pixelsPerByte = initialPixelsPerByte * this.transform.k
+
+        const leftOfHierarchy = LINE_PADDING + LINE_WIDTH + LINE_PADDING
+
+        this.drawDiagram(multiverse.root, top, pixelsPerByte, [], leftOfHierarchy)
     }
 
     drawDiagram(
