@@ -208,6 +208,7 @@
             }
             this.dataRoot = generateHierarchyFromReachabilityJsonAndMethodList(reachabilityData, methodList)
             prepareListView(this.dataRoot)
+            document.title = file.name
         }
 
         function getMethodCodesizeDictFromReachabilityJson(data) {
