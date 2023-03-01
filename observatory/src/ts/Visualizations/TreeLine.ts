@@ -8,23 +8,9 @@ import { Node } from '../UniverseTypes/Node'
 import { lightenColor } from '../utils'
 import { MultiverseVisualization } from './MultiverseVisualization'
 
-// Constants for the line on the left
 const LINE_WIDTH = 256
 const LINE_PADDING = 16
-
-// At this height, entities explode into children.
-const EXPLOSION_THRESHOLD = 100
-
-// Constants for the hierarchy on the right
 const HIERARCHY_GAPS = 2
-const FONT_SIZE = 11
-const TEXT_HORIZONTAL_PADDING = 8
-const TEXT_VERTICAL_PADDING = 2
-
-// Colors
-const STRIPED_MIX_ALPHA = 0.4
-const DEFAULT_FILL_STYLE = '#cccccc'
-const TEXT_COLOR = 'black'
 
 export class TreeLine implements MultiverseVisualization {
     multiverse: Multiverse = new Multiverse([])
@@ -131,7 +117,7 @@ export class TreeLine implements MultiverseVisualization {
     buildFillStyles() {
         const lightenedColors: Map<UniverseIndex, string> = new Map()
         this.colors.forEach((color, index) => {
-            lightenedColors.set(index, lightenColor(color, STRIPED_MIX_ALPHA))
+            lightenedColors.set(index, lightenColor(color, 0.4))
         })
 
         for (const combination of this.combinations) {
@@ -178,6 +164,9 @@ export class TreeLine implements MultiverseVisualization {
         path: string[],
         leftOfHierarchy: number
     ) {
+        // At this height, entities explode into children.
+        const EXPLOSION_THRESHOLD = 100
+
         const height = tree.codeSize * pixelsPerByte
 
         if (top > this.canvas.height || top + height < 0) {
@@ -256,6 +245,11 @@ export class TreeLine implements MultiverseVisualization {
         text: string,
         containingCombinations: UniverseCombination[]
     ): number {
+        const FONT_SIZE = 11
+        const TEXT_HORIZONTAL_PADDING = 8
+        const TEXT_VERTICAL_PADDING = 2
+        const DEFAULT_FILL_STYLE = '#cccccc'
+
         this.context.font = `${FONT_SIZE}px sans-serif`
 
         const textWidth = this.context.measureText(text).width
@@ -280,7 +274,7 @@ export class TreeLine implements MultiverseVisualization {
                 top + height - textRadius - TEXT_VERTICAL_PADDING
             )
 
-            this.context.fillStyle = TEXT_COLOR
+            this.context.fillStyle = 'black'
             this.context.textBaseline = 'middle'
             this.context.fillText(text, left + TEXT_HORIZONTAL_PADDING, textCenterY)
         }
