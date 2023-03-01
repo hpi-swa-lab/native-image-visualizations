@@ -10,8 +10,8 @@ import { NodesDiffingFilter, NodesFilter, NodesSortingFilter } from './SharedTyp
 import { Multiverse } from './UniverseTypes/Multiverse'
 import { ColorScheme } from './SharedTypes/Colors'
 
-// Reason: Vite does not support commonJS out of box. In the vite.config, commonjs
-// transpiled the cjs to ts, but the transpilation and mapping happens during run time.
+// Reason: Vite does not support commonJS out of box. In the vite.config, the commonjs plugin
+// transpiles the cjs to ts, but the transpilation and mapping happens during run time.
 // Thus, the system cannot find a declaration file for the module statically.
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
