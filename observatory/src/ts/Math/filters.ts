@@ -34,8 +34,8 @@ export function findNodeWithIdentifier(identifier: string, root: Node): Node | u
 export function findNodesWithIdentifiers(identifiers: string[], root: Node): Node[] {
     const result: Node[] = []
 
-    identifiers.forEach((identifyer: string) => {
-        const node = findNodeWithIdentifier(identifyer, root)
+    identifiers.forEach((identifier: string) => {
+        const node = findNodeWithIdentifier(identifier, root)
         if (node) {
             result.push(node)
         }
