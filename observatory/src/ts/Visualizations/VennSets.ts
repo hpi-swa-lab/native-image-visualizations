@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// Reason for disable: d3 interfaces often return and expect any types, e.g. 'select'
+// Reason for disable: d3 interfaces often return and expect any types,
+// e.g. generic types of 'select'
 import * as d3 from 'd3'
 import { Multiverse } from '../UniverseTypes/Multiverse'
 import { Node } from '../UniverseTypes/Node'
@@ -100,7 +101,6 @@ export class VennSets implements MultiverseVisualization {
             .attr('fill', (leaf: PackedHierarchyLeaf) =>
                 colorsByName.get((leaf.parent as unknown as PackedHierarchyNode).data[0])
             )
-            .on('mouseover', this.drawTooltipFor.bind(this))
     }
 
     private drawLabels(root: HierarchyNode<Group>) {
@@ -117,14 +117,12 @@ export class VennSets implements MultiverseVisualization {
             .attr('text-anchor', 'middle')
     }
 
-    private drawTooltipFor(_event: Event, leaf: PackedHierarchyLeaf) {
-        console.log(this.asString(leaf))
-    }
-
     private circlePack(root: HierarchyNode<Group>): void {
         d3.pack().size([this.containerWidth(), this.containerHeight()]).padding(3)(root)
     }
 
+    // TODO: Joana
+    // Will be used when tooltip is existing , see {@link: https://github.com/hpi-swa-lab/MPWS2022RH1/issues/52}
     private asString(leaf: PackedHierarchyLeaf): string {
         const node = leaf.data[0]
         const parent = leaf.parent as unknown as PackedHierarchyNode
@@ -147,7 +145,6 @@ export class VennSets implements MultiverseVisualization {
         )
 
         return d3.hierarchy(groups).sum((node: Group) => (node as unknown as LeafData)[1])
-        // .sort((a, b) => a.value - b.value) // this should be an option todo
     }
 
     private initializeContainer(containerSelector: string) {
