@@ -72,6 +72,11 @@ export class TreeLine implements MultiverseVisualization {
 
         this.canvas = document.createElement('canvas') as HTMLCanvasElement
         this.container.appendChild(this.canvas)
+
+        // The canvas's `getContext` may return `null` if we already requested
+        // a different context from it (such as a "webgl" context for 3D
+        // rendering). We don't ever do this, so this succeeds.
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         this.context = this.canvas.getContext('2d', { alpha: false })!
 
         const fitToScreen = () => {

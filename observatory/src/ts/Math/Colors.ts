@@ -1,4 +1,4 @@
-/// Lightens up a color by moving it closer to white.
+// Lightens up a color by moving it closer to white.
 export function lightenColor(color: string, alpha: number): string {
     const r = parseInt(color.substring(1, 3), 16)
     const g = parseInt(color.substring(3, 5), 16)

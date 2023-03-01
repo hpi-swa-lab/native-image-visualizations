@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
-import { globalConfigStore } from '../../ts/stores';
-import { Multiverse } from '../../ts/UniverseTypes/Multiverse';
-import { TreeLine } from '../../ts/Visualizations/TreeLine';
-import MainLayout from '../layouts/MainLayout.vue';
+import { computed, onMounted, ref, watch } from 'vue'
+import { globalConfigStore } from '../../ts/stores'
+import { Multiverse } from '../../ts/UniverseTypes/Multiverse'
+import { TreeLine } from '../../ts/Visualizations/TreeLine'
+import MainLayout from '../layouts/MainLayout.vue'
 
 const store = globalConfigStore()
 const multiverse = computed(() => store.multiverse)
@@ -26,7 +26,9 @@ onMounted(() => {
 })
 
 watch(multiverse, (newMultiverse) => {
-  visualization!.setMultiverse(newMultiverse as Multiverse)
+    // Mount is executed first, so visualization is set.
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    visualization!.setMultiverse(newMultiverse as Multiverse)
 })
 </script>
 
