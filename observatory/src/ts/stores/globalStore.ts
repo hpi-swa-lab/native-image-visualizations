@@ -11,6 +11,16 @@ import { layerForExport, Layers } from '../enums/Layers'
 import { Multiverse } from '../UniverseTypes/Multiverse'
 import { objectMap } from '../helpers'
 import { InvalidInputError } from '../errors'
+import { ColorScheme } from '../SharedTypes/Colors'
+// Reason: Vite does not support commonJS out of box. In the vite.config, the commonjs plugin
+// transpiles the cjs to ts, but the transpilation and mapping happens during run time.
+// Thus, the system cannot find a declaration file for the module statically.
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import tailwindConfig from '../../../tailwind.config.cjs'
+import resolveConfig from 'tailwindcss/resolveConfig'
+
+const cssConfig = resolveConfig(tailwindConfig)
 
 type NodeIdentifiersPerUniverse = Record<string, string[]>
 
@@ -37,6 +47,9 @@ export const useGlobalStore = defineStore('globalConfig', {
             highlights: {} as Record<string, Node[]>,
             currentComponent: SwappableComponentType.Home as SwappableComponentType,
             previousComponent: undefined as SwappableComponentType | undefined,
+            // Reason: Since our schemes are custom added, they're not part of the type declaration
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            colorScheme: Object.values((cssConfig as any).theme.colors.TABLEAU_10) as ColorScheme,
             search: ''
         }
     },
@@ -121,6 +134,9 @@ export const useGlobalStore = defineStore('globalConfig', {
         },
         setHighlights(universeName: string, highlight: Node[]): void {
             this.highlights[universeName] = highlight
+        },
+        switchColorScheme(newScheme: ColorScheme): void {
+            this.colorScheme = newScheme
         },
         switchToComponent(newComponent: SwappableComponentType): void {
             this.previousComponent = this.currentComponent
