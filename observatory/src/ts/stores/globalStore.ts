@@ -4,7 +4,7 @@ import { Node } from '../UniverseTypes/Node'
 import {
     SwappableComponentType,
     componentName,
-    componentForExport
+    serializeComponent
 } from '../enums/SwappableComponentType'
 import { findNodesWithName } from '../Math/filters'
 import { layerForExport, Layers } from '../enums/Layers'
@@ -167,9 +167,9 @@ export const useGlobalStore = defineStore('globalConfig', {
                     return highlight.map((node: Node) => node.identifier)
                 }),
                 currentLayer: layerForExport(this.currentLayer),
-                currentComponent: componentForExport(this.currentComponent),
+                currentComponent: serializeComponent(this.currentComponent),
                 previousComponent: this.previousComponent
-                    ? componentForExport(this.previousComponent)
+                    ? serializeComponent(this.previousComponent)
                     : '',
                 search: this.search
             }

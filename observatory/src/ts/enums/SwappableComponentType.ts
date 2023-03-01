@@ -24,6 +24,6 @@ export function componentName(component: SwappableComponentType | undefined): st
     }
 }
 
-export function componentForExport(component: SwappableComponentType): string {
+export function serializeComponent(component: SwappableComponentType): string {
     return component.toString()
 }
