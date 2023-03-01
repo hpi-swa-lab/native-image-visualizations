@@ -1,9 +1,11 @@
 import * as d3 from 'd3'
+import { clamp } from '../Math/Numbers'
+import { powerSet } from '../Math/Sets'
 import { UniverseIndex } from '../SharedTypes/Indices'
 import { Bytes } from '../SharedTypes/Size'
 import { Multiverse } from '../UniverseTypes/Multiverse'
 import { Node } from '../UniverseTypes/Node'
-import { clamp, lightenColor, powerSet } from '../utils'
+import { lightenColor } from '../utils'
 import { MultiverseVisualization } from './MultiverseVisualization'
 
 type UniverseCombination = string
@@ -42,8 +44,8 @@ export class TreeLine implements MultiverseVisualization {
     fillStyles: Map<UniverseCombination, string | CanvasGradient> = new Map()
 
     container: HTMLDivElement
-    canvas: HTMLCanvasElement | null = null
-    context: CanvasRenderingContext2D | null = null
+    canvas: HTMLCanvasElement = new HTMLCanvasElement()
+    context: CanvasRenderingContext2D = new CanvasRenderingContext2D()
 
     constructor(container: HTMLDivElement, colors: Map<UniverseIndex, string>) {
         this.container = container
@@ -168,13 +170,9 @@ export class TreeLine implements MultiverseVisualization {
 
         this.canvas = document.createElement('canvas') as HTMLCanvasElement
         this.container.appendChild(this.canvas)
-        this.context = this.canvas.getContext('2d', { alpha: false })
+        this.context = this.canvas.getContext('2d', { alpha: false })!
 
         const fitToScreen = () => {
-            if (!this.canvas) {
-                return
-            }
-
             const targetWidth = window.innerWidth
             const targetHeight = window.innerHeight
 
@@ -194,10 +192,6 @@ export class TreeLine implements MultiverseVisualization {
         // `d3.zoom().on(..., ...)` expects a function accepting `any`.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const redraw = (event: any | undefined) => {
-            if (!this.canvas || !this.context) {
-                throw new Error('Canvas doesn\'t exist yet.')
-            }
-
             const transform = event?.transform ?? { x: 0, y: 0, k: 1 }
 
             fitToScreen()
@@ -219,10 +213,6 @@ export class TreeLine implements MultiverseVisualization {
     }
 
     buildFillStyles() {
-        if (!this.canvas || !this.context) {
-            throw new Error('Canvas doesn\'t exist yet.')
-        }
-
         const lightenedColors: Map<UniverseIndex, string> = new Map()
         this.colors.forEach((color, index) => {
             lightenedColors.set(index, lightenColor(color, STRIPED_MIX_ALPHA))
@@ -272,10 +262,6 @@ export class TreeLine implements MultiverseVisualization {
         path: string[],
         leftOfHierarchy: number
     ) {
-        if (!this.canvas || !this.context) {
-            throw new Error('Canvas doesn\'t exist yet.')
-        }
-
         const height = tree.codeSize * pixelsPerByte
 
         if (top > this.canvas.height || top + height < 0) {
@@ -354,10 +340,6 @@ export class TreeLine implements MultiverseVisualization {
         text: string,
         containingCombinations: UniverseCombination[]
     ): number {
-        if (!this.canvas || !this.context) {
-            throw new Error('Canvas doesn\'t exist yet.')
-        }
-
         this.context.font = `${FONT_SIZE}px sans-serif`
 
         const textWidth = this.context.measureText(text).width

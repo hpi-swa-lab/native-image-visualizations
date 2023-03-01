@@ -1,26 +1,3 @@
-// A function that makes sure a value is within a range. For example,
-// `2.clamp(0, 5)` returns 2 because 2 is between 0 and 5, but `3.clamp(4, 6)`
-// returns 4.
-export function clamp(n: number, min: number, max: number): number {
-    return Math.min(Math.max(n, min), max)
-}
-
-// From https://codereview.stackexchange.com/questions/139095/generate-powerset-in-js
-export function powerSet<T>(l: T[]) {
-    return (function ps(list): T[][] {
-        if (list.length === 0) {
-            return [[]]
-        }
-        const head = list.pop()
-        const tailPS = ps(list)
-        return tailPS.concat(
-            tailPS.map(function (e) {
-                return [head].concat(e)
-            })
-        )
-    })(l.slice())
-}
-
 // / Lightens up a color by moving it closer to white.
 export function lightenColor(color: string, alpha: number): string {
     const r = parseInt(color.substring(1, 3), 16)
