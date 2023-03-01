@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { Universe } from '../../ts/UniverseTypes/Universe'
 import { loadJson, parseReachabilityExport } from '../../ts/parsing'
-import { useGlobalStore } from '../../ts/stores/globalStore'
+import { useGlobalStore, CONFIG_NAME } from '../../ts/stores/globalStore'
 import { useVennStore } from '../../ts/stores/vennStore'
 import { useSankeyStore } from '../../ts/stores/sankeyTreeStore'
 import { useTreeLineStore } from '../../ts/stores/treeLineStore'
@@ -11,6 +11,7 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import InlineEditableField from './InlineEditableField.vue'
 import JSZip from 'jszip'
 import FileSaver from 'file-saver'
+import { InvalidInputError } from '../../ts/errors'
 
 const globalStore = useGlobalStore()
 const vennStore = useVennStore()
@@ -27,8 +28,14 @@ function validateFileAndAddUniverseOnSuccess(file: File, universeName: string): 
                 universeName,
                 parseReachabilityExport(parsedJSON, universeName)
             )
-            globalStore.addUniverse(newUniverse, parsedJSON)
-            uploadError.value = undefined
+            try {
+                globalStore.addUniverse(newUniverse, parsedJSON)
+                uploadError.value = undefined
+            } catch (error: unknown) {
+                if (error instanceof Error) {
+                    uploadError.value = error
+                }
+            }
         })
         .catch((error) => {
             uploadError.value = error
@@ -58,7 +65,7 @@ function exportConfig() {
     }
 
     const zip = new JSZip()
-    zip.file('_config.json', JSON.stringify(configData))
+    zip.file(CONFIG_NAME, JSON.stringify(configData))
     Object.entries(rawData).forEach(([universeName, data]) => {
         zip.file(`${universeName}.json`, JSON.stringify(data))
     })
@@ -66,6 +73,18 @@ function exportConfig() {
     zip.generateAsync({ type: 'blob' }).then((content) => {
         FileSaver.saveAs(content, 'data-and-config.zip')
     })
+}
+
+function changeUniverseName(oldName: string, newName: string) {
+    try {
+        globalStore.updateUniverseName(oldName, newName)
+    } catch (error: unknown) {
+        if (error instanceof InvalidInputError) {
+            alert(error.message)
+        } else {
+            alert('An unknown error happened')
+        }
+    }
 }
 </script>
 
@@ -101,8 +120,9 @@ function exportConfig() {
                         :label="universe.name"
                         class="flex-auto"
                         @change.self="
-                            (newUniverseName) =>
-                                globalStore.updateUniverseName(universe.name, newUniverseName)
+                            (newName) => {
+                                changeUniverseName(universe.name, newName)
+                            }
                         "
                     />
                     <button

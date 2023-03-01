@@ -16,7 +16,8 @@ type NodeIdentifiersPerUniverse = Record<string, string[]>
 
 export type GlobalConfig = Record<string, string | NodeIdentifiersPerUniverse | unknown>
 
-export const reservedNames = ['_config']
+export const CONFIG_NAME = '_config'
+export const reservedNames = [CONFIG_NAME]
 
 export const useGlobalStore = defineStore('globalConfig', {
     state: () => {
