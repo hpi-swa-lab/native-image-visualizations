@@ -23,8 +23,8 @@ export class TreeLine implements MultiverseVisualization {
     fillStyles: Map<UniverseCombination, string | CanvasGradient> = new Map()
 
     container: HTMLDivElement
-    canvas: HTMLCanvasElement = new HTMLCanvasElement()
-    context: CanvasRenderingContext2D = new CanvasRenderingContext2D()
+    canvas: HTMLCanvasElement | null = null
+    context: CanvasRenderingContext2D | null = null
 
     constructor(container: HTMLDivElement, colors: Map<UniverseIndex, string>) {
         this.container = container
@@ -80,6 +80,10 @@ export class TreeLine implements MultiverseVisualization {
         this.context = this.canvas.getContext('2d', { alpha: false })!
 
         const fitToScreen = () => {
+            if (!this.canvas) {
+                throw Error('canvas not ready')
+            }
+
             const targetWidth = window.innerWidth
             const targetHeight = window.innerHeight
 
@@ -99,6 +103,10 @@ export class TreeLine implements MultiverseVisualization {
         // `d3.zoom().on(..., ...)` expects a function accepting `any`.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const redraw = (event: any | undefined) => {
+            if (!this.canvas || !this.context) {
+                throw Error('canvas or context not ready')
+            }
+
             const transform = event?.transform ?? { x: 0, y: 0, k: 1 }
 
             fitToScreen()
@@ -120,6 +128,10 @@ export class TreeLine implements MultiverseVisualization {
     }
 
     buildFillStyles() {
+        if (!this.canvas || !this.context) {
+            throw Error('canvas or context not ready')
+        }
+
         const lightenedColors: Map<UniverseIndex, string> = new Map()
         this.colors.forEach((color, index) => {
             lightenedColors.set(index, lightenColor(color, 0.4))
@@ -169,6 +181,10 @@ export class TreeLine implements MultiverseVisualization {
         path: string[],
         leftOfHierarchy: number
     ) {
+        if (!this.canvas || !this.context) {
+            throw Error('canvas or context not ready')
+        }
+
         // At this height, entities explode into children.
         const EXPLOSION_THRESHOLD = 100
 
@@ -250,6 +266,10 @@ export class TreeLine implements MultiverseVisualization {
         text: string,
         containingCombinations: UniverseCombination[]
     ): number {
+        if (!this.canvas || !this.context) {
+            throw Error('canvas or context not ready')
+        }
+
         const FONT_SIZE = 11
         const TEXT_HORIZONTAL_PADDING = 8
         const TEXT_VERTICAL_PADDING = 2
