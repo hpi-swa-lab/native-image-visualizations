@@ -24,7 +24,7 @@ const cssConfig = resolveConfig(tailwindConfig)
 
 type NodeIdentifiersPerUniverse = Record<string, string[]>
 
-export type GlobalConfig = Record<string, string | NodeIdentifiersPerUniverse | unknown>
+export type GlobalConfig = Record<string, string | string[] | NodeIdentifiersPerUniverse>
 
 export const CONFIG_NAME = '_config'
 export const reservedNames = [CONFIG_NAME]
@@ -167,6 +167,7 @@ export const useGlobalStore = defineStore('globalConfig', {
                     return highlight.map((node: Node) => node.identifier)
                 }),
                 currentLayer: serializerLayer(this.currentLayer),
+                colorScheme: this.colorScheme,
                 currentComponent: serializeComponent(this.currentComponent),
                 previousComponent: this.previousComponent
                     ? serializeComponent(this.previousComponent)
