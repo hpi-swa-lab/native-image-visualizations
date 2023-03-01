@@ -25,7 +25,7 @@ function validateFileAndAddUniverseOnSuccess(file: File, universeName: string): 
                 universeName,
                 parseReachabilityExport(parsedJSON, universeName)
             )
-            globalStore.addUniverse(newUniverse)
+            globalStore.addUniverse(newUniverse, parsedJSON)
             uploadError.value = undefined
         })
         .catch((error) => {
