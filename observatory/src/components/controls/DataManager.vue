@@ -73,7 +73,7 @@ function exportConfig() {
     })
 
     zip.generateAsync({ type: 'blob' }).then((content) => {
-        FileSaver.saveAs(content, 'data-and-config.zip')
+        FileSaver.saveAs(content, Object.keys(rawData).join('-') + 'observatory-config.zip')
     })
 }
 
