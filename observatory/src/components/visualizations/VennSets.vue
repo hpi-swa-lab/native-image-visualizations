@@ -5,6 +5,8 @@ import { EventType } from '../../ts/enums/EventType'
 import { onMounted, ref, watch, computed } from 'vue'
 import { globalConfigStore } from '../../ts/stores'
 import { VennSets } from '../../ts/Visualizations/VennSets'
+import { Multiverse } from '../../ts/UniverseTypes/Multiverse'
+import { Node } from '../../ts/UniverseTypes/Node'
 
 const emit = defineEmits([EventType.CHANGE])
 const store = globalConfigStore()
@@ -18,23 +20,34 @@ const selection = computed(() => store.selections)
 
 let visualization: VennSets
 
+// The reason for using as unknown as <...> is that the store saves Proxy Types of the objects
+// with no apparent api overlap - which we know is definetely the same
+
 onMounted(() => {
     visualization = new VennSets('#viz-container', store.currentLayer, store.colorScheme)
-    visualization.setMultiverse(store.multiverse as any)
+    visualization.setMultiverse(store.multiverse as unknown as Multiverse)
 })
 
-
+watch(multiverse, (newMultiverse) => {
+    visualization.setMultiverse(newMultiverse as unknown as Multiverse)
+})
+watch(currentLayer, (newLayer) => {
+    visualization.setLayer(newLayer)
+})
 watch(
-    multiverse, (newMultiverse) => {visualization.setMultiverse(newMultiverse as any)}
+    highlights,
+    (newHighlights) => {
+        visualization.setHighlights(Object.values(newHighlights)[0] as unknown as Node[])
+    },
+    { deep: true }
 )
-watch (currentLayer, (newLayer) => {visualization.setLayer(newLayer)})
-watch (highlights, (newHighlights) => {
-    visualization.setHighlights(Object.values(newHighlights)[0] as any)
-}, { deep: true })
-watch (selection, (newSelection) => {
-    visualization.setSelection(Object.values(newSelection)[0] as any)
-}, { deep: true })
-
+watch(
+    selection,
+    (newSelection) => {
+        visualization.setSelection(Object.values(newSelection)[0] as unknown as Node[])
+    },
+    { deep: true }
+)
 </script>
 
 <template>
@@ -43,9 +56,6 @@ watch (selection, (newSelection) => {
         :component-type="SwappableComponentType.VennSets"
         @change-page="(componentType: SwappableComponentType) => emit(EventType.CHANGE, componentType)"
     >
-        <div id='viz-container' ref="container"  class="w-full h-full">
-            
-        </div>
-       
+        <div id="viz-container" ref="container" class="w-full h-full"></div>
     </MainLayout>
 </template>
