@@ -82,11 +82,11 @@ export class TreeLine implements MultiverseVisualization {
     }
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     setSelection(selection: Node[]): void {
-        // TODO; https://github.com/hpi-swa-lab/MPWS2022RH1/issues/95
+        // TODO; https://github.com/hpi-swa-lab/MPWS2022RH1/issues/118
     }
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     setHighlights(highlights: Node[]): void {
-        // TODO; https://github.com/hpi-swa-lab/MPWS2022RH1/issues/95
+        // TODO; https://github.com/hpi-swa-lab/MPWS2022RH1/issues/118
     }
 
     computeExclusiveSizes(universeIndices: UniverseIndex[], mergedNode: Node) {
