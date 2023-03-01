@@ -21,6 +21,8 @@ const sankeyStore = useSankeyStore()
 
 const uploadError = ref<Error | undefined>(undefined)
 
+const nameFields = ref<InstanceType<typeof InlineEditableField>[]>()
+
 function validateFileAndAddUniverseOnSuccess(file: File, universeName: string): void {
     loadJson(file)
         .then((parsedJSON) => {
@@ -65,7 +67,7 @@ function exportConfig() {
     }
 
     const zip = new JSZip()
-    zip.file(CONFIG_NAME, JSON.stringify(configData))
+    zip.file(`${CONFIG_NAME}.json`, JSON.stringify(configData))
     Object.entries(rawData).forEach(([universeName, data]) => {
         zip.file(`${universeName}.json`, JSON.stringify(data))
     })
@@ -75,10 +77,13 @@ function exportConfig() {
     })
 }
 
-function changeUniverseName(oldName: string, newName: string) {
+function changeUniverseName(oldName: string, newName: string, inputIndex: number) {
     try {
         globalStore.updateUniverseName(oldName, newName)
     } catch (error: unknown) {
+        if (nameFields.value && nameFields.value[inputIndex]) {
+            nameFields.value[inputIndex].reset()
+        }
         if (error instanceof InvalidInputError) {
             alert(error.message)
         } else {
@@ -117,11 +122,12 @@ function changeUniverseName(oldName: string, newName: string) {
                     class="flex items-center justify-between space-x-2"
                 >
                     <InlineEditableField
+                        ref="nameFields"
                         :label="universe.name"
                         class="flex-auto"
                         @change.self="
                             (newName) => {
-                                changeUniverseName(universe.name, newName)
+                                changeUniverseName(universe.name, newName, index)
                             }
                         "
                     />
