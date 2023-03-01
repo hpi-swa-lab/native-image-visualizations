@@ -12,6 +12,7 @@ import InlineEditableField from './InlineEditableField.vue'
 import JSZip from 'jszip'
 import FileSaver from 'file-saver'
 import { InvalidInputError } from '../../ts/errors'
+import { ExportConfig } from '../../ts/stores/ExportConfig'
 
 const globalStore = useGlobalStore()
 const vennStore = useVennStore()
@@ -58,7 +59,7 @@ function addUniverses(event: Event) {
 function exportConfig() {
     const rawData = globalStore.rawData
 
-    const configData = {
+    const configData: Record<string, ExportConfig> = {
         global: globalStore.toExportDict(),
         venn: vennStore.toExportDict(),
         sankey: sankeyStore.toExportDict(),
