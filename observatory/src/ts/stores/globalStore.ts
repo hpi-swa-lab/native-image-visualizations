@@ -7,7 +7,7 @@ import {
     componentForExport
 } from '../enums/SwappableComponentType'
 import { findNodesWithName } from '../Math/filters'
-import { Layers } from '../enums/Layers'
+import { layerForExport, Layers } from '../enums/Layers'
 import { Multiverse } from '../UniverseTypes/Multiverse'
 import { objectMap } from '../helpers'
 
@@ -117,14 +117,20 @@ export const useGlobalStore = defineStore('globalConfig', {
         },
         toExportDict(): GlobalConfig {
             return {
-                universes: this.rawData,
+                observedUniverses: (this.observedUniverses as Universe[]).map(
+                    (universe: Universe) => universe.name
+                ),
                 selections: objectMap<string[]>(this.selections, (_, selection: Node[]) => {
                     return selection.map((node: Node) => node.identifier)
                 }),
                 highlights: objectMap<string[]>(this.highlights, (_, highlight: Node[]) => {
                     return highlight.map((node: Node) => node.identifier)
                 }),
+                currentLayer: layerForExport(this.currentLayer),
                 currentComponent: componentForExport(this.currentComponent),
+                previousComponent: this.previousComponent
+                    ? componentForExport(this.previousComponent)
+                    : '',
                 search: this.search
             }
         }
