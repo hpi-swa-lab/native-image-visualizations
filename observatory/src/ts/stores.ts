@@ -1,13 +1,22 @@
 import { defineStore } from 'pinia'
+import resolveConfig from 'tailwindcss/resolveConfig'
 import { Layers } from './enums/Layers'
 import { SortingOption, SortingOrder } from './enums/Sorting'
 import { componentName, SwappableComponentType } from './enums/SwappableComponentType'
 import { findNodesWithName } from './Math/filters'
 import { createConfigHighlights, createConfigSelections, createConfigUniverses } from './parsing'
+import { ColorScheme } from './SharedTypes/Colors'
 import { NodesDiffingFilter, NodesFilter, NodesSortingFilter } from './SharedTypes/NodesFilter'
 import { Multiverse } from './UniverseTypes/Multiverse'
 import { Node } from './UniverseTypes/Node'
 import { Universe } from './UniverseTypes/Universe'
+// Reason: Vite does not support commonJS out of box. In the vite.config, the commonjs plugin
+// transpiles the cjs to ts, but the transpilation and mapping happens during run time.
+// Thus, the system cannot find a declaration file for the module statically.
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import tailwindConfig from '../../tailwind.config.cjs'
+const cssConfig = resolveConfig(tailwindConfig)
 
 export const globalConfigStore = defineStore('globalConfig', {
     state: () => {
@@ -20,6 +29,9 @@ export const globalConfigStore = defineStore('globalConfig', {
             highlights: {} as Record<string, Node[]>,
             currentComponent: SwappableComponentType.Home as SwappableComponentType,
             previousComponent: undefined as SwappableComponentType | undefined,
+            // Reason: Since our schemes are custom added, they're not part of the type declaration
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            colorScheme: Object.values((cssConfig as any).theme.colors.TABLEAU_10) as ColorScheme,
             search: ''
         }
     },
@@ -29,7 +41,15 @@ export const globalConfigStore = defineStore('globalConfig', {
     },
     actions: {
         addUniverse(newUniverse: Universe): void {
-            if (this.universes.find((universe) => universe.name === newUniverse.name)) return
+            const matchingUniverse = this.universes.find(
+                (universe) => universe.name === newUniverse.name
+            )
+            if (matchingUniverse) {
+                const matches = this.universes.filter((universe) =>
+                    universe.name.match(`${newUniverse.name}(\s\([0-9]+\))?`)
+                )
+                newUniverse.name = newUniverse.name + ` (${matches.length})`
+            }
 
             this.universes.push(newUniverse)
         },
@@ -40,6 +60,12 @@ export const globalConfigStore = defineStore('globalConfig', {
 
             if (matchingUniverse) {
                 this.universes.splice(this.universes.indexOf(matchingUniverse), 1)
+            }
+        },
+        updateUniverseName(oldName: string, newName: string): void {
+            const universe = this.universes.find((universe) => universe.name === oldName)
+            if (universe) {
+                universe.name = newName
             }
         },
         toggleUniverseByName(universeName: string): void {
@@ -66,6 +92,9 @@ export const globalConfigStore = defineStore('globalConfig', {
         },
         setHighlights(universeName: string, highlight: Node[]): void {
             this.highlights[universeName] = highlight
+        },
+        switchColorScheme(newScheme: ColorScheme): void {
+            this.colorScheme = newScheme
         },
         switchToComponent(newComponent: SwappableComponentType): void {
             this.previousComponent = this.currentComponent

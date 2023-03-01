@@ -17,6 +17,10 @@ export class Universe {
         return this._root
     }
 
+    public set name(name: string) {
+        this._name = name
+    }
+
     equals(other: Universe): boolean {
         return this.name === other.name && this.root.equals(other.root)
     }

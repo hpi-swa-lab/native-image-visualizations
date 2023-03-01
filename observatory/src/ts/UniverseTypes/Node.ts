@@ -9,7 +9,7 @@ export const INVALID_SIZE: Bytes = -1
 export class Node {
     protected _name: string
     protected _parent: Node | undefined
-    protected readonly _children: Node[]
+    protected _children: Node[]
     protected _codeSize: Bytes = INVALID_SIZE
     protected _sources: Map<UniverseIndex, Node> = new Map()
 
@@ -86,18 +86,6 @@ export class Node {
         this._parent = newParent
     }
 
-    public clone(): Node {
-        const parent = this.parent
-        this.parent = undefined
-
-        const newInstance = clone(this)
-
-        newInstance.parent = parent
-        this.parent = parent
-
-        return newInstance
-    }
-
     public push(...children: Node[]): number {
         for (const child of children) {
             this._children.push(child)
@@ -130,6 +118,10 @@ export class Node {
             this === another ||
             (this.equalsComparingOnlyParents(another) && this.equalsIgnoringParents(another))
         )
+    }
+
+    public clonePrimitive(): Node {
+        return new Node(this.name, [], undefined, this._codeSize)
     }
 
     protected equalsIgnoringParents(another: Node): boolean {

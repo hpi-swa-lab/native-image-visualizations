@@ -59,7 +59,7 @@ export class Multiverse {
         const matchingChild = mergeResult.children.find((child: Node) => child.name == node.name)
 
         if (!matchingChild) {
-            const nodeToMerge = node.clone()
+            const nodeToMerge = node.clonePrimitive()
             this.setSourcesRecursively(nodeToMerge, node, treeIndex)
             mergeResult.push(nodeToMerge)
         } else {
@@ -72,9 +72,10 @@ export class Multiverse {
 
     protected setSourcesRecursively(copy: Node, original: Node, index: UniverseIndex) {
         copy.sources = new Map([[index, original]])
-        copy.children.forEach((child: Node, i: number) =>
-            this.setSourcesRecursively(child, original.children[i], index)
-        )
+        original.children.forEach((originalChild: Node, i: number) => {
+            copy.push(originalChild.clonePrimitive())
+            this.setSourcesRecursively(copy.children[i], originalChild, index)
+        })
     }
 }
 
