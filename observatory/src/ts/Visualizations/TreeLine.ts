@@ -1,11 +1,11 @@
 import * as d3 from 'd3'
+import { lightenColor } from '../Math/Colors'
 import { clamp } from '../Math/Numbers'
 import { powerSet } from '../Math/Sets'
 import { computeExclusiveSizes, ExclusiveSizes } from '../Math/Universes'
 import { UniverseIndex } from '../SharedTypes/Indices'
 import { Multiverse, universeCombination, UniverseCombination } from '../UniverseTypes/Multiverse'
 import { Node } from '../UniverseTypes/Node'
-import { lightenColor } from '../utils'
 import { MultiverseVisualization } from './MultiverseVisualization'
 
 const LINE_WIDTH = 256
