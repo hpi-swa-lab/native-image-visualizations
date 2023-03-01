@@ -84,8 +84,18 @@ export const useGlobalStore = defineStore('globalConfig', {
                 universe.name = newName
             }
 
+            if (this.selections[oldName]) {
+                this.selections[newName] = this.selections[oldName]
+                delete this.selections[oldName]
+            }
+
+            if (this.highlights[oldName]) {
+                this.highlights[newName] = this.highlights[oldName]
+                delete this.highlights[oldName]
+            }
+
             if (this.rawData[oldName]) {
-                this.rawData[newName] = JSON.parse(JSON.stringify(this.rawData[oldName]))
+                this.rawData[newName] = this.rawData[oldName]
                 delete this.rawData[oldName]
             }
         },
