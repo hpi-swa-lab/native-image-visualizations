@@ -5,6 +5,7 @@ import { EventType } from '../../ts/enums/EventType'
 import { onMounted, ref, watch, computed } from 'vue'
 import { globalConfigStore } from '../../ts/stores'
 import { VennSets } from '../../ts/Visualizations/VennSets'
+import ToolTip from '../controls/ToolTip.vue'
 
 const emit = defineEmits([EventType.CHANGE])
 const store = globalConfigStore()
@@ -18,7 +19,6 @@ const selection = computed(() => store.selections)
 
 let visualization: VennSets
 
-
 onMounted(() => {
     visualization = new VennSets('#viz-container', store.currentLayer)
     visualization.setMultiverse(store.multiverse as any)
@@ -31,10 +31,10 @@ watch(
 watch (currentLayer, (newLayer) => {visualization.setLayer(newLayer)})
 watch (highlights, (newHighlights) => {
     visualization.setHighlights(Object.values(newHighlights)[0] as any)
-})
+}, { deep: true })
 watch (selection, (newSelection) => {
     visualization.setSelection(Object.values(newSelection)[0] as any)
-})
+}, { deep: true })
 
 </script>
 
@@ -44,6 +44,9 @@ watch (selection, (newSelection) => {
         :component-type="SwappableComponentType.VennSets"
         @change-page="(componentType: SwappableComponentType) => emit(EventType.CHANGE, componentType)"
     >
-        <div id='viz-container' ref="container"  class="w-full h-full" />
+        <div id='viz-container' ref="container"  class="w-full h-full">
+            
+        </div>
+       
     </MainLayout>
 </template>

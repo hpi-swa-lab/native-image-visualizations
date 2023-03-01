@@ -6,23 +6,13 @@ import { Node } from '../UniverseTypes/Node'
 import { MultiverseVisualization } from './MultiverseVisualization'
 import { Layers } from '../enums/Layers'
 import { getNodesOnLevel } from '../Math/filters'
-import { VennPartitions, VennSet } from '../SharedTypes/Venn'
-import * as venn from '@upsetjs/venn.js'
-import { createVennPartitions, powerSet } from '../Math/Sets'
+import { HierarchyNode } from 'd3'
 
-type Force = {
-    combination: string
-    point: venn.IPoint
-}
-
-type VisualNode = {
-    combination: number[]
-    combinationIndex: number
-    name: string
-    radius: number
-    x: number
-    y: number
-}
+type Group = d3.InternMap<string, d3.InternMap<Node, number>>
+type NodeData = [string, d3.InternMap<Node, number>]
+type LeafData = [Node, number]
+type PackedHierarchyNode = HierarchyNode<NodeData> & d3.PackRadius
+type PackedHierarchyLeaf = HierarchyNode<LeafData> & d3.PackRadius
 
 const COLORS = [
     // todo this should be a variable
@@ -45,29 +35,17 @@ export class VennSets implements MultiverseVisualization {
     highlights: Node[] = []
     private multiverse: Multiverse = new Multiverse([])
     private layer = Layers.PACKAGES
-    private vennPartitions: VennPartitions = { inclusive: [], exclusive: [] }
-
     private container: any
 
     constructor(containerSelector: string, layer: Layers) {
-        const bounds = (d3.select(containerSelector) as any).node().getBoundingClientRect() ?? {
-            width: 1280,
-            height: 720
-        }
-        this.container = d3
-            .select(containerSelector)
-            .append('svg:svg')
-            .attr('width', bounds.width)
-            .attr('height', bounds.height)
-
         this.layer = layer
-        this.initialiseZoom()
+
+        this.initializeContainer(containerSelector)
+        this.initializeZoom()
     }
 
     public setMultiverse(multiverse: Multiverse): void {
         this.multiverse = multiverse
-        this.vennPartitions = createVennPartitions(this.multiverse)
-
         this.redraw()
     }
 
@@ -89,151 +67,108 @@ export class VennSets implements MultiverseVisualization {
     private redraw() {
         this.cleanContainer()
 
-        this.drawLoadingText()
-
         const nodesOnLevel: Node[] = getNodesOnLevel(this.layer, this.multiverse.root)
-        const nodesContainer = this.drawCircles(this.asVisualNodes(nodesOnLevel))
+        const root = this.asCombinationPartitionedHierarchy(nodesOnLevel)
 
-        this.startForceSimulationFor(nodesContainer, this.container)
+        if (!root.children) return
+
+        this.circlePack(root)
+        this.drawCircles(root)
+        this.drawLabels(root)
         this.visualizeUserSelections()
     }
 
-    private startForceSimulationFor(nodesContainer: any, visualisationContainer: any) {
-        const focii: Force[] = this.calculateFociiFor(this.vennPartitions.inclusive)
-        const force = d3
-            .forceSimulation(nodesContainer.data())
-            .force(
-                'center',
-                d3.forceCenter(0.5 * this.containerWidth(), 0.5 * this.containerHeight())
-            )
-            .force('charge', d3.forceManyBody())
-            .force('x', d3.forceX().strength(0.13))
-            .force('y', d3.forceY().strength(0.13))
-            .force(
-                'collide',
-                d3.forceCollide().radius((node: any) => node.radius + 0.5)
-            )
+    private drawCircles(root: HierarchyNode<Group>) {
+        const colorsByName: Map<string, string> = new Map(
+            root.children?.map((node: HierarchyNode<Group>, index: number) => [
+                (node as unknown as HierarchyNode<NodeData>).data[0],
+                COLORS[index]
+            ])
+        )
 
-        force.on('tick', function () {
-            // 'tick' specifially specifies 'this: Simulation<SimulationNodeDatum, undefined>'
-            // as argument, which makes arrow functions inapplicable
-            // eslint-disable-next-line no-invalid-this, @typescript-eslint/no-this-alias
-            const alpha: number = this.alpha()
-            const renderingThreshold = focii.length === 1 ? 0.9 : 0.4 // setz den 2. niedriger für low res, je weiter ausgezoomt desto niedriger kann das
-
-            if (alpha < renderingThreshold) {
-                visualisationContainer.select('.loading').remove()
-
-                nodesContainer
-                    .transition()
-                    .duration(TRANSITION_DURATION)
-                    .attr('cx', (data: any) => {
-                        return data.x
-                    })
-                    .attr('cy', (data: any) => data.y)
-
-                force.stop()
-            } else {
-                const strength = alpha * 0.1 // higher -> nodes get stronger attraction to force
-                nodesContainer.data().forEach((node: VisualNode) => {
-                    node.y += (focii[node.combinationIndex].point.y - node.y) * strength
-                    node.x += (focii[node.combinationIndex].point.x - node.x) * strength
-                })
-            }
-
-            visualisationContainer
-                .select('.loading')
-                .text(
-                    'Calculating Layout: ' +
-                        Math.round(
-                            (1 - (alpha - renderingThreshold) / (1 - renderingThreshold)) * 100
-                        ) +
-                        '%'
-                )
-        })
-    }
-
-    private drawCircles(nodes: VisualNode[]): any {
-        return this.container
+        this.container
             .append('g')
             .attr('class', 'nodes')
             .selectAll('circle')
-            .data(nodes)
-            .join('g')
-            .attr('class', (node: VisualNode) => node.combination)
-            .append('svg:circle')
-            .attr('id', (node: VisualNode) => node.name)
-            .attr('r', (node: VisualNode) => node.radius)
-            .attr('cx', -100)
-            .attr('cy', -100)
-            .attr(
-                'fill',
-                (node: VisualNode) => COLORS[node.combinationIndex] // todo
+            .data(root.leaves())
+            .join('svg:circle')
+            .attr('class', 'leaf node')
+            .attr('id', (leaf: PackedHierarchyLeaf) => leaf.data[0].name)
+            .attr('cx', (leaf: PackedHierarchyLeaf) => leaf.x)
+            .attr('cy', (leaf: PackedHierarchyLeaf) => leaf.y)
+            .attr('r', (leaf: PackedHierarchyLeaf) => leaf.r)
+            .attr('fill', (leaf: PackedHierarchyLeaf) =>
+                colorsByName.get((leaf.parent as unknown as PackedHierarchyNode).data[0])
             )
-            .on('mouseover', (event: Event, node: VisualNode) => {
-                console.log(`
-                Exclusive in: ${node.combination
-                    .map((index) => this.multiverse.sources[index].name)
-                    .join(' intersecting ')}
-                Name: ${node.name}
-                Code Size: ${node.radius.toFixed(2)} Byte`)
-            })
+            .on('mouseover', this.drawTooltipFor.bind(this))
     }
 
-    private drawLoadingText() {
-        if (this.multiverse.sources.length === 0) return
-
+    private drawLabels(root: HierarchyNode<Group>) {
         this.container
-            .append('svg:text')
-            .attr('class', 'loading')
-            .attr('x', this.containerWidth() / 2 - 200)
-            .attr('y', this.containerHeight() / 2)
-            .text('Drawing Bubbles')
+            .select('.nodes')
+            .selectAll('text')
+            .data(root.children)
+            .join('svg:text')
+            .text((node: PackedHierarchyNode) => node.data[0])
+            .attr('class', 'label')
+            .attr('x', (node: PackedHierarchyNode) => node.x)
+            .attr('y', (node: PackedHierarchyNode) => (node.y ?? 0) - node.r)
+            .attr('pointer-events', 'none')
+            .attr('text-anchor', 'middle')
     }
 
-    private initialiseZoom() {
+    private drawTooltipFor(_event: Event, leaf: PackedHierarchyLeaf) {
+        console.log(this.asString(leaf))
+    }
+
+    private circlePack(root: HierarchyNode<Group>): void {
+        d3.pack().size([this.containerWidth(), this.containerHeight()]).padding(3)(root)
+    }
+
+    private asString(leaf: PackedHierarchyLeaf): string {
+        const node = leaf.data[0]
+        const parent = leaf.parent as unknown as PackedHierarchyNode
+        return `Exclusive in: ${parent.data[0]}
+                Name: ${node.name}
+                Code Size: ${node.codeSize.toFixed(2)} Byte`
+    }
+
+    private asCombinationPartitionedHierarchy(nodes: Node[]): HierarchyNode<Group> {
+        const indicesToNames = (node: Node) =>
+            [...node.sources.keys()]
+                .map((index) => this.multiverse.sources[index].name)
+                .join(' intersecting ')
+
+        const groups = d3.rollup(
+            nodes,
+            (group: Node[]) => d3.sum(group, (node: Node) => node.codeSize),
+            indicesToNames,
+            (node: Node) => node
+        )
+
+        return d3.hierarchy(groups).sum((node: Group) => (node as unknown as LeafData)[1])
+        // .sort((a, b) => a.value - b.value) // this should be an option todo
+    }
+
+    private initializeContainer(containerSelector: string) {
+        const bounds = (d3.select(containerSelector) as any).node().getBoundingClientRect() ?? {
+            width: 1280,
+            height: 720
+        }
+
+        this.container = d3
+            .select(containerSelector)
+            .append('svg:svg')
+            .attr('width', bounds.width)
+            .attr('height', bounds.height)
+    }
+
+    private initializeZoom() {
         const zoom = d3
             .zoom()
-            .scaleExtent([0.01, 4])
+            .scaleExtent([0.5, 4])
             .on('zoom', ({ transform }) => this.container.select('g').attr('transform', transform))
         this.container.call(zoom)
-    }
-
-    private asVisualNodes(nodes: Node[]): VisualNode[] {
-        const maxValue: number = Math.max(...nodes.map((a) => a.codeSize))
-        const scaling = d3.scalePow().exponent(0.5).domain([0, maxValue]).range([3, 40])
-        const possibleCombinations = powerSet([...this.multiverse.sources.keys()])
-            .map((combination) => JSON.stringify(combination))
-            .slice(1) as string[]
-
-        const visualNodes: VisualNode[] = []
-        visualNodes.push(
-            ...nodes.map((node) => {
-                const combination = [...node.sources.keys()]
-                return <VisualNode>{
-                    combination: combination,
-                    combinationIndex: possibleCombinations.indexOf(JSON.stringify(combination)), // todo
-                    name: node.name,
-                    radius: scaling(node.codeSize)
-                }
-            })
-        )
-        return visualNodes
-    }
-
-    private calculateFociiFor(set: VennSet[]): Force[] {
-        if (set.length === 0) return []
-        const solution = venn.venn(set)
-        const circles = venn.scaleSolution(
-            solution,
-            this.containerWidth(),
-            this.containerHeight(),
-            10
-        )
-        const focii: { [set: string]: venn.IPoint } = venn.computeTextCentres(circles, set, false)
-        return Object.entries(focii).map(([combination, point]) => {
-            return { combination: combination, point: point }
-        })
     }
 
     private visualizeUserSelections() {
