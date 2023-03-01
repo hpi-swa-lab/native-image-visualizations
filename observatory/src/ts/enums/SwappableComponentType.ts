@@ -4,7 +4,8 @@ export enum SwappableComponentType {
     TreeLine,
     CausalityGraph,
     Home,
-    None
+    None,
+    CutTool
 }
 
 export function componentName(component: SwappableComponentType | undefined) {
@@ -19,6 +20,8 @@ export function componentName(component: SwappableComponentType | undefined) {
             return 'Causality Graph'
         case SwappableComponentType.Home:
             return 'Home'
+        case SwappableComponentType.CutTool:
+            return 'Cut Tool'
         default:
             return '<Error>'
     }

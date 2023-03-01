@@ -6,6 +6,7 @@ import { SwappableComponentType } from './ts/enums/SwappableComponentType'
 import TreeLine from './components/visualizations/TreeLine.vue'
 import Venn from './components/visualizations/VennSets.vue'
 import { globalConfigStore } from './ts/stores'
+import CutTool from './components/visualizations/CutTool.vue';
 
 const store = globalConfigStore()
 </script>
@@ -20,4 +21,5 @@ const store = globalConfigStore()
         v-else-if="store.currentComponent === SwappableComponentType.CausalityGraph"
     ></CausalityGraph>
     <Home v-else-if="store.currentComponent === SwappableComponentType.Home"></Home>
+    <CutTool v-else-if="store.currentComponent === SwappableComponentType.CutTool"></CutTool>
 </template>
