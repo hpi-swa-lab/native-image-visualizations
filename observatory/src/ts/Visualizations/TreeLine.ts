@@ -48,13 +48,13 @@ export class TreeLine implements MultiverseVisualization {
         d3.select(this.canvas as Element).call(
             d3.zoom().on('zoom', (event) => {
                 this.transform = event?.transform ?? this.transform
-                return this.redraw(event)
+                return this.redraw()
             })
         )
-        window.addEventListener('resize', (_) => this.redraw())
+        window.addEventListener('resize', () => this.redraw())
     }
 
-    setMultiverse(multiverse: Multiverse): void {
+    public setMultiverse(multiverse: Multiverse): void {
         this.multiverse = multiverse
 
         // Create a list of combinations sorted in a way that is visually
@@ -84,7 +84,7 @@ export class TreeLine implements MultiverseVisualization {
         this.redraw()
     }
 
-    setColorScheme(colorScheme: ColorScheme) {
+    public setColorScheme(colorScheme: ColorScheme) {
         this.colorScheme = colorScheme
         this.buildColors()
         this.buildFillStyles()
@@ -92,24 +92,23 @@ export class TreeLine implements MultiverseVisualization {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    setSelection(selection: Node[]): void {
+    public setSelection(selection: Node[]): void {
         // TODO; https://github.com/hpi-swa-lab/MPWS2022RH1/issues/118
     }
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    setHighlights(highlights: Node[]): void {
+    public setHighlights(highlights: Node[]): void {
         // TODO; https://github.com/hpi-swa-lab/MPWS2022RH1/issues/118
     }
 
-    buildColors() {
+    private buildColors() {
         const indices: UniverseIndex[] = this.multiverse.sources.map((_, i) => i)
         this.colors = new Map()
         for (const index of indices) {
             this.colors.set(index, this.colorScheme[index % this.colorScheme.length])
-            console.log(`Color ${index} set to ${this.colors.get(index)!}`)
         }
     }
 
-    buildFillStyles() {
+    private buildFillStyles() {
         if (!this.canvas || !this.context) {
             throw Error('canvas or context not ready')
         }
@@ -156,7 +155,7 @@ export class TreeLine implements MultiverseVisualization {
         }
     }
 
-    fitToScreen() {
+    private fitToScreen() {
         if (!this.canvas) {
             throw Error('canvas not ready')
         }
@@ -171,9 +170,8 @@ export class TreeLine implements MultiverseVisualization {
         }
     }
 
-    redraw(event: any | undefined = undefined) {
+    private redraw() {
         if (!this.canvas || !this.context) {
-            console.log(this.canvas, this.context)
             throw Error('canvas or context not ready')
         }
 
@@ -196,7 +194,7 @@ export class TreeLine implements MultiverseVisualization {
         this.drawDiagram(multiverse.root, top, pixelsPerByte, [], leftOfHierarchy)
     }
 
-    drawDiagram(
+    private drawDiagram(
         tree: Node,
         top: number,
         pixelsPerByte: number,
@@ -281,7 +279,7 @@ export class TreeLine implements MultiverseVisualization {
         }
     }
 
-    drawHierarchyBox(
+    private drawHierarchyBox(
         left: number,
         top: number,
         height: number,

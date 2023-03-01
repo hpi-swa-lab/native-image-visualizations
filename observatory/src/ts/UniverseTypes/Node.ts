@@ -1,4 +1,3 @@
-import clone from 'clone'
 import { HIERARCHY_NAME_SEPARATOR } from '../globals'
 import { mapEquals } from '../Math/Maps'
 import { UniverseIndex } from '../SharedTypes/Indices'
