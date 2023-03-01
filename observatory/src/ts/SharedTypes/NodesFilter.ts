@@ -10,11 +10,11 @@ export type NodesFilter = {
     sorting: NodesSortingFilter
 }
 
-export function nodesFilterForExport(
+export function serializeNodesFilter(
     filter: NodesFilter
 ): Record<string, string | string[] | boolean> {
-    const diffingExport = nodesDiffingFilterForExport(filter.diffing)
-    const sortingExport = nodesSortingFilterForExport(filter.sorting)
+    const diffingExport = serializeNodesDiffingFilter(filter.diffing)
+    const sortingExport = serializeNodesSortingFilter(filter.sorting)
 
     return {
         diffingUniverses: diffingExport.universes,
@@ -29,7 +29,7 @@ export type NodesDiffingFilter = {
     showUnmodified: boolean
 }
 
-export function nodesDiffingFilterForExport(
+export function serializeNodesDiffingFilter(
     filter: NodesDiffingFilter
 ): Record<string, string[] | boolean> {
     return {
@@ -43,7 +43,7 @@ export type NodesSortingFilter = {
     order: SortingOrder
 }
 
-export function nodesSortingFilterForExport(filter: NodesSortingFilter): Record<string, string> {
+export function serializeNodesSortingFilter(filter: NodesSortingFilter): Record<string, string> {
     return {
         option: sortingOptionForExport(filter.option),
         order: sortingOrderForExport(filter.order)

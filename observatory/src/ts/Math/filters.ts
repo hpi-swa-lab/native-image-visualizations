@@ -14,34 +14,19 @@ export function findNodesWithName(name: string, root: Node): Node[] {
 }
 
 export function findNodeWithIdentifier(identifier: string, root: Node): Node | undefined {
-    const result: Node | undefined = undefined
-
     if (root.identifier === identifier) {
         return root
-    } else {
-        const childrenWithId = root.children
-            .map((child) => findNodeWithIdentifier(identifier, child))
-            .filter((value: Node | undefined) => value !== undefined)
-
-        if (childrenWithId.length > 0) {
-            return childrenWithId[0]
-        }
     }
 
-    return result
+    return root.children
+        .map((child) => findNodeWithIdentifier(identifier, child))
+        .find((value: Node | undefined) => value !== undefined)
 }
 
 export function findNodesWithIdentifiers(identifiers: string[], root: Node): Node[] {
-    const result: Node[] = []
-
-    identifiers.forEach((identifier: string) => {
-        const node = findNodeWithIdentifier(identifier, root)
-        if (node) {
-            result.push(node)
-        }
-    })
-
-    return result
+    return identifiers
+        .map((identifier: string) => findNodeWithIdentifier(identifier, root))
+        .filter((mapResult: Node | undefined) => mapResult !== undefined) as Node[]
 }
 
 export function getNodesOnLevel(level: number, root: Node): Node[] {

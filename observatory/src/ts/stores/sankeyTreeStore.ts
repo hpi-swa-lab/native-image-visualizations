@@ -2,10 +2,10 @@ import { defineStore } from 'pinia'
 import { SortingOption, SortingOrder } from '../enums/Sorting'
 import {
     NodesDiffingFilter,
-    nodesDiffingFilterForExport,
+    serializeNodesDiffingFilter,
     NodesFilter,
     NodesSortingFilter,
-    nodesSortingFilterForExport
+    serializeNodesSortingFilter
 } from '../SharedTypes/NodesFilter'
 
 export type SankeyStoreConfig = Record<
@@ -40,8 +40,8 @@ export const useSankeyStore = defineStore('sankeyTreeConfig', {
     actions: {
         toExportDict(): SankeyStoreConfig {
             return {
-                diffing: nodesDiffingFilterForExport(this.diffingFilter),
-                sorting: nodesSortingFilterForExport(this.sortingFilter)
+                diffing: serializeNodesDiffingFilter(this.diffingFilter),
+                sorting: serializeNodesSortingFilter(this.sortingFilter)
             }
         },
         changeUniverseSelection(universeId: string) {

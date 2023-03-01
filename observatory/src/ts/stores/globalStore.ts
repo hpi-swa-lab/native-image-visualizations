@@ -19,6 +19,12 @@ export type GlobalConfig = Record<string, string | NodeIdentifiersPerUniverse | 
 export const CONFIG_NAME = '_config'
 export const reservedNames = [CONFIG_NAME]
 
+function validateUniverseName(name: string) {
+    if (reservedNames.includes(name)) {
+        throw new InvalidInputError(`The name ${name} is reserved and cannot be used for universes`)
+    }
+}
+
 export const useGlobalStore = defineStore('globalConfig', {
     state: () => {
         return {
@@ -40,11 +46,7 @@ export const useGlobalStore = defineStore('globalConfig', {
     },
     actions: {
         addUniverse(newUniverse: Universe, rawData: unknown): void {
-            if (reservedNames.includes(newUniverse.name)) {
-                throw new InvalidInputError(
-                    `The name ${newUniverse.name} is reserved and cannot be used for universes`
-                )
-            }
+            validateUniverseName(newUniverse.name)
 
             const matchingUniverse = this.universes.find(
                 (universe) => universe.name === newUniverse.name
@@ -73,11 +75,7 @@ export const useGlobalStore = defineStore('globalConfig', {
             }
         },
         updateUniverseName(oldName: string, newName: string): void {
-            if (reservedNames.includes(newName)) {
-                throw new InvalidInputError(
-                    `The name ${newName} is reserved and cannot be used for universes`
-                )
-            }
+            validateUniverseName(newName)
 
             const universe = this.universes.find((universe) => universe.name === oldName)
             if (universe) {
