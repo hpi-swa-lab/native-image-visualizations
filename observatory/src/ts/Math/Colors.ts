@@ -1,4 +1,4 @@
-// / Lightens up a color by moving it closer to white.
+/// Lightens up a color by moving it closer to white.
 export function lightenColor(color: string, alpha: number): string {
     const r = parseInt(color.substring(1, 3), 16)
     const g = parseInt(color.substring(3, 5), 16)
@@ -13,18 +13,4 @@ export function lightenColor(color: string, alpha: number): string {
     const bbb = bb.toString(16).length === 1 ? `0${bb.toString(16)}` : bb.toString(16)
 
     return `#${rrr}${ggg}${bbb}`
-}
-
-export function mapEquals<K, V>(
-    a: Map<K, V>,
-    b: Map<K, V>,
-    equals: (a: V, b: V) => boolean = (a, b) => a == b
-): boolean {
-    return (
-        a.size == b.size &&
-        Array.from(a.entries()).every(([key, value]) => {
-            const other = b.get(key)
-            return other && equals(value, other)
-        })
-    )
 }
