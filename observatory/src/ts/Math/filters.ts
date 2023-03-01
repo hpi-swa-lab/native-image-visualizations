@@ -16,11 +16,11 @@ export function findNodesWithName(name: string, root: Node): Node[] {
 export function findNodeWithIdentifier(identifier: string, root: Node): Node | undefined {
     const result: Node | undefined = undefined
 
-    if (root.identifier === identifyer) {
+    if (root.identifier === identifier) {
         return root
     } else {
         const childrenWithId = root.children
-            .map((child) => findNodeWithIdentifyer(identifyer, child))
+            .map((child) => findNodeWithIdentifier(identifier, child))
             .filter((value: Node | undefined) => value !== undefined)
 
         if (childrenWithId.length > 0) {
@@ -35,7 +35,7 @@ export function findNodesWithIdentifiers(identifiers: string[], root: Node): Nod
     const result: Node[] = []
 
     identifiers.forEach((identifyer: string) => {
-        const node = findNodeWithIdentifyer(identifyer, root)
+        const node = findNodeWithIdentifier(identifyer, root)
         if (node) {
             result.push(node)
         }
