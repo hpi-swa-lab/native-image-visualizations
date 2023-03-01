@@ -7,7 +7,7 @@ import {
     serializeComponent
 } from '../enums/SwappableComponentType'
 import { findNodesWithName } from '../Math/filters'
-import { layerForExport, Layers } from '../enums/Layers'
+import { serializerLayer, Layers } from '../enums/Layers'
 import { Multiverse } from '../UniverseTypes/Multiverse'
 import { objectMap } from '../helpers'
 import { InvalidInputError } from '../errors'
@@ -166,7 +166,7 @@ export const useGlobalStore = defineStore('globalConfig', {
                 highlights: objectMap<string[]>(this.highlights, (_, highlight: Node[]) => {
                     return highlight.map((node: Node) => node.identifier)
                 }),
-                currentLayer: layerForExport(this.currentLayer),
+                currentLayer: serializerLayer(this.currentLayer),
                 currentComponent: serializeComponent(this.currentComponent),
                 previousComponent: this.previousComponent
                     ? serializeComponent(this.previousComponent)

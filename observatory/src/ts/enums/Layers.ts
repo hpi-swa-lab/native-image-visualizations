@@ -6,7 +6,7 @@ export enum Layers {
     METHODS = 4
 }
 
-export function layerForExport(layer: Layers): string {
+export function serializerLayer(layer: Layers): string {
     return layer.toString()
 }
 
