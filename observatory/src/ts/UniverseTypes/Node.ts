@@ -2,6 +2,7 @@ import clone from 'clone'
 import { HIERARCHY_NAME_SEPARATOR } from '../globals'
 import { UniverseIndex } from '../SharedTypes/Indices'
 import { Bytes } from '../SharedTypes/Size'
+import { mapEquals } from '../utils'
 
 export const INVALID_SIZE: Bytes = -1
 
@@ -139,10 +140,7 @@ export class Node {
             this.children.every((child: Node, index: number) =>
                 child.equalsIgnoringParents(another.children[index])
             ) &&
-            Array.from(this.sources.entries()).every(([id, node]) => {
-                const other = another.sources.get(id)
-                return other && node.equals(other)
-            })
+            mapEquals(this.sources, another.sources, (a, b) => a.equals(b))
         )
     }
 

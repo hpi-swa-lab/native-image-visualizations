@@ -1,6 +1,6 @@
+import { UniverseIndex } from '../SharedTypes/Indices'
 import { Node } from './Node'
 import { Universe } from './Universe'
-import { UniverseIndex } from '../SharedTypes/Indices'
 
 export class Multiverse {
     private _root: Node
@@ -76,4 +76,9 @@ export class Multiverse {
             this.setSourcesRecursively(child, original.children[i], index)
         )
     }
+}
+
+export type UniverseCombination = string
+export function universeCombination(indices: UniverseIndex[]): UniverseCombination {
+    return indices.sort().join(',')
 }
