@@ -10,10 +10,13 @@ import { findNodesWithName } from '../Math/filters'
 import { layerForExport, Layers } from '../enums/Layers'
 import { Multiverse } from '../UniverseTypes/Multiverse'
 import { objectMap } from '../helpers'
+import { InvalidInputError } from '../errors'
 
 type NodeIdentifiersPerUniverse = Record<string, string[]>
 
 export type GlobalConfig = Record<string, string | NodeIdentifiersPerUniverse | unknown>
+
+export const reservedNames = ['_config']
 
 export const useGlobalStore = defineStore('globalConfig', {
     state: () => {
@@ -36,6 +39,12 @@ export const useGlobalStore = defineStore('globalConfig', {
     },
     actions: {
         addUniverse(newUniverse: Universe, rawData: unknown): void {
+            if (reservedNames.includes(newUniverse.name)) {
+                throw new InvalidInputError(
+                    `The name ${newUniverse.name} is reserved and cannot be used for universes`
+                )
+            }
+
             const matchingUniverse = this.universes.find(
                 (universe) => universe.name === newUniverse.name
             )
@@ -63,6 +72,12 @@ export const useGlobalStore = defineStore('globalConfig', {
             }
         },
         updateUniverseName(oldName: string, newName: string): void {
+            if (reservedNames.includes(newName)) {
+                throw new InvalidInputError(
+                    `The name ${newName} is reserved and cannot be used for universes`
+                )
+            }
+
             const universe = this.universes.find((universe) => universe.name === oldName)
             if (universe) {
                 universe.name = newName
