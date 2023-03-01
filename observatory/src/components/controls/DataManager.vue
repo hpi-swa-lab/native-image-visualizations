@@ -9,6 +9,8 @@ import { useTreeLineStore } from '../../ts/stores/treeLineStore'
 import { useCausalityGraphStore } from '../../ts/stores/causalityGraphStore'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import InlineEditableField from './InlineEditableField.vue'
+import JSZip from 'jszip'
+import FileSaver from 'file-saver'
 
 const globalStore = useGlobalStore()
 const vennStore = useVennStore()
@@ -45,7 +47,9 @@ function addUniverses(event: Event) {
 }
 
 function exportConfig() {
-    const data = {
+    const rawData = globalStore.rawData
+
+    const configData = {
         global: globalStore.toExportDict(),
         venn: vennStore.toExportDict(),
         sankey: sankeyStore.toExportDict(),
@@ -53,15 +57,15 @@ function exportConfig() {
         causalityGraph: causalityGraphStore.toExportDict()
     }
 
-    const dataString = `data:text/json;charset=utf-8, ${encodeURIComponent(JSON.stringify(data))}`
+    const zip = new JSZip()
+    zip.file('_config.json', JSON.stringify(configData))
+    Object.entries(rawData).forEach(([universeName, data]) => {
+        zip.file(`${universeName}.json`, JSON.stringify(data))
+    })
 
-    const anchor = document.createElement('a')
-    anchor.setAttribute('href', dataString)
-    anchor.setAttribute('download', 'data-config.json')
-
-    document.body.appendChild(anchor)
-    anchor.click()
-    document.body.removeChild(anchor)
+    zip.generateAsync({ type: 'blob' }).then((content) => {
+        FileSaver.saveAs(content, 'data-and-config.zip')
+    })
 }
 </script>
 
