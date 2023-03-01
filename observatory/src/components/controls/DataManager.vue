@@ -24,25 +24,24 @@ const uploadError = ref<Error | undefined>(undefined)
 
 const nameFields = ref<InstanceType<typeof InlineEditableField>[]>()
 
-function validateFileAndAddUniverseOnSuccess(file: File, universeName: string): void {
-    loadJson(file)
-        .then((parsedJSON) => {
-            const newUniverse = new Universe(
-                universeName,
-                parseReachabilityExport(parsedJSON, universeName)
-            )
-            try {
-                globalStore.addUniverse(newUniverse, parsedJSON)
-                uploadError.value = undefined
-            } catch (error: unknown) {
-                if (error instanceof Error) {
-                    uploadError.value = error
-                }
-            }
-        })
-        .catch((error) => {
+async function validateFileAndAddUniverseOnSuccess(
+    file: File,
+    universeName: string
+): Promise<void> {
+    const parsedJSON = await loadJson(file)
+    const newUniverse = new Universe(
+        universeName,
+        parseReachabilityExport(parsedJSON, universeName)
+    )
+
+    try {
+        globalStore.addUniverse(newUniverse, parsedJSON)
+        uploadError.value = undefined
+    } catch (error: unknown) {
+        if (error instanceof Error) {
             uploadError.value = error
-        })
+        }
+    }
 }
 
 function addUniverses(event: Event) {
