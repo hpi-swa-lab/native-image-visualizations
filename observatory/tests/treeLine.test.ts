@@ -1,9 +1,9 @@
 import { describe, expect, test } from '@jest/globals'
+import { mapEquals } from '../src/ts/Math/Maps'
 import { computeExclusiveSizes } from '../src/ts/Math/Universes'
 import { Multiverse } from '../src/ts/UniverseTypes/Multiverse'
 import { Node } from '../src/ts/UniverseTypes/Node'
 import { Universe } from '../src/ts/UniverseTypes/Universe'
-import { mapEquals } from '../src/ts/utils'
 import { forest } from './data/forest'
 
 describe('TreeLine', () => {
