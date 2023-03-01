@@ -8,6 +8,7 @@ import { MultiverseVisualization } from './MultiverseVisualization'
 import { Layers } from '../enums/Layers'
 import { getNodesOnLevel } from '../Math/filters'
 import { HierarchyNode } from 'd3'
+import { ColorScheme } from '../SharedTypes/Colors'
 
 type Group = d3.InternMap<string, d3.InternMap<Node, number>>
 type NodeData = [string, d3.InternMap<Node, number>]
@@ -15,31 +16,19 @@ type LeafData = [Node, number]
 type PackedHierarchyNode = HierarchyNode<NodeData> & d3.PackRadius
 type PackedHierarchyLeaf = HierarchyNode<LeafData> & d3.PackRadius
 
-const COLORS = [
-    // todo this should be a variable
-    '#4e79a7',
-    '#e15759',
-    '#76b7b2',
-    '#59a14f',
-    '#edc949',
-    '#f28e2c',
-    '#af7aa1',
-    '#ff9da7',
-    '#9c755f',
-    '#bab0ab'
-] // tableau 10
-
 const TRANSITION_DURATION = 500
 
 export class VennSets implements MultiverseVisualization {
+    colorScheme: ColorScheme = []
     selection: Node[] = []
     highlights: Node[] = []
     private multiverse: Multiverse = new Multiverse([])
     private layer = Layers.PACKAGES
     private container: any
 
-    constructor(containerSelector: string, layer: Layers) {
+    constructor(containerSelector: string, layer: Layers, colorScheme: ColorScheme) {
         this.layer = layer
+        this.colorScheme = colorScheme
 
         this.initializeContainer(containerSelector)
         this.initializeZoom()
@@ -83,7 +72,7 @@ export class VennSets implements MultiverseVisualization {
         const colorsByName: Map<string, string> = new Map(
             root.children?.map((node: HierarchyNode<Group>, index: number) => [
                 (node as unknown as HierarchyNode<NodeData>).data[0],
-                COLORS[index]
+                this.colorScheme[index]
             ])
         )
 

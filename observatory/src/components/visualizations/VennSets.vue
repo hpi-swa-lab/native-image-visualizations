@@ -5,7 +5,6 @@ import { EventType } from '../../ts/enums/EventType'
 import { onMounted, ref, watch, computed } from 'vue'
 import { globalConfigStore } from '../../ts/stores'
 import { VennSets } from '../../ts/Visualizations/VennSets'
-import ToolTip from '../controls/ToolTip.vue'
 
 const emit = defineEmits([EventType.CHANGE])
 const store = globalConfigStore()
@@ -20,7 +19,7 @@ const selection = computed(() => store.selections)
 let visualization: VennSets
 
 onMounted(() => {
-    visualization = new VennSets('#viz-container', store.currentLayer)
+    visualization = new VennSets('#viz-container', store.currentLayer, store.colorScheme)
     visualization.setMultiverse(store.multiverse as any)
 })
 
