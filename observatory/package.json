@@ -23,6 +23,8 @@
         "@upsetjs/venn.js": "^1.4.2",
         "clone": "^2.1.2",
         "d3": "^7.8.1",
+        "file-saver": "^2.0.5",
+        "jszip": "^3.10.1",
         "papaparse": "^5.3.2",
         "pinia": "^2.0.30",
         "tailwindcss": "^3.2.4",
@@ -32,6 +34,7 @@
     "devDependencies": {
         "@types/clone": "^2.1.1",
         "@types/d3": "^7.4.0",
+        "@types/file-saver": "^2.0.5",
         "@types/jest": "^29.2.6",
         "@types/papaparse": "^5.3.7",
         "@typescript-eslint/eslint-plugin": "^5.48.1",
