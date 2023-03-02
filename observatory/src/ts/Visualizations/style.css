@@ -1,14 +1,3 @@
-<script setup lang="ts">
-import MainLayout from '../layouts/MainLayout.vue'
-import * as CutTool from '../../ts/Visualizations/CutTool.js'
-</script>
-
-<style>
-
-#cut-tool-root {
-  all: initial;
-}
-
 /* Remove default bullets */
 ul {
     list-style-type: none;
@@ -262,54 +251,3 @@ body {
 .direct-edge {
     stroke: #808080;
 }
-
-</style>
-
-<template>
-    <MainLayout title="Cut Tool">
-        <div id="cut-tool-root">
-            <div id="fileselect-panel" class="fullscreen" @dragover="CutTool.allowDrop(event)" @drop="CutTool.drop(event)">
-                <input type="file" id="file-input" accept="application/zip" hidden>
-                <div class="center">
-                    Drop
-                    <button @click="CutTool.triggerFileSectionDialog()"><big>or select</big></button>
-                    Causality Export
-                </div>
-            </div>
-
-            <div id="loading-panel" class="fullscreen" hidden>
-                <div class="center">
-                    <big>Causality Graph is being parsed...</big>
-                </div>
-            </div>
-
-            <div id="main-panel" class="fullscreen" hidden>
-                <div class="overview-div">
-                    <span><b>Cut Overview:</b></span>
-                    <label>
-                        <input type="checkbox" checked="checked" @change="CutTool.changePrecomputeCutoffs(this.checked)">
-                        Precompute cutoffs
-                    </label>
-                    <div id="cut-overview-root"></div>
-                </div>
-                <div class="detail-div" hidden>
-                    <svg id="detail-svg" width="100%" height="100%">
-                        <marker id="arrowhead" markerWidth="10" markerHeight="7"
-                                refX="10" refY="3.5" orient="auto">
-                            <polygon points="0 0, 10 3.5, 0 7"/>
-                        </marker>
-
-                        <g id="chartpanel">
-                            <rect id="zoom-opfer" fill="black" opacity="0" height="100%" width="100%"></rect>
-                            <g id="chart"></g>
-                        </g>
-                    </svg>
-                </div>
-                <div class="imageview-div">
-                    <span><b>In-Image Overview:</b></span>
-                    <div id="imageview-root"></div>
-                </div>
-            </div>
-        </div>
-    </MainLayout>
-</template>
