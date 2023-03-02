@@ -10,7 +10,6 @@ export class CausalityGraphData {
     // Currently keeps this name for consistency with all other causality-processing code
     methodList: string[] = []
     typeList: string[] = []
-        // These binary blobs are handed to the wasm module
 
     // These binary blobs are handed to the wasm module
     'interflows.bin': Uint8Array
