@@ -135,8 +135,6 @@
         <artifactId>native-maven-plugin</artifactId>
         <configuration>
           <buildArgs combine.children="append">
-            <!--<buildArg>-H:+PrintAnalysisCallTree</buildArg>-->
-            <buildArg>-H:+PrintMethodHistogram</buildArg>
           </buildArgs>
         </configuration>
       </plugin>
