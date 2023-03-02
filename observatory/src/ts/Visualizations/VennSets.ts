@@ -9,6 +9,13 @@ import { Layers } from '../enums/Layers'
 import { getNodesOnLevel } from '../Math/filters'
 import { HierarchyNode } from 'd3'
 import { ColorScheme } from '../SharedTypes/Colors'
+import { formatBytes } from '../SharedTypes/Size'
+
+interface Props {
+    showToolTip: (content: string) => void
+    updateToolTipPosition: (x: number, y: number) => void
+    hideToolTip: () => void
+}
 
 type Group = d3.InternMap<string, d3.InternMap<Node, number>>
 type NodeData = [string, d3.InternMap<Node, number>]
@@ -25,10 +32,12 @@ export class VennSets implements MultiverseVisualization {
     private multiverse: Multiverse = new Multiverse([])
     private layer = Layers.PACKAGES
     private container: any
+    private props: any
 
-    constructor(containerSelector: string, layer: Layers, colorScheme: ColorScheme) {
+    constructor(containerSelector: string, layer: Layers, colorScheme: ColorScheme, props: Props) {
         this.layer = layer
         this.colorScheme = colorScheme
+        this.props = props
 
         this.initializeContainer(containerSelector)
         this.initializeZoom()
@@ -90,6 +99,13 @@ export class VennSets implements MultiverseVisualization {
             .attr('fill', (leaf: PackedHierarchyLeaf) =>
                 colorsByName.get((leaf.parent as unknown as PackedHierarchyNode).data[0])
             )
+            .on('mouseenter', (_event: any, data: PackedHierarchyLeaf) =>
+                this.props.showToolTip(this.asString(data))
+            )
+            .on('mousemove', (event: any) =>
+                this.props.updateToolTipPosition(event.pageX, event.pageY)
+            )
+            .on('mouseout', () => this.props.hideToolTip())
     }
 
     private drawLabels(root: HierarchyNode<Group>) {
@@ -110,14 +126,12 @@ export class VennSets implements MultiverseVisualization {
         d3.pack().size([this.containerWidth(), this.containerHeight()]).padding(3)(root)
     }
 
-    // TODO: Joana
-    // Will be used when tooltip is existing , see {@link: https://github.com/hpi-swa-lab/MPWS2022RH1/issues/52}
     private asString(leaf: PackedHierarchyLeaf): string {
         const node = leaf.data[0]
         const parent = leaf.parent as unknown as PackedHierarchyNode
         return `Exclusive in: ${parent.data[0]}
                 Name: ${node.name}
-                Code Size: ${node.codeSize.toFixed(2)} Byte`
+                Code Size: ${formatBytes(node.codeSize)}`
     }
 
     private asCombinationPartitionedHierarchy(nodes: Node[]): HierarchyNode<Group> {
