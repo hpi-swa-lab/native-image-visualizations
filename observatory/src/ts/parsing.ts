@@ -172,7 +172,7 @@ export async function loadCgZip(file: File) {
     const parameterFiles = ['typestates.bin', 'interflows.bin', 'direct_invokes.bin', 'typeflow_methods.bin', 'typeflow_filters.bin']
 
     for(const path of parameterFiles) {
-        cgData[path] = getZipEntry(path).getData(new zip.Uint8ArrayWriter())
+        cgData[path] = await getZipEntry(path).getData(new zip.Uint8ArrayWriter())
     }
 
     return cgData
