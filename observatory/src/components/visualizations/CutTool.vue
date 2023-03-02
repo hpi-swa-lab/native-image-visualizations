@@ -1,6 +1,25 @@
 <script setup lang="ts">
+import { computed, onMounted, ref, watch } from 'vue'
+import { globalConfigStore } from '../../ts/stores'
 import MainLayout from '../layouts/MainLayout.vue'
-import * as CutTool from '../../ts/Visualizations/CutTool.js'
+import { CutTool } from '../../ts/Visualizations/CutTool.js'
+import { CausalityGraphUniverse } from '../../ts/UniverseTypes/CausalityGraphUniverse';
+
+const store = globalConfigStore()
+const multiverse = computed(() => store.multiverse)
+
+let visualization: CutTool | undefined = undefined
+
+onMounted(() => {
+    visualization = new CutTool()
+    if(multiverse.value.sources.length === 1)
+        visualization.setUniverse(multiverse.value.sources[0] as CausalityGraphUniverse)
+})
+
+watch(multiverse, (multiverse) => {
+    if(multiverse.sources.length === 1)
+        visualization.setUniverse(multiverse.sources[0] as CausalityGraphUniverse)
+})
 </script>
 
 <style>
@@ -261,15 +280,6 @@ body.waiting * {
 <template>
     <MainLayout title="Cut Tool">
         <div id="cut-tool-root">
-            <div id="fileselect-panel" class="fullscreen" @dragover="CutTool.allowDrop(event)" @drop="CutTool.drop(event)">
-                <input type="file" id="file-input" accept="application/zip" hidden>
-                <div class="center">
-                    Drop
-                    <button @click="CutTool.triggerFileSectionDialog()"><big>or select</big></button>
-                    Causality Export
-                </div>
-            </div>
-
             <div id="loading-panel" class="fullscreen" hidden>
                 <div class="center">
                     <big>Causality Graph is being parsed...</big>

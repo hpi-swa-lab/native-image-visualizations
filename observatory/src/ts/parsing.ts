@@ -11,6 +11,7 @@ import { Bytes } from './SharedTypes/Size'
 import { Leaf, InitKind } from './UniverseTypes/Leaf'
 import { Universe } from './UniverseTypes/Universe'
 import { Node } from './UniverseTypes/Node'
+import * as zip from '@zip.js/zip.js';
 
 type Methods = {
     [methodName: string]: { size: Bytes; flags?: string[] }
@@ -143,6 +144,36 @@ export function createConfigUniverses(
 function createConfigUniverse(universe: Universe): Record<string, unknown> {
     // TODO: implement this, corresponding issue: [#85](https://github.com/hpi-swa-lab/MPWS2022RH1/issues/85v)
     return {}
+}
+
+export async function loadCgZip(file: File) {
+    let entries = await (new zip.ZipReader(new zip.BlobReader(file))).getEntries({ filenameEncoding: 'utf-8' })
+    if (entries && entries.length) {
+        let cgData = {}
+        cgData.reachabilityData = JSON.parse(await entries.find(e => e.filename === "reachability.json").getData(new zip.TextWriter()))
+        let methods = await entries.find(e => e.filename === "methods.txt").getData(new zip.TextWriter())
+        cgData.methodList = methods.split('\n')
+        if(cgData.methodList[cgData.methodList.length-1].length === 0) {
+            cgData.methodList.pop()
+        }
+        let types = await entries.find(e => e.filename === "types.txt").getData(new zip.TextWriter())
+        cgData.typeList = types.split('\n')
+        if(cgData.typeList[cgData.typeList.length-1].length === 0)
+            cgData.typeList.pop()
+
+        const parameterFiles = ["typestates.bin", "interflows.bin", "direct_invokes.bin", "typeflow_methods.bin", "typeflow_filters.bin"]
+
+        for (const entry of entries) {
+            if(parameterFiles.some(name => name === entry.filename))
+            {
+                cgData[entry.filename] = await entry.getData(new zip.Uint8ArrayWriter())
+            }
+        }
+
+        return cgData
+    }
+
+    throw new Error('Not implemented')
 }
 
 export async function loadJson(file: File): Promise<object> {

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { Universe } from '../../ts/UniverseTypes/Universe'
-import { loadJson, parseReachabilityExport } from '../../ts/parsing'
+import { CausalityGraphUniverse } from '../../ts/UniverseTypes/CausalityGraphUniverse'
+import { loadJson, loadCgZip, parseReachabilityExport } from '../../ts/parsing'
 import {
     globalConfigStore,
     vennConfigStore,
@@ -16,18 +17,36 @@ const store = globalConfigStore()
 const uploadError = ref<Error | undefined>(undefined)
 
 function validateFileAndAddUniverseOnSuccess(file: File, universeName: string): void {
-    loadJson(file)
-        .then((parsedJSON) => {
-            const newUniverse = new Universe(
-                universeName,
-                parseReachabilityExport(parsedJSON, universeName)
-            )
-            store.addUniverse(newUniverse)
-            uploadError.value = undefined
-        })
-        .catch((error) => {
-            uploadError.value = error
-        })
+
+    if(file.name.endsWith('.cg.zip')) {
+        loadCgZip(file)
+                .then((parsedCG) => {
+                    const newUniverse = new CausalityGraphUniverse(
+                            universeName,
+                            parseReachabilityExport(parsedCG.reachabilityData),
+                            parsedCG)
+                    store.addUniverse(newUniverse)
+                    uploadError.value = undefined
+                })
+                .catch((error) => {
+                    uploadError.value = error
+                })
+    } else if(file.name.endsWith('.json')) {
+        loadJson(file)
+                .then((parsedJSON) => {
+                    const newUniverse = new Universe(
+                            universeName,
+                            parseReachabilityExport(parsedJSON, universeName)
+                    )
+                    store.addUniverse(newUniverse)
+                    uploadError.value = undefined
+                })
+                .catch((error) => {
+                    uploadError.value = error
+                })
+    } else {
+        throw new Error('You stupid bastard shall not upload junk!')
+    }
 }
 
 function addUniverses(event: Event) {
@@ -70,7 +89,7 @@ function exportConfig() {
                 id="input-report-data"
                 class="w-full space-y-4"
                 type="file"
-                accept="application/json"
+                accept="application/json,.cg.zip"
                 required
                 multiple
                 @change="addUniverses"

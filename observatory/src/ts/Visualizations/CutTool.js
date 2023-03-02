@@ -1,7 +1,12 @@
 import loadWASM from "./lib/causality_graph.js"
-import "./zip.min.js"
+import * as zip from "@zip.js/zip.js"
 import * as d3 from "d3"
 import * as d3dag from "d3-dag"
+
+function assert(cond) {
+    if(!cond)
+        throw new Error("Assertion failed!")
+}
 
 const Module = await loadWASM()
 
@@ -121,7 +126,7 @@ function simulatePurgesBatched(purge_root, resultCallback, prepurgeMids = []) {
         subsetsArr[0] = midsPtr
         subsetsArr[1] += prepurgeMids.length
     }
-    //assert(midsPos * 4 === midsPtr + midsCount * 4)
+    assert(midsPos * 4 === midsPtr + midsCount * 4)
 
     const callback = (iteration, method_history_ptr) => {
         const inputNode = indexToInputNode[iteration]
@@ -164,50 +169,6 @@ function getReachabilityHyperpath(mid) {
     return edges
 }
 
-const model = (() => {
-
-    return {
-        getEntries(file, options) {
-            return (new zip.ZipReader(new zip.BlobReader(file))).getEntries(options);
-        },
-        async getURL(entry, options) {
-            return URL.createObjectURL(await entry.getData(new zip.BlobWriter(), options));
-        }
-    };
-
-})();
-
-export function triggerFileSectionDialog() {
-    let fileInput = document.getElementById("file-input");
-    fileInput.dispatchEvent(new MouseEvent("click"));
-    fileInput.onchange = selectFile;
-}
-
-function selectFile() {
-    const fileInput = document.getElementById("file-input");
-    if (fileInput.files.length > 0) {
-        tryLoadFile(fileInput.files[0])
-    }
-}
-
-async function tryLoadFile(file) {
-    let reachabilityData
-    //try {
-        document.getElementById("fileselect-panel").hidden = true
-        document.getElementById("loading-panel").hidden = false
-        reachabilityData = await loadFiles(file, "utf-8");
-        document.getElementById("loading-panel").hidden = true
-        document.getElementById("main-panel").hidden = false
-    /*} catch (error) {
-        alert(error);
-        document.getElementById("loading-panel").hidden = true
-        document.getElementById("fileselect-panel").hidden = false
-        return
-    }*/
-    dataRoot = generateHierarchyFromReachabilityJsonAndMethodList(reachabilityData, methodList)
-    prepareListView(dataRoot)
-}
-
 function getMethodCodesizeDictFromReachabilityJson(data) {
     let dict = {}
 
@@ -228,130 +189,44 @@ function getMethodCodesizeDictFromReachabilityJson(data) {
     return dict
 }
 
-class ModuleHeapZipWriter extends zip.Uint8ArrayWriter {
-    init(e = 0) {
-        super.init()
-        this.offset = 0
-        this.arrayPtr = Module._malloc(e)
-        this.arrayLen = e
-    }
-
-    writeUint8Array(e) {
-        const t = this;
-        if (t.offset + e.length > t.arrayLen) {
-            const n = t.arrayPtr;
-            const oldLen = t.arrayLen
-            t.arrayLen += e.length
-            t.arrayPtr = Module._malloc(t.arrayLen)
-            const newArray = Module.HEAPU8.subarray(t.arrayPtr, t.arrayPtr + t.arrayLen)
-            newArray.set(Module.HEAPU8.subarray(n, t.offset))
-            Module._free(n)
-        }
-        Module.HEAPU8.subarray(t.arrayPtr + t.offset, t.arrayPtr + t.arrayLen).set(e)
-        t.offset += e.length
-    }
-
-    getData() {
-        return { data: this.arrayPtr, length: this.offset}
-    }
-}
-
-async function loadFiles(selectedFile, filenameEncoding) {
-    let entries = await model.getEntries(selectedFile, { filenameEncoding });
-    if (entries && entries.length) {
-
-        let reachabilityData = JSON.parse(await entries.find(e => e.filename === "reachability.json").getData(new zip.TextWriter()))
-        let methods = await entries.find(e => e.filename === "methods.txt").getData(new zip.TextWriter())
-        methodList = methods.split('\n')
-        if(methodList[methodList.length-1].length === 0) {
-            methodList.pop()
-        }
-        let types = await entries.find(e => e.filename === "types.txt").getData(new zip.TextWriter())
-        typeList = types.split('\n')
-        if(typeList[typeList.length-1].length === 0)
-            typeList.pop()
-
-        let codesizesDict = getMethodCodesizeDictFromReachabilityJson(reachabilityData)
-        codesizes = new Array(methodList.length)
-
-        for(let i = 0; i < methodList.length; i++) {
-            codesizes[i] = codesizesDict[methodList[i]] ?? 0
-        }
-
-        const parameterFiles = ["typestates.bin", "interflows.bin", "direct_invokes.bin", "typeflow_methods.bin", "typeflow_filters.bin"]
-
-        let filesAsByteArrays = {}
-        for (const entry of entries) {
-            if(parameterFiles.some(name => name === entry.filename))
-            {
-                const zipFileWriter = new ModuleHeapZipWriter()
-                filesAsByteArrays[entry.filename] = await entry.getData(zipFileWriter)
-            }
-        }
-
-        all_reachable_ptr = init(typeList.length,
-            methodList.length,
-            ...parameterFiles.flatMap(name => [filesAsByteArrays[name].data, filesAsByteArrays[name].length])
-        )
-
-        for (const span of Object.values(filesAsByteArrays))
-            Module._free(span.data)
-
-        reachable_under_selection = Module.HEAPU8.slice(all_reachable_ptr, all_reachable_ptr + codesizes.length)
-        reachable_in_image_view = reachable_under_selection
-        return reachabilityData
-    }
-}
-
-export function allowDrop(ev) {
-    ev.preventDefault();
-}
-
-export function drop(ev) {
-    if (ev.dataTransfer.files.length > 0) {
-        ev.preventDefault()
-        tryLoadFile(ev.dataTransfer.files[0])
-    }
-}
-
 let precomputeCutoffs = true
 
 export function changePrecomputeCutoffs(enable) {
     precomputeCutoffs = enable
 }
 
-    class Trie {
-        root = { next: {} }
+class Trie {
+    root = { next: {} }
 
-        constructor(dict) {
-            for (const str in dict)
-                this.add(str, dict[str])
-        }
-
-        add(key, value) {
-            let node = this.root
-            for (const c of key) {
-                if (!node.next[c]) {
-                    node.next[c] = { next: {} }
-                }
-                node = node.next[c]
-            }
-            node.val = value
-        }
-
-        find(str) {
-            let node = this.root
-            let val = undefined
-            for (const c of str) {
-                if (!node.next[c])
-                    return val
-                node = node.next[c]
-                if (node.val)
-                    val = node.val
-            }
-            return val
-        }
+    constructor(dict) {
+        for (const str in dict)
+            this.add(str, dict[str])
     }
+
+    add(key, value) {
+        let node = this.root
+        for (const c of key) {
+            if (!node.next[c]) {
+                node.next[c] = { next: {} }
+            }
+            node = node.next[c]
+        }
+        node.val = value
+    }
+
+    find(str) {
+        let node = this.root
+        let val = undefined
+        for (const c of str) {
+            if (!node.next[c])
+                return val
+            node = node.next[c]
+            if (node.val)
+                val = node.val
+        }
+        return val
+    }
+}
 
 let selectedForPurging = new Set()
 
@@ -669,7 +544,7 @@ function generateHtmlImageview(data) {
         maxCodeSize = Math.max(...data.children.map(d => d.size))
     }
 
-    //assert(maxCodeSize)
+    assert(maxCodeSize)
 
     for(const d of data.children) {
         if(d.cg_only)
@@ -866,7 +741,7 @@ function refreshPurgeSizeInCutOverview(node) {
     if(!html)
         return
 
-    //assert(maxPurgedSize)
+    assert(maxPurgedSize)
 
     const purged = selectedForPurging.size > 0 && precomputeCutoffs ? node.reachable_after_additionally_cutting_this : node.reachable_after_cutting_this
 
@@ -884,7 +759,7 @@ function recalculateCutOverviewForSubtree(list, node) {
     // The C++ code doesn't handle empty groups well. Therefore we already handle them here.
     let purgeNodeTreeRoot = { children: node.children.map((c, i) => { return { mids: collectCgNodesInSubtree(c), index: i, src: c } }).filter(n => n.mids.length > 0) }
 
-    let maxPurgedSize = 0
+    maxPurgedSize = 0
     recalculateCutOverviewWithoutSelection(purgeNodeTreeRoot, (node, data) => {
         node.reachable_after_cutting_this = data
         maxPurgedSize = Math.max(maxPurgedSize, data.size)
@@ -893,7 +768,7 @@ function recalculateCutOverviewForSubtree(list, node) {
     if (node === dataRoot)
         maxPurgedSize = maxPurgedSize
 
-    //assert(maxPurgedSize)
+    assert(maxPurgedSize)
 
     function sortKey(a) {
         if(a.reachable_after_cutting_this)
@@ -998,6 +873,9 @@ function renderGraphOnDetailView(edges, targetMid) {
     const nothingSelected = !edges
     document.querySelector(".detail-div").hidden = nothingSelected
     if(nothingSelected)
+        return
+
+    if(edges.length === 0)
         return
 
     // Graph construction
@@ -1210,4 +1088,50 @@ function renderGraphOnDetailView(edges, targetMid) {
     let zoom = d3.zoom().on("zoom", onZoom);
     d3.select("#chartpanel").call(zoom.transform, d3.zoomIdentity)
     d3.select("#chartpanel").call(zoom);
+}
+
+
+
+export class CutTool {
+    setUniverse(universe) {
+        document.getElementById("main-panel").hidden = true
+        document.getElementById("loading-panel").hidden = false
+
+        let reachabilityData = universe.causalityData.reachabilityData
+        methodList = universe.causalityData.methodList
+        typeList = universe.causalityData.typeList
+
+        let codesizesDict = getMethodCodesizeDictFromReachabilityJson(reachabilityData)
+        codesizes = new Array(methodList.length)
+
+        for(let i = 0; i < methodList.length; i++) {
+            codesizes[i] = codesizesDict[methodList[i]] ?? 0
+        }
+
+
+        const parameterFiles = ["typestates.bin", "interflows.bin", "direct_invokes.bin", "typeflow_methods.bin", "typeflow_filters.bin"]
+        let filesAsNativeByteArrays = parameterFiles.map(name => {
+            const arr = universe.causalityData[name]
+            const ptr = Module._malloc(arr.length)
+            Module.HEAPU8.subarray(ptr, ptr + arr.length).set(arr)
+            return { ptr: ptr, len: arr.length }
+        })
+
+        all_reachable_ptr = init(typeList.length,
+            methodList.length,
+            ...filesAsNativeByteArrays.flatMap(span => [span.ptr, span.len])
+        )
+
+        for (const span of Object.values(filesAsNativeByteArrays))
+            Module._free(span.ptr)
+
+        reachable_under_selection = Module.HEAPU8.slice(all_reachable_ptr, all_reachable_ptr + codesizes.length)
+        reachable_in_image_view = reachable_under_selection
+
+        dataRoot = generateHierarchyFromReachabilityJsonAndMethodList(reachabilityData, methodList)
+        prepareListView(dataRoot)
+
+        document.getElementById("loading-panel").hidden = true
+        document.getElementById("main-panel").hidden = false
+    }
 }
