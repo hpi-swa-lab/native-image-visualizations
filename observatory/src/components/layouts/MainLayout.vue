@@ -17,8 +17,8 @@ withDefaults(
 </script>
 
 <template>
-    <div class="w-full h-full grid grid-cols-12 gap-2">
-        <div class="col-span-2 drop-shadow-xl overflow-y-scroll min-w-[300px]">
+    <div class="w-full h-full grid grid-cols-2 gap-2" style="grid-template-columns: min-content 1fr;">
+        <div class="drop-shadow-xl overflow-y-scroll min-w-[300px]">
             <div class="rounded bg-gray-50 space-y-4 h-full">
                 <h2 class="text-center">{{ title }}</h2>
 
@@ -49,6 +49,6 @@ withDefaults(
                 </TabLayout>
             </div>
         </div>
-        <div class="col-span-10 h-full overflow-y-auto"><slot /></div>
+        <div class="h-full overflow-y-auto"><slot /></div>
     </div>
 </template>

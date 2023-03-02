@@ -7,6 +7,7 @@ import * as CutTool from '../../ts/Visualizations/CutTool.js'
 
 #cut-tool-root {
   all: initial;
+  height: 98%;
 }
 
 /* Remove default bullets */
@@ -66,14 +67,6 @@ body.waiting * {
 /* Show the nested list when the user clicks on the caret/arrow (with JavaScript) */
 .active {
     display: block;
-}
-
-html {
-    height: 100%
-}
-
-body {
-    height: 98%;
 }
 
 .total-size-column {
