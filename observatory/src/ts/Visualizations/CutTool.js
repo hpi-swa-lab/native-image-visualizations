@@ -1072,15 +1072,15 @@ function renderGraphOnDetailView(edges, targetMid) {
             }
     }
 
-    const dag = d3.dagStratify()
+    const dag = d3dag.dagStratify()
         .id(({index}) => index.toString())
         .parentData(({adj}) => adj.map(e => [e.target.toString(), e]))
         (graph.nodes);
     const nodeRadius = 20;
-    const layout = d3
+    const layout = d3dag
         .sugiyama() // base layout
         //.layering(applyLayering)
-        .decross(d3.decrossTwoLayer()) // minimize number of crossings
+        .decross(d3dag.decrossTwoLayer()) // minimize number of crossings
         .nodeSize((node) => [(node ? 3.6 : 0.25) * nodeRadius, 3 * nodeRadius]); // set node size instead of constraining to fit
     const { width, height } = layout(dag);
     const x0 = 0;
@@ -1098,10 +1098,6 @@ function renderGraphOnDetailView(edges, targetMid) {
 
     const steps = dag.size();
     const interp = d3.interpolateRainbow;
-    const colorMap = new Map();
-    for (const [i, node] of dag.idescendants().entries()) {
-        colorMap.set(node.data.id, interp(i / steps));
-    }
 
     // How to draw edges
     const line = d3
@@ -1170,7 +1166,7 @@ function renderGraphOnDetailView(edges, targetMid) {
 
 
     function onZoom() {
-        transform = d3.zoomTransform(d3.select("#chartpanel").node());
+        const transform = d3.zoomTransform(d3.select("#chartpanel").node());
 
         function transX(num)
         {
