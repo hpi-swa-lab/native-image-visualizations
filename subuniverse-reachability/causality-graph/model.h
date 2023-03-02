@@ -576,6 +576,24 @@ public:
     void optimize()
     {
         remove_redundant(adj);
+
+        for(auto& typestate : typestates)
+        {
+            if(typestate.count() == 1)
+            {
+                typestate = {0};
+            }
+        }
+    }
+
+    size_t used_memory_size()
+    {
+        size_t size = adj.used_memory_size();
+        for(const auto& typestate: typestates)
+        {
+            size += (typestate.size() + 7) / 8;
+        }
+        return size;
     }
 };
 

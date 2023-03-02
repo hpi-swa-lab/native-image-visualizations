@@ -71,7 +71,7 @@ extern "C" const uint8_t* EMSCRIPTEN_KEEPALIVE init(
         purge_model->optimize();
 
 #if LOG
-        cerr << "Adjacency memory usage: " << purge_model->adj.used_memory_size() << endl;
+        cerr << "Adjacency memory usage: " << purge_model->used_memory_size() << endl;
 #endif
     }
 
