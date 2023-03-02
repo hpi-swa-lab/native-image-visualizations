@@ -204,6 +204,9 @@ struct Adjacency
         vector<method_id> backward_edges;
         vector<typeflow_id> dependent_typeflows;
         vector<typeflow_id> virtual_invocation_sources;
+
+        MethodInfo() = default;
+        MethodInfo(const MethodInfo& o) = delete;
     };
 
     size_t _n_types;

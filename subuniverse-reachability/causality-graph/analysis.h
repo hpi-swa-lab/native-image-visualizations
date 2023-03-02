@@ -750,7 +750,7 @@ static void bfs_incremental_rec(const BFS::Result& all_reachable, const BFS& bfs
             {
                 method_visited[mid.id] = false;
 
-                auto m = bfs.adj[mid];
+                const auto& m = bfs.adj[mid];
                 if(
                         std::any_of(m.backward_edges.begin(), m.backward_edges.end(), [&](const auto& item)
                         {
