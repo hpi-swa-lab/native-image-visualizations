@@ -576,14 +576,6 @@ public:
     void optimize()
     {
         remove_redundant(adj);
-
-        for(auto& typestate : typestates)
-        {
-            if(typestate.count() == 1)
-            {
-                typestate = {0};
-            }
-        }
     }
 
     size_t used_memory_size()
