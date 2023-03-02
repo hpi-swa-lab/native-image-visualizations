@@ -10,30 +10,36 @@ function assert(cond) {
 
 const Module = await loadWASM()
 
-let simulate_purge = Module.cwrap("simulate_purge", "number", ["number", "number"]);
-let simulate_purges_batched = Module.cwrap("simulate_purges_batched", "number", ["number", "number"])
-let init = Module.cwrap("init", "number", ["number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number", "number"]);
-let get_reachability_hyperpath = Module.cwrap("get_reachability_hyperpath", "number", ["number"])
-
-
 let codesizes
 let methodList
 let typeList
-let all_reachable_ptr
+let all_reachable
 let dataRoot
 
-function simulatePurge(purge_group) {
+function simulatePurge(purge_group = []) {
     let midsPtr = Module._malloc(purge_group.length * 4)
     let midsArray = Module.HEAPU32.subarray(midsPtr / 4, midsPtr / 4 + purge_group.length)
 
     for (let i = 0; i < purge_group.length; i++)
         midsArray[i] = purge_group[i] + 1
 
-    let method_history_ptr = simulate_purge(midsPtr, purge_group.length)
-    // dealloc memory
-    Module._free(midsPtr);
+    const simulationResult = cg.simulatePurge(midsPtr, purge_group.length)
+    Module._free(midsPtr)
+    const methodHistory = simulationResult.getMethodHistory().slice()
+    simulationResult.delete()
+    return methodHistory
+}
 
-    return Module.HEAPU8.slice(method_history_ptr, method_history_ptr + codesizes.length)
+function simulatePurgeDetailed(purge_group = []) {
+    let midsPtr = Module._malloc(purge_group.length * 4)
+    let midsArray = Module.HEAPU32.subarray(midsPtr / 4, midsPtr / 4 + purge_group.length)
+
+    for (let i = 0; i < purge_group.length; i++)
+        midsArray[i] = purge_group[i] + 1
+
+    const simulationResult = cg.simulatePurgeDetailed(midsPtr, purge_group.length)
+    Module._free(midsPtr)
+    return simulationResult
 }
 
 function calcPurgeNodesCount(purge_root) {
@@ -138,7 +144,7 @@ function simulatePurgesBatched(purge_root, resultCallback, prepurgeMids = []) {
     }
 
     const callback_ptr = Module.addFunction(callback, 'iii')
-    const status = simulate_purges_batched(subsetsArrPtr, callback_ptr)
+    const status = cg.simulatePurgeBatched(subsetsArrPtr, callback_ptr)
     Module.removeFunction(callback_ptr)
 
     Module._free(subsetsArrPtr)
@@ -149,7 +155,9 @@ function simulatePurgesBatched(purge_root, resultCallback, prepurgeMids = []) {
 }
 
 function getReachabilityHyperpath(mid) {
-    const edgeBufPtr = get_reachability_hyperpath(mid+1)
+    const detailedResults = simulatePurgeDetailed([...new Set([...selectedForPurging].flatMap(collectCgNodesInSubtree))])
+    const edgeBufPtr = detailedResults.getReachabilityHyperpath(mid+1)
+    detailedResults.delete()
     const edgeBufU32index = edgeBufPtr / Module.HEAPU32.BYTES_PER_ELEMENT
     const len = Module.HEAPU32.at(edgeBufU32index)
     const arr = Module.HEAPU32.subarray(edgeBufU32index + 1, edgeBufU32index + 1 + 3 * len)
@@ -719,7 +727,7 @@ function recalculateCutOverviewWithSelection(purgeNodeTreeRoot, callback) {
 }
 
 function recalculateCutOverviewWithoutSelection(purgeNodeTreeRoot, callback) {
-    recalculateCutOverviewCustom(purgeNodeTreeRoot, [], Module.HEAPU8.subarray(all_reachable_ptr, all_reachable_ptr + codesizes.length), callback)
+    recalculateCutOverviewCustom(purgeNodeTreeRoot, [], all_reachable, callback)
 }
 
 function precomputeCutOverview() {
@@ -812,7 +820,6 @@ function refreshPurgeValueForImageviewNode(u) {
     if(!u.html_imageview)
         return
 
-    const all_reachable = Module.HEAPU8.subarray(all_reachable_ptr, all_reachable_ptr + codesizes.length)
     const still_reachable = reachable_in_image_view ?? all_reachable
 
     let purgedCodesize = 0
@@ -1090,9 +1097,11 @@ function renderGraphOnDetailView(edges, targetMid) {
     d3.select("#chartpanel").call(zoom);
 }
 
+let cg
 
 
 export class CutTool {
+
     setUniverse(universe) {
         document.getElementById("main-panel").hidden = true
         document.getElementById("loading-panel").hidden = false
@@ -1117,15 +1126,15 @@ export class CutTool {
             return { ptr: ptr, len: arr.length }
         })
 
-        all_reachable_ptr = init(typeList.length,
+        cg = new Module.CausalityGraph(typeList.length,
             methodList.length,
-            ...filesAsNativeByteArrays.flatMap(span => [span.ptr, span.len])
-        )
+            ...filesAsNativeByteArrays.flatMap(span => [span.ptr, span.len]))
 
         for (const span of Object.values(filesAsNativeByteArrays))
             Module._free(span.ptr)
 
-        reachable_under_selection = Module.HEAPU8.slice(all_reachable_ptr, all_reachable_ptr + codesizes.length)
+        all_reachable = simulatePurge()
+        reachable_under_selection = all_reachable
         reachable_in_image_view = reachable_under_selection
 
         dataRoot = generateHierarchyFromReachabilityJsonAndMethodList(reachabilityData, methodList)
