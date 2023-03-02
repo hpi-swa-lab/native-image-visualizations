@@ -20,16 +20,15 @@ const selection = computed(() => store.selections)
 
 let visualization: VennSets
 
-// The reason for using as unknown as <...> is that the store saves Proxy Types of the objects
-// with no apparent api overlap - which we know is definetely the same
+// The reason for using as <...> is that the store saves Proxy Types of the objects
 
 onMounted(() => {
     visualization = new VennSets('#viz-container', store.currentLayer, store.colorScheme)
-    visualization.setMultiverse(store.multiverse as unknown as Multiverse)
+    visualization.setMultiverse(store.multiverse as Multiverse)
 })
 
 watch(multiverse, (newMultiverse) => {
-    visualization.setMultiverse(newMultiverse as unknown as Multiverse)
+    visualization.setMultiverse(newMultiverse as Multiverse)
 })
 watch(currentLayer, (newLayer) => {
     visualization.setLayer(newLayer)
@@ -37,14 +36,14 @@ watch(currentLayer, (newLayer) => {
 watch(
     highlights,
     (newHighlights) => {
-        visualization.setHighlights(Object.values(newHighlights)[0] as unknown as Node[])
+        visualization.setHighlights(Object.values(newHighlights)[0] as Node[])
     },
     { deep: true }
 )
 watch(
     selection,
     (newSelection) => {
-        visualization.setSelection(Object.values(newSelection)[0] as unknown as Node[])
+        visualization.setSelection(Object.values(newSelection)[0] as Node[])
     },
     { deep: true }
 )
