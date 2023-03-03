@@ -7,7 +7,11 @@ import { ColorScheme } from '../SharedTypes/Colors'
 import { UniverseIndex } from '../SharedTypes/Indices'
 import { Multiverse } from '../UniverseTypes/Multiverse'
 import { Node } from '../UniverseTypes/Node'
-import { asUniverseCombination, UniverseCombination } from '../UniverseTypes/UniverseCombination'
+import {
+    asUniverseCombination,
+    UniverseCombination,
+    universeCombinationAsIndices
+} from '../UniverseTypes/UniverseCombination'
 import { MultiverseVisualization } from './MultiverseVisualization'
 
 const LINE_WIDTH = 256
@@ -23,7 +27,7 @@ export class TreeLine implements MultiverseVisualization {
     combinations: UniverseCombination[] = []
     exclusiveSizes: Map<Node, ExclusiveSizes> = new Map([[this.multiverse.root, new Map([])]])
 
-    colors: Map<UniverseIndex, string> = new Map()
+    colorsByIndex: Map<UniverseIndex, string> = new Map()
     fillStyles: Map<UniverseCombination, string | CanvasGradient> = new Map()
 
     canvas: HTMLCanvasElement
@@ -42,8 +46,10 @@ export class TreeLine implements MultiverseVisualization {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         this.context = this.canvas.getContext('2d', { alpha: false })!
 
-        this.redraw()
+        this.initZoom()
+    }
 
+    private initZoom(): void {
         // `d3.zoom().on(..., ...)` expects a function accepting `any`.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         d3.select(this.canvas as Element).call(
@@ -58,25 +64,9 @@ export class TreeLine implements MultiverseVisualization {
     public setMultiverse(multiverse: Multiverse): void {
         this.multiverse = multiverse
 
-        // Create a list of combinations sorted in a way that is visually
         // pleasing. The order is hand-picked for few universes.
         const indices: UniverseIndex[] = multiverse.sources.map((_, i) => i)
-        if (indices.length == 1) {
-            this.combinations = [asUniverseCombination(indices)]
-        } else if (indices.length == 2) {
-            this.combinations = [
-                asUniverseCombination([0]),
-                asUniverseCombination([0, 1]),
-                asUniverseCombination([1])
-            ]
-        } else {
-            this.combinations = []
-            for (const combination of powerSet(indices)) {
-                if (combination.length > 0) {
-                    this.combinations.push(asUniverseCombination(combination))
-                }
-            }
-        }
+        this.combinations = powerSet(indices).splice(1).map(asUniverseCombination)
 
         this.exclusiveSizes = computeExclusiveSizes(multiverse)
 
@@ -103,64 +93,63 @@ export class TreeLine implements MultiverseVisualization {
 
     private buildColors() {
         const indices: UniverseIndex[] = this.multiverse.sources.map((_, i) => i)
-        this.colors = new Map()
+        this.colorsByIndex = new Map()
         for (const index of indices) {
-            this.colors.set(index, this.colorScheme[index % this.colorScheme.length])
+            this.colorsByIndex.set(index, this.colorScheme[index % this.colorScheme.length])
         }
     }
 
     private buildFillStyles() {
-        if (!this.canvas || !this.context) {
-            throw Error('canvas or context not ready')
-        }
-
-        const lightenedColors: Map<UniverseIndex, string> = new Map()
-        this.colors.forEach((color, index) => {
-            lightenedColors.set(index, lightenColor(color, 0.4))
-        })
+        const lightenedColors = new Map(
+            Array.from(this.colorsByIndex.entries()).map(([index, color]) => [
+                index,
+                lightenColor(color, 0.4)
+            ])
+        )
 
         for (const combination of this.combinations) {
-            if (!combination.includes(',')) {
-                // There's only a single universe in this combination and there
-                // exists a color in `this.colors` for every universe.
+            let indices = universeCombinationAsIndices(combination)
+
+            if (indices.length == 1) {
+                // There exists a color for every universe.
                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                this.fillStyles.set(combination, this.colors.get(parseInt(combination))!)
+                this.fillStyles.set(combination, this.colorsByIndex.get(indices[0])!)
                 continue
             }
 
-            const gradientColors = combination
-                .split(',')
-                .map((universe) => lightenedColors.get(parseInt(universe)))
-            const size = Math.max(this.canvas.width, this.canvas.height)
-            const gradient = this.context.createLinearGradient(0, 0, size, size)
-            const numSteps = Math.sqrt(2 * Math.pow(size, 2)) / 5
-
-            for (let i = 0; i < numSteps; i += 1) {
-                const d = (1 / numSteps) * i
-                // Because we calculate mod the length of the colors, the access
-                // definitely succeeds.
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                gradient.addColorStop(d, gradientColors[i % gradientColors.length]!)
-                if (d + 0.001 <= 1) {
-                    gradient.addColorStop(
-                        d + 0.001,
-                        // Because we calculate mod the length of the colors,
-                        // the access definitely succeeds.
-                        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                        gradientColors[(i + 1) % gradientColors.length]!
-                    )
-                }
-            }
-
-            this.fillStyles.set(combination, gradient)
+            // There exists a color for every universe.
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const gradientColors = indices.map((index) => lightenedColors.get(index)!)
+            this.fillStyles.set(combination, this.buildGradient(gradientColors))
         }
     }
 
-    private fitToScreen() {
-        if (!this.canvas) {
-            throw Error('canvas not ready')
+    private buildGradient(colors: string[]): CanvasGradient {
+        const size = Math.max(this.canvas.width, this.canvas.height)
+        const gradient = this.context.createLinearGradient(0, 0, size, size)
+        const numSteps = Math.sqrt(2 * Math.pow(size, 2)) / 5
+
+        for (let i = 0; i < numSteps; i += 1) {
+            const d = (1 / numSteps) * i
+            // Because we calculate mod the length of the colors, the access
+            // definitely succeeds.
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            gradient.addColorStop(d, colors[i % colors.length]!)
+            if (d + 0.001 <= 1) {
+                gradient.addColorStop(
+                    d + 0.001,
+                    // Because we calculate mod the length of the colors,
+                    // the access definitely succeeds.
+                    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                    colors[(i + 1) % colors.length]!
+                )
+            }
         }
 
+        return gradient
+    }
+
+    private fitToScreen() {
         const targetWidth = window.innerWidth
         const targetHeight = window.innerHeight
 
@@ -172,8 +161,8 @@ export class TreeLine implements MultiverseVisualization {
     }
 
     private redraw() {
-        if (!this.canvas || !this.context) {
-            throw Error('canvas or context not ready')
+        if (this.multiverse.root.codeSize === 0) {
+            return
         }
 
         this.fitToScreen()
@@ -202,31 +191,23 @@ export class TreeLine implements MultiverseVisualization {
         path: string[],
         leftOfHierarchy: number
     ) {
-        if (!this.canvas || !this.context) {
-            throw Error('canvas or context not ready')
-        }
-
         // At this height, entities explode into children.
         const EXPLOSION_THRESHOLD = 100
 
         const height = tree.codeSize * pixelsPerByte
 
-        if (top > this.canvas.height || top + height < 0) {
-            return // Outside of the visible area.
-        }
+        if (!this.isVisible(top, height)) return
 
         // Show the hierarchy on the right.
-        let leftOfSubHierarchy = undefined
-        if (path.length == 0) {
-            leftOfSubHierarchy = leftOfHierarchy
-        } else {
+        let leftOfSubHierarchy = leftOfHierarchy
+        if (path.length > 0) {
+            /* eslint-disable @typescript-eslint/no-unused-vars */
             // The exclusive sizes are calculated for all nodes.
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const containingCombinations = Array.from(this.exclusiveSizes.get(tree)!.entries())
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 .filter(([_, size]) => size > 0)
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 .map(([combination, _]) => combination)
+            /* eslint-enable @typescript-eslint/no-unused-vars */
 
             const widthOfBox = this.drawHierarchyBox(
                 leftOfHierarchy,
@@ -280,6 +261,10 @@ export class TreeLine implements MultiverseVisualization {
         }
     }
 
+    private isVisible(top: number, height: number): boolean {
+        return top < this.canvas.height && top + height > 0
+    }
+
     private drawHierarchyBox(
         left: number,
         top: number,
@@ -287,10 +272,6 @@ export class TreeLine implements MultiverseVisualization {
         text: string,
         containingCombinations: UniverseCombination[]
     ): number {
-        if (!this.canvas || !this.context) {
-            throw Error('canvas or context not ready')
-        }
-
         const FONT_SIZE = 11
         const TEXT_HORIZONTAL_PADDING = 8
         const TEXT_VERTICAL_PADDING = 2
