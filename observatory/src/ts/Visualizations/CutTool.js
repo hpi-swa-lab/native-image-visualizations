@@ -10,7 +10,6 @@ function assert(cond) {
 let codesizes
 let methodList
 let typeList
-let all_reachable_res
 let all_reachable
 let dataRoot
 
@@ -336,8 +335,13 @@ function generateHtmlCutview(data) {
                 reachable_in_image_view = reachable_under_selection = node.reachable_after_additionally_cutting_this.arr
             } else {
                 const purgeSet = [...new Set([...selectedForPurging].flatMap(collectCgNodesInSubtree))]
-                selectedSimulationResult = detailMid ? cg.simulatePurgeDetailed(purgeSet) : cg.simulatePurge(purgeSet)
-                reachable_in_image_view = reachable_under_selection = selectedSimulationResult.reachableView()
+
+                if(detailMid) {
+                    selectedSimulationResult = cg.simulatePurgeDetailed(purgeSet)
+                    reachable_in_image_view = reachable_under_selection = selectedSimulationResult.getReachableArray()
+                } else {
+                    reachable_in_image_view = reachable_under_selection = cg.simulatePurge(purgeSet)
+                }
             }
 
             updatePurgeValues()
@@ -347,7 +351,7 @@ function generateHtmlCutview(data) {
             await new Promise(resolve => setTimeout(resolve, 1))
 
             if (detailMid) {
-                if(!(selectedSimulationResult instanceof DetailedSimulationResult)) {
+                if(!selectedSimulationResult) {
                     selectedSimulationResult = cg.simulatePurgeDetailed([...new Set([...selectedForPurging].flatMap(collectCgNodesInSubtree))])
                 }
                 const edges = selectedSimulationResult.getReachabilityHyperpath(detailMid)
@@ -973,8 +977,7 @@ export class CutTool {
 
         cg = universe.cg
 
-        all_reachable_res = cg.simulatePurge() // Ensure this does not get collected
-        all_reachable = all_reachable_res.reachableView()
+        all_reachable = cg.simulatePurge()
         reachable_under_selection = all_reachable
         reachable_in_image_view = reachable_under_selection
 

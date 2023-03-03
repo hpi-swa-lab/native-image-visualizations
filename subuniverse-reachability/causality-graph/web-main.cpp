@@ -30,9 +30,15 @@ public:
     }
 };
 
-
-
 using purges_batched_result_callback = uint32_t (*)(uint32_t, const uint8_t*);
+
+
+struct Deletable
+{
+    virtual ~Deletable() = 0;
+};
+
+Deletable::~Deletable() {}
 
 class CausalityGraph;
 
@@ -56,27 +62,27 @@ struct EdgeBuffer
     }
 };
 
-class DetailedSimulationResult
+class DetailedSimulationResult : Deletable
 {
-    const model& m;
+    shared_ptr<const model> m;
     BFS::Result data;
 
 public:
-    DetailedSimulationResult(const model& m, BFS::Result&& data) : m(m), data(std::move(data)) {}
+    DetailedSimulationResult(shared_ptr<const model> m, BFS::Result&& data) : m(m), data(std::move(data)) {}
 
-    uintptr_t get_reachability_hyperpath(uint32_t mid) const
+    EdgeBuffer* get_reachability_hyperpath(method_id mid) const
     {
-        auto edges = get_reachability(m.adj, data, mid);
-        return (uintptr_t)EdgeBuffer::allocate_for(edges);
+        auto edges = get_reachability(m->adj, data, mid);
+        return EdgeBuffer::allocate_for(edges);
     }
 
-    emscripten::val get_method_history()
+    const uint8_t* get_method_history() const
     {
-        return emscripten::val(emscripten::typed_memory_view(data.method_history.size() - 1, reinterpret_cast<uint8_t*>(&data.method_history[1])));
+        return reinterpret_cast<const uint8_t*>(&data.method_history[1]);
     }
 };
 
-class SimulationResult
+class SimulationResult : Deletable
 {
     vector<DefaultMethodHistory> method_history;
 
@@ -84,91 +90,32 @@ public:
     SimulationResult(BFS::Result&& data) : method_history(std::move(data.method_history))
     {}
 
-    emscripten::val get_method_history()
+    const uint8_t* get_method_history() const
     {
-        return emscripten::val(emscripten::typed_memory_view(method_history.size() - 1, reinterpret_cast<uint8_t*>(&method_history[1])));
+        return reinterpret_cast<const uint8_t*>(&method_history[1]);
     }
 };
 
-class CausalityGraph
+class CausalityGraph : Deletable
 {
-    model purge_model;
+    shared_ptr<model> purge_model;
     BFS bfs;
 
-    explicit CausalityGraph(model&& purge_model) : purge_model(std::move(purge_model)), bfs(this->purge_model.adj){}
-
 public:
-    static CausalityGraph* init(
-            size_t n_types,
-            size_t n_methods,
-            uintptr_t typestates_data, size_t typestates_len,
-            uintptr_t interflows_data, size_t interflows_len,
-            uintptr_t direct_invokes_data, size_t direct_invokes_len,
-            uintptr_t typeflow_methods_data, size_t typeflow_methods_len,
-            uintptr_t typeflow_filters_data, size_t typeflow_filters_len)
+    explicit CausalityGraph(model&& purge_model) : purge_model(std::make_shared<model>(std::move(purge_model))), bfs(this->purge_model->adj){}
+
+    SimulationResult* simulate_purge(span<const method_id> purge_set) const
     {
-        size_t n_typeflows = typeflow_methods_len / sizeof(ContainingMethod);
-
-        std::optional<model> purge_model;
-        {
-            ProcessingStage s("Data reading");
-
-            model_data data;
-
-            auto increase_by = [](auto& vector, size_t inc){ vector.resize(vector.size() + inc); };
-
-            increase_by(data.type_names, n_types);
-            increase_by(data.method_names, n_methods);
-            increase_by(data.typeflow_names, n_typeflows);
-            read_typestate_bitsets(data.type_names.size(), data.typestates, (const uint8_t*)typestates_data, typestates_len);
-            read_buffer(data.interflows, (const uint8_t*)interflows_data, interflows_len);
-            read_buffer(data.direct_invokes, (const uint8_t*)direct_invokes_data, direct_invokes_len);
-            read_buffer(data.containing_methods, (const uint8_t*)typeflow_methods_data, typeflow_methods_len);
-            read_buffer(data.typeflow_filters, (const uint8_t*)typeflow_filters_data, typeflow_filters_len);
-
-            purge_model.emplace(std::move(data));
-        }
-
-        {
-            ProcessingStage s("Typeflow optimizing");
-            purge_model->optimize();
-
-#if LOG
-            cerr << "Adjacency memory usage: " << purge_model->used_memory_size() << endl;
-#endif
-        }
-
-        {
-            ProcessingStage s("Typeflow name deletion");
-            purge_model->typeflow_names.clear();
-            purge_model->typeflow_names.shrink_to_fit();
-        }
-
-        {
-            ProcessingStage s("Constructing BFS object");
-            return new CausalityGraph(std::move(*purge_model));
-        }
+        return new SimulationResult(std::move(bfs.run<false>(purge_set)));
     }
 
-    unique_ptr<SimulationResult> simulate_purge(uintptr_t purge_set_ptr, size_t purge_set_len) const
+    DetailedSimulationResult* simulate_purge_detailed(span<const method_id> purge_set) const
     {
-        ProcessingStage s("BFS on purged graph");
-        span<const method_id> purge_set((const method_id*)purge_set_ptr, purge_set_len);
-        return std::make_unique<SimulationResult>(std::move(bfs.run<false>(purge_set)));
+        return new DetailedSimulationResult(purge_model, std::move(bfs.run<true>(purge_set)));
     }
 
-    unique_ptr<DetailedSimulationResult> simulate_purge_detailed(uintptr_t purge_set_ptr, size_t purge_set_len) const
+    bool simulate_purges_batched(const PurgeTreeNode* purge_root, purges_batched_result_callback result_callback) const
     {
-        ProcessingStage s("BFS on purged graph");
-        span<const method_id> purge_set((const method_id*)purge_set_ptr, purge_set_len);
-        return std::make_unique<DetailedSimulationResult>(purge_model, std::move(bfs.run<true>(purge_set)));
-    }
-
-    bool simulate_purges_batched(uintptr_t purge_root_ptr, uintptr_t result_callback_ptr) const
-    {
-        const PurgeTreeNode* purge_root = (const PurgeTreeNode*)purge_root_ptr;
-        purges_batched_result_callback result_callback = (purges_batched_result_callback)result_callback_ptr;
-
         static_assert(sizeof(PurgeTreeNode) == 16);
         static_assert(offsetof(PurgeTreeNode, mids) == 0);
         static_assert(offsetof(PurgeTreeNode, children) == 8);
@@ -181,7 +128,7 @@ public:
 
         ProcessingStage s("Running batched purges");
 
-        auto &m = purge_model;
+        auto &m = *purge_model;
 
         {
             BFS::Result r(bfs);
@@ -225,21 +172,98 @@ public:
     }
 };
 
+extern "C" {
 
-EMSCRIPTEN_BINDINGS(my_module)
+CausalityGraph* EMSCRIPTEN_KEEPALIVE CausalityGraph_init(
+        size_t n_types,
+        size_t n_methods,
+        uintptr_t typestates_data, size_t typestates_len,
+        uintptr_t interflows_data, size_t interflows_len,
+        uintptr_t direct_invokes_data, size_t direct_invokes_len,
+        uintptr_t typeflow_methods_data, size_t typeflow_methods_len,
+        uintptr_t typeflow_filters_data, size_t typeflow_filters_len)
 {
-    emscripten::class_<CausalityGraph>("CausalityGraph")
-            .constructor(&CausalityGraph::init)
-            .function("simulatePurge", &CausalityGraph::simulate_purge)
-            .function("simulatePurgeDetailed", &CausalityGraph::simulate_purge_detailed)
-            .function("simulatePurgeBatched", &CausalityGraph::simulate_purges_batched);
+    size_t n_typeflows = typeflow_methods_len / sizeof(ContainingMethod);
 
-    emscripten::class_<SimulationResult>("SimulationResult")
-            .function("getMethodHistory", &SimulationResult::get_method_history);
+    std::optional<model> purge_model;
+    {
+        ProcessingStage s("Data reading");
 
-    emscripten::class_<DetailedSimulationResult>("DetailedSimulationResult")
-            .function("getMethodHistory", &DetailedSimulationResult::get_method_history)
-            .function("getReachabilityHyperpath", &DetailedSimulationResult::get_reachability_hyperpath);
+        model_data data;
+
+        auto increase_by = [](auto& vector, size_t inc)
+        { vector.resize(vector.size() + inc); };
+
+        increase_by(data.type_names, n_types);
+        increase_by(data.method_names, n_methods);
+        increase_by(data.typeflow_names, n_typeflows);
+        read_typestate_bitsets(data.type_names.size(), data.typestates, (const uint8_t*) typestates_data, typestates_len);
+        read_buffer(data.interflows, (const uint8_t*) interflows_data, interflows_len);
+        read_buffer(data.direct_invokes, (const uint8_t*) direct_invokes_data, direct_invokes_len);
+        read_buffer(data.containing_methods, (const uint8_t*) typeflow_methods_data, typeflow_methods_len);
+        read_buffer(data.typeflow_filters, (const uint8_t*) typeflow_filters_data, typeflow_filters_len);
+
+        purge_model.emplace(std::move(data));
+    }
+
+    {
+        ProcessingStage s("Typeflow optimizing");
+        purge_model->optimize();
+
+#if LOG
+        cerr << "Adjacency memory usage: " << purge_model->used_memory_size() << endl;
+#endif
+    }
+
+    {
+        ProcessingStage s("Typeflow name deletion");
+        purge_model->typeflow_names.clear();
+        purge_model->typeflow_names.shrink_to_fit();
+    }
+
+    {
+        ProcessingStage s("Constructing BFS object");
+        return new CausalityGraph(std::move(*purge_model));
+    }
+}
+
+SimulationResult* EMSCRIPTEN_KEEPALIVE CausalityGraph_simulatePurge(const CausalityGraph* thisPtr, const method_id* purge_set_ptr, size_t purge_set_len)
+{
+    ProcessingStage s("BFS on purged graph");
+    return thisPtr->simulate_purge({purge_set_ptr, purge_set_len});
+}
+
+DetailedSimulationResult* EMSCRIPTEN_KEEPALIVE CausalityGraph_simulatePurgeDetailed(const CausalityGraph* thisPtr, const method_id* purge_set_ptr, size_t purge_set_len)
+{
+    ProcessingStage s("Detailed BFS on purged graph");
+    return thisPtr->simulate_purge_detailed({purge_set_ptr, purge_set_len});
+}
+
+bool EMSCRIPTEN_KEEPALIVE CausalityGraph_simulatePurgesBatched(const CausalityGraph* thisPtr, const PurgeTreeNode* purge_root, purges_batched_result_callback result_callback)
+{
+    return thisPtr->simulate_purges_batched(purge_root, result_callback);
+}
+
+EdgeBuffer* EMSCRIPTEN_KEEPALIVE DetailedSimulationResult_getReachabilityHyperpath(const DetailedSimulationResult* thisPtr, method_id target)
+{
+    return thisPtr->get_reachability_hyperpath(target);
+}
+
+const uint8_t* EMSCRIPTEN_KEEPALIVE SimulationResult_getMethodHistory(const SimulationResult* thisPtr)
+{
+    return thisPtr->get_method_history();
+}
+
+const uint8_t* EMSCRIPTEN_KEEPALIVE DetailedSimulationResult_getMethodHistory(const DetailedSimulationResult* thisPtr)
+{
+    return thisPtr->get_method_history();
+}
+
+void EMSCRIPTEN_KEEPALIVE Deletable_delete(Deletable* thisPtr)
+{
+    delete thisPtr;
+}
+
 }
 
 
