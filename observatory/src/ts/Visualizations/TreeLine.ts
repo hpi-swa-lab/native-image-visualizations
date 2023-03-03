@@ -49,18 +49,6 @@ export class TreeLine implements MultiverseVisualization {
         this.initZoom()
     }
 
-    private initZoom(): void {
-        // `d3.zoom().on(..., ...)` expects a function accepting `any`.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        d3.select(this.canvas as Element).call(
-            d3.zoom().on('zoom', (event) => {
-                this.transform = event?.transform ?? this.transform
-                return this.redraw()
-            })
-        )
-        window.addEventListener('resize', () => this.redraw())
-    }
-
     public setMultiverse(multiverse: Multiverse): void {
         this.multiverse = multiverse
 
@@ -91,6 +79,18 @@ export class TreeLine implements MultiverseVisualization {
         // TODO; https://github.com/hpi-swa-lab/MPWS2022RH1/issues/118
     }
 
+    private initZoom(): void {
+        // `d3.zoom().on(..., ...)` expects a function accepting `any`.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        d3.select(this.canvas as Element).call(
+            d3.zoom().on('zoom', (event) => {
+                this.transform = event?.transform ?? this.transform
+                return this.redraw()
+            })
+        )
+        window.addEventListener('resize', () => this.redraw())
+    }
+
     private buildColors() {
         const indices: UniverseIndex[] = this.multiverse.sources.map((_, i) => i)
         this.colorsByIndex = new Map()
@@ -108,7 +108,7 @@ export class TreeLine implements MultiverseVisualization {
         )
 
         for (const combination of this.combinations) {
-            let indices = universeCombinationAsIndices(combination)
+            const indices = universeCombinationAsIndices(combination)
 
             if (indices.length == 1) {
                 // There exists a color for every universe.
