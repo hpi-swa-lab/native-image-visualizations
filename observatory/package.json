@@ -20,7 +20,6 @@
         "@fortawesome/free-solid-svg-icons": "^6.3.0",
         "@fortawesome/vue-fontawesome": "^3.0.3",
         "@jest/globals": "^29.3.1",
-        "@upsetjs/venn.js": "^1.4.2",
         "clone": "^2.1.2",
         "d3": "^7.8.1",
         "papaparse": "^5.3.2",
