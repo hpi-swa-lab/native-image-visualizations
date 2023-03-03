@@ -2,14 +2,6 @@ import loadWASM from './lib/causality_graph.js'
 
 const Module: any = await loadWASM()
 
-const _CausalityGraph_init = Module.cwrap('CausalityGraph_init', 'number', ['number', 'number', 'number', 'number', 'number', 'number', 'number', 'number', 'number', 'number', 'number', 'number']);
-const _CausalityGraph_simulatePurge = Module.cwrap('CausalityGraph_simulatePurge', 'number', ['number', 'number', 'number'])
-const _CausalityGraph_simulatePurgeDetailed = Module.cwrap('CausalityGraph_simulatePurgeDetailed', 'number', ['number', 'number', 'number'])
-const _CausalityGraph_simulatePurgesBatched = Module.cwrap('CausalityGraph_simulatePurgesBatched', 'number', ['number', 'number', 'number'])
-const _SimulationResult_getMethodHistory = Module.cwrap('SimulationResult_getMethodHistory', 'number', ['number'])
-const _DetailedSimulationResult_getMethodHistory = Module.cwrap('DetailedSimulationResult_getMethodHistory', 'number', ['number'])
-const _DetailedSimulationResult_getReachabilityHyperpath = Module.cwrap('DetailedSimulationResult_getReachabilityHyperpath', 'number', ['number', 'number'])
-const _Deletable_delete = Module.cwrap('Deletable_delete', 'void', ['number'])
 
 export interface CausalityGraphBinaryData {
     'interflows.bin': Uint8Array
@@ -44,26 +36,49 @@ function calcMidsCount(purge_root: PurgeTreeNode) {
     return cnt
 }
 
-class DeletableWrapper
-{
-    static readonly finReg = new FinalizationRegistry<number>(wasmObject => _Deletable_delete(wasmObject))
+type WasmLiteral = 'number' | 'string' | 'void'
+type TypeFromLiteral<T extends WasmLiteral> = T extends 'number' ? number : T extends 'string' ? string : void
+type TypesFromLiterals<Tuple extends [...WasmLiteral[]]> = {
+    [Index in keyof Tuple]: TypeFromLiteral<Tuple[Index]>;
+} & {length: Tuple['length']};
 
-    protected wasmObject: number
+class WasmObjectWrapper
+{
+    private static readonly _delete = Module.cwrap('Deletable_delete', 'void', ['number'])
+    private static readonly finReg = new FinalizationRegistry<number>(wasmObject => WasmObjectWrapper._delete(wasmObject))
+
+    private wasmObject: number
 
     constructor(wasmObject: number) {
         this.wasmObject = wasmObject
-        DeletableWrapper.finReg.register(this, wasmObject, this)
+        WasmObjectWrapper.finReg.register(this, wasmObject, this)
+    }
+
+    protected static instanceCWrap<TReturnLiteral extends WasmLiteral, TArgLiterals extends [...WasmLiteral[]]>
+            (funcname: string, returnType: TReturnLiteral, argTypes: TArgLiterals):
+            (thisPtr: WasmObjectWrapper, ...args: TypesFromLiterals<TArgLiterals>) => TypeFromLiteral<TReturnLiteral> {
+        const fun = Module.cwrap(funcname, returnType, ['number', ...argTypes])
+        return (thisPtr: WasmObjectWrapper, ...args: TypesFromLiterals<TArgLiterals>) => {
+            if(thisPtr.wasmObject === 0)
+                throw new Error('Attempted to use native (wasm) object after deletion!')
+            return fun(thisPtr.wasmObject, ...args)
+        }
     }
 
     delete(): void
     {
-        DeletableWrapper.finReg.unregister(this)
-        _Deletable_delete(this.wasmObject)
+        WasmObjectWrapper.finReg.unregister(this)
+        WasmObjectWrapper._delete(this.wasmObject)
         this.wasmObject = 0
     }
 }
 
-export class CausalityGraph extends DeletableWrapper {
+export class CausalityGraph extends WasmObjectWrapper {
+    private static readonly _init = Module.cwrap('CausalityGraph_init', 'number', Array(12).fill('number'));
+    private static readonly _simulatePurge = WasmObjectWrapper.instanceCWrap<'number', ['number', 'number']>('CausalityGraph_simulatePurge', 'number', ['number', 'number'])
+    private static readonly _simulatePurgeDetailed = WasmObjectWrapper.instanceCWrap<'number', ['number', 'number']>('CausalityGraph_simulatePurgeDetailed', 'number', ['number', 'number'])
+    private static readonly _simulatePurgesBatched = WasmObjectWrapper.instanceCWrap<'number', ['number', 'number']>('CausalityGraph_simulatePurgesBatched', 'number', ['number', 'number'])
+
     private nMethods: number
 
     public constructor(nMethods: number, nTypes: number, data: CausalityGraphBinaryData) {
@@ -75,7 +90,7 @@ export class CausalityGraph extends DeletableWrapper {
             return { ptr: ptr, len: arr.length }
         })
 
-        const wasmObject = _CausalityGraph_init(nTypes,
+        const wasmObject = CausalityGraph._init(nTypes,
             nMethods,
             ...filesAsNativeByteArrays.flatMap(span => [span.ptr, span.len]))
 
@@ -93,11 +108,11 @@ export class CausalityGraph extends DeletableWrapper {
         for (let i = 0; i < nodesToBePurged.length; i++)
             midsArray[i] = nodesToBePurged[i] + 1
 
-        const simulationResult = _CausalityGraph_simulatePurge(this.wasmObject, midsPtr, nodesToBePurged.length)
+        const simulationResultPtr = CausalityGraph._simulatePurge(this, midsPtr, nodesToBePurged.length)
         Module._free(midsPtr)
-        const methodHistoryPtr = _SimulationResult_getMethodHistory(simulationResult)
-        const methodHistory = Module.HEAPU8.slice(methodHistoryPtr, methodHistoryPtr + this.nMethods)
-        _Deletable_delete(simulationResult)
+        const simulationResult = new SimulationResult(this.nMethods, simulationResultPtr)
+        const methodHistory = simulationResult.getReachableArray()
+        simulationResult.delete()
         return methodHistory
     }
 
@@ -109,7 +124,7 @@ export class CausalityGraph extends DeletableWrapper {
             midsArray[i] = nodesToBePurged[i] + 1
 
         const simulationResultPtr =
-            _CausalityGraph_simulatePurgeDetailed(this.wasmObject, midsPtr, midsArray.length)
+            CausalityGraph._simulatePurgeDetailed(this, midsPtr, midsArray.length)
         Module._free(midsPtr)
         return new DetailedSimulationResult(this.nMethods, simulationResultPtr)
     }
@@ -191,7 +206,7 @@ export class CausalityGraph extends DeletableWrapper {
         }
 
         const callback_ptr = Module.addFunction(callback, 'iii')
-        const status = _CausalityGraph_simulatePurgesBatched(this.wasmObject, subsetsArrPtr, callback_ptr)
+        const status = CausalityGraph._simulatePurgesBatched(this, subsetsArrPtr, callback_ptr)
         Module.removeFunction(callback_ptr)
 
         Module._free(subsetsArrPtr)
@@ -208,16 +223,31 @@ export interface ReachabilityHyperpathEdge {
     via_type: number | undefined
 }
 
-export class DetailedSimulationResult extends DeletableWrapper {
-    private nMethods: number
+class SimulationResult extends WasmObjectWrapper {
+    private static readonly _getMethodHistory = WasmObjectWrapper.instanceCWrap('SimulationResult_getMethodHistory', 'number', [])
+
+    protected nMethods: number
 
     constructor(nMethods: number, wasmObject: number) {
         super(wasmObject)
         this.nMethods = nMethods
     }
 
+    getReachableArray(): Uint8Array {
+        const methodHistoryPtr = SimulationResult._getMethodHistory(this)
+        return Module.HEAPU8.slice(methodHistoryPtr, methodHistoryPtr + this.nMethods)
+    }
+}
+
+export class DetailedSimulationResult extends SimulationResult {
+    private static readonly _getReachabilityHyperpath = WasmObjectWrapper.instanceCWrap('DetailedSimulationResult_getReachabilityHyperpath', 'number', ['number'])
+
+    constructor(nMethods: number, wasmObject: number) {
+        super(nMethods, wasmObject)
+    }
+
     getReachabilityHyperpath(mid: number): ReachabilityHyperpathEdge[] {
-        const edgeBufPtr = _DetailedSimulationResult_getReachabilityHyperpath(this.wasmObject, mid+1)
+        const edgeBufPtr = DetailedSimulationResult._getReachabilityHyperpath(this, mid+1)
         const edgeBufU32index = edgeBufPtr / Module.HEAPU32.BYTES_PER_ELEMENT
         const len = Module.HEAPU32.at(edgeBufU32index)
         const arr = Module.HEAPU32.subarray(edgeBufU32index + 1, edgeBufU32index + 1 + 3 * len)
@@ -235,10 +265,5 @@ export class DetailedSimulationResult extends DeletableWrapper {
         Module._free(edgeBufPtr)
 
         return edges
-    }
-
-    getReachableArray(): Uint8Array {
-        const methodHistoryPtr = _DetailedSimulationResult_getMethodHistory(this.wasmObject)
-        return Module.HEAPU8.slice(methodHistoryPtr, methodHistoryPtr + this.nMethods)
     }
 }

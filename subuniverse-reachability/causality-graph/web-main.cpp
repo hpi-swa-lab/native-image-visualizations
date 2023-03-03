@@ -62,7 +62,12 @@ struct EdgeBuffer
     }
 };
 
-class DetailedSimulationResult : Deletable
+struct SimulationResult : Deletable
+{
+    virtual const uint8_t* get_method_history() const = 0;
+};
+
+class DetailedSimulationResult : SimulationResult
 {
     shared_ptr<const model> m;
     BFS::Result data;
@@ -82,12 +87,12 @@ public:
     }
 };
 
-class SimulationResult : Deletable
+class SimpleSimulationResult : SimulationResult
 {
     vector<DefaultMethodHistory> method_history;
 
 public:
-    SimulationResult(BFS::Result&& data) : method_history(std::move(data.method_history))
+    SimpleSimulationResult(BFS::Result&& data) : method_history(std::move(data.method_history))
     {}
 
     const uint8_t* get_method_history() const
@@ -104,9 +109,9 @@ class CausalityGraph : Deletable
 public:
     explicit CausalityGraph(model&& purge_model) : purge_model(std::make_shared<model>(std::move(purge_model))), bfs(this->purge_model->adj){}
 
-    SimulationResult* simulate_purge(span<const method_id> purge_set) const
+    SimpleSimulationResult* simulate_purge(span<const method_id> purge_set) const
     {
-        return new SimulationResult(std::move(bfs.run<false>(purge_set)));
+        return new SimpleSimulationResult(std::move(bfs.run<false>(purge_set)));
     }
 
     DetailedSimulationResult* simulate_purge_detailed(span<const method_id> purge_set) const
@@ -227,7 +232,7 @@ CausalityGraph* EMSCRIPTEN_KEEPALIVE CausalityGraph_init(
     }
 }
 
-SimulationResult* EMSCRIPTEN_KEEPALIVE CausalityGraph_simulatePurge(const CausalityGraph* thisPtr, const method_id* purge_set_ptr, size_t purge_set_len)
+SimpleSimulationResult* EMSCRIPTEN_KEEPALIVE CausalityGraph_simulatePurge(const CausalityGraph* thisPtr, const method_id* purge_set_ptr, size_t purge_set_len)
 {
     ProcessingStage s("BFS on purged graph");
     return thisPtr->simulate_purge({purge_set_ptr, purge_set_len});
@@ -250,11 +255,6 @@ EdgeBuffer* EMSCRIPTEN_KEEPALIVE DetailedSimulationResult_getReachabilityHyperpa
 }
 
 const uint8_t* EMSCRIPTEN_KEEPALIVE SimulationResult_getMethodHistory(const SimulationResult* thisPtr)
-{
-    return thisPtr->get_method_history();
-}
-
-const uint8_t* EMSCRIPTEN_KEEPALIVE DetailedSimulationResult_getMethodHistory(const DetailedSimulationResult* thisPtr)
 {
     return thisPtr->get_method_history();
 }
