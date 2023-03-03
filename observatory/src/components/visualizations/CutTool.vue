@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { globalConfigStore } from '../../ts/stores'
+import {cutToolConfigStore, globalConfigStore, sankeyTreeConfigStore} from '../../ts/stores'
 import MainLayout from '../layouts/MainLayout.vue'
-import { CutTool } from '../../ts/Visualizations/CutTool.js'
+import {changePrecomputeCutoffs, CutTool} from '../../ts/Visualizations/CutTool.js'
 import { CausalityGraphUniverse } from '../../ts/UniverseTypes/CausalityGraphUniverse';
+import ToggleSwitch from '../controls/ToggleSwitch.vue';
 
 const store = globalConfigStore()
 const multiverse = computed(() => store.multiverse)
@@ -20,6 +21,16 @@ watch(multiverse, (multiverse) => {
     if(multiverse.sources.length === 1)
         visualization.setUniverse(multiverse.sources[0] as CausalityGraphUniverse)
 })
+
+const cutToolStore = cutToolConfigStore()
+
+function changePrecomputeCutoffs(enable: boolean) {
+    if (visualization) {
+        cutToolStore.changePrecomputeCutoffs(enable)
+        visualization.changePrecomputeCutoffs(enable)
+    }
+}
+
 </script>
 
 <style>
@@ -279,20 +290,26 @@ body.waiting * {
 
 <template>
     <MainLayout title="Cut Tool">
+        <template #controls>
+            <form class="space-y-4 border rounded p-2">
+                <ToggleSwitch
+                        :checked="cutToolStore.doesPrecomputeCutoffs()"
+                        @input="changePrecomputeCutoffs($event.target.checked)"
+                >
+                    <label>Precompute Cutoffs</label>
+                </ToggleSwitch>
+            </form>
+        </template>
         <div id="cut-tool-root">
             <div id="loading-panel" class="fullscreen" hidden>
                 <div class="center">
-                    <big>Causality Graph is being parsed...</big>
+                    Causality Graph is being parsed...
                 </div>
             </div>
 
             <div id="main-panel" class="fullscreen" hidden>
                 <div class="overview-div">
                     <span><b>Cut Overview:</b></span>
-                    <label>
-                        <input type="checkbox" checked="checked" @change="CutTool.changePrecomputeCutoffs(this.checked)">
-                        Precompute cutoffs
-                    </label>
                     <div id="cut-overview-root"></div>
                 </div>
                 <div class="detail-div" hidden>

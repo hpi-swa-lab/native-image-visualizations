@@ -186,3 +186,19 @@ export const causalityGraphConfigStore = defineStore('causalityGraphConfig', {
         }
     }
 })
+
+export const cutToolConfigStore = defineStore('cutToolConfig', {
+    state: () => {
+        return {
+            precomputeCutoffs: true
+        }
+    },
+    getters: {
+        doesPrecomputeCutoffs: (state) => () => state.precomputeCutoffs
+    },
+    actions: {
+        changePrecomputeCutoffs(enable: boolean) {
+            this.precomputeCutoffs = enable
+        }
+    },
+})

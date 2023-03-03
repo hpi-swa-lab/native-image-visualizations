@@ -987,4 +987,8 @@ export class CutTool {
         document.getElementById('loading-panel').hidden = true
         document.getElementById('main-panel').hidden = false
     }
+
+    changePrecomputeCutoffs(enable) {
+        precomputeCutoffs = enable
+    }
 }
