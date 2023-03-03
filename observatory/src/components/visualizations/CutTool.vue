@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import {cutToolConfigStore, globalConfigStore, sankeyTreeConfigStore} from '../../ts/stores'
 import MainLayout from '../layouts/MainLayout.vue'
-import {changePrecomputeCutoffs, CutTool} from '../../ts/Visualizations/CutTool.js'
+import { CutTool } from '../../ts/Visualizations/CutTool'
 import { CausalityGraphUniverse } from '../../ts/UniverseTypes/CausalityGraphUniverse';
 import ToggleSwitch from '../controls/ToggleSwitch.vue';
 
