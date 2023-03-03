@@ -12,7 +12,6 @@ import { Leaf, InitKind } from './UniverseTypes/Leaf'
 import { Universe } from './UniverseTypes/Universe'
 import { Node } from './UniverseTypes/Node'
 import * as zip from '@zip.js/zip.js';
-import {CausalityGraphData} from './UniverseTypes/CausalityGraphUniverse';
 
 type Methods = {
     [methodName: string]: { size: Bytes; flags?: string[] }
@@ -157,7 +156,7 @@ export async function loadCgZip(file: File) {
         return entry
     }
 
-    const cgData: CausalityGraphData = new CausalityGraphData()
+    const cgData: any = {}
     cgData.reachabilityData = JSON.parse(await getZipEntry('reachability.json').getData(new zip.TextWriter()))
     const methods = await getZipEntry('methods.txt').getData(new zip.TextWriter())
     cgData.methodList = methods.split('\n')

@@ -1,13 +1,8 @@
-import loadWASM from '../lib/causality_graph.js'
-import * as assert from 'assert';
+import loadWASM from './lib/causality_graph.js'
 
-let Module: any
-
-loadWASM().then((m: any) => Module = m)
+let Module: any = await loadWASM()
 
 export interface CausalityGraphBinaryData {
-    nMethods: number
-    nTypes: number
     'interflows.bin': Uint8Array
     'direct_invokes.bin': Uint8Array
     'typestates.bin': Uint8Array
@@ -55,7 +50,7 @@ function calcMidsCount(purge_root: PurgeTreeNode) {
 export class CausalityGraph extends WasmObjectWrapper {
     nMethods: number
 
-    public constructor(data: CausalityGraphBinaryData) {
+    public constructor(nMethods: number, nTypes: number, data: CausalityGraphBinaryData) {
         const parameterFiles : ('typestates.bin' | 'interflows.bin' | 'direct_invokes.bin' | 'typeflow_methods.bin' | 'typeflow_filters.bin')[] = ['typestates.bin', 'interflows.bin', 'direct_invokes.bin', 'typeflow_methods.bin', 'typeflow_filters.bin']
         const filesAsNativeByteArrays = parameterFiles.map(name => {
             const arr = data[name]
@@ -64,15 +59,15 @@ export class CausalityGraph extends WasmObjectWrapper {
             return { ptr: ptr, len: arr.length }
         })
 
-        const wasmObject = new Module.CausalityGraph(data.nTypes,
-            data.nMethods,
+        const wasmObject = new Module.CausalityGraph(nTypes,
+            nMethods,
             ...filesAsNativeByteArrays.flatMap(span => [span.ptr, span.len]))
 
         for (const span of Object.values(filesAsNativeByteArrays))
             Module._free(span.ptr)
 
         super(wasmObject)
-        this.nMethods = data.nMethods
+        this.nMethods = nMethods
     }
 
     public simulatePurge(nodesToBePurged: number[] = []): SimulationResult {

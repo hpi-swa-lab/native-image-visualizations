@@ -1,15 +1,15 @@
 import { Node } from './Node'
 import { Universe } from './Universe'
-import { UniverseIndex } from '../SharedTypes/Indices'
+import { CausalityGraph } from '../Causality/CausalityGraph';
 
-export class CausalityGraphData {
+export interface CausalityGraphData {
     // Object structure of "reachability.json"
-    reachabilityData: object[] = []
+    reachabilityData: object[]
 
     // Should be renamed to something like "nodeLabels", since it describes all kinds of events
     // Currently keeps this name for consistency with all other causality-processing code
-    methodList: string[] = []
-    typeList: string[] = []
+    methodList: string[]
+    typeList: string[]
 
     // These binary blobs are handed to the wasm module
     'interflows.bin': Uint8Array
@@ -20,10 +20,18 @@ export class CausalityGraphData {
 }
 
 export class CausalityGraphUniverse extends Universe {
-    public causalityData: CausalityGraphData
+    // Object structure of "reachability.json"
+    public reachabilityData: object[]
+    public cgNodeLabels: string[]
+    public cgTypeLabels: string[]
+
+    public cg: CausalityGraph
 
     constructor(name: string, root: Node, causalityData: CausalityGraphData) {
         super(name, root)
-        this.causalityData = causalityData
+        this.reachabilityData = causalityData.reachabilityData
+        this.cgNodeLabels = causalityData.methodList
+        this.cgTypeLabels = causalityData.typeList
+        this.cg = new CausalityGraph(causalityData.methodList.length, causalityData.typeList.length, causalityData)
     }
 }

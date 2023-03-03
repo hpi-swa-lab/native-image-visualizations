@@ -1,6 +1,6 @@
 import * as d3 from 'd3'
 import * as d3dag from 'd3-dag'
-import {CausalityGraph, DetailedSimulationResult} from './CG/CausalityGraph';
+import {CausalityGraph, DetailedSimulationResult} from '../Causality/CausalityGraph';
 
 function assert(cond) {
     if(!cond)
@@ -960,9 +960,9 @@ export class CutTool {
         document.getElementById('main-panel').hidden = true
         document.getElementById('loading-panel').hidden = false
 
-        const reachabilityData = universe.causalityData.reachabilityData
-        methodList = universe.causalityData.methodList
-        typeList = universe.causalityData.typeList
+        const reachabilityData = universe.reachabilityData
+        methodList = universe.cgNodeLabels
+        typeList = universe.cgTypeLabels
 
         const codesizesDict = getMethodCodesizeDictFromReachabilityJson(reachabilityData)
         codesizes = new Array(methodList.length)
@@ -971,9 +971,7 @@ export class CutTool {
             codesizes[i] = codesizesDict[methodList[i]] ?? 0
         }
 
-        universe.causalityData.nMethods = universe.causalityData.methodList.length
-        universe.causalityData.nTypes = universe.causalityData.typeList.length
-        cg = new CausalityGraph(universe.causalityData)
+        cg = universe.cg
 
         all_reachable_res = cg.simulatePurge() // Ensure this does not get collected
         all_reachable = all_reachable_res.reachableView()
