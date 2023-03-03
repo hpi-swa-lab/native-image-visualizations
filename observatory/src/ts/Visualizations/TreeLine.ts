@@ -5,8 +5,9 @@ import { powerSet } from '../Math/Sets'
 import { computeExclusiveSizes, ExclusiveSizes } from '../Math/Universes'
 import { ColorScheme } from '../SharedTypes/Colors'
 import { UniverseIndex } from '../SharedTypes/Indices'
-import { Multiverse, universeCombination, UniverseCombination } from '../UniverseTypes/Multiverse'
+import { Multiverse } from '../UniverseTypes/Multiverse'
 import { Node } from '../UniverseTypes/Node'
+import { asUniverseCombination, UniverseCombination } from '../UniverseTypes/UniverseCombination'
 import { MultiverseVisualization } from './MultiverseVisualization'
 
 const LINE_WIDTH = 256
@@ -61,18 +62,18 @@ export class TreeLine implements MultiverseVisualization {
         // pleasing. The order is hand-picked for few universes.
         const indices: UniverseIndex[] = multiverse.sources.map((_, i) => i)
         if (indices.length == 1) {
-            this.combinations = [universeCombination(indices)]
+            this.combinations = [asUniverseCombination(indices)]
         } else if (indices.length == 2) {
             this.combinations = [
-                universeCombination([0]),
-                universeCombination([0, 1]),
-                universeCombination([1])
+                asUniverseCombination([0]),
+                asUniverseCombination([0, 1]),
+                asUniverseCombination([1])
             ]
         } else {
             this.combinations = []
             for (const combination of powerSet(indices)) {
                 if (combination.length > 0) {
-                    this.combinations.push(universeCombination(combination))
+                    this.combinations.push(asUniverseCombination(combination))
                 }
             }
         }

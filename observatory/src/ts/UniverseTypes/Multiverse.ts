@@ -78,8 +78,3 @@ export class Multiverse {
         })
     }
 }
-
-export type UniverseCombination = string
-export function universeCombination(indices: UniverseIndex[]): UniverseCombination {
-    return indices.sort().join(',')
-}
