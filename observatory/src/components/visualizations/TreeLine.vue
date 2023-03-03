@@ -11,7 +11,7 @@ const multiverse = computed(() => store.multiverse)
 const colorScheme = computed(() => store.colorScheme)
 
 const container = ref<HTMLDivElement>()
-let visualization: TreeLine | undefined = undefined
+let visualization: TreeLine
 
 onMounted(() => {
     visualization = new TreeLine(
@@ -27,15 +27,11 @@ onMounted(() => {
 })
 
 watch(multiverse, (newMultiverse) => {
-    // Mount is executed first, so the visualization is set.
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    visualization!.setMultiverse(newMultiverse as Multiverse)
+    visualization.setMultiverse(newMultiverse as Multiverse)
 })
 
 watch(colorScheme, (newColorScheme) => {
-    // Mount is executed first, so the visualization is set.
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    visualization!.setColorScheme(newColorScheme as ColorScheme)
+    visualization.setColorScheme(newColorScheme as ColorScheme)
 })
 </script>
 
