@@ -184,7 +184,7 @@ public:
                 included_in_saturation_uses(n_typeflows)
         {}
 
-        explicit Result(const BFS& bfs) : Result(bfs.adj.n_methods(), bfs.adj.n_typeflows(), bfs.adj.n_types(), bfs.filter_filters.size())
+        explicit Result(const BFS& bfs) : Result(bfs.adj.n_methods(), bfs.adj.n_typeflows(), bfs.adj.n_types(), bfs.adj.filter_filters.size())
         {}
 
         void revert(const BFS& bfs, const ResultDiff& changes)
@@ -213,47 +213,20 @@ public:
 
             for(typeflow_id flow : changes.saturation_uses_by_filter_removed_log)
             {
-                saturation_uses_by_filter[bfs.adj[flow].original_filter - bfs.filters_begin].push_back(flow);
+                saturation_uses_by_filter[bfs.adj[flow].original_filter - bfs.adj.filters_begin].push_back(flow);
             }
 
             for(typeflow_id flow : changes.saturation_uses_by_filter_added_log)
             {
-                erase(saturation_uses_by_filter[bfs.adj[flow].original_filter - bfs.filters_begin], flow);
+                erase(saturation_uses_by_filter[bfs.adj[flow].original_filter - bfs.adj.filters_begin], flow);
             }
         }
     };
 
     const Adjacency& adj;
-    const Bitset* filters_begin;
-    vector<TypeSet> filter_filters;
-    vector<TypeSet> typeflow_filters;
 
     explicit BFS(const Adjacency& adj) : adj(adj)
     {
-        const Bitset* filters_end;
-
-        {
-            auto [f1, f2] = std::minmax_element(adj.flows.begin(), adj.flows.end(), [](const auto& a, const auto& b)
-            { return a.original_filter < b.original_filter; });
-
-            filters_begin = f1->original_filter;
-            filters_end = f2->original_filter + 1;
-        }
-
-        filter_filters.reserve(filters_end - filters_begin);
-
-        for(size_t i = 0; i < filters_end - filters_begin; i++)
-        {
-            filter_filters.emplace_back(&filters_begin[i]);
-        }
-
-        typeflow_filters.reserve(adj.n_typeflows());
-
-        for(size_t i = 0; i < adj.n_typeflows(); i++)
-        {
-            size_t filter_index = adj.flows[i].original_filter - filters_begin;
-            typeflow_filters.push_back(filter_filters[filter_index]);
-        }
     }
 
     /* If dist_matters is asigned false, the BFS gets sped up about x2.
@@ -314,7 +287,7 @@ public:
         {
             for(auto v: adj.flows[0].forward_edges)
             {
-                TypeSet filter = typeflow_filters[v.id];
+                TypeSet filter = adj[v].filter;
                 bool changed = false;
                 TypeflowHistory before = typeflow_visited[v.id];
 
@@ -394,7 +367,7 @@ public:
                         {
                             if(!typeflow_visited[v.id].is_saturated())
                             {
-                                TypeSet filter = typeflow_filters[v.id];
+                                TypeSet filter = adj[v].filter;
 
                                 bool changed = false;
                                 TypeflowHistory before = typeflow_visited[v.id];
@@ -456,7 +429,7 @@ public:
                             bool changed = false;
                             TypeflowHistory before = typeflow_visited[v.id];
 
-                            TypeSet filter = typeflow_filters[v.id];
+                            TypeSet filter = adj[v].filter;
 
                             for(size_t t = filter.first(); t < adj.n_types(); t = filter.next(t))
                             {
@@ -471,7 +444,7 @@ public:
 
                             if(!typeflow_visited[v.id].is_saturated())
                             {
-                                saturation_uses_by_filter[adj[v].original_filter - filters_begin].push_back(v);
+                                saturation_uses_by_filter[adj[v].original_filter - adj.filters_begin].push_back(v);
                                 if(track_changes)
                                     saturation_uses_by_filter_added_log.push_back(v);
                             }
@@ -494,7 +467,7 @@ public:
 
                 vector<type_t> instantiated_since_last_iteration_filtered;
 
-                for(size_t filter_id = 0; filter_id < filter_filters.size(); filter_id++)
+                for(size_t filter_id = 0; filter_id < adj.filter_filters.size(); filter_id++)
                 {
                     auto& saturation_uses = saturation_uses_by_filter[filter_id];
 
@@ -513,7 +486,7 @@ public:
                     if(saturation_uses.empty())
                         continue;
 
-                    TypeSet filter = filter_filters[filter_id];
+                    TypeSet filter = adj.filter_filters[filter_id];
 
                     size_t filter_count = filter.count();
                     if(filter_count <= 4)

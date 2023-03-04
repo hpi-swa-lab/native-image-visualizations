@@ -213,6 +213,10 @@ struct Adjacency
     vector<TypeflowInfo> flows;
     vector<MethodInfo> methods;
 
+    // Data used for batched saturation
+    const Bitset* filters_begin;
+    vector<TypeSet> filter_filters;
+
     Adjacency(size_t n_types, size_t n_methods, size_t n_typeflows, const vector<Edge<typeflow_id>>& interflows, const vector<Edge<method_id>>& direct_invokes, const vector<Bitset>& typestates, const vector<uint32_t>& typeflow_filters, const vector<ContainingMethod>& typeflow_methods, const vector<string>& typeflow_names)
             : _n_types(n_types), flows(n_typeflows), methods(n_methods)
     {
@@ -267,6 +271,23 @@ struct Adjacency
             m.backward_edges.shrink_to_fit();
             m.virtual_invocation_sources.shrink_to_fit();
             m.dependent_typeflows.shrink_to_fit();
+        }
+
+        {
+            const Bitset* filters_end;
+
+            {
+                auto [f1, f2] = std::minmax_element(flows.begin(), flows.end(), [](const auto& a, const auto& b)
+                { return a.original_filter < b.original_filter; });
+
+                filters_begin = f1->original_filter;
+                filters_end = f2->original_filter + 1;
+            }
+
+            filter_filters.reserve(filters_end - filters_begin);
+
+            for(size_t i = 0; i < filters_end - filters_begin; i++)
+                filter_filters.emplace_back(&filters_begin[i]);
         }
     }
 
