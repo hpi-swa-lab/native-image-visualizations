@@ -166,7 +166,7 @@ public:
                 // TODO: Enable cancellation
             };
 
-            bfs_incremental_rec(bfs, r, {purge_root, 1}, callback);
+            bfs_incremental(bfs, r, {purge_root, 1}, callback);
         }
 
         return true;

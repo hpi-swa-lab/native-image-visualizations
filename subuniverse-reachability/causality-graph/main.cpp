@@ -106,9 +106,17 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
         for(size_t i = 0; i < all_method_singletons.size(); i++)
             all_method_singletons[i] = {{&all_methods[i], 1}, {}};
 
+        vector<bool> mid_called(adj.n_methods() - 1);
+
         auto callback = [&](const PurgeTreeNode& node, const BFS::Result& r)
         {
             size_t iteration = &node - &all_method_singletons[0];
+            if(mid_called.at(iteration))
+            {
+                cerr << "Callback got called multiple times!" << endl;
+                exit(1);
+            }
+            mid_called.at(iteration) = true;
 
 #if REACHABILITY_ASSERTIONS
             {
@@ -171,7 +179,13 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
 #endif
         };
 
-        bfs_incremental_rec(bfs, r, all_method_singletons, callback);
+        bfs_incremental(bfs, r, all_method_singletons, callback);
+
+        if(!std::all_of(mid_called.begin(), mid_called.end(), [](bool b) { return b; }))
+        {
+            cerr << "For some methods the callback didn't get called!" << endl;
+            exit(1);
+        }
     }
     else
     {
@@ -354,7 +368,7 @@ static void compute_and_write_purge_matrix(const model& m, ostream& out)
         out.write((char*)rawBytes, rawBytesSize);
     };
 
-    bfs_incremental_rec(bfs, r, all_method_singletons, callback);
+    bfs_incremental(bfs, r, all_method_singletons, callback);
 }
 
 static vector<vector<bool>> compute_purge_matrix(const model& m)
@@ -388,7 +402,7 @@ static vector<vector<bool>> compute_purge_matrix(const model& m)
             result[iteration][i] = (bool)r.method_history[i];
     };
 
-    bfs_incremental_rec(bfs, r, all_method_singletons, callback);
+    bfs_incremental(bfs, r, all_method_singletons, callback);
 
     return result;
 }
