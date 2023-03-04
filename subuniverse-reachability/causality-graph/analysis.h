@@ -687,28 +687,29 @@ struct PurgeTreeNode
     span<const PurgeTreeNode> children;
 };
 
-struct BfsIncrementalFrame
+class IncrementalBfs
 {
-    span<const PurgeTreeNode> stillpurge;
-    size_t mid_index = 0;
-    span<const PurgeTreeNode> depurge;
-    BFS::ResultDiff incremental_changes;
+    struct BfsIncrementalFrame
+    {
+        span<const PurgeTreeNode> stillpurge;
+        size_t mid_index = 0;
+        span<const PurgeTreeNode> depurge;
+        BFS::ResultDiff incremental_changes;
 
-    BfsIncrementalFrame(span<const PurgeTreeNode> stillpurge, span<const PurgeTreeNode> depurge, BFS::ResultDiff&& incremental_changes)
-    : stillpurge(stillpurge), depurge(depurge), incremental_changes(std::move(incremental_changes))
-    { }
+        BfsIncrementalFrame(span<const PurgeTreeNode> stillpurge, span<const PurgeTreeNode> depurge, BFS::ResultDiff&& incremental_changes)
+                : stillpurge(stillpurge), depurge(depurge), incremental_changes(std::move(incremental_changes))
+        { }
 
-    BfsIncrementalFrame(span<const PurgeTreeNode> stillpurge)
-            : stillpurge(stillpurge)
-    { }
-};
+        BfsIncrementalFrame(span<const PurgeTreeNode> stillpurge)
+                : stillpurge(stillpurge)
+        { }
+    };
 
-static void bfs_incremental(const BFS& bfs, BFS::Result& r, span<const PurgeTreeNode> methods_to_purge, const function<void(const PurgeTreeNode&, const BFS::Result&)>& callback)
-{
+    const BFS& bfs;
+    BFS::Result& r;
     stack<BfsIncrementalFrame> state;
-    state.emplace(methods_to_purge);
 
-    auto do_purge = [&](span<const PurgeTreeNode> stillpurge, span<const PurgeTreeNode> depurge)
+    void do_purge(span<const PurgeTreeNode> stillpurge, span<const PurgeTreeNode> depurge)
     {
         auto& method_visited = r.method_inhibited;
         size_t root_methods_capacity = std::accumulate(depurge.begin(), depurge.end(), size_t(0), [](size_t acc, const auto& node){ return acc + node.mids.size(); });
@@ -743,60 +744,81 @@ static void bfs_incremental(const BFS& bfs, BFS::Result& r, span<const PurgeTree
         state.emplace(stillpurge, depurge, std::move(incremental_changes));
     };
 
-
-    while(!state.empty())
+public:
+    IncrementalBfs(const BFS& bfs, BFS::Result& r, span<const PurgeTreeNode> methods_to_purge) : bfs(bfs), r(r)
     {
-        BfsIncrementalFrame& s = state.top();
+        state.emplace(methods_to_purge);
+    }
 
-        if(s.mid_index == 0)
+    const PurgeTreeNode* next()
+    {
+        while(!state.empty())
         {
-            if(s.stillpurge.size() == 1)
-            {
-                s.mid_index = 1;
-                callback(s.stillpurge.front(), r);
+            BfsIncrementalFrame& s = state.top();
 
-                if(!s.stillpurge.front().children.empty())
+            if(s.mid_index == 0)
+            {
+                if(s.stillpurge.size() == 1)
                 {
-                    state.emplace(s.stillpurge.front().children);
+                    s.mid_index = 1;
+                    const PurgeTreeNode& node = s.stillpurge.front();
+
+                    if(!s.stillpurge.front().children.empty())
+                        state.emplace(s.stillpurge.front().children);
+
+                    return &node;
                 }
+                else
+                {
+                    // Divide the purge sets into two of similar sum-size for algorithmic performance reasons
+                    size_t n_total_methods = 0;
+
+                    for(const auto node : s.stillpurge)
+                        n_total_methods += node.mids.size();
+
+                    for(size_t mid_size = 0; s.mid_index < s.stillpurge.size() && mid_size < n_total_methods / 2; s.mid_index++)
+                    {
+                        mid_size += s.stillpurge[s.mid_index].mids.size();
+                        if(mid_size >= n_total_methods / 2)
+                        {
+                            if(n_total_methods - mid_size > mid_size - s.stillpurge[s.mid_index].mids.size())
+                                s.mid_index++;
+                            break;
+                        }
+                    }
+
+                    do_purge(s.stillpurge.subspan(0, s.mid_index), s.stillpurge.subspan(s.mid_index));
+                }
+            }
+            else if(s.mid_index != s.stillpurge.size())
+            {
+                auto mid_index = s.mid_index;
+                s.mid_index = s.stillpurge.size();
+                do_purge(s.stillpurge.subspan(mid_index), s.stillpurge.subspan(0, mid_index));
             }
             else
             {
-                // Divide the purge sets into two of similar sum-size for algorithmic performance reasons
-                size_t n_total_methods = 0;
-
-                for(const auto node : s.stillpurge)
-                    n_total_methods += node.mids.size();
-
-                for(size_t mid_size = 0; s.mid_index < s.stillpurge.size() && mid_size < n_total_methods / 2; s.mid_index++)
-                {
-                    mid_size += s.stillpurge[s.mid_index].mids.size();
-                    if(mid_size >= n_total_methods / 2)
-                    {
-                        if(n_total_methods - mid_size > mid_size - s.stillpurge[s.mid_index].mids.size())
-                            s.mid_index++;
-                        break;
-                    }
-                }
-
-                do_purge(s.stillpurge.subspan(0, s.mid_index), s.stillpurge.subspan(s.mid_index));
+                r.revert(bfs, s.incremental_changes);
+                for(const PurgeTreeNode& node : s.depurge)
+                    for(method_id mid : node.mids)
+                        r.method_inhibited[mid.id] = true;
+                state.pop();
             }
         }
-        else if(s.mid_index != s.stillpurge.size())
-        {
-            auto mid_index = s.mid_index;
-            s.mid_index = s.stillpurge.size();
-            do_purge(s.stillpurge.subspan(mid_index), s.stillpurge.subspan(0, mid_index));
-        }
-        else
-        {
-            r.revert(bfs, s.incremental_changes);
-            for(const PurgeTreeNode& node : s.depurge)
-                for(method_id mid : node.mids)
-                    r.method_inhibited[mid.id] = true;
-            state.pop();
-        }
+        return nullptr;
     }
+
+    [[nodiscard]] const BFS::Result& current_result() const
+    {
+        return r;
+    }
+};
+
+static void bfs_incremental(const BFS& bfs, BFS::Result& r, span<const PurgeTreeNode> methods_to_purge, const function<void(const PurgeTreeNode&, const BFS::Result&)>& callback)
+{
+    IncrementalBfs ibfs(bfs, r, methods_to_purge);
+    while(auto n = ibfs.next())
+        callback(*n, ibfs.current_result());
 }
 
 #endif //CAUSALITY_GRAPH_ANALYSIS_H
