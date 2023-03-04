@@ -11,12 +11,9 @@ function getMethodCodesizeDictFromReachabilityJson(data) {
     const dict = {}
 
     for (const toplevel of data) {
-        for (const packageName in toplevel.packages) {
-            const pkg = toplevel.packages[packageName]
-            for (const typeName in pkg.types) {
-                const type = pkg.types[typeName]
-                for (const methodName in type.methods) {
-                    const method = type.methods[methodName]
+        for (const [packageName, pkg] of Object.entries(toplevel.packages)) {
+            for (const [typeName, type] of Object.entries(pkg.types)) {
+                for (const [methodName, method] of Object.entries(type.methods)) {
                     const fullyQualifiedName = `${packageName}.${typeName}.${methodName}`
                     dict[fullyQualifiedName] = method.size
                 }
@@ -206,17 +203,32 @@ function forEachInSubtree(node, callback) {
     stack.push(node)
     while (stack.length > 0) {
         const u = stack.pop()
-        if (u.children)
-            stack = stack.concat(u.children)
-        callback(u)
+        const handled = callback(u)
+        if (u.children && !handled)
+            stack.push(...u.children)
     }
+}
+
+function forEachInSubtreePostorder(node, expandCallback, callback) {
+    if(!expandCallback(node))
+        return
+    if(node.children)
+        for(const c of node.children)
+            forEachInSubtreePostorder(c, expandCallback, callback)
+    callback(node)
+}
+
+function forEachInStrictSubtreePostorder(node, expandCallback, callback) {
+    if(node.children)
+        for(const c of node.children)
+            forEachInSubtreePostorder(c, expandCallback, callback)
 }
 
 function collectCgNodesInSubtree(node) {
     let group = []
     forEachInSubtree(node, u => {
         if (u.cg_nodes)
-            group = group.concat(u.cg_nodes)
+            group.push(...u.cg_nodes)
     })
     return group
 }
@@ -486,9 +498,13 @@ export class CutTool {
 
         assert(this.maxCodeSize)
 
+        delete data.indirect_cg_nodes
+
         for(const d of data.children) {
             if(d.cg_only)
                 continue
+
+            d.indirect_cg_nodes = collectCgNodesInSubtree(d)
 
             const li = document.createElement('li')
             li.className = 'image-row'
@@ -726,22 +742,31 @@ export class CutTool {
     }
 
     private updatePurgeValues() {
-        forEachInSubtree(this.dataRoot, u => this.refreshPurgeValueForImageviewNode(u))
+        forEachInStrictSubtreePostorder(this.dataRoot, u => u.html_imageview, u => this.refreshPurgeValueForImageviewNode(u))
     }
 
     private refreshPurgeValueForImageviewNode(u) {
-        if(!u.html_imageview)
-            return
-
         const still_reachable = this.reachable_in_image_view ?? this.all_reachable
 
         let purgedCodesize = 0
-        forEachInSubtree(u, (v) => {
-            if (v.cg_nodes)
-                for (const i of v.cg_nodes)
+        if(u.indirect_cg_nodes) {
+            for (const i of u.indirect_cg_nodes)
+                if (this.all_reachable[i] !== 0xFF && still_reachable[i] === 0xFF)
+                    purgedCodesize += this.codesizes[i]
+        } else {
+            if(u.cg_nodes) {
+                for (const i of u.cg_nodes)
                     if (this.all_reachable[i] !== 0xFF && still_reachable[i] === 0xFF)
                         purgedCodesize += this.codesizes[i]
-        })
+            }
+            if(u.children) {
+                for (const v of u.children)
+                    purgedCodesize += v.purgedCodesize
+            }
+        }
+
+        u.purgedCodesize = purgedCodesize
+
         const purgedPercentage = 100 * purgedCodesize / u.size
         let barWidth = 0
         let percentageText = ''
