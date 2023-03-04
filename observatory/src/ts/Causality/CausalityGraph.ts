@@ -42,6 +42,43 @@ type TypesFromLiterals<Tuple extends [...WasmLiteral[]]> = {
     [Index in keyof Tuple]: TypeFromLiteral<Tuple[Index]>;
 } & {length: Tuple['length']};
 
+class NativeBuffer
+{
+    private static readonly finReg = new FinalizationRegistry<number>(ptr => Module._free(ptr))
+
+    private ptr: number
+    private len: number
+
+    constructor(size: number) {
+        this.ptr = Module._malloc(size) as number
+        if(this.ptr === 0) {
+            this.len = 0
+            throw new Error(`Module._malloc(${size}) failed!`)
+        }
+        this.len = size
+        NativeBuffer.finReg.register(this, this.ptr, this)
+    }
+
+    get getPtr(): number {
+        return this.ptr
+    }
+
+    get viewU8(): Uint8Array {
+        return Module.HEAPU8.subarray(this.ptr, this.ptr + this.len)
+    }
+
+    get viewU32(): Uint32Array {
+        return Module.HEAPU32.subarray(this.ptr / 4, this.ptr / 4 + this.len / 4)
+    }
+
+    delete(): void {
+        NativeBuffer.finReg.unregister(this)
+        Module._free(this.ptr)
+        this.ptr = 0
+        this.len = 0
+    }
+}
+
 class WasmObjectWrapper
 {
     private static readonly _delete = Module.cwrap('Deletable_delete', 'void', ['number'])
@@ -65,8 +102,7 @@ class WasmObjectWrapper
         }
     }
 
-    delete(): void
-    {
+    delete(): void {
         WasmObjectWrapper.finReg.unregister(this)
         WasmObjectWrapper._delete(this.wasmObject)
         this.wasmObject = 0
@@ -75,9 +111,9 @@ class WasmObjectWrapper
 
 export class CausalityGraph extends WasmObjectWrapper {
     private static readonly _init = Module.cwrap('CausalityGraph_init', 'number', Array(12).fill('number'));
-    private static readonly _simulatePurge = WasmObjectWrapper.instanceCWrap<'number', ['number', 'number']>('CausalityGraph_simulatePurge', 'number', ['number', 'number'])
-    private static readonly _simulatePurgeDetailed = WasmObjectWrapper.instanceCWrap<'number', ['number', 'number']>('CausalityGraph_simulatePurgeDetailed', 'number', ['number', 'number'])
-    private static readonly _simulatePurgesBatched = WasmObjectWrapper.instanceCWrap<'number', ['number', 'number']>('CausalityGraph_simulatePurgesBatched', 'number', ['number', 'number'])
+    private static readonly _simulatePurge = WasmObjectWrapper.instanceCWrap('CausalityGraph_simulatePurge', 'number', ['number', 'number'])
+    private static readonly _simulatePurgeDetailed = WasmObjectWrapper.instanceCWrap('CausalityGraph_simulatePurgeDetailed', 'number', ['number', 'number'])
+    private static readonly _simulatePurgesBatched = WasmObjectWrapper.instanceCWrap('CausalityGraph_simulatePurgesBatched', 'number', ['number'])
 
     private nMethods: number
 
@@ -129,19 +165,17 @@ export class CausalityGraph extends WasmObjectWrapper {
         return new DetailedSimulationResult(this.nMethods, simulationResultPtr)
     }
 
-    public simulatePurgesBatched(purge_root: PurgeTreeNode, resultCallback: (arg0: PurgeTreeNode, arg1: Uint8Array) => void, prepurgeMids: number[] = []) {
-        if(purge_root.children.length === 0 && prepurgeMids.length === 0)
-            return
-
+    public simulatePurgesBatched(purge_root: PurgeTreeNode, prepurgeMids: number[] = []) {
         const purgeNodesCount = calcPurgeNodesCount(purge_root)
 
         const subsetsArrLen = (purgeNodesCount) * 4 /* {{ptr, len}, {child_ptr, child_len}} */
-        const subsetsArrPtr = Module._malloc(subsetsArrLen * 4 /* (4 byte ptr/len) */)
-        const subsetsArr = Module.HEAPU32.subarray(subsetsArrPtr / 4, subsetsArrPtr / 4 + subsetsArrLen)
+        const subsetsArrBuffer = new NativeBuffer(subsetsArrLen * 4 /* (4 byte ptr/len) */)
+        const subsetsArr = subsetsArrBuffer.viewU32
 
         const midsCount = calcMidsCount(purge_root) + prepurgeMids.length
+        const midsBuffer = new NativeBuffer(midsCount * 4)
+        const midsPtr = midsBuffer.getPtr
 
-        const midsPtr = Module._malloc(midsCount * 4)
         let midsPos: number = midsPtr / 4
 
         const indexToInputNode = Array(purgeNodesCount)
@@ -183,7 +217,7 @@ export class CausalityGraph extends WasmObjectWrapper {
                 const slice = subsetsArr.subarray(offset*4, (offset+1)*4)
                 slice[0] = midsPos_start * 4
                 slice[1] = midsPos_end - midsPos_start
-                slice[2] = subsetsArrPtr + i_start * 16
+                slice[2] = subsetsArrBuffer.getPtr + i_start * 16
                 slice[3] = i_end - i_start
             }
 
@@ -195,25 +229,8 @@ export class CausalityGraph extends WasmObjectWrapper {
             subsetsArr[1] += prepurgeMids.length
         }
 
-        const callback = (iteration: number, method_history_ptr: number) => {
-            const inputNode = indexToInputNode[iteration]
-            if (!inputNode)
-                return;
-            const still_reachable
-                = Module.HEAPU8.subarray(method_history_ptr, method_history_ptr + this.nMethods)
-            resultCallback(inputNode, still_reachable)
-            return 0
-        }
-
-        const callback_ptr = Module.addFunction(callback, 'iii')
-        const status = CausalityGraph._simulatePurgesBatched(this, subsetsArrPtr, callback_ptr)
-        Module.removeFunction(callback_ptr)
-
-        Module._free(subsetsArrPtr)
-        Module._free(midsPtr)
-
-        if(status === 0)
-            throw new Error('simulate_purges_batched exited with error')
+        const wasmObject = CausalityGraph._simulatePurgesBatched(this, subsetsArrBuffer.getPtr)
+        return new IncrementalSimulationResult(this.nMethods, wasmObject, midsBuffer, subsetsArrBuffer, indexToInputNode)
     }
 }
 
@@ -265,5 +282,34 @@ export class DetailedSimulationResult extends SimulationResult {
         Module._free(edgeBufPtr)
 
         return edges
+    }
+}
+
+export class IncrementalSimulationResult extends SimulationResult {
+    private static readonly _simulateNext = WasmObjectWrapper.instanceCWrap('IncrementalSimulationResult_simulateNext', 'number', [])
+
+    mids: NativeBuffer
+    subsetsArr: NativeBuffer
+    indexToInputNode: PurgeTreeNode[]
+
+    constructor(nMethods: number, wasmObject: number, mids: NativeBuffer, subsetsArr: NativeBuffer, indexToInputNode: PurgeTreeNode[]) {
+        super(nMethods, wasmObject)
+        this.mids = mids
+        this.subsetsArr = subsetsArr
+        this.indexToInputNode = indexToInputNode
+    }
+
+    simulateNext() {
+        const curNode = IncrementalSimulationResult._simulateNext(this)
+        if(curNode === 0)
+            return
+        const index = (curNode - this.subsetsArr.getPtr) / 16
+        return this.indexToInputNode[index]
+    }
+
+    delete() {
+        super.delete()
+        this.mids.delete()
+        this.subsetsArr.delete()
     }
 }

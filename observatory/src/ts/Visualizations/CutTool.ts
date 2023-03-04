@@ -607,14 +607,21 @@ export class CutTool {
     }
 
     private recalculateCutOverviewCustom(purgeNodeTreeRoot, additionalPurges, comparison_array, callback) {
-        this.cg.simulatePurgesBatched(purgeNodeTreeRoot, (node, still_reachable) => {
+        const batchPurger = this.cg.simulatePurgesBatched(purgeNodeTreeRoot, additionalPurges)
+
+        let node
+        while(node = batchPurger.simulateNext()) {
+            const still_reachable = batchPurger.getReachableArray()
+            if(!node.src)
+                continue
             let purgedSize = 0
             for (let i = 0; i < this.codesizes.length; i++)
                 if (comparison_array[i] !== 0xFF && still_reachable[i] === 0xFF)
                     purgedSize += this.codesizes[i]
-            if (node.src)
-                callback(node.src, { arr: still_reachable.slice(), size: purgedSize })
-        }, additionalPurges)
+            callback(node.src, { arr: still_reachable.slice(), size: purgedSize })
+        }
+
+        batchPurger.delete()
     }
 
     private recalculateCutOverviewWithSelection(purgeNodeTreeRoot, callback) {

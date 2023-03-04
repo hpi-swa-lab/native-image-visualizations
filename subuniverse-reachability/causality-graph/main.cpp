@@ -46,15 +46,13 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
             purged_mids.push_back(mid);
         }
 
-        BFS bfs(adj);
-
         cerr << "Running DFS on original graph...";
-        BFS::Result all = bfs.run<false>();
+        BFS all = BFS::run<false>(adj);
         cerr << " " << std::count_if(all.method_inhibited.begin(), all.method_inhibited.end(), [](bool b) { return b; }) << " methods reachable!\n";
 
         cerr << "Running DFS on purged graph...";
 
-        BFS::Result after_purge = bfs.run<false>(purged_mids);
+        BFS after_purge = BFS::run<false>(adj, purged_mids);
 
         cerr << " " << std::count_if(after_purge.method_inhibited.begin(), after_purge.method_inhibited.end(), [](bool b) { return b; }) << " methods reachable!\n";
 
@@ -68,13 +66,11 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
     {
         constexpr int times = 20;
 
-        BFS bfs(adj);
-
         auto start = std::chrono::system_clock::now();
 
         for(size_t i = 0; i < times; i++)
         {
-            auto _ = bfs.run<false>();
+            auto _ = BFS::run<false>(adj);
         }
 
         auto end = std::chrono::system_clock::now();
@@ -83,8 +79,7 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
     }
     else if(command == "bfs-incremental")
     {
-        BFS bfs(adj);
-        BFS::Result all_reachable = bfs.run<false>();
+        BFS all_reachable = BFS::run<false>(adj);
         cerr << " " << std::count_if(all_reachable.method_inhibited.begin(), all_reachable.method_inhibited.end(), [](bool b) { return b; }) << " methods reachable!\n";
         cerr << " " << std::count_if(all_reachable.method_history.begin(), all_reachable.method_history.end(), [](auto h) { return bool(h); }) << " methods reachable!\n";
 
@@ -96,7 +91,7 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
 
         vector<bool> mid_called(adj.n_methods() - 1);
 
-        auto callback = [&](const PurgeTreeNode& node, const BFS::Result& r)
+        auto callback = [&](const PurgeTreeNode& node, const BFS& r)
         {
             size_t iteration = &node - &all_method_singletons[0];
             if(mid_called.at(iteration))
@@ -109,19 +104,19 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
 #if REACHABILITY_ASSERTIONS
             {
                 {
-                    BFS::Result ref = bfs.run(node.mids);
+                    BFS ref = BFS::run(adj, node.mids);
                     assert_reachability_equals(ref, r);
                 }
 
                 {
-                    BFS::Result r_copy = r;
+                    BFS r_copy = r;
                     method_id root_methods[node.mids.size()];
                     size_t root_methods_size = 0;
 
                     for(method_id mid : node.mids)
                     {
                         r_copy.method_inhibited[mid.id] = false;
-                        const auto& m = bfs.adj[mid];
+                        const auto& m = adj[mid];
                         if(
                                 std::any_of(m.backward_edges.begin(), m.backward_edges.end(), [&](const auto& item)
                                 {
@@ -138,7 +133,7 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
                         }
                     }
 
-                    bfs.run<false, false>(r_copy, {root_methods, root_methods_size}, false);
+                    r_copy.run<false, false>(adj, {root_methods, root_methods_size}, false);
                     assert_reachability_equals(all_reachable, r_copy);
                 }
             }
@@ -167,7 +162,7 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
 #endif
         };
 
-        bfs_incremental(bfs, all_method_singletons, callback);
+        bfs_incremental(adj, all_method_singletons, callback);
 
         if(!std::all_of(mid_called.begin(), mid_called.end(), [](bool b) { return b; }))
         {
@@ -178,8 +173,7 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
     else
     {
         cerr << "Running DFS on original graph...";
-        BFS bfs(adj);
-        BFS::Result all = bfs.run<false>();
+        BFS all = BFS::run<false>(adj);
         cerr << " " << std::count_if(all.method_inhibited.begin(), all.method_inhibited.end(), [](bool b) { return b; }) << " methods reachable!\n";
         auto n_visited_typeflows = std::count_if(all.typeflow_visited.begin(), all.typeflow_visited.end(), [](const auto& history){ return history.any(); });
         cerr << "typeflows visited: " << n_visited_typeflows << " / " << all.typeflow_visited.size() << endl;
@@ -289,8 +283,7 @@ static vector<method_id> parse_methods(const model& m, const char* methods)
 
 static void print_reachability(const model& m)
 {
-    BFS bfs(m.adj);
-    BFS::Result bfsresult = bfs.run();
+    BFS bfsresult = BFS::run(m.adj);
 
     string input;
     getline(cin, input);
@@ -319,8 +312,7 @@ static void print_reachability(const model& m)
 
 static void compute_and_write_purge_matrix(const model& m, ostream& out)
 {
-    BFS bfs(m.adj);
-    BFS::Result all_reachable = bfs.run<false>();
+    BFS all_reachable = BFS::run<false>(m.adj);
 
     vector<method_id> all_methods(m.adj.n_methods() - 1);
     std::iota(all_methods.begin(), all_methods.end(), 1);
@@ -330,7 +322,7 @@ static void compute_and_write_purge_matrix(const model& m, ostream& out)
 
     size_t cur_iteration = 0;
 
-    auto callback = [&](const PurgeTreeNode& node, const BFS::Result& r)
+    auto callback = [&](const PurgeTreeNode& node, const BFS& r)
     {
         size_t iteration = &node - &all_method_singletons[0];
 
@@ -348,15 +340,14 @@ static void compute_and_write_purge_matrix(const model& m, ostream& out)
         out.write((char*)rawBytes, rawBytesSize);
     };
 
-    bfs_incremental(bfs, all_method_singletons, callback);
+    bfs_incremental(m.adj, all_method_singletons, callback);
 }
 
 static vector<vector<bool>> compute_purge_matrix(const model& m)
 {
     vector<vector<bool>> result(m.adj.n_methods() - 1);
 
-    BFS bfs(m.adj);
-    BFS::Result all_reachable = bfs.run<false>();
+    BFS all_reachable = BFS::run<false>(m.adj);
 
     vector<method_id> all_methods(m.adj.n_methods() - 1);
     std::iota(all_methods.begin(), all_methods.end(), 1);
@@ -364,7 +355,7 @@ static vector<vector<bool>> compute_purge_matrix(const model& m)
     for(size_t i = 0; i < all_method_singletons.size(); i++)
         all_method_singletons[i] = {{&all_methods[i], 1}, {}};
 
-    auto callback = [&](const PurgeTreeNode& node, const BFS::Result& r)
+    auto callback = [&](const PurgeTreeNode& node, const BFS& r)
     {
         size_t iteration = &node - &all_method_singletons[0];
 
@@ -374,7 +365,7 @@ static vector<vector<bool>> compute_purge_matrix(const model& m)
             result[iteration][i] = (bool)r.method_history[i];
     };
 
-    bfs_incremental(bfs, all_method_singletons, callback);
+    bfs_incremental(m.adj, all_method_singletons, callback);
 
     return result;
 }
@@ -416,8 +407,7 @@ static void show_data_info(model& m)
         cout << "singleton_filter: " << (100.0 * singleton_filter_count / m.adj.n_typeflows()) << endl;
     }
 
-    BFS bfs(m.adj);
-    BFS::Result res = bfs.run();
+    BFS res = BFS::run(m.adj);
 
     {
         size_t singleton_filter_count = 0;

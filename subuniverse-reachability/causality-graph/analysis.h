@@ -166,85 +166,38 @@ public:
         ResultDiff() = default;
     };
 
-    struct Result
-    {
-        vector<TypeflowHistory> typeflow_visited;
-        vector<DefaultMethodHistory> method_history;
-        vector<bool> method_inhibited;
-        boost::dynamic_bitset<> allInstantiated;
-        vector<vector<typeflow_id>> saturation_uses_by_filter;
-        vector<bool> included_in_saturation_uses;
+    vector<TypeflowHistory> typeflow_visited;
+    vector<DefaultMethodHistory> method_history;
+    vector<bool> method_inhibited;
+    boost::dynamic_bitset<> allInstantiated;
+    vector<vector<typeflow_id>> saturation_uses_by_filter;
+    vector<bool> included_in_saturation_uses;
 
-        Result(size_t n_methods, size_t n_typeflows, size_t n_types, size_t n_filters) :
-                typeflow_visited(n_typeflows),
-                method_inhibited(n_methods),
-                method_history(n_methods),
-                allInstantiated(n_types),
-                saturation_uses_by_filter(n_filters),
-                included_in_saturation_uses(n_typeflows)
-        {}
+    BFS(size_t n_methods, size_t n_typeflows, size_t n_types, size_t n_filters) :
+        typeflow_visited(n_typeflows),
+        method_inhibited(n_methods),
+        method_history(n_methods),
+        allInstantiated(n_types),
+        saturation_uses_by_filter(n_filters),
+        included_in_saturation_uses(n_typeflows)
+    {}
 
-        explicit Result(const BFS& bfs) : Result(bfs.adj.n_methods(), bfs.adj.n_typeflows(), bfs.adj.n_types(), bfs.adj.filter_filters.size())
-        {}
-
-        void revert(const BFS& bfs, const ResultDiff& changes)
-        {
-            for(method_id m : changes.visited_method_log)
-            {
-                method_inhibited[m.id] = false;
-                method_history[m.id] = {};
-            }
-
-            for(size_t i = changes.typeflow_visited_log.size(); i > 0; i--)
-            {
-                const auto& change = changes.typeflow_visited_log[i-1];
-                typeflow_visited[change.first.id] = change.second;
-            }
-
-            for(auto t : changes.allInstantiated_log)
-            {
-                allInstantiated[t] = false;
-            }
-
-            for(typeflow_id flow : changes.included_in_saturation_uses_log)
-            {
-                included_in_saturation_uses[flow.id] = false;
-            }
-
-            for(typeflow_id flow : changes.saturation_uses_by_filter_removed_log)
-            {
-                saturation_uses_by_filter[bfs.adj[flow].original_filter - bfs.adj.filters_begin].push_back(flow);
-            }
-
-            for(typeflow_id flow : changes.saturation_uses_by_filter_added_log)
-            {
-                erase(saturation_uses_by_filter[bfs.adj[flow].original_filter - bfs.adj.filters_begin], flow);
-            }
-        }
-    };
-
-    const Adjacency& adj;
-
-    explicit BFS(const Adjacency& adj) : adj(adj)
-    {
-    }
+    explicit BFS(const Adjacency& adj) : BFS(adj.n_methods(), adj.n_typeflows(), adj.n_types(), adj.filter_filters.size())
+    {}
 
     /* If dist_matters is asigned false, the BFS gets sped up about x2.
      * However, all dist-values of types in typeflows and methods will be zero. */
     template<bool dist_matters = true>
-    [[nodiscard]] Result run(span<const method_id> purged_methods = {}) const
+    [[nodiscard]] static BFS run(const Adjacency& adj, span<const method_id> purged_methods = {})
     {
-#if LOG
-        cerr << "n_filters: " << filter_filters.size() << ", n_methods: " << adj.n_methods() << ", n_types: " << adj.n_types() << ", n_typeflows: " << adj.n_typeflows() << endl;
-#endif
-        Result r(*this);
+        BFS r(adj);
 
         for(method_id purged : purged_methods)
             r.method_inhibited[purged.id] = true;
 
         method_id root_method = 0;
 
-        run<dist_matters>(r, {&root_method, 1}, true);
+        r.run<dist_matters>(adj, {&root_method, 1}, true);
 
         for(method_id purged : purged_methods)
             r.method_inhibited[purged.id] = false;
@@ -255,14 +208,17 @@ public:
     /* If dist_matters is asigned false, the BFS gets sped up about x2.
      * However, all dist-values of types in typeflows and methods will be zero. */
     template<bool dist_matters = true, bool track_changes = false>
-    auto run(Result& r, span<const method_id> method_worklist_init, bool init_typeflows) const
+    auto run(const Adjacency& adj, span<const method_id> method_worklist_init, bool init_typeflows)
     {
-        vector<bool> method_inhibited(std::move(r.method_inhibited));
-        vector<DefaultMethodHistory> method_history(std::move(r.method_history));
-        vector<TypeflowHistory> typeflow_visited(std::move(r.typeflow_visited));
-        boost::dynamic_bitset<> allInstantiated(std::move(r.allInstantiated));
-        vector<vector<typeflow_id>> saturation_uses_by_filter(std::move(r.saturation_uses_by_filter));
-        vector<bool> included_in_saturation_uses(std::move(r.included_in_saturation_uses));
+        // Moving these into locals proved beneficial with the previous architecture, where the results were indirectly referenced
+        // via BFS::Result.
+        // TODO: Investigate if this is still necessary performance-wise
+        vector<bool> method_inhibited(std::move(this->method_inhibited));
+        vector<DefaultMethodHistory> method_history(std::move(this->method_history));
+        vector<TypeflowHistory> typeflow_visited(std::move(this->typeflow_visited));
+        boost::dynamic_bitset<> allInstantiated(std::move(this->allInstantiated));
+        vector<vector<typeflow_id>> saturation_uses_by_filter(std::move(this->saturation_uses_by_filter));
+        vector<bool> included_in_saturation_uses(std::move(this->included_in_saturation_uses));
 
         vector<method_id> visited_method_log;
         vector<pair<typeflow_id, TypeflowHistory>> typeflow_visited_log;
@@ -562,18 +518,53 @@ public:
 
         assert(instantiated_since_last_iteration.empty());
 
-        r.method_inhibited = std::move(method_inhibited);
-        r.method_history = std::move(method_history);
-        r.typeflow_visited = std::move(typeflow_visited);
-        r.allInstantiated = std::move(allInstantiated);
-        r.included_in_saturation_uses = std::move(included_in_saturation_uses);
-        r.saturation_uses_by_filter = std::move(saturation_uses_by_filter);
+        this->method_inhibited = std::move(method_inhibited);
+        this->method_history = std::move(method_history);
+        this->typeflow_visited = std::move(typeflow_visited);
+        this->allInstantiated = std::move(allInstantiated);
+        this->included_in_saturation_uses = std::move(included_in_saturation_uses);
+        this->saturation_uses_by_filter = std::move(saturation_uses_by_filter);
 
         return ResultDiff(std::move(visited_method_log), std::move(typeflow_visited_log), std::move(allInstantiated_log), std::move(included_in_saturation_uses_log), std::move(saturation_uses_by_filter_added_log), std::move(saturation_uses_by_filter_removed_log));
     }
+
+    void revert(const Adjacency& adj, const ResultDiff& changes)
+    {
+        for(method_id m : changes.visited_method_log)
+        {
+            method_inhibited[m.id] = false;
+            method_history[m.id] = {};
+        }
+
+        for(size_t i = changes.typeflow_visited_log.size(); i > 0; i--)
+        {
+            const auto& change = changes.typeflow_visited_log[i-1];
+            typeflow_visited[change.first.id] = change.second;
+        }
+
+        for(auto t : changes.allInstantiated_log)
+        {
+            allInstantiated[t] = false;
+        }
+
+        for(typeflow_id flow : changes.included_in_saturation_uses_log)
+        {
+            included_in_saturation_uses[flow.id] = false;
+        }
+
+        for(typeflow_id flow : changes.saturation_uses_by_filter_removed_log)
+        {
+            saturation_uses_by_filter[adj[flow].original_filter - adj.filters_begin].push_back(flow);
+        }
+
+        for(typeflow_id flow : changes.saturation_uses_by_filter_added_log)
+        {
+            erase(saturation_uses_by_filter[adj[flow].original_filter - adj.filters_begin], flow);
+        }
+    }
 };
 
-static void assert_reachability_equals(const BFS::Result& r1, const BFS::Result& r2)
+static void assert_reachability_equals(const BFS& r1, const BFS& r2)
 {
     if(!(r1.allInstantiated == r2.allInstantiated))
     {
@@ -678,8 +669,8 @@ class IncrementalBfs
         { }
     };
 
-    const BFS& bfs;
-    BFS::Result r;
+    const Adjacency& adj;
+    BFS r;
     // Replaced the former callstack-resident implicit state
     stack<BfsIncrementalFrame> state;
 
@@ -696,7 +687,7 @@ class IncrementalBfs
             {
                 method_visited[mid.id] = false;
 
-                const auto& m = bfs.adj[mid];
+                const auto& m = adj[mid];
                 if(
                         std::any_of(m.backward_edges.begin(), m.backward_edges.end(), [&](const auto& item)
                         {
@@ -714,19 +705,19 @@ class IncrementalBfs
             }
         }
 
-        auto incremental_changes = bfs.run<false, true>(r, {root_methods, root_methods + root_methods_size}, false);
+        auto incremental_changes = r.run<false, true>(adj, {root_methods, root_methods + root_methods_size}, false);
         state.emplace(stillpurge, depurge, std::move(incremental_changes));
     };
 
 public:
-    IncrementalBfs(const BFS& bfs, span<const PurgeTreeNode> purges) : bfs(bfs), r(bfs)
+    IncrementalBfs(const Adjacency& adj, span<const PurgeTreeNode> purges) : adj(adj), r(adj)
     {
         for(const PurgeTreeNode& node : purges)
             for(method_id mid : node.mids)
                 r.method_inhibited[mid.id] = true;
 
         method_id root_method = 0;
-        bfs.run<false>(r, {&root_method, 1}, true);
+        r.run<false>(adj, {&root_method, 1}, true);
 
         state.emplace(purges);
     }
@@ -779,7 +770,7 @@ public:
             }
             else
             {
-                r.revert(bfs, s.incremental_changes);
+                r.revert(adj, s.incremental_changes);
                 for(const PurgeTreeNode& node : s.depurge)
                     for(method_id mid : node.mids)
                         r.method_inhibited[mid.id] = true;
@@ -789,15 +780,15 @@ public:
         return nullptr;
     }
 
-    [[nodiscard]] const BFS::Result& current_result() const
+    [[nodiscard]] const BFS& current_result() const
     {
         return r;
     }
 };
 
-static void bfs_incremental(const BFS& bfs, span<const PurgeTreeNode> methods_to_purge, const function<void(const PurgeTreeNode&, const BFS::Result&)>& callback)
+static void bfs_incremental(const Adjacency& adj, span<const PurgeTreeNode> methods_to_purge, const function<void(const PurgeTreeNode&, const BFS&)>& callback)
 {
-    IncrementalBfs ibfs(bfs, methods_to_purge);
+    IncrementalBfs ibfs(adj, methods_to_purge);
     while(auto n = ibfs.next())
         callback(*n, ibfs.current_result());
 }

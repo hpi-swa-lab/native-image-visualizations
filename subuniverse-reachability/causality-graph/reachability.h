@@ -78,7 +78,7 @@ static ostream& operator<<(ostream& out, const TreeIndenter& indentation)
     return out;
 }
 
-static void print_reachability_of_method(ostream& out, const Adjacency& adj, const vector<string>& method_names, const vector<string>& type_names, const BFS::Result& all, method_id m, vector<bool>& visited, TreeIndenter& indentation)
+static void print_reachability_of_method(ostream& out, const Adjacency& adj, const vector<string>& method_names, const vector<string>& type_names, const BFS& all, method_id m, vector<bool>& visited, TreeIndenter& indentation)
 {
     size_t dist = all.method_history[m.id].dist;
 
@@ -278,7 +278,7 @@ static void print_reachability_of_method(ostream& out, const Adjacency& adj, con
     }
 }
 
-static void print_reachability(ostream& out, const Adjacency& adj, const BFS::Result& all, const vector<string>& method_names, const vector<string>& type_names, method_id m)
+static void print_reachability(ostream& out, const Adjacency& adj, const BFS& all, const vector<string>& method_names, const vector<string>& type_names, method_id m)
 {
     string name;
 
@@ -322,7 +322,7 @@ namespace std {
 }  // namespace std
 
 
-static void get_reachability_of_method(unordered_map<pair<method_id, method_id>, uint32_t>& edges, const Adjacency& adj, const BFS::Result& all, method_id m, vector<bool>& visited)
+static void get_reachability_of_method(unordered_map<pair<method_id, method_id>, uint32_t>& edges, const Adjacency& adj, const BFS& all, method_id m, vector<bool>& visited)
 {
     size_t dist = all.method_history[m.id].dist;
 
@@ -502,7 +502,7 @@ static void get_reachability_of_method(unordered_map<pair<method_id, method_id>,
     }
 }
 
-static vector<ReachabilityEdge> get_reachability(const Adjacency& adj, const BFS::Result& all, method_id m)
+static vector<ReachabilityEdge> get_reachability(const Adjacency& adj, const BFS& all, method_id m)
 {
     unordered_map<pair<method_id, method_id>, uint32_t> edges;
 

@@ -4,6 +4,7 @@
 #include <emscripten.h>
 #include <iostream>
 #include <span>
+#include <utility>
 #include <vector>
 #include "model.h"
 #include "input.h"
@@ -69,10 +70,10 @@ struct SimulationResult : Deletable
 class DetailedSimulationResult : SimulationResult
 {
     shared_ptr<const model> m;
-    BFS::Result data;
+    BFS data;
 
 public:
-    DetailedSimulationResult(shared_ptr<const model> m, BFS::Result&& data) : m(m), data(std::move(data)) {}
+    DetailedSimulationResult(shared_ptr<const model> m, BFS&& data) : m(std::move(m)), data(std::move(data)) {}
 
     EdgeBuffer* get_reachability_hyperpath(method_id mid) const
     {
@@ -91,7 +92,7 @@ class SimpleSimulationResult : SimulationResult
     vector<DefaultMethodHistory> method_history;
 
 public:
-    SimpleSimulationResult(BFS::Result&& data) : method_history(std::move(data.method_history))
+    SimpleSimulationResult(BFS&& data) : method_history(std::move(data.method_history))
     {}
 
     const uint8_t* get_method_history() const
@@ -100,42 +101,52 @@ public:
     }
 };
 
-class CausalityGraph : Deletable
+class IncrementalSimulationResult : SimulationResult
 {
-    shared_ptr<model> purge_model;
-    BFS bfs;
+    shared_ptr<const model> m;
+    IncrementalBfs ibfs;
 
 public:
-    explicit CausalityGraph(model&& purge_model) : purge_model(std::make_shared<model>(std::move(purge_model))), bfs(this->purge_model->adj){}
+    IncrementalSimulationResult(shared_ptr<const model> m, const PurgeTreeNode* purge_root) : m(std::move(m)), ibfs(this->m->adj, {purge_root, 1}) {}
+
+    const uint8_t* get_method_history() const
+    {
+        return reinterpret_cast<const uint8_t*>(&ibfs.current_result().method_history[1]);
+    }
+
+    // Returns address of corresponding PurgeTree node
+    const PurgeTreeNode* simulate_next()
+    {
+        return ibfs.next();
+    }
+};
+
+class CausalityGraph : Deletable
+{
+    shared_ptr<const model> purge_model;
+
+public:
+    explicit CausalityGraph(model&& purge_model) : purge_model(std::make_shared<model>(std::move(purge_model))) {}
 
     SimpleSimulationResult* simulate_purge(span<const method_id> purge_set) const
     {
-        return new SimpleSimulationResult(std::move(bfs.run<false>(purge_set)));
+        return new SimpleSimulationResult(std::move(BFS::run<false>(purge_model->adj, purge_set)));
     }
 
     DetailedSimulationResult* simulate_purge_detailed(span<const method_id> purge_set) const
     {
-        return new DetailedSimulationResult(purge_model, std::move(bfs.run<true>(purge_set)));
+        return new DetailedSimulationResult(purge_model, std::move(BFS::run<true>(purge_model->adj, purge_set)));
     }
 
-    bool simulate_purges_batched(const PurgeTreeNode* purge_root, purges_batched_result_callback result_callback) const
+    IncrementalSimulationResult* simulate_purges_batched(const PurgeTreeNode* purge_root) const
     {
         static_assert(sizeof(PurgeTreeNode) == 16);
         static_assert(offsetof(PurgeTreeNode, mids) == 0);
         static_assert(offsetof(PurgeTreeNode, children) == 8);
 
-        if(purge_root->mids.empty())
-        {
-            cerr << "Empty method set!!!" << endl;
-            return false;
-        }
-
-        ProcessingStage s("Running batched purges");
-
-        auto &m = *purge_model;
-
 #if CHECK_ARGS
         {
+            auto &m = *purge_model;
             vector<bool> method_seen(bfs.adj.n_methods());
 
             for(method_id mid : purge_root->mids)
@@ -143,27 +154,19 @@ public:
                 if(mid.id >= method_seen.size())
                 {
                     cerr << "Method id out of range: " << mid.id << endl;
-                    return false;
+                    return nullptr;
                 }
                 if(method_seen[mid.id])
                 {
                     cerr << "Duplicate method " << m.method_names[mid.id] << '(' << mid.id << ')' << endl;
-                    return false;
+                    return nullptr;
                 }
                 method_seen[mid.id] = true;
             }
         }
 #endif
 
-        auto callback = [&](const PurgeTreeNode& node, const BFS::Result &r)
-        {
-            size_t iteration = &node - purge_root;
-            bool cancellation_requested = result_callback(iteration, (const uint8_t*)&r.method_history[1]) != 0;
-            // TODO: Enable cancellation
-        };
-
-        bfs_incremental(bfs, {purge_root, 1}, callback);
-        return true;
+        return new IncrementalSimulationResult(purge_model, purge_root);
     }
 };
 
@@ -234,9 +237,9 @@ DetailedSimulationResult* EMSCRIPTEN_KEEPALIVE CausalityGraph_simulatePurgeDetai
     return thisPtr->simulate_purge_detailed({purge_set_ptr, purge_set_len});
 }
 
-bool EMSCRIPTEN_KEEPALIVE CausalityGraph_simulatePurgesBatched(const CausalityGraph* thisPtr, const PurgeTreeNode* purge_root, purges_batched_result_callback result_callback)
+IncrementalSimulationResult* EMSCRIPTEN_KEEPALIVE CausalityGraph_simulatePurgesBatched(const CausalityGraph* thisPtr, const PurgeTreeNode* purge_root)
 {
-    return thisPtr->simulate_purges_batched(purge_root, result_callback);
+    return thisPtr->simulate_purges_batched(purge_root);
 }
 
 EdgeBuffer* EMSCRIPTEN_KEEPALIVE DetailedSimulationResult_getReachabilityHyperpath(const DetailedSimulationResult* thisPtr, method_id target)
@@ -247,6 +250,11 @@ EdgeBuffer* EMSCRIPTEN_KEEPALIVE DetailedSimulationResult_getReachabilityHyperpa
 const uint8_t* EMSCRIPTEN_KEEPALIVE SimulationResult_getMethodHistory(const SimulationResult* thisPtr)
 {
     return thisPtr->get_method_history();
+}
+
+const PurgeTreeNode* EMSCRIPTEN_KEEPALIVE IncrementalSimulationResult_simulateNext(IncrementalSimulationResult* thisPtr)
+{
+    return thisPtr->simulate_next();
 }
 
 void EMSCRIPTEN_KEEPALIVE Deletable_delete(Deletable* thisPtr)
