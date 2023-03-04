@@ -706,7 +706,8 @@ class IncrementalBfs
     };
 
     const BFS& bfs;
-    BFS::Result& r;
+    BFS::Result r;
+    // Replaced the former callstack-resident implicit state
     stack<BfsIncrementalFrame> state;
 
     void do_purge(span<const PurgeTreeNode> stillpurge, span<const PurgeTreeNode> depurge)
@@ -745,9 +746,16 @@ class IncrementalBfs
     };
 
 public:
-    IncrementalBfs(const BFS& bfs, BFS::Result& r, span<const PurgeTreeNode> methods_to_purge) : bfs(bfs), r(r)
+    IncrementalBfs(const BFS& bfs, span<const PurgeTreeNode> purges) : bfs(bfs), r(bfs)
     {
-        state.emplace(methods_to_purge);
+        for(const PurgeTreeNode& node : purges)
+            for(method_id mid : node.mids)
+                r.method_inhibited[mid.id] = true;
+
+        method_id root_method = 0;
+        bfs.run<false>(r, {&root_method, 1}, true);
+
+        state.emplace(purges);
     }
 
     const PurgeTreeNode* next()
@@ -814,9 +822,9 @@ public:
     }
 };
 
-static void bfs_incremental(const BFS& bfs, BFS::Result& r, span<const PurgeTreeNode> methods_to_purge, const function<void(const PurgeTreeNode&, const BFS::Result&)>& callback)
+static void bfs_incremental(const BFS& bfs, span<const PurgeTreeNode> methods_to_purge, const function<void(const PurgeTreeNode&, const BFS::Result&)>& callback)
 {
-    IncrementalBfs ibfs(bfs, r, methods_to_purge);
+    IncrementalBfs ibfs(bfs, methods_to_purge);
     while(auto n = ibfs.next())
         callback(*n, ibfs.current_result());
 }

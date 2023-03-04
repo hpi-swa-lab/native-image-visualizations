@@ -1,6 +1,5 @@
-#define REACHABILITY_ASSERTIONS 0
-
 #define LOG 0
+#define CHECK_ARGS 0
 
 #include <emscripten.h>
 #include <iostream>
@@ -135,40 +134,35 @@ public:
 
         auto &m = *purge_model;
 
+#if CHECK_ARGS
         {
-            BFS::Result r(bfs);
-            {
-                auto &method_inhibited = r.method_inhibited;
+            vector<bool> method_seen(bfs.adj.n_methods());
 
-                for(method_id mid : purge_root->mids)
+            for(method_id mid : purge_root->mids)
+            {
+                if(mid.id >= method_seen.size())
                 {
-                    if(mid.id >= method_inhibited.size())
-                    {
-                        cerr << "Method id out of range: " << mid.id << endl;
-                        return false;
-                    }
-                    if(method_inhibited[mid.id])
-                    {
-                        cerr << "Duplicate method " << m.method_names[mid.id] << '(' << mid.id << ')' << endl;
-                        return false;
-                    }
-                    method_inhibited[mid.id] = true;
+                    cerr << "Method id out of range: " << mid.id << endl;
+                    return false;
                 }
-
-                method_id root_method = 0;
-                bfs.run<false>(r, {&root_method, 1}, true);
+                if(method_seen[mid.id])
+                {
+                    cerr << "Duplicate method " << m.method_names[mid.id] << '(' << mid.id << ')' << endl;
+                    return false;
+                }
+                method_seen[mid.id] = true;
             }
-
-            auto callback = [&](const PurgeTreeNode& node, const BFS::Result &r)
-            {
-                size_t iteration = &node - purge_root;
-                bool cancellation_requested = result_callback(iteration, (const uint8_t*)&r.method_history[1]) != 0;
-                // TODO: Enable cancellation
-            };
-
-            bfs_incremental(bfs, r, {purge_root, 1}, callback);
         }
+#endif
 
+        auto callback = [&](const PurgeTreeNode& node, const BFS::Result &r)
+        {
+            size_t iteration = &node - purge_root;
+            bool cancellation_requested = result_callback(iteration, (const uint8_t*)&r.method_history[1]) != 0;
+            // TODO: Enable cancellation
+        };
+
+        bfs_incremental(bfs, {purge_root, 1}, callback);
         return true;
     }
 };
