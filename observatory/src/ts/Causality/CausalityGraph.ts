@@ -59,10 +59,6 @@ class NativeBuffer
         NativeBuffer.finReg.register(this, this.ptr, this)
     }
 
-    get getPtr(): number {
-        return this.ptr
-    }
-
     get viewU8(): Uint8Array {
         return Module.HEAPU8.subarray(this.ptr, this.ptr + this.len)
     }
@@ -119,33 +115,34 @@ export class CausalityGraph extends WasmObjectWrapper {
 
     public constructor(nMethods: number, nTypes: number, data: CausalityGraphBinaryData) {
         const parameterFiles : ('typestates.bin' | 'interflows.bin' | 'direct_invokes.bin' | 'typeflow_methods.bin' | 'typeflow_filters.bin')[] = ['typestates.bin', 'interflows.bin', 'direct_invokes.bin', 'typeflow_methods.bin', 'typeflow_filters.bin']
+
         const filesAsNativeByteArrays = parameterFiles.map(name => {
             const arr = data[name]
-            const ptr = Module._malloc(arr.length)
-            Module.HEAPU8.subarray(ptr, ptr + arr.length).set(arr)
-            return { ptr: ptr, len: arr.length }
+            const buffer = new NativeBuffer(arr.length)
+            buffer.viewU8.set(arr)
+            return buffer
         })
 
         const wasmObject = CausalityGraph._init(nTypes,
             nMethods,
-            ...filesAsNativeByteArrays.flatMap(span => [span.ptr, span.len]))
+            ...filesAsNativeByteArrays.flatMap(buffer => [buffer.viewU8.byteOffset, buffer.viewU8.byteLength]))
 
-        for (const span of Object.values(filesAsNativeByteArrays))
-            Module._free(span.ptr)
+        for (const buffer of Object.values(filesAsNativeByteArrays))
+            buffer.delete()
 
         super(wasmObject)
         this.nMethods = nMethods
     }
 
     public simulatePurge(nodesToBePurged: number[] = []): Uint8Array {
-        const midsPtr = Module._malloc(nodesToBePurged.length * 4)
-        const midsArray = Module.HEAPU32.subarray(midsPtr / 4, midsPtr / 4 + nodesToBePurged.length)
+        const mids = new NativeBuffer(nodesToBePurged.length * 4)
+        const midsArray = mids.viewU32
 
         for (let i = 0; i < nodesToBePurged.length; i++)
             midsArray[i] = nodesToBePurged[i] + 1
 
-        const simulationResultPtr = CausalityGraph._simulatePurge(this, midsPtr, nodesToBePurged.length)
-        Module._free(midsPtr)
+        const simulationResultPtr = CausalityGraph._simulatePurge(this, mids.viewU8.byteOffset, nodesToBePurged.length)
+        mids.delete()
         const simulationResult = new SimulationResult(this.nMethods, simulationResultPtr)
         const methodHistory = simulationResult.getReachableArray()
         simulationResult.delete()
@@ -153,15 +150,15 @@ export class CausalityGraph extends WasmObjectWrapper {
     }
 
     public simulatePurgeDetailed(nodesToBePurged: number[] = []): DetailedSimulationResult {
-        const midsPtr = Module._malloc(nodesToBePurged.length * 4)
-        const midsArray = Module.HEAPU32.subarray(midsPtr / 4, midsPtr / 4 + nodesToBePurged.length)
+        const mids = new NativeBuffer(nodesToBePurged.length * 4)
+        const midsArray = mids.viewU32
 
         for (let i = 0; i < nodesToBePurged.length; i++)
             midsArray[i] = nodesToBePurged[i] + 1
 
         const simulationResultPtr =
-            CausalityGraph._simulatePurgeDetailed(this, midsPtr, midsArray.length)
-        Module._free(midsPtr)
+            CausalityGraph._simulatePurgeDetailed(this, mids.viewU8.byteOffset, midsArray.length)
+        mids.delete()
         return new DetailedSimulationResult(this.nMethods, simulationResultPtr)
     }
 
@@ -174,7 +171,7 @@ export class CausalityGraph extends WasmObjectWrapper {
 
         const midsCount = calcMidsCount(purge_root) + prepurgeMids.length
         const midsBuffer = new NativeBuffer(midsCount * 4)
-        const midsPtr = midsBuffer.getPtr
+        const midsPtr = midsBuffer.viewU8.byteOffset
 
         let midsPos: number = midsPtr / 4
 
@@ -217,7 +214,7 @@ export class CausalityGraph extends WasmObjectWrapper {
                 const slice = subsetsArr.subarray(offset*4, (offset+1)*4)
                 slice[0] = midsPos_start * 4
                 slice[1] = midsPos_end - midsPos_start
-                slice[2] = subsetsArrBuffer.getPtr + i_start * 16
+                slice[2] = subsetsArrBuffer.viewU8.byteOffset + i_start * 16
                 slice[3] = i_end - i_start
             }
 
@@ -229,7 +226,7 @@ export class CausalityGraph extends WasmObjectWrapper {
             subsetsArr[1] += prepurgeMids.length
         }
 
-        const wasmObject = CausalityGraph._simulatePurgesBatched(this, subsetsArrBuffer.getPtr)
+        const wasmObject = CausalityGraph._simulatePurgesBatched(this, subsetsArrBuffer.viewU8.byteOffset)
         return new IncrementalSimulationResult(this.nMethods, wasmObject, midsBuffer, subsetsArrBuffer, indexToInputNode)
     }
 }
@@ -303,7 +300,7 @@ export class IncrementalSimulationResult extends SimulationResult {
         const curNode = IncrementalSimulationResult._simulateNext(this)
         if(curNode === 0)
             return
-        const index = (curNode - this.subsetsArr.getPtr) / 16
+        const index = (curNode - this.subsetsArr.viewU8.byteOffset) / 16
         return this.indexToInputNode[index]
     }
 
