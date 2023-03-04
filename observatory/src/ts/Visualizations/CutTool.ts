@@ -313,10 +313,11 @@ export class CutTool {
         this.reachable_in_image_view = this.reachable_under_selection = this.all_reachable = this.cg.simulatePurge()
 
         this.dataRoot = generateHierarchyFromReachabilityJsonAndMethodList(reachabilityData, this.methodList)
-        this.prepareListView(this.dataRoot)
 
         document.getElementById('loading-panel').hidden = true
         document.getElementById('main-panel').hidden = false
+
+        this.prepareListView(this.dataRoot)
     }
 
     public changePrecomputeCutoffs(enable) {
@@ -345,7 +346,7 @@ export class CutTool {
     private insertChildren(element, node) {
         const list = this.generateHtmlCutview(node)
         element.appendChild(list)
-        this.recalculateCutOverviewForSubtree(list, node)
+        return this.recalculateCutOverviewForSubtree(list, node)
     }
 
     private generateHtmlCutview(data) {
@@ -606,7 +607,7 @@ export class CutTool {
         return ul
     }
 
-    private recalculateCutOverviewCustom(purgeNodeTreeRoot, additionalPurges, comparison_array, callback) {
+    private async recalculateCutOverviewCustom(purgeNodeTreeRoot, additionalPurges, comparison_array, callback) {
         const batchPurger = this.cg.simulatePurgesBatched(purgeNodeTreeRoot, additionalPurges)
 
         let node
@@ -618,18 +619,18 @@ export class CutTool {
             for (let i = 0; i < this.codesizes.length; i++)
                 if (comparison_array[i] !== 0xFF && still_reachable[i] === 0xFF)
                     purgedSize += this.codesizes[i]
-            callback(node.src, { arr: still_reachable.slice(), size: purgedSize })
+            await callback(node.src, { arr: still_reachable.slice(), size: purgedSize })
         }
 
         batchPurger.delete()
     }
 
     private recalculateCutOverviewWithSelection(purgeNodeTreeRoot, callback) {
-        this.recalculateCutOverviewCustom(purgeNodeTreeRoot, [...new Set([...this.selectedForPurging].flatMap(collectCgNodesInSubtree))], this.reachable_under_selection, callback)
+        return this.recalculateCutOverviewCustom(purgeNodeTreeRoot, [...new Set([...this.selectedForPurging].flatMap(collectCgNodesInSubtree))], this.reachable_under_selection, callback)
     }
 
     private recalculateCutOverviewWithoutSelection(purgeNodeTreeRoot, callback) {
-        this.recalculateCutOverviewCustom(purgeNodeTreeRoot, [], this.all_reachable, callback)
+        return this.recalculateCutOverviewCustom(purgeNodeTreeRoot, [], this.all_reachable, callback)
     }
 
     private createPurgeNodeTree(node) {
@@ -699,18 +700,31 @@ export class CutTool {
         html.querySelector('.cut-size-bar').style.width = width
     }
 
-    private recalculateCutOverviewForSubtree(list, node) {
+    private async recalculateCutOverviewForSubtree(list, node) {
         // The C++ code doesn't handle empty groups well. Therefore we already handle them here.
         const purgeNodeTreeRoot = { children: node.children.map((c, i) => { return { mids: collectCgNodesInSubtree(c), index: i, src: c } }).filter(n => n.mids.length > 0) }
 
         let maxPurgedSize = 0
-        this.recalculateCutOverviewWithoutSelection(purgeNodeTreeRoot, (node, data) => {
+
+        await new Promise(resolve => setTimeout(resolve, 1))
+
+        const updateMax: boolean = node === this.dataRoot
+
+        await this.recalculateCutOverviewWithoutSelection(purgeNodeTreeRoot, (node, data) => {
             node.reachable_after_cutting_this = data
             maxPurgedSize = Math.max(maxPurgedSize, data.size)
-        })
 
-        if (node === this.dataRoot)
-            this.maxPurgedSize = maxPurgedSize
+            const html = node.html
+            if(html) {
+                if (updateMax) {
+                    this.maxPurgedSize = Math.max(maxPurgedSize, data.size)
+                }
+
+                html.querySelector('.cut-size-column').textContent = formatByteSizesWithUnitPrefix(data.size)
+                html.querySelector('.cut-size-bar').style.width = (data.size / this.maxPurgedSize * 100) + '%'
+                return new Promise(resolve => setTimeout(resolve, 1))
+            }
+        })
 
         assert(this.maxPurgedSize)
 
