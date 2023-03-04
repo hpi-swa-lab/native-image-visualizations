@@ -166,11 +166,7 @@ public:
                 // TODO: Enable cancellation
             };
 
-            bfs_incremental_rec(
-                    // Would only be used with REACHABILITY_ASSERTIONS defined
-                    // TODO: Remove this parameter from bfs_incremental_rec(...)
-                    *(BFS::Result*)nullptr,
-                    bfs, r, {purge_root, 1}, callback);
+            bfs_incremental_rec(bfs, r, {purge_root, 1}, callback);
         }
 
         return true;

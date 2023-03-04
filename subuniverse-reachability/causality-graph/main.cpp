@@ -1,6 +1,6 @@
 #define INCLUDE_LABELS 0
 #define LOG 0
-#define REACHABILITY_ASSERTIONS 0
+#define REACHABILITY_ASSERTIONS 1
 
 #include <iostream>
 #include <vector>
@@ -110,6 +110,44 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
         {
             size_t iteration = &node - &all_method_singletons[0];
 
+#if REACHABILITY_ASSERTIONS
+            {
+                {
+                    BFS::Result ref = bfs.run(node.mids);
+                    assert_reachability_equals(ref, r);
+                }
+
+                {
+                    BFS::Result r_copy = r;
+                    method_id root_methods[node.mids.size()];
+                    size_t root_methods_size = 0;
+
+                    for(method_id mid : node.mids)
+                    {
+                        r_copy.method_inhibited[mid.id] = false;
+                        const auto& m = bfs.adj[mid];
+                        if(
+                                std::any_of(m.backward_edges.begin(), m.backward_edges.end(), [&](const auto& item)
+                                {
+                                    return (bool) r_copy.method_history[item.id];
+                                })
+                                ||
+                                std::any_of(m.virtual_invocation_sources.begin(), m.virtual_invocation_sources.end(), [&](const auto& item)
+                                {
+                                    return r_copy.typeflow_visited[item.id].any();
+                                })
+                            )
+                        {
+                            root_methods[root_methods_size++] = mid;
+                        }
+                    }
+
+                    bfs.run<false, false>(r_copy, {root_methods, root_methods_size}, false);
+                    assert_reachability_equals(all_reachable, r_copy);
+                }
+            }
+#endif
+
 
 #define PRINT_CUTOFFS 1
 #if PRINT_CUTOFFS
@@ -133,7 +171,7 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
 #endif
         };
 
-        bfs_incremental_rec(all_reachable, bfs, r, all_method_singletons, callback);
+        bfs_incremental_rec(bfs, r, all_method_singletons, callback);
     }
     else
     {
@@ -316,7 +354,7 @@ static void compute_and_write_purge_matrix(const model& m, ostream& out)
         out.write((char*)rawBytes, rawBytesSize);
     };
 
-    bfs_incremental_rec(all_reachable, bfs, r, all_method_singletons, callback);
+    bfs_incremental_rec(bfs, r, all_method_singletons, callback);
 }
 
 static vector<vector<bool>> compute_purge_matrix(const model& m)
@@ -350,7 +388,7 @@ static vector<vector<bool>> compute_purge_matrix(const model& m)
             result[iteration][i] = (bool)r.method_history[i];
     };
 
-    bfs_incremental_rec(all_reachable, bfs, r, all_method_singletons, callback);
+    bfs_incremental_rec(bfs, r, all_method_singletons, callback);
 
     return result;
 }

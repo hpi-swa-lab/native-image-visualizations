@@ -279,7 +279,7 @@ public:
     /* If dist_matters is asigned false, the BFS gets sped up about x2.
      * However, all dist-values of types in typeflows and methods will be zero. */
     template<bool dist_matters = true, bool track_changes = false>
-    auto run(Result& r, span<method_id> method_worklist_init, bool init_typeflows) const
+    auto run(Result& r, span<const method_id> method_worklist_init, bool init_typeflows) const
     {
         vector<bool> method_inhibited(std::move(r.method_inhibited));
         vector<DefaultMethodHistory> method_history(std::move(r.method_history));
@@ -672,7 +672,7 @@ static void assert_reachability_equals(const BFS::Result& r1, const BFS::Result&
     {
         if(bool(r1.method_history[i]) != bool(r2.method_history[i]))
         {
-            cerr << "Idiot!" << endl;
+            cerr << "Method history differs (mid: " << i << "): " << (uint32_t)r1.method_history[i].dist << " != " << (uint32_t)r2.method_history[i].dist << endl;
             exit(1);
         }
     }
@@ -684,27 +684,16 @@ struct PurgeTreeNode
     span<const PurgeTreeNode> children;
 };
 
-static void bfs_incremental_rec(const BFS::Result& all_reachable, const BFS& bfs, BFS::Result& r, span<const PurgeTreeNode> methods_to_purge, const function<void(const PurgeTreeNode&, const BFS::Result&)>& callback)
+static void bfs_incremental_rec(const BFS& bfs, BFS::Result& r, span<const PurgeTreeNode> methods_to_purge, const function<void(const PurgeTreeNode&, const BFS::Result&)>& callback)
 {
     if(methods_to_purge.empty())
     {
-#if REACHABILITY_ASSERTIONS
-        assert_reachability_equals(all_reachable, r);
-#endif
         return;
     }
     else if(methods_to_purge.size() == 1)
     {
-#if REACHABILITY_ASSERTIONS
-        BFS::Result ref = bfs.run(methods_to_purge[0].mids);
-        assert_reachability_equals(ref, r);
-#endif
         callback(methods_to_purge[0], r);
-        bfs_incremental_rec(all_reachable, bfs, r, methods_to_purge[0].children, callback);
-
-#if !REACHABILITY_ASSERTIONS
-        return;
-#endif
+        bfs_incremental_rec(bfs, r, methods_to_purge[0].children, callback);
     }
 
     // Divide the purge sets into two of similar sum-size for algorithmic performance reasons
@@ -769,7 +758,7 @@ static void bfs_incremental_rec(const BFS::Result& all_reachable, const BFS& bfs
         }
 
         auto incremental_changes = bfs.run<false, true>(r2, {root_methods, root_methods + root_methods_size}, false);
-        bfs_incremental_rec(all_reachable, bfs, r2, stillpurge, callback);
+        bfs_incremental_rec(bfs, r2, stillpurge, callback);
         r2.revert(bfs, incremental_changes);
         for(const PurgeTreeNode& node : depurge)
             for(method_id mid : node.mids)
