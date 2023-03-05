@@ -61,6 +61,7 @@ export const globalConfigStore = defineStore('globalConfig', {
 
             if (matchingUniverse) {
                 this.universes.splice(this.universes.indexOf(matchingUniverse), 1)
+                this.toggleObservationByName(matchingUniverse.name)
             }
         },
         updateUniverseName(oldName: string, newName: string): void {
@@ -69,7 +70,7 @@ export const globalConfigStore = defineStore('globalConfig', {
                 universe.name = newName
             }
         },
-        toggleUniverseByName(universeName: string): void {
+        toggleObservationByName(universeName: string): void {
             const matchingUniverse = this.observedUniverses.find(
                 (universe) => universe.name === universeName
             )
