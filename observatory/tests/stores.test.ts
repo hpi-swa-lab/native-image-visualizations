@@ -4,6 +4,8 @@ import { Node } from '../src/ts/UniverseTypes/Node'
 import { globalConfigStore } from '../src/ts/stores'
 import { setActivePinia, createPinia } from 'pinia'
 
+// Reason for disabling: Type Spec would require repeating entire config interface
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let store: any
 
 describe('global store', () => {
