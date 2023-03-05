@@ -7,8 +7,8 @@ import { globalConfigStore } from '../../ts/stores'
 import { VennSets } from '../../ts/Visualizations/VennSets'
 import { Multiverse } from '../../ts/UniverseTypes/Multiverse'
 import { Node } from '../../ts/UniverseTypes/Node'
-import Tooltip from '../controls/Tooltip.vue'
 import { TooltipModel } from '../../ts/Visualizations/TooltipModel'
+import Tooltip from '../controls/Tooltip.vue'
 
 const emit = defineEmits([EventType.CHANGE])
 const store = globalConfigStore()
