@@ -58,13 +58,17 @@ class Trie {
 }
 
 function generateHierarchyFromReachabilityJsonAndMethodList(json, cgNodes) {
-    const dict = { children: [] }
+    const system = { children: [], name: 'system' }
+    const user = { children: [], name: 'user' }
+
+    const dict = { children: [ user, system ] }
 
     const prefixToNode = {}
 
     for (const toplevel of json) {
         let l1name = 'ϵ'
         let l1fullname = ''
+        const isSystem = toplevel.flags && toplevel.flags.includes('system')
 
         let display_path = toplevel.path
         if (display_path && display_path.endsWith('.jar')) {
@@ -85,11 +89,15 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json, cgNodes) {
             l1fullname = toplevel.module
         }
 
-        const l1 = { children: [], name: l1name, fullname: l1fullname, cg_nodes: [] }
+        const l1 = { children: [], name: l1name, fullname: l1fullname, cg_nodes: [], system: isSystem }
         if (toplevel.path) {
             prefixToNode[toplevel.path] = l1
         }
-        dict.children.push(l1)
+
+        if(isSystem)
+            system.children.push(l1)
+        else
+            user.children.push(l1)
 
         for (const packageName in toplevel.packages) {
             const pkg = toplevel.packages[packageName]
@@ -129,6 +137,11 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json, cgNodes) {
                     const l4 = { fullname: l3.fullname + '.' + method, name: method, cg_nodes: [] }
                     prefixToNode[l4.fullname] = l4
                     l3.children.push(l4)
+
+                    const flags = type.methods[method].flags
+                    if(flags && flags.includes('main')) {
+                        l4.main = true
+                    }
                 }
             }
         }
@@ -141,6 +154,7 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json, cgNodes) {
         const node = trie.find(cgNodeName)
         if (node) {
             if (node.fullname === cgNodeName) {
+                node.exact_cg_node = i
                 node.cg_nodes.push(i)
             } else {
                 let curNode = node
@@ -177,7 +191,7 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json, cgNodes) {
                     name = name.substring(pathSepIndex+1)
                 }
 
-                const newNode = { cg_only: true, fullname: cgNodeName, name: name, cg_nodes: [i] }
+                const newNode = { cg_only: true, fullname: cgNodeName, name: name, cg_nodes: [i], exact_cg_node: i }
                 if(!curNode.children)
                     curNode.children = []
                 curNode.children.push(newNode)
@@ -199,7 +213,7 @@ function formatByteSizesWithUnitPrefix(size) {
 }
 
 function forEachInSubtree(node, callback) {
-    let stack = []
+    const stack = []
     stack.push(node)
     while (stack.length > 0) {
         const u = stack.pop()
@@ -225,7 +239,7 @@ function forEachInStrictSubtreePostorder(node, expandCallback, callback) {
 }
 
 function collectCgNodesInSubtree(node) {
-    let group = []
+    const group = []
     forEachInSubtree(node, u => {
         if (u.cg_nodes)
             group.push(...u.cg_nodes)
@@ -384,6 +398,9 @@ export class CutTool {
             // nameSpan.title = d.fullname
             nameSpan.classList.add('node-text', 'selectable')
 
+            if(node.system)
+                nameSpan.classList.add('system')
+
             if(node.cg_only)
                 nameSpan.classList.add('cg-only')
 
@@ -432,7 +449,7 @@ export class CutTool {
                 } else {
                     const purgeSet = [...new Set([...this.selectedForPurging].flatMap(collectCgNodesInSubtree))]
 
-                    if(this.detailMid) {
+                    if(this.detailMid !== undefined) {
                         this.selectedSimulationResult = this.cg.simulatePurgeDetailed(purgeSet)
                         this.reachable_in_image_view = this.reachable_under_selection = this.selectedSimulationResult.getReachableArray()
                     } else {
@@ -446,7 +463,7 @@ export class CutTool {
 
                 await new Promise(resolve => setTimeout(resolve, 1))
 
-                if (this.detailMid) {
+                if (this.detailMid !== undefined) {
                     if(!this.selectedSimulationResult) {
                         this.selectedSimulationResult = this.cg.simulatePurgeDetailed([...new Set([...this.selectedForPurging].flatMap(collectCgNodesInSubtree))])
                     }
@@ -463,14 +480,13 @@ export class CutTool {
                 await new Promise(resolve => setTimeout(resolve, 0))
 
                 if(this.precomputeCutoffs && this.selectedForPurging.size > 0) {
-                    this.precomputeCutOverview()
+                    await this.precomputeCutOverview()
                 } else {
                     forEachInSubtree(this.dataRoot, u => {
                         delete u.reachable_after_additionally_cutting_this
+                        this.refreshPurgeSizeInCutOverview(u)
                     })
                 }
-
-                forEachInSubtree(this.dataRoot, u => this.refreshPurgeSizeInCutOverview(u))
 
                 document.body.classList.remove('waiting')
             })
@@ -566,9 +582,9 @@ export class CutTool {
             nameSpan.className = 'node-text'
             li.appendChild(nameSpan)
 
-            const mid = node.cg_nodes[0]
+            const mid = node.exact_cg_node
 
-            if (mid) {
+            if (mid !== undefined) {
                 nameSpan.classList.add('selectable')
                 nameSpan.addEventListener('click', async () => {
                     if (this.detailMid === mid) {
@@ -585,7 +601,7 @@ export class CutTool {
                     }
 
                     let edges = undefined
-                    if(this.detailMid) {
+                    if(this.detailMid !== undefined) {
                         if(!this.selectedSimulationResult)
                             this.selectedSimulationResult = this.cg.simulatePurgeDetailed([...new Set([...this.selectedForPurging].flatMap(collectCgNodesInSubtree))])
                         edges = this.selectedSimulationResult.getReachabilityHyperpath(this.detailMid)
@@ -671,13 +687,16 @@ export class CutTool {
         for (const node of [...this.selectedForPurging]) {
             forEachInSubtree(node, u => {
                 delete u.reachable_after_additionally_cutting_this
+                this.refreshPurgeSizeInCutOverview(u)
             })
         }
 
         const purgeNodeTreeRoot = this.createPurgeNodeTree(this.dataRoot)
 
-        this.recalculateCutOverviewWithSelection(purgeNodeTreeRoot, (node, data) => {
+        return this.recalculateCutOverviewWithSelection(purgeNodeTreeRoot, (node, data) => {
             node.reachable_after_additionally_cutting_this = data
+            this.refreshPurgeSizeInCutOverview(node)
+            return new Promise(resolve => setTimeout(resolve, 1))
         })
     }
 

@@ -268,6 +268,10 @@ body.waiting * {
     color: #606060;
 }
 
+.system {
+    color: indianred;
+}
+
 .node {
     fill: black;
     stroke: black;
