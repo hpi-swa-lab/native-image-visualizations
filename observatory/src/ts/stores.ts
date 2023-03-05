@@ -159,7 +159,9 @@ export const sankeyTreeConfigStore = defineStore('sankeyTreeConfig', {
         isUniverseFiltered: (state) => (universeId: string) =>
             state.diffingFilter.universes.has(universeId),
         isFilteredSortingOption: (state) => (option: string) =>
-            option === state.sortingFilter.option
+            option === state.sortingFilter.option,
+        colorModified: () => globalConfigStore().colorScheme[6],
+        colorUnmodified: () => globalConfigStore().colorScheme[9]
     },
     actions: {
         toExportDict(): Record<string, unknown> {

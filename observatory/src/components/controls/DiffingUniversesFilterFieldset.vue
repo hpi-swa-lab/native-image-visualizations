@@ -2,14 +2,13 @@
 import { UniverseProps } from '../../ts/interfaces/UniverseProps'
 import ColorLabel from './ColorLabel.vue'
 import ToggleSwitch from './ToggleSwitch.vue'
-import {globalConfigStore, sankeyTreeConfigStore} from '../../ts/stores'
+import {sankeyTreeConfigStore} from '../../ts/stores'
 import {UNMODIFIED} from '../../ts/Visualizations/SankeyTree';
 
 defineProps<{
     universesMetadata: Record<string, UniverseProps>
 }>()
 
-const store = globalConfigStore()
 const sankeyTreeStore = sankeyTreeConfigStore()
 </script>
 
@@ -41,13 +40,13 @@ const sankeyTreeStore = sankeyTreeConfigStore()
             <ColorLabel
                 :for-element="UNMODIFIED"
                 label="unmodified packages"
-                :color="store.colorScheme[9]"
+                :color="sankeyTreeStore.colorUnmodified"
             ></ColorLabel>
         </ToggleSwitch>
 
         <ColorLabel
             label="modified packages"
-            :color="store.colorScheme[6]"
+            :color="sankeyTreeStore.colorModified"
             class="ml-[29px]"
         ></ColorLabel>
     </fieldset>
