@@ -1,6 +1,9 @@
 import { Node } from './Node'
 import { Universe } from './Universe'
-import { CausalityGraph } from '../Causality/CausalityGraph';
+import * as Comlink from 'comlink'
+import {RemoteCausalityGraph} from '../Causality/RemoteCausalityGraph';
+
+const RemoteCausalityGraph = Comlink.wrap(new Worker('/src/ts/Causality/RemoteCausalityGraph', { type: 'module'}))
 
 export interface CausalityGraphData {
     // Object structure of "reachability.json"
@@ -25,13 +28,18 @@ export class CausalityGraphUniverse extends Universe {
     public cgNodeLabels: string[]
     public cgTypeLabels: string[]
 
-    public cg: CausalityGraph
+    private cgPromise: Promise<Comlink.Remote<RemoteCausalityGraph>>
 
     constructor(name: string, root: Node, causalityData: CausalityGraphData) {
         super(name, root)
         this.reachabilityData = causalityData.reachabilityData
         this.cgNodeLabels = causalityData.methodList
         this.cgTypeLabels = causalityData.typeList
-        this.cg = new CausalityGraph(causalityData.methodList.length, causalityData.typeList.length, causalityData)
+
+        this.cgPromise = new RemoteCausalityGraph(causalityData.methodList.length, causalityData.typeList.length, causalityData)
+    }
+
+    async getCausalityGraph() {
+        return await this.cgPromise
     }
 }

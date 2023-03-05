@@ -1,6 +1,5 @@
 import * as d3 from 'd3'
 import * as d3dag from 'd3-dag'
-import {CausalityGraph, DetailedSimulationResult} from '../Causality/CausalityGraph';
 
 function assert(cond) {
     if(!cond)
@@ -308,7 +307,7 @@ export class CutTool {
     maxPurgedSize
     selectedForPurging = new Set()
 
-    public setUniverse(universe) {
+    public async setUniverse(universe) {
         document.getElementById('main-panel').hidden = true
         document.getElementById('loading-panel').hidden = false
 
@@ -323,15 +322,15 @@ export class CutTool {
             this.codesizes[i] = codesizesDict[this.methodList[i]] ?? 0
         }
 
-        this.cg = universe.cg
-        this.reachable_in_image_view = this.reachable_under_selection = this.all_reachable = this.cg.simulatePurge()
+        this.cg = await universe.getCausalityGraph()
+        this.reachable_in_image_view = this.reachable_under_selection = this.all_reachable = await this.cg.simulatePurge()
 
         this.dataRoot = generateHierarchyFromReachabilityJsonAndMethodList(reachabilityData, this.methodList)
 
         document.getElementById('loading-panel').hidden = true
         document.getElementById('main-panel').hidden = false
 
-        this.prepareListView(this.dataRoot)
+        await this.prepareListView(this.dataRoot)
     }
 
     public changePrecomputeCutoffs(enable) {
@@ -450,10 +449,10 @@ export class CutTool {
                     const purgeSet = [...new Set([...this.selectedForPurging].flatMap(collectCgNodesInSubtree))]
 
                     if(this.detailMid !== undefined) {
-                        this.selectedSimulationResult = this.cg.simulatePurgeDetailed(purgeSet)
-                        this.reachable_in_image_view = this.reachable_under_selection = this.selectedSimulationResult.getReachableArray()
+                        this.selectedSimulationResult = await this.cg.simulatePurgeDetailed(purgeSet)
+                        this.reachable_in_image_view = this.reachable_under_selection = await this.selectedSimulationResult.getReachableArray()
                     } else {
-                        this.reachable_in_image_view = this.reachable_under_selection = this.cg.simulatePurge(purgeSet)
+                        this.reachable_in_image_view = this.reachable_under_selection = await this.cg.simulatePurge(purgeSet)
                     }
                 }
 
@@ -461,13 +460,11 @@ export class CutTool {
 
                 document.body.classList.add('waiting')
 
-                await new Promise(resolve => setTimeout(resolve, 1))
-
                 if (this.detailMid !== undefined) {
                     if(!this.selectedSimulationResult) {
-                        this.selectedSimulationResult = this.cg.simulatePurgeDetailed([...new Set([...this.selectedForPurging].flatMap(collectCgNodesInSubtree))])
+                        this.selectedSimulationResult = await this.cg.simulatePurgeDetailed([...new Set([...this.selectedForPurging].flatMap(collectCgNodesInSubtree))])
                     }
-                    const edges = this.selectedSimulationResult.getReachabilityHyperpath(this.detailMid)
+                    const edges = await this.selectedSimulationResult.getReachabilityHyperpath(this.detailMid)
                     try {
                         this.renderGraphOnDetailView(edges, this.detailMid)
                     } catch {
@@ -476,8 +473,6 @@ export class CutTool {
                 } else {
                     this.renderGraphOnDetailView(undefined, undefined)
                 }
-
-                await new Promise(resolve => setTimeout(resolve, 0))
 
                 if(this.precomputeCutoffs && this.selectedForPurging.size > 0) {
                     await this.precomputeCutOverview()
@@ -603,8 +598,8 @@ export class CutTool {
                     let edges = undefined
                     if(this.detailMid !== undefined) {
                         if(!this.selectedSimulationResult)
-                            this.selectedSimulationResult = this.cg.simulatePurgeDetailed([...new Set([...this.selectedForPurging].flatMap(collectCgNodesInSubtree))])
-                        edges = this.selectedSimulationResult.getReachabilityHyperpath(this.detailMid)
+                            this.selectedSimulationResult = await this.cg.simulatePurgeDetailed([...new Set([...this.selectedForPurging].flatMap(collectCgNodesInSubtree))])
+                        edges = await this.selectedSimulationResult.getReachabilityHyperpath(this.detailMid)
                     }
                     this.renderGraphOnDetailView(edges, this.detailMid)
                 })
@@ -624,12 +619,12 @@ export class CutTool {
     }
 
     private async recalculateCutOverviewCustom(purgeNodeTreeRoot, additionalPurges, comparison_array, callback) {
-        const batchPurger = this.cg.simulatePurgesBatched(purgeNodeTreeRoot, additionalPurges)
+        const batchPurger = await this.cg.simulatePurgesBatched(purgeNodeTreeRoot, additionalPurges)
 
         let node
-        while(node = batchPurger.simulateNext()) {
-            const still_reachable = batchPurger.getReachableArray()
-            if(!node.src)
+        while(node = await batchPurger.simulateNext()) {
+            const still_reachable = await batchPurger.getReachableArray()
+            if(node.src === undefined)
                 continue
             let purgedSize = 0
             for (let i = 0; i < this.codesizes.length; i++)
@@ -649,8 +644,9 @@ export class CutTool {
         return this.recalculateCutOverviewCustom(purgeNodeTreeRoot, [], this.all_reachable, callback)
     }
 
-    private createPurgeNodeTree(node) {
-        const root = { src: node }
+    private createPurgeNodeTree(node, indexToSrcNode) {
+        const root = { index: indexToSrcNode.length }
+        indexToSrcNode.push(root)
 
         let mids = []
         if (node.cg_nodes)
@@ -662,7 +658,7 @@ export class CutTool {
                 if (this.selectedForPurging.has(child))
                     continue;
                 if (child.html) {
-                    const child_root = this.createPurgeNodeTree(child)
+                    const child_root = this.createPurgeNodeTree(child, indexToSrcNode)
                     if (child_root)
                         children.push(child_root)
                 } else {
@@ -691,9 +687,11 @@ export class CutTool {
             })
         }
 
-        const purgeNodeTreeRoot = this.createPurgeNodeTree(this.dataRoot)
+        const indexToSrcNode = []
+        const purgeNodeTreeRoot = this.createPurgeNodeTree(this.dataRoot, indexToSrcNode)
 
-        return this.recalculateCutOverviewWithSelection(purgeNodeTreeRoot, (node, data) => {
+        return this.recalculateCutOverviewWithSelection(purgeNodeTreeRoot, (index, data) => {
+            const node = indexToSrcNode[index]
             node.reachable_after_additionally_cutting_this = data
             this.refreshPurgeSizeInCutOverview(node)
             return new Promise(resolve => setTimeout(resolve, 1))
@@ -721,19 +719,18 @@ export class CutTool {
 
     private async recalculateCutOverviewForSubtree(list, node) {
         // The C++ code doesn't handle empty groups well. Therefore we already handle them here.
-        const purgeNodeTreeRoot = { children: node.children.map((c, i) => { return { mids: collectCgNodesInSubtree(c), index: i, src: c } }).filter(n => n.mids.length > 0) }
+        const purgeNodeTreeRoot = { children: node.children.map((c, i) => { return { mids: collectCgNodesInSubtree(c), src: i } }).filter(n => n.mids.length > 0) }
 
         let maxPurgedSize = 0
 
-        await new Promise(resolve => setTimeout(resolve, 1))
-
         const updateMax: boolean = node === this.dataRoot
 
-        await this.recalculateCutOverviewWithoutSelection(purgeNodeTreeRoot, (node, data) => {
-            node.reachable_after_cutting_this = data
+        await this.recalculateCutOverviewWithoutSelection(purgeNodeTreeRoot, (index, data) => {
+            const v = node.children[index]
+            v.reachable_after_cutting_this = data
             maxPurgedSize = Math.max(maxPurgedSize, data.size)
 
-            const html = node.html
+            const html = v.html
             if(html) {
                 if (updateMax) {
                     this.maxPurgedSize = Math.max(maxPurgedSize, data.size)
@@ -741,7 +738,6 @@ export class CutTool {
 
                 html.querySelector('.cut-size-column').textContent = formatByteSizesWithUnitPrefix(data.size)
                 html.querySelector('.cut-size-bar').style.width = (data.size / this.maxPurgedSize * 100) + '%'
-                return new Promise(resolve => setTimeout(resolve, 1))
             }
         })
 
@@ -770,8 +766,9 @@ export class CutTool {
                     delete u.reachable_after_additionally_cutting_this
                 }
             } else {
-                this.recalculateCutOverviewWithSelection(purgeNodeTreeRoot, (node, data) => {
-                    node.reachable_after_additionally_cutting_this = data
+                await this.recalculateCutOverviewWithSelection(purgeNodeTreeRoot, (index, data) => {
+                    const v = node.children[index]
+                    v.reachable_after_additionally_cutting_this = data
                 })
             }
         }
