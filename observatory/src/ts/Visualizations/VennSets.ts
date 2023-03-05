@@ -10,12 +10,7 @@ import { getNodesOnLevel } from '../Math/filters'
 import { HierarchyNode } from 'd3'
 import { ColorScheme } from '../SharedTypes/Colors'
 import { formatBytes } from '../SharedTypes/Size'
-
-interface Props {
-    showToolTip: (content: string) => void
-    updateToolTipPosition: (x: number, y: number) => void
-    hideToolTip: () => void
-}
+import { ToolTipModel } from './ToolTipModel'
 
 type Group = d3.InternMap<string, d3.InternMap<Node, number>>
 type NodeData = [string, d3.InternMap<Node, number>]
@@ -32,12 +27,17 @@ export class VennSets implements MultiverseVisualization {
     private multiverse: Multiverse = new Multiverse([])
     private layer = Layers.PACKAGES
     private container: any
-    private props: any
+    private tooltip: ToolTipModel
 
-    constructor(containerSelector: string, layer: Layers, colorScheme: ColorScheme, props: Props) {
+    constructor(
+        containerSelector: string,
+        layer: Layers,
+        colorScheme: ColorScheme,
+        tooltip: ToolTipModel
+    ) {
         this.layer = layer
         this.colorScheme = colorScheme
-        this.props = props
+        this.tooltip = tooltip
 
         this.initializeContainer(containerSelector)
         this.initializeZoom()
@@ -99,13 +99,12 @@ export class VennSets implements MultiverseVisualization {
             .attr('fill', (leaf: PackedHierarchyLeaf) =>
                 colorsByName.get((leaf.parent as unknown as PackedHierarchyNode).data[0])
             )
-            .on('mouseenter', (_event: any, data: PackedHierarchyLeaf) =>
-                this.props.showToolTip(this.asString(data))
-            )
-            .on('mousemove', (event: any) =>
-                this.props.updateToolTipPosition(event.pageX, event.pageY)
-            )
-            .on('mouseout', () => this.props.hideToolTip())
+            .on('mouseenter', (_event: any, data: PackedHierarchyLeaf) => {
+                this.tooltip.display()
+                this.tooltip.updateContent(this.asHTML(data))
+            })
+            .on('mousemove', (event: any) => this.tooltip.updatePosition(event.pageX, event.pageY))
+            .on('mouseout', () => this.tooltip.hide())
     }
 
     private drawLabels(root: HierarchyNode<Group>) {
@@ -126,12 +125,12 @@ export class VennSets implements MultiverseVisualization {
         d3.pack().size([this.containerWidth(), this.containerHeight()]).padding(3)(root)
     }
 
-    private asString(leaf: PackedHierarchyLeaf): string {
+    private asHTML(leaf: PackedHierarchyLeaf): string {
         const node = leaf.data[0]
         const parent = leaf.parent as unknown as PackedHierarchyNode
-        return `Exclusive in: ${parent.data[0]}
-                Name: ${node.name}
-                Code Size: ${formatBytes(node.codeSize)}`
+        return `<b>Exclusive in</b>: ${parent.data[0]}
+                <b>Name</b>: ${node.name}
+                <b>Code Size</b>: ${formatBytes(node.codeSize)}`
     }
 
     private asCombinationPartitionedHierarchy(nodes: Node[]): HierarchyNode<Group> {

@@ -2,20 +2,18 @@
 import MainLayout from '../layouts/MainLayout.vue'
 import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
 import { EventType } from '../../ts/enums/EventType'
-import { onMounted, ref, watch, computed } from 'vue'
+import { onMounted, watch, computed, reactive } from 'vue'
 import { globalConfigStore } from '../../ts/stores'
 import { VennSets } from '../../ts/Visualizations/VennSets'
 import { Multiverse } from '../../ts/UniverseTypes/Multiverse'
 import { Node } from '../../ts/UniverseTypes/Node'
 import ToolTip from '../controls/ToolTip.vue'
+import { ToolTipModel } from '../../ts/Visualizations/ToolTipModel'
 
 const emit = defineEmits([EventType.CHANGE])
 const store = globalConfigStore()
 
-const tooltipContent = ref<string>('')
-const tooltipShow = ref<boolean>(false)
-const tooltipX = ref<number>(0)
-const tooltipY = ref<number>(0)
+const tooltipModel = reactive(new ToolTipModel())
 
 const multiverse = computed(() => store.multiverse)
 const currentLayer = computed(() => store.currentLayer)
@@ -24,25 +22,15 @@ const selection = computed(() => store.selections)
 
 let visualization: VennSets
 
-function showToolTip(content: string) {
-    tooltipContent.value = content;
-    tooltipShow.value = true;
-}
-
-function updateToolTipPosition(x: number, y: number) {
-    tooltipX.value = x
-    tooltipY.value = y
-}
-
-function hideToolTip() {
-    tooltipShow.value = false
-}
-
-
 // The reason for using as <...> is that the store saves Proxy Types of the objects
 
 onMounted(() => {
-    visualization = new VennSets('#viz-container', store.currentLayer, store.colorScheme, {showToolTip, updateToolTipPosition, hideToolTip})
+    visualization = new VennSets(
+        '#viz-container',
+        store.currentLayer,
+        store.colorScheme,
+        tooltipModel
+    )
     visualization.setMultiverse(store.multiverse as Multiverse)
 })
 
@@ -74,7 +62,7 @@ watch(
         :component-type="SwappableComponentType.VennSets"
         @change-page="(componentType: SwappableComponentType) => emit(EventType.CHANGE, componentType)"
     >
-        <ToolTip ref="tooltip" :show="tooltipShow" :content="tooltipContent" :x="tooltipX" :y="tooltipY"></ToolTip>
+        <ToolTip :data-model="tooltipModel"></ToolTip>
         <div id="viz-container" ref="container" class="w-full h-full"></div>
     </MainLayout>
 </template>
