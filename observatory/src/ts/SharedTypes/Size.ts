@@ -1,12 +1,12 @@
 export type Bytes = number
 
-const BYTES_IN_KB = 1024
-const BYTES_IN_MB = BYTES_IN_KB * 1024
-const BYTES_IN_GB = BYTES_IN_MB * 1024
-const BYTES_IN_TB = BYTES_IN_GB * 1024
+const BYTES_IN_KB = 1000
+const BYTES_IN_MB = BYTES_IN_KB * 1000
+const BYTES_IN_GB = BYTES_IN_MB * 1000
+const BYTES_IN_TB = BYTES_IN_GB * 1000
 
 export function formatBytes(bytes: Bytes, cutOffAt = 2): string {
-    if (bytes < BYTES_IN_KB) return bytes + ' bytes'
+    if (bytes < BYTES_IN_KB) return bytes + ' Bytes'
 
     if (bytes < BYTES_IN_MB) return (bytes / BYTES_IN_KB).toFixed(cutOffAt) + ' KB'
 

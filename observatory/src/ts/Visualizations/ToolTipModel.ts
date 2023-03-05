@@ -1,4 +1,4 @@
-export class ToolTipModel {
+export class TooltipModel {
     public content: string
     public show: boolean
     public x: number

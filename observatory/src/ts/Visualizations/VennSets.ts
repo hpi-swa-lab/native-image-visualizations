@@ -10,7 +10,7 @@ import { getNodesOnLevel } from '../Math/filters'
 import { HierarchyNode } from 'd3'
 import { ColorScheme } from '../SharedTypes/Colors'
 import { formatBytes } from '../SharedTypes/Size'
-import { ToolTipModel } from './ToolTipModel'
+import { TooltipModel } from './TooltipModel'
 
 type Group = d3.InternMap<string, d3.InternMap<Node, number>>
 type NodeData = [string, d3.InternMap<Node, number>]
@@ -27,13 +27,13 @@ export class VennSets implements MultiverseVisualization {
     private multiverse: Multiverse = new Multiverse([])
     private layer = Layers.PACKAGES
     private container: any
-    private tooltip: ToolTipModel
+    private tooltip: TooltipModel
 
     constructor(
         containerSelector: string,
         layer: Layers,
         colorScheme: ColorScheme,
-        tooltip: ToolTipModel
+        tooltip: TooltipModel
     ) {
         this.layer = layer
         this.colorScheme = colorScheme

@@ -7,13 +7,13 @@ import { globalConfigStore } from '../../ts/stores'
 import { VennSets } from '../../ts/Visualizations/VennSets'
 import { Multiverse } from '../../ts/UniverseTypes/Multiverse'
 import { Node } from '../../ts/UniverseTypes/Node'
-import ToolTip from '../controls/ToolTip.vue'
-import { ToolTipModel } from '../../ts/Visualizations/ToolTipModel'
+import Tooltip from '../controls/Tooltip.vue'
+import { TooltipModel } from '../../ts/Visualizations/TooltipModel'
 
 const emit = defineEmits([EventType.CHANGE])
 const store = globalConfigStore()
 
-const tooltipModel = reactive(new ToolTipModel())
+const tooltipModel = reactive(new TooltipModel())
 
 const multiverse = computed(() => store.multiverse)
 const currentLayer = computed(() => store.currentLayer)
@@ -62,7 +62,7 @@ watch(
         :component-type="SwappableComponentType.VennSets"
         @change-page="(componentType: SwappableComponentType) => emit(EventType.CHANGE, componentType)"
     >
-        <ToolTip :data-model="tooltipModel"></ToolTip>
+        <Tooltip :data-model="tooltipModel"></Tooltip>
         <div id="viz-container" ref="container" class="w-full h-full"></div>
     </MainLayout>
 </template>
