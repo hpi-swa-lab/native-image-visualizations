@@ -11,9 +11,13 @@ export interface CausalityGraphBinaryData {
     'typeflow_methods.bin': Uint8Array
 }
 
-export interface PurgeTreeNode {
-    children: PurgeTreeNode[]
-    mids: number[]
+export interface RecursiveNode<T>
+{
+    children?: T[]
+}
+
+export interface PurgeTreeNode extends RecursiveNode<PurgeTreeNode> {
+    mids?: number[]
 }
 
 function calcPurgeNodesCount(purge_root: PurgeTreeNode) {
@@ -162,7 +166,7 @@ export class CausalityGraph extends WasmObjectWrapper {
         return new DetailedSimulationResult(this.nMethods, simulationResultPtr)
     }
 
-    public simulatePurgesBatched(purge_root: PurgeTreeNode, prepurgeMids: number[] = []) {
+    public simulatePurgesBatched<TNode extends PurgeTreeNode & RecursiveNode<TNode>>(purge_root: TNode, prepurgeMids: number[] = []): IncrementalSimulationResult<TNode> {
         const purgeNodesCount = calcPurgeNodesCount(purge_root)
 
         const subsetsArrLen = (purgeNodesCount) * 4 /* {{ptr, len}, {child_ptr, child_len}} */
@@ -179,7 +183,7 @@ export class CausalityGraph extends WasmObjectWrapper {
         {
             let i = 1
 
-            function layoutChildren(purge_root: PurgeTreeNode, offset: number) {
+            function layoutChildren(purge_root: TNode, offset: number) {
                 indexToInputNode[offset] = purge_root
                 const midsPos_start = midsPos
 
@@ -282,21 +286,21 @@ export class DetailedSimulationResult extends SimulationResult {
     }
 }
 
-export class IncrementalSimulationResult extends SimulationResult {
+export class IncrementalSimulationResult<TNode> extends SimulationResult {
     private static readonly _simulateNext = WasmObjectWrapper.instanceCWrap('IncrementalSimulationResult_simulateNext', 'number', [])
 
     mids: NativeBuffer
     subsetsArr: NativeBuffer
-    indexToInputNode: PurgeTreeNode[]
+    indexToInputNode: TNode[]
 
-    constructor(nMethods: number, wasmObject: number, mids: NativeBuffer, subsetsArr: NativeBuffer, indexToInputNode: PurgeTreeNode[]) {
+    constructor(nMethods: number, wasmObject: number, mids: NativeBuffer, subsetsArr: NativeBuffer, indexToInputNode: TNode[]) {
         super(nMethods, wasmObject)
         this.mids = mids
         this.subsetsArr = subsetsArr
         this.indexToInputNode = indexToInputNode
     }
 
-    simulateNext() {
+    simulateNext(): TNode | undefined {
         const curNode = IncrementalSimulationResult._simulateNext(this)
         if(curNode === 0)
             return
