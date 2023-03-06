@@ -48,14 +48,14 @@ watch(currentLayer, (newLayer) => {
 watch(
     highlights,
     (newHighlights) => {
-        visualization.setHighlights(Object.values(newHighlights)[0] as Node[])
+        visualization.setHighlights(Object.values(newHighlights).flat() as Node[])
     },
     { deep: true }
 )
 watch(
     selection,
     (newSelection) => {
-        visualization.setSelection(Object.values(newSelection)[0] as Node[])
+        visualization.setSelection(Object.values(newSelection).flat() as Node[])
     },
     { deep: true }
 )

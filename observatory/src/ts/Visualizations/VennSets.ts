@@ -76,6 +76,9 @@ export class VennSets implements MultiverseVisualization {
 
         this.container
             .selectAll('circle')
+            .transition()
+            .duration(TRANSITION_DURATION)
+            .ease(d3.easeCircleInOut)
             .attr('cx', (leaf: PackedHierarchyLeaf) => leaf.x)
             .attr('cy', (leaf: PackedHierarchyLeaf) => leaf.y)
 
@@ -144,7 +147,7 @@ export class VennSets implements MultiverseVisualization {
     }
 
     private circlePack(root: HierarchyNode<Group>): void {
-        d3.pack().size([this.containerWidth(), this.containerHeight()]).padding(3)(root)
+        d3.pack().size([this.containerWidth(), this.containerHeight()]).padding(5)(root)
     }
 
     private asHTML(leaf: PackedHierarchyLeaf): string {
@@ -226,7 +229,7 @@ export class VennSets implements MultiverseVisualization {
         circles.style(style, unselected)
         selection.forEach((selectedNode: Node) =>
             this.container
-                .select(`circle[id='${selectedNode.name}']`)
+                .selectAll(`circle[id='${selectedNode.name}']`)
                 .transition()
                 .duration(TRANSITION_DURATION)
                 .style(style, selected)
