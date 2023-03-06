@@ -34,7 +34,7 @@ onMounted(() => {
         '#viz-container',
         globalStore.currentLayer,
         globalStore.colorScheme,
-        tooltipModel, 
+        tooltipModel,
         vennStore.sortingOrder
     )
     visualization.setMultiverse(globalStore.multiverse as Multiverse)
