@@ -2,7 +2,10 @@ import { UniverseIndex } from '../SharedTypes/Indices'
 import { Bytes } from '../SharedTypes/Size'
 import { Multiverse } from '../UniverseTypes/Multiverse'
 import { Node } from '../UniverseTypes/Node'
-import { asUniverseCombination, UniverseCombination } from '../UniverseTypes/UniverseCombination'
+import {
+    indicesAsUniverseCombination,
+    UniverseCombination
+} from '../UniverseTypes/UniverseCombination'
 
 export type ExclusiveSizes = Map<UniverseCombination, Bytes>
 
@@ -66,7 +69,7 @@ function computeExclusiveSizesRec(
             }
 
             const minimum = Array.from(remainingSizes.values()).reduce((a, b) => Math.min(a, b))
-            const combination = asUniverseCombination(Array.from(remainingSizes.keys()))
+            const combination = indicesAsUniverseCombination(Array.from(remainingSizes.keys()))
             exclusiveSizesOfThisNode.set(combination, minimum)
 
             for (const index of remainingSizes.keys()) {

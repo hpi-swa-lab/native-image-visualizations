@@ -1,3 +1,7 @@
+// To enable currying (e.g. functions such as `[_, a] => a` that ignore some
+// parameters), disable the unused-vars lint.
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
 import * as d3 from 'd3'
 import { lightenColor } from '../Math/Colors'
 import { clamp } from '../Math/Numbers'
@@ -8,7 +12,7 @@ import { UniverseIndex } from '../SharedTypes/Indices'
 import { Multiverse } from '../UniverseTypes/Multiverse'
 import { Node } from '../UniverseTypes/Node'
 import {
-    asUniverseCombination,
+    indicesAsUniverseCombination,
     UniverseCombination,
     universeCombinationAsIndices
 } from '../UniverseTypes/UniverseCombination'
@@ -52,9 +56,8 @@ export class TreeLine implements MultiverseVisualization {
     public setMultiverse(multiverse: Multiverse): void {
         this.multiverse = multiverse
 
-        // pleasing. The order is hand-picked for few universes.
         const indices: UniverseIndex[] = multiverse.sources.map((_, i) => i)
-        this.combinations = powerSet(indices).splice(1).map(asUniverseCombination)
+        this.combinations = powerSet(indices).splice(1).map(indicesAsUniverseCombination)
 
         this.exclusiveSizes = computeExclusiveSizes(multiverse)
 
@@ -201,13 +204,11 @@ export class TreeLine implements MultiverseVisualization {
         // Show the hierarchy on the right.
         let leftOfSubHierarchy = leftOfHierarchy
         if (path.length > 0) {
-            /* eslint-disable @typescript-eslint/no-unused-vars */
             // The exclusive sizes are calculated for all nodes.
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const containingCombinations = Array.from(this.exclusiveSizes.get(tree)!.entries())
                 .filter(([_, size]) => size > 0)
                 .map(([combination, _]) => combination)
-            /* eslint-enable @typescript-eslint/no-unused-vars */
 
             const widthOfBox = this.drawHierarchyBox(
                 leftOfHierarchy,
