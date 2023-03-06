@@ -11,15 +11,18 @@ const multiverse = computed(() => store.multiverse)
 
 let visualization: CutTool | undefined = undefined
 
-onMounted(() => {
-    visualization = new CutTool()
-    if(multiverse.value.sources.length === 1)
-        visualization.setUniverse(multiverse.value.sources[0] as CausalityGraphUniverse)
+onMounted(async () => {
+    if(multiverse.value.sources.length === 1 && multiverse.value.sources[0] instanceof CausalityGraphUniverse)
+        visualization = await CutTool.create(multiverse.value.sources[0])
 })
 
-watch(multiverse, (multiverse) => {
-    if(multiverse.sources.length === 1)
-        visualization.setUniverse(multiverse.sources[0] as CausalityGraphUniverse)
+watch(multiverse, async (multiverse) => {
+    if(visualization)
+        visualization.dispose()
+    visualization = undefined
+
+    if(multiverse.sources.length === 1 && multiverse.sources[0] instanceof CausalityGraphUniverse)
+        visualization = await CutTool.create(multiverse.sources[0])
 })
 
 const cutToolStore = cutToolConfigStore()

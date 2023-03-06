@@ -362,8 +362,7 @@ export class CutTool {
     cutviewData: Map<InternalNode, CutViewData> = new Map<InternalNode, CutViewData>()
     imageviewData : Map<InternalNode, ImageViewData> = new Map<InternalNode, ImageViewData>()
 
-
-    public async setUniverse(universe: CausalityGraphUniverse) {
+    constructor(universe: CausalityGraphUniverse, cg: any, allReachable: Uint8Array) {
         document.getElementById('main-panel')!.hidden = true
         document.getElementById('loading-panel')!.hidden = false
 
@@ -378,8 +377,8 @@ export class CutTool {
             this.codesizes[i] = codesizesDict[this.methodList[i]] ?? 0
         }
 
-        this.cg = await universe.getCausalityGraph()
-        this.reachable_in_image_view = this.reachable_under_selection = this.all_reachable = await this.cg.simulatePurge()
+        this.cg = cg
+        this.reachable_in_image_view = this.reachable_under_selection = this.all_reachable = allReachable
 
         this.dataRoot = generateHierarchyFromReachabilityJsonAndMethodList(reachabilityData, this.methodList)
 
@@ -405,6 +404,19 @@ export class CutTool {
             list.classList.add('active')
             this.recalculateCutOverviewForSubtree(list, this.dataRoot)
         }
+    }
+
+    public static async create(universe: CausalityGraphUniverse) {
+        const cg = await universe.getCausalityGraph()
+        const allReachable = await cg.simulatePurge()
+        return new CutTool(universe, cg, allReachable)
+    }
+
+    public dispose() {
+        document.getElementById('imageview-root')!.textContent = ''
+        document.getElementById('cut-overview-root')!.textContent = ''
+        document.getElementById('main-panel')!.hidden = true
+        this.selectedSimulationResult?.delete()
     }
 
     public changePrecomputeCutoffs(enable: boolean) {
