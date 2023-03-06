@@ -4,6 +4,7 @@ const COLORS = {
     red: colors.red[400],
     green: colors.lime[400],
     blue: colors.sky[300],
-    gray: colors.gray[400]
+    gray: colors.gray[400],
+    white: colors.white
 }
 export default COLORS
