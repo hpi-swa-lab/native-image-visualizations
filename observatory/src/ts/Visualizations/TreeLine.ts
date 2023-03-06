@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
 import * as d3 from 'd3'
-import { Layers } from '../enums/Layers'
+import { layerOfNode, Layers } from '../enums/Layers'
 import { lightenColor } from '../Math/Colors'
 import { clamp } from '../Math/Numbers'
 import { powerSet } from '../Math/Sets'
@@ -234,7 +234,7 @@ export class TreeLine implements MultiverseVisualization {
             let childOffsetFromTop = top
             for (const child of tree.children) {
                 const childPath = path.slice()
-                if (todo(child, shouldHaveAtLeastLayer, this.layer)) {
+                if (this.layer <= layerOfNode(child)) {
                     childPath.push(child.name)
                 }
 
