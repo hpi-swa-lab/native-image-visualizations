@@ -259,7 +259,6 @@ export class TreeLine implements MultiverseVisualization {
 
                 offsetFromLeft += width
             }
-            2
         }
     }
 
