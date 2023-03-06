@@ -2,9 +2,13 @@ import * as d3 from 'd3'
 import * as d3dag from 'd3-dag'
 import {RemoteCausalityGraph} from '../Causality/RemoteCausalityGraph';
 import {Remote} from 'comlink';
-import {DetailedSimulationResult, PurgeTreeNode, RecursiveNode} from '../Causality/CausalityGraph';
+import {
+    DetailedSimulationResult,
+    PurgeTreeNode,
+    ReachabilityHyperpathEdge,
+    RecursiveNode
+} from '../Causality/CausalityGraph';
 import {CausalityGraphUniverse, ReachabilityJson} from '../UniverseTypes/CausalityGraphUniverse';
-import {BaseType} from 'd3';
 
 function assert(cond: unknown) {
     if(!cond)
@@ -151,7 +155,7 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json: ReachabilityJs
                 l2.children.push(l3)
 
                 for (const [methodName, method] of Object.entries(type.methods)) {
-                    const l4: InternalNode & { fullname: string } = { fullname: l3.fullname + '.' + method, name: methodName, cg_nodes: [], children: [], size: method.size, parent: l3 }
+                    const l4: InternalNode & { fullname: string } = { fullname: l3.fullname + '.' + methodName, name: methodName, cg_nodes: [], children: [], size: method.size, parent: l3 }
                     prefixToNode[l4.fullname] = l4
                     l3.children.push(l4)
 
@@ -339,17 +343,82 @@ interface ImageViewData
     purgedCodesize?: number
 }
 
+class Cutview {
+
+}
+
+class Imageview {
+
+}
+
+class PurgeScheduler {
+    detailSelectedCallback: ((edges: ReachabilityHyperpathEdge[] | undefined) => void) | undefined
+
+    private _purgeSelectedMids: number[] = []
+    private _detailSelectedMid: number | undefined
+
+    private selectedSimulationResult: DetailedSimulationResult | undefined
+
+    private cg: Remote<RemoteCausalityGraph>
+    private codesizes: number[]
+    private all_reachable: Uint8Array
+
+    constructor(cg: Remote<RemoteCausalityGraph>, codesizes: number[], all_reachable: Uint8Array) {
+        this.cg = cg
+        this.codesizes = codesizes
+        this.all_reachable = all_reachable
+    }
+
+    get detailSelectedMid(): number | undefined {
+        return this._detailSelectedMid
+    }
+
+    set purgeSelectedMids(mids: number[]) {
+        this.onPurgeSelectedMidsChange(mids)
+    }
+
+    set detailSelectedMid(mid: number | undefined) {
+        this.setDetailSelectedMid(mid)
+    }
+
+    private async onPurgeSelectedMidsChange(mids: number[]) {
+        this._purgeSelectedMids = mids
+        if(this._detailSelectedMid) {
+            if(this.selectedSimulationResult) {
+                this.selectedSimulationResult.delete()
+                this.selectedSimulationResult = undefined
+            }
+            this.selectedSimulationResult = await this.cg.simulatePurgeDetailed(this._purgeSelectedMids)
+            const edges = await this.selectedSimulationResult.getReachabilityHyperpath(this._detailSelectedMid)
+            if(this.detailSelectedCallback)
+                this.detailSelectedCallback(edges)
+        }
+    }
+
+    private async setDetailSelectedMid(mid: number | undefined) {
+        this._detailSelectedMid = mid
+        let edges: ReachabilityHyperpathEdge[] | undefined
+        if(this._detailSelectedMid) {
+            if(!this.selectedSimulationResult) {
+                this.selectedSimulationResult = await this.cg.simulatePurgeDetailed(this._purgeSelectedMids)
+            }
+            edges = await this.selectedSimulationResult.getReachabilityHyperpath(this._detailSelectedMid)
+        }
+        if(this.detailSelectedCallback)
+            this.detailSelectedCallback(edges)
+    }
+}
+
 export class CutTool {
+    ps: PurgeScheduler
     cg: Remote<RemoteCausalityGraph>
     codesizes: number[]
     methodList: string[]
     typeList: string[]
     all_reachable: Uint8Array
     dataRoot: InternalNode
-    selectedSimulationResult?: DetailedSimulationResult
 
     maxCodeSize: number
-    detailMid?: number
     detailSelectedNode?: HTMLElement
 
     precomputeCutoffs = true
@@ -379,6 +448,8 @@ export class CutTool {
 
         this.cg = cg
         this.reachable_in_image_view = this.reachable_under_selection = this.all_reachable = allReachable
+        this.ps = new PurgeScheduler(cg, this.codesizes, allReachable)
+        this.ps.detailSelectedCallback = edges => this.renderGraphOnDetailView(edges)
 
         this.dataRoot = generateHierarchyFromReachabilityJsonAndMethodList(reachabilityData, this.methodList)
 
@@ -416,7 +487,6 @@ export class CutTool {
         document.getElementById('imageview-root')!.textContent = ''
         document.getElementById('cut-overview-root')!.textContent = ''
         document.getElementById('main-panel')!.hidden = true
-        this.selectedSimulationResult?.delete()
     }
 
     public changePrecomputeCutoffs(enable: boolean) {
@@ -453,7 +523,7 @@ export class CutTool {
             const node = d
             const span = document.createElement('span')
             span.className = 'caret'
-            if (d.children) {
+            if (d.children.length) {
                 span.addEventListener('click', () => {
                     expandClickHandler(span, node, () => {
                         const list = this.generateHtmlCutview(node)
@@ -509,41 +579,19 @@ export class CutTool {
                     this.selectedForPurging.delete(node)
                 }
 
-                if(this.selectedSimulationResult) {
-                    this.selectedSimulationResult.delete()
-                    this.selectedSimulationResult = undefined
-                }
+                this.ps.purgeSelectedMids = [...new Set([...this.selectedForPurging].flatMap(collectCgNodesInSubtree))]
+
 
                 if (selected && cutData.reachable_after_additionally_cutting_this) {
                     this.reachable_in_image_view = this.reachable_under_selection = cutData.reachable_after_additionally_cutting_this.arr
                 } else {
                     const purgeSet = [...new Set([...this.selectedForPurging].flatMap(collectCgNodesInSubtree))]
-
-                    if(this.detailMid !== undefined) {
-                        this.selectedSimulationResult = await this.cg.simulatePurgeDetailed(purgeSet)
-                        this.reachable_in_image_view = this.reachable_under_selection = await this.selectedSimulationResult.getReachableArray()
-                    } else {
-                        this.reachable_in_image_view = this.reachable_under_selection = await this.cg.simulatePurge(purgeSet)
-                    }
+                    this.reachable_in_image_view = this.reachable_under_selection = await this.cg.simulatePurge(purgeSet)
                 }
 
                 this.updatePurgeValues()
 
                 document.body.classList.add('waiting')
-
-                if (this.detailMid !== undefined) {
-                    if(!this.selectedSimulationResult) {
-                        this.selectedSimulationResult = await this.cg.simulatePurgeDetailed([...new Set([...this.selectedForPurging].flatMap(collectCgNodesInSubtree))])
-                    }
-                    const edges = await this.selectedSimulationResult.getReachabilityHyperpath(this.detailMid)
-                    try {
-                        this.renderGraphOnDetailView(edges)
-                    } catch {
-                        // Ignore
-                    }
-                } else {
-                    this.renderGraphOnDetailView(undefined)
-                }
 
                 if(this.precomputeCutoffs && this.selectedForPurging.size > 0) {
                     await this.precomputeCutOverview()
@@ -640,26 +688,18 @@ export class CutTool {
             if (mid !== undefined) {
                 nameSpan.classList.add('selectable')
                 nameSpan.addEventListener('click', async () => {
-                    if (this.detailMid === mid) {
+                    if (this.ps.detailSelectedMid === mid) {
                         nameSpan.classList.remove('selected-for-detail')
-                        this.detailMid = undefined
+                        this.ps.detailSelectedMid = undefined
                         this.detailSelectedNode = undefined
                     } else {
                         if(this.detailSelectedNode) {
                             this.detailSelectedNode.querySelector<HTMLSpanElement>('.node-text')!.classList.remove('selected-for-detail')
                         }
                         nameSpan.classList.add('selected-for-detail')
-                        this.detailMid = mid
+                        this.ps.detailSelectedMid = mid
                         this.detailSelectedNode = this.imageviewData.get(node).html
                     }
-
-                    let edges = undefined
-                    if(this.detailMid !== undefined) {
-                        if(!this.selectedSimulationResult)
-                            this.selectedSimulationResult = await this.cg.simulatePurgeDetailed([...new Set([...this.selectedForPurging].flatMap(collectCgNodesInSubtree))])
-                        edges = await this.selectedSimulationResult.getReachabilityHyperpath(this.detailMid)
-                    }
-                    this.renderGraphOnDetailView(edges)
                 })
             }
         }
@@ -705,26 +745,36 @@ export class CutTool {
         return this.recalculateCutOverviewCustom(purgeNodeTreeRoot, [], this.all_reachable, callback)
     }
 
+    private createPurgeNodeTree2(nodes: InternalNode[]): [ PurgeTreeNode & { token: number } | undefined, (InternalNode | undefined)[] ] {
+        const interestingNodes = new Set<InternalNode>()
+        const queriedNodes = new Set<InternalNode>(nodes)
+
+        for(const node of nodes) {
+            for(let cur: InternalNode | undefined = node; cur; cur = cur.parent) {
+                interestingNodes.add(cur)
+            }
+        }
+
+        const indexToSrcNode: InternalNode[] = []
+        const tree = this.createPurgeNodeTree(this.dataRoot, indexToSrcNode, v => interestingNodes.has(v))
+        return [tree, indexToSrcNode.map(d => queriedNodes.has(d) ? d : undefined)]
+    }
+
     private createPurgeNodeTree(node: InternalNode, indexToSrcNode: InternalNode[], expandCallback: (v: InternalNode) => boolean): PurgeTreeNode & { token: number } | undefined {
         const root: PurgeTreeNode & { token: number } = { token: indexToSrcNode.length }
         indexToSrcNode.push(node)
 
-        let mids: number[] = []
-        if (node.cg_nodes)
-            mids = node.cg_nodes
-
+        let mids = [...node.cg_nodes]
         const children = []
-        if (node.children) {
-            for(const child of node.children) {
-                if (this.selectedForPurging.has(child))
-                    continue;
-                if (expandCallback(child)) {
-                    const child_root = this.createPurgeNodeTree(child, indexToSrcNode, expandCallback)
-                    if (child_root)
-                        children.push(child_root)
-                } else {
-                    mids.push(...collectCgNodesInSubtree(child))
-                }
+        for(const child of node.children) {
+            if (this.selectedForPurging.has(child))
+                continue;
+            if (expandCallback(child)) {
+                const child_root = this.createPurgeNodeTree(child, indexToSrcNode, expandCallback)
+                if (child_root)
+                    children.push(child_root)
+            } else {
+                mids.push(...collectCgNodesInSubtree(child))
             }
         }
 
@@ -750,14 +800,15 @@ export class CutTool {
             })
         }
 
-        const indexToSrcNode: InternalNode[] = []
-        const purgeNodeTreeRoot = this.createPurgeNodeTree(this.dataRoot, indexToSrcNode, v => this.cutviewData.get(v) !== undefined)
+        const [purgeNodeTreeRoot, indexToSrcNode] = this.createPurgeNodeTree2(Array.from(this.cutviewData.keys()))
 
         if(!purgeNodeTreeRoot)
             return
 
         return this.recalculateCutOverviewWithSelection(purgeNodeTreeRoot, (index: number, data: ReachabilityVector) => {
             const node = indexToSrcNode[index]
+            if(!node)
+                return
             const uCutData = this.cutviewData.get(node)
             if(uCutData)
                 uCutData.reachable_after_additionally_cutting_this = data
@@ -788,14 +839,17 @@ export class CutTool {
 
     private async recalculateCutOverviewForSubtree(list: HTMLUListElement, node: InternalNode) {
         // The C++ code doesn't handle empty groups well. Therefore we already handle them here.
-        const purgeNodeTreeRoot = { children: node.children.map((c, i) => { return { mids: collectCgNodesInSubtree(c), token: i } }).filter(n => n.mids.length > 0) }
+        //const purgeNodeTreeRoot = { children: node.children.map((c, i) => { return { mids: collectCgNodesInSubtree(c), token: i } }).filter(n => n.mids.length > 0) }
+        const [purgeNodeTreeRoot, indexToSrcNode] = this.createPurgeNodeTree2(node.children)
 
         let maxPurgedSize = 0
 
         const updateMax: boolean = node === this.dataRoot
 
         await this.recalculateCutOverviewWithoutSelection(purgeNodeTreeRoot, (index: number, data: ReachabilityVector) => {
-            const v = node.children[index]
+            const v = indexToSrcNode[index]
+            if(!v)
+                return
             const vCutData = this.cutviewData.get(v)
             if(!vCutData)
                 return
@@ -872,17 +926,13 @@ export class CutTool {
                 if (this.all_reachable[i] !== 0xFF && still_reachable[i] === 0xFF)
                     purgedCodesize += this.codesizes[i]
         } else {
-            if(u.cg_nodes) {
-                for (const i of u.cg_nodes)
-                    if (this.all_reachable[i] !== 0xFF && still_reachable[i] === 0xFF)
-                        purgedCodesize += this.codesizes[i]
-            }
-            if(u.children) {
-                for (const v of u.children) {
-                    const vImageviewData = this.imageviewData.get(v)
-                    assert(vImageviewData)
+            for (const i of u.cg_nodes)
+                if (this.all_reachable[i] !== 0xFF && still_reachable[i] === 0xFF)
+                    purgedCodesize += this.codesizes[i]
+            for (const v of u.children) {
+                const vImageviewData = this.imageviewData.get(v)
+                if(vImageviewData)
                     purgedCodesize += vImageviewData.purgedCodesize
-                }
             }
         }
 
