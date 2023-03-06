@@ -38,19 +38,20 @@ export class VennSets implements MultiverseVisualization {
         containerSelector: string,
         layer: Layers,
         colorScheme: ColorScheme,
-        tooltip: TooltipModel
+        tooltip: TooltipModel,
+        sortingOrder: SortingOrder
     ) {
         this.layer = layer
         this.colorScheme = colorScheme
         this.tooltip = tooltip
+        this.sortingOrder = sortingOrder
 
         this.initializeContainer(containerSelector)
         this.initializeZoom()
     }
 
-    public setMultiverse(multiverse: Multiverse, sortingOrder = SortingOrder.NONE): void {
+    public setMultiverse(multiverse: Multiverse): void {
         this.multiverse = multiverse
-        this.sortingOrder = sortingOrder
         this.redraw()
     }
 

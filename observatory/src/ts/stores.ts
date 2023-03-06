@@ -141,8 +141,9 @@ export const vennConfigStore = defineStore('vennConfig', {
     },
     actions: {
         toExportDict(): Record<string, unknown> {
-            // todo
-            return {}
+            return {
+                sortingOrder: this.sortingOrder
+            }
         },
         setSortingOrder(order: SortingOrder) {
             this.sortingOrder = order

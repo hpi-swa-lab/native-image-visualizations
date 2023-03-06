@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { emptyObject } from '@jest/expect-utils';
+import { emptyObject } from '@jest/expect-utils'
 import { EventType } from '../../ts/enums/EventType.js'
-import { vennConfigStore } from '../../ts/stores';
-import { SortingOrder } from '../../ts/enums/Sorting';
+import { vennConfigStore } from '../../ts/stores'
+import { SortingOrder } from '../../ts/enums/Sorting'
 
 const emit = defineEmits(['ascending', 'descending'])
 const vennStore = vennConfigStore()
-
 </script>
 
 <template>
