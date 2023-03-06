@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
 import * as d3 from 'd3'
+import { Layers } from '../enums/Layers'
 import { lightenColor } from '../Math/Colors'
 import { clamp } from '../Math/Numbers'
 import { powerSet } from '../Math/Sets'
@@ -24,6 +25,7 @@ const HIERARCHY_GAPS = 2
 
 export class TreeLine implements MultiverseVisualization {
     multiverse: Multiverse = new Multiverse([])
+    layer: Layers
     colorScheme: ColorScheme
     selection: Node[] = []
     highlights: Node[] = []
@@ -38,7 +40,8 @@ export class TreeLine implements MultiverseVisualization {
     context: CanvasRenderingContext2D
     transform = { y: 0, k: 1 }
 
-    constructor(container: HTMLDivElement, colorScheme: ColorScheme) {
+    constructor(container: HTMLDivElement, layer: Layers, colorScheme: ColorScheme) {
+        this.layer = layer
         this.colorScheme = colorScheme
 
         this.canvas = document.createElement('canvas') as HTMLCanvasElement
@@ -63,6 +66,11 @@ export class TreeLine implements MultiverseVisualization {
 
         this.buildColors()
         this.buildFillStyles()
+        this.redraw()
+    }
+
+    public setLayer(layer: Layers) {
+        this.layer = layer
         this.redraw()
     }
 
@@ -226,7 +234,10 @@ export class TreeLine implements MultiverseVisualization {
             let childOffsetFromTop = top
             for (const child of tree.children) {
                 const childPath = path.slice()
-                childPath.push(child.name)
+                if (todo(child, shouldHaveAtLeastLayer, this.layer)) {
+                    childPath.push(child.name)
+                }
+
                 this.drawDiagram(
                     child,
                     childOffsetFromTop,
