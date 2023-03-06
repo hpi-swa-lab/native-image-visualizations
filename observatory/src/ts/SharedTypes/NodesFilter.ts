@@ -6,7 +6,7 @@ export type NodesFilter = {
 }
 
 export type NodesDiffingFilter = {
-    universes: Set<string>
+    universes: Set<number>
     showUnmodified: boolean
 }
 
