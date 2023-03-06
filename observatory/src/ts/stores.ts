@@ -131,9 +131,21 @@ export const globalConfigStore = defineStore('globalConfig', {
 })
 
 export const vennConfigStore = defineStore('vennConfig', {
+    state: () => {
+        return {
+            sortingOrder: SortingOrder.NONE
+        }
+    },
+    getters: {
+        isSortingOrder: (state) => (option: string) => option === state.sortingOrder
+    },
     actions: {
         toExportDict(): Record<string, unknown> {
+            // todo
             return {}
+        },
+        setSortingOrder(order: SortingOrder) {
+            this.sortingOrder = order
         }
     }
 })
