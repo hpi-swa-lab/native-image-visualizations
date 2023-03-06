@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { UniverseProps } from '../../ts/interfaces/UniverseProps'
 import ColorLabel from './ColorLabel.vue'
 import ToggleSwitch from './ToggleSwitch.vue'
 import {sankeyTreeConfigStore} from '../../ts/stores'
 import {UNMODIFIED} from '../../ts/Visualizations/SankeyTree';
+import {UniverseMetadata} from '../../ts/SharedTypes/SankeyTree';
 
 defineProps<{
-    universesMetadata: Record<string, UniverseProps>
+    universesMetadata: UniverseMetadata
 }>()
 
 const sankeyTreeStore = sankeyTreeConfigStore()
@@ -21,7 +21,7 @@ const sankeyTreeStore = sankeyTreeConfigStore()
             :id="key"
             :key="key"
             :value="universesMetadata[key].name"
-            :checked="sankeyTreeStore.isUniverseFiltered(key)"
+            :checked="sankeyTreeStore.isUniverseFiltered(parseInt(key))"
             @input="sankeyTreeStore.changeUniverseSelection($event.target.id)"
         >
             <ColorLabel

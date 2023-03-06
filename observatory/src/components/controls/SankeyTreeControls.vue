@@ -3,13 +3,13 @@ import AlertBox from './AlertBox.vue'
 import SortingFilterFieldset from './SortingFilterFieldset.vue'
 import { EventType } from '../../ts/enums/EventType.js'
 import DiffingUniversesFilterFieldset from './DiffingUniversesFilterFieldset.vue'
-import { UniverseProps } from '../../ts/interfaces/UniverseProps'
+import {UniverseMetadata} from "../../ts/SharedTypes/SankeyTree";
 
 const SHORTCUTS = ['shift+click on node expands branch']
 
 withDefaults(
     defineProps<{
-        universesMetadata: Record<number, UniverseProps>
+        universesMetadata: UniverseMetadata
     }>(),
     {
         universesMetadata: () => ({})
