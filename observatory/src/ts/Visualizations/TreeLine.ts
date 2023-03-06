@@ -51,6 +51,7 @@ export class TreeLine implements MultiverseVisualization {
         this.context = this.canvas.getContext('2d', { alpha: false })!
 
         this.initZoom()
+        this.redraw()
     }
 
     public setMultiverse(multiverse: Multiverse): void {
@@ -164,20 +165,20 @@ export class TreeLine implements MultiverseVisualization {
     }
 
     private redraw() {
+        this.fitToScreen()
+
+        this.context.fillStyle = 'white'
+        this.context.fillRect(0, 0, this.canvas.width, this.canvas.height)
+
         if (this.multiverse.root.codeSize === 0) {
             return
         }
 
-        this.fitToScreen()
+        const multiverse = this.multiverse
 
         const initialBarHeight = this.canvas.height - LINE_PADDING * 2
         const initialPixelsPerByte = initialBarHeight / this.multiverse.root.codeSize
         const initialTop = LINE_PADDING
-
-        const multiverse = this.multiverse
-
-        this.context.fillStyle = 'white'
-        this.context.fillRect(0, 0, this.canvas.width, this.canvas.height)
 
         const top = initialTop + this.transform.y
         const pixelsPerByte = initialPixelsPerByte * this.transform.k
