@@ -12,6 +12,7 @@ import { Leaf, InitKind } from './UniverseTypes/Leaf'
 import { Universe } from './UniverseTypes/Universe'
 import { Node } from './UniverseTypes/Node'
 import * as zip from '@zip.js/zip.js';
+import {CausalityGraphData, CausalityGraphUniverse} from './UniverseTypes/CausalityGraphUniverse';
 
 type Methods = {
     [methodName: string]: { size: Bytes; flags?: string[] }
@@ -146,7 +147,7 @@ function createConfigUniverse(universe: Universe): Record<string, unknown> {
     return {}
 }
 
-export async function loadCgZip(file: File) {
+export async function loadCgZip(file: File): Promise<CausalityGraphData> {
     const entries = await (new zip.ZipReader(new zip.BlobReader(file))).getEntries({ filenameEncoding: 'utf-8' })
 
     function getZipEntry(path: string) {

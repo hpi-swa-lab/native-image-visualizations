@@ -1,13 +1,46 @@
 import { Node } from './Node'
 import { Universe } from './Universe'
 import * as Comlink from 'comlink'
-import {RemoteCausalityGraph} from '../Causality/RemoteCausalityGraph';
 
 const RemoteCausalityGraph = Comlink.wrap(new Worker('/src/ts/Causality/RemoteCausalityGraph', { type: 'module'}))
 
+interface Method
+{
+    flags?: ('jni' | 'reflection' | 'main' | 'synthetic')[]
+    size: number
+}
+
+interface Field
+{
+    flags?: ('jni' | 'reflection' | 'synthetic')[]
+}
+
+interface Type
+{
+    methods: { [name: string]: Method }
+    fields: { [name: string]: Field }
+    flags?: ['synthetic']
+    'init-kind'?: ('build-time' | 'run-time')[]
+}
+
+interface Package
+{
+    types: { [name: string]: Type }
+}
+
+interface CodeSource
+{
+    path?: string
+    module?: string
+    flags?: ['system']
+    packages: { [name: string]: Package }
+}
+
+export type ReachabilityJson = [CodeSource]
+
 export interface CausalityGraphData {
     // Object structure of "reachability.json"
-    reachabilityData: object[]
+    reachabilityData: ReachabilityJson
 
     // Should be renamed to something like "nodeLabels", since it describes all kinds of events
     // Currently keeps this name for consistency with all other causality-processing code
@@ -24,7 +57,7 @@ export interface CausalityGraphData {
 
 export class CausalityGraphUniverse extends Universe {
     // Object structure of "reachability.json"
-    public reachabilityData: object[]
+    public reachabilityData: ReachabilityJson
     public cgNodeLabels: string[]
     public cgTypeLabels: string[]
 

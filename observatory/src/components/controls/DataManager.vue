@@ -23,7 +23,7 @@ function validateFileAndAddUniverseOnSuccess(file: File, universeName: string): 
                 .then((parsedCG) => {
                     const newUniverse = new CausalityGraphUniverse(
                             universeName,
-                            parseReachabilityExport(parsedCG.reachabilityData),
+                            parseReachabilityExport(parsedCG.reachabilityData, universeName),
                             parsedCG)
                     store.addUniverse(newUniverse)
                     uploadError.value = undefined

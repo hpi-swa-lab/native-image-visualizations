@@ -1,13 +1,18 @@
 import * as d3 from 'd3'
 import * as d3dag from 'd3-dag'
+import {RemoteCausalityGraph} from '../Causality/RemoteCausalityGraph';
+import {Remote} from 'comlink';
+import {DetailedSimulationResult} from '../Causality/CausalityGraph';
+import {CausalityGraphUniverse, ReachabilityJson} from '../UniverseTypes/CausalityGraphUniverse';
+import {BaseType} from 'd3';
 
-function assert(cond) {
+function assert(cond: unknown) {
     if(!cond)
         throw new Error('Assertion failed!')
 }
 
-function getMethodCodesizeDictFromReachabilityJson(data) {
-    const dict = {}
+function getMethodCodesizeDictFromReachabilityJson(data: ReachabilityJson) {
+    const dict: { [fullyQualifiedName: string]: number } = {}
 
     for (const toplevel of data) {
         for (const [packageName, pkg] of Object.entries(toplevel.packages)) {
@@ -23,16 +28,22 @@ function getMethodCodesizeDictFromReachabilityJson(data) {
     return dict
 }
 
-class Trie {
-    root = { next: {} }
+interface TrieNode<Value>
+{
+    val?: Value
+    next: { [c: string]: TrieNode<Value> }
+}
 
-    constructor(dict) {
-        for (const str in dict)
-            this.add(str, dict[str])
+class Trie<Value> {
+    root: TrieNode<Value> = { next: {} }
+
+    constructor(dict: { [name: string]: Value }) {
+        for (const [k, v] of Object.entries(dict))
+            this.add(k, v)
     }
 
-    add(key, value) {
-        let node = this.root
+    add(key: string, value: Value) {
+        let node: TrieNode<Value> = this.root
         for (const c of key) {
             if (!node.next[c]) {
                 node.next[c] = { next: {} }
@@ -42,7 +53,7 @@ class Trie {
         node.val = value
     }
 
-    find(str) {
+    find(str: string) {
         let node = this.root
         let val = undefined
         for (const c of str) {
@@ -56,13 +67,31 @@ class Trie {
     }
 }
 
-function generateHierarchyFromReachabilityJsonAndMethodList(json, cgNodes) {
-    const system = { children: [], name: 'system' }
-    const user = { children: [], name: 'user' }
+interface InternalAnonymousNode
+{
+    parent: InternalAnonymousNode | undefined
+    exact_cg_node?: number
+    main?: boolean
+    cg_nodes: number[]
+    fullname?: string
+    children: InternalNode[]
+    size: number // transitive size of subtree
+    cg_only?: boolean
+}
 
-    const dict = { children: [ user, system ] }
+interface InternalNode extends InternalAnonymousNode
+{
+    name: string
+}
 
-    const prefixToNode = {}
+
+function generateHierarchyFromReachabilityJsonAndMethodList(json: ReachabilityJson, cgNodes: string[]) {
+    const dict: InternalAnonymousNode = { children: [], cg_nodes: [], size: 0, parent: undefined }
+    const system: InternalNode = { children: [], cg_nodes: [], name: 'system', size: 0, parent: dict }
+    const user: InternalNode = { children: [], cg_nodes: [], name: 'user', size: 0, parent: dict }
+    dict.children.push(system, user)
+
+    const prefixToNode: { [prefix: string]: InternalNode & { fullname: string } } = {}
 
     for (const toplevel of json) {
         let l1name = 'ϵ'
@@ -80,7 +109,7 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json, cgNodes) {
         if (toplevel.path && toplevel.module) {
             l1name = display_path + ':' + toplevel.module
             l1fullname = toplevel.path + ':' + toplevel.module
-        } else if(toplevel.path) {
+        } else if(display_path && toplevel.path) {
             l1name = display_path
             l1fullname = toplevel.path
         } else if(toplevel.module) {
@@ -88,7 +117,7 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json, cgNodes) {
             l1fullname = toplevel.module
         }
 
-        const l1 = { children: [], name: l1name, fullname: l1fullname, cg_nodes: [], system: isSystem }
+        const l1 = { children: [], name: l1name, fullname: l1fullname, cg_nodes: [], system: isSystem, size: 0, parent: isSystem ? system : user }
         if (toplevel.path) {
             prefixToNode[toplevel.path] = l1
         }
@@ -98,55 +127,53 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json, cgNodes) {
         else
             user.children.push(l1)
 
-        for (const packageName in toplevel.packages) {
-            const pkg = toplevel.packages[packageName]
+        for (const [packageName, pkg] of Object.entries(toplevel.packages)) {
             let prefix = ''
-            let l2 = l1
+            let l2: InternalNode = l1
 
             if(packageName.length !== 0) {
                 for (const subPackageName of packageName.split('.')) {
                     prefix += subPackageName + '.'
                     let next = l2.children.find(n => n.name === subPackageName)
                     if(!next) {
-                        next = { children: [], fullname: prefix, name: subPackageName, cg_nodes: [] }
-
+                        const newNode = { children: [], fullname: prefix, name: subPackageName, cg_nodes: [], parent: l2, size: 0 }
                         /* Eigentlich sollten keine Causality-Graph-Knoten direkt in einem Package hängen.
                          * Es gibt jedoch Knoten für Klassen, die nicht reachable sind (z.B. Build-Time-Features).
                          * Diese müssen unbedingt in die Abschneide-Berechnung miteinbezogen werden.
                          * Idealerweise sollten sie auch in der Baumstruktur auftauchen.
                          * Das ist aber gerade noch zu kompliziert umzusetzen... */
-                        prefixToNode[prefix] = next
-
-                        l2.children.push(next)
+                        prefixToNode[newNode.fullname] = newNode
+                        l2.children.push(newNode)
+                        next = newNode
                     }
                     l2 = next
                 }
             }
 
-            for (const typeName in pkg.types) {
-                const type = pkg.types[typeName]
-                const l3 = { fullname: prefix + typeName, name: typeName, cg_nodes: [] }
+            for (const [typeName, type] of Object.entries(pkg.types)) {
+                const l3: InternalNode & { fullname: string } = { fullname: prefix + typeName, name: typeName, cg_nodes: [], children: [], size: 0, parent: l2 }
                 prefixToNode[l3.fullname] = l3
                 l2.children.push(l3)
 
-                if (Object.keys(type.methods).length > 0)
-                    l3.children = []
-
-                for (const method in type.methods) {
-                    const l4 = { fullname: l3.fullname + '.' + method, name: method, cg_nodes: [] }
+                for (const [methodName, method] of Object.entries(type.methods)) {
+                    const l4: InternalNode & { fullname: string } = { fullname: l3.fullname + '.' + method, name: methodName, cg_nodes: [], children: [], size: method.size, parent: l3 }
                     prefixToNode[l4.fullname] = l4
                     l3.children.push(l4)
 
-                    const flags = type.methods[method].flags
+                    const flags = method.flags
                     if(flags && flags.includes('main')) {
                         l4.main = true
+                    }
+
+                    for(let cur = l4.parent; cur; cur = cur.parent) {
+                        cur.size += method.size
                     }
                 }
             }
         }
     }
 
-    const trie = new Trie(prefixToNode)
+    const trie = new Trie<InternalNode & { fullname: string }>(prefixToNode)
 
     for (let i = 0; i < cgNodes.length; i++) {
         const cgNodeName = cgNodes[i]
@@ -160,7 +187,7 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json, cgNodes) {
                 let offset = node.fullname.length
                 let name = cgNodeName.substring(offset).trimStart()
                 if (name.startsWith('.')) {
-                    offset++
+                    offset += 1
                     name = name.substring(1)
                 }
                 while(true) {
@@ -173,9 +200,7 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json, cgNodes) {
                         break
                     }
 
-                    const newNode = { cg_only: true, fullname: cgNodeName.substring(0, offset + dotIndex), name: name.substring(0, dotIndex), cg_nodes: [] }
-                    if(!curNode.children)
-                        curNode.children = []
+                    const newNode = { cg_only: true, fullname: cgNodeName.substring(0, offset + dotIndex), name: name.substring(0, dotIndex), cg_nodes: [], children: [], size: 0, parent: curNode }
                     curNode.children.push(newNode)
                     trie.add(newNode.fullname, newNode)
 
@@ -190,7 +215,7 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json, cgNodes) {
                     name = name.substring(pathSepIndex+1)
                 }
 
-                const newNode = { cg_only: true, fullname: cgNodeName, name: name, cg_nodes: [i], exact_cg_node: i }
+                const newNode = { cg_only: true, fullname: cgNodeName, name: name, cg_nodes: [i], exact_cg_node: i, children: [], size: 0, parent: curNode }
                 if(!curNode.children)
                     curNode.children = []
                 curNode.children.push(newNode)
@@ -202,7 +227,7 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json, cgNodes) {
     return dict
 }
 
-function formatByteSizesWithUnitPrefix(size) {
+function formatByteSizesWithUnitPrefix(size: number) {
     if(size > 1000000)
         return (size / 1000000).toPrecision(3) + ' MB'
     else if(size > 1000)
@@ -211,18 +236,18 @@ function formatByteSizesWithUnitPrefix(size) {
         return size.toPrecision(3) + ' B'
 }
 
-function forEachInSubtree(node, callback) {
-    const stack = []
+function forEachInSubtree<TNode extends { children?: TNode[] }>(node: TNode, callback: (v: TNode) => unknown) {
+    const stack: TNode[] = []
     stack.push(node)
     while (stack.length > 0) {
-        const u = stack.pop()
+        const u = stack.pop()!
         const handled = callback(u)
         if (u.children && !handled)
             stack.push(...u.children)
     }
 }
 
-function forEachInSubtreePostorder(node, expandCallback, callback) {
+function forEachInSubtreePostorder<TNode extends { children?: TNode[] }>(node: TNode, expandCallback: (v: TNode) => boolean, callback: (v: TNode) => void) {
     if(!expandCallback(node))
         return
     if(node.children)
@@ -231,20 +256,28 @@ function forEachInSubtreePostorder(node, expandCallback, callback) {
     callback(node)
 }
 
-function forEachInStrictSubtreePostorder(node, expandCallback, callback) {
+function forEachInStrictSubtreePostorder<TNode extends { children?: TNode[] }>(node: TNode, expandCallback: (v: TNode) => boolean, callback: (v: TNode) => void) {
     if(node.children)
         for(const c of node.children)
             forEachInSubtreePostorder(c, expandCallback, callback)
 }
 
-function collectCgNodesInSubtree(node) {
-    const group = []
+function collectCgNodesInSubtree(node: InternalNode): number[] {
+    const group: number[] = []
     forEachInSubtree(node, u => {
         if (u.cg_nodes)
             group.push(...u.cg_nodes)
     })
     return group
 }
+
+
+
+
+
+
+
+
 
 function expandClickHandler(element, node, populateCallback) {
     const expanded = element.classList.toggle('caret-down');
@@ -256,11 +289,14 @@ function expandClickHandler(element, node, populateCallback) {
     element.parentElement.querySelector('.nested').classList.toggle('active');
 }
 
-function getUnqualifiedCausalityGraphNodeName(fullyQualifiedName) {
+function getUnqualifiedCausalityGraphNodeName(fullyQualifiedName: string): string {
+    const parenIndex = fullyQualifiedName.lastIndexOf('/')
+    if (parenIndex !== -1)
+        fullyQualifiedName = fullyQualifiedName.substring(parenIndex + 1)
     return fullyQualifiedName.replaceAll(/(?<![A-Za-z0-9])([a-z]\w+\.)+/g, '')
 }
 
-function getColorAccordingToCausalityGraphNodeType(fullyQualifiedName) {
+function getColorAccordingToCausalityGraphNodeType(fullyQualifiedName: string): string {
     if(fullyQualifiedName.endsWith('[Instantiated]'))
         return '#FF4040'
     if(fullyQualifiedName.endsWith('[Reflection Registration]'))
@@ -288,26 +324,51 @@ function getColorAccordingToCausalityGraphNodeType(fullyQualifiedName) {
     return '#40A0DF'
 }
 
-export class CutTool {
-    cg
-    codesizes
-    methodList
-    typeList
-    all_reachable
-    dataRoot
-    selectedSimulationResult
+interface ReachabilityVector
+{
+    arr: Uint8Array
+    size: number
+}
 
-    maxCodeSize
-    detailMid
-    detailSelectedNode
+interface CutViewData
+{
+    html: HTMLElement
+    reachable_after_cutting_this: undefined | ReachabilityVector
+    reachable_after_additionally_cutting_this: undefined | ReachabilityVector
+}
+
+interface ImageViewData
+{
+    html: HTMLElement
+    exclusive_transitive_cg_nodes?: number[]
+    purgedCodesize?: number
+}
+
+export class CutTool {
+    cg: Remote<RemoteCausalityGraph>
+    codesizes: number[]
+    methodList: string[]
+    typeList: string[]
+    all_reachable: Uint8Array
+    dataRoot: InternalNode
+    selectedSimulationResult?: Remote<DetailedSimulationResult>
+
+    maxCodeSize: number
+    detailMid?: number
+    detailSelectedNode?: HTMLElement
 
     precomputeCutoffs = true
-    reachable_under_selection
-    reachable_in_image_view // Also has the purges of current hover
-    maxPurgedSize
-    selectedForPurging = new Set()
+    reachable_under_selection?: Uint8Array
+    reachable_in_image_view?: Uint8Array // Also has the purges of current hover
+    maxPurgedSize?: number
+    selectedForPurging: Set<InternalNode> = new Set()
 
-    public async setUniverse(universe) {
+
+    cutviewData: Map<InternalNode, CutViewData> = new Map<InternalNode, CutViewData>()
+    imageviewData : Map<InternalNode, ImageViewData> = new Map<InternalNode, ImageViewData>()
+
+
+    public async setUniverse(universe: CausalityGraphUniverse) {
         document.getElementById('main-panel').hidden = true
         document.getElementById('loading-panel').hidden = false
 
@@ -330,31 +391,39 @@ export class CutTool {
         document.getElementById('loading-panel').hidden = true
         document.getElementById('main-panel').hidden = false
 
-        await this.prepareListView(this.dataRoot)
-    }
+        this.maxCodeSize = Math.max(...this.dataRoot.children.map(d => d.size))
 
-    public changePrecomputeCutoffs(enable) {
-        this.precomputeCutoffs = enable
-    }
-
-    private prepareListView(data) {
-        {
-            const rootTreeViewElement = document.getElementById('cut-overview-root')
-            this.insertChildren(rootTreeViewElement, data)
-            const list = rootTreeViewElement.querySelector('ul')
-            list.classList.remove('nested')
-            list.classList.add('unpadded')
-            list.classList.add('active')
-        }
         {
             const rootTreeViewElement = document.getElementById('imageview-root')
-            const list = this.generateHtmlImageview(data)
+            const list = this.generateHtmlImageview(this.dataRoot)
             rootTreeViewElement.appendChild(list)
             list.classList.remove('nested')
             list.classList.add('unpadded')
             list.classList.add('active')
         }
+        {
+            const rootTreeViewElement = document.getElementById('cut-overview-root')
+            const list = this.generateHtmlCutview(this.dataRoot)
+            rootTreeViewElement.appendChild(list)
+            list.classList.remove('nested')
+            list.classList.add('unpadded')
+            list.classList.add('active')
+            this.recalculateCutOverviewForSubtree(list, this.dataRoot)
+        }
     }
+
+    public changePrecomputeCutoffs(enable: boolean) {
+        this.precomputeCutoffs = enable
+    }
+
+
+
+
+
+
+
+
+
 
     private insertChildren(element, node) {
         const list = this.generateHtmlCutview(node)
@@ -362,14 +431,15 @@ export class CutTool {
         return this.recalculateCutOverviewForSubtree(list, node)
     }
 
-    private generateHtmlCutview(data) {
+    private generateHtmlCutview(data: InternalNode) {
         const ul = document.createElement('ul')
         ul.className = 'nested'
 
         for(const d of data.children) {
             const li = document.createElement('li')
+            const cutData = { html: li, reachable_after_additionally_cutting_this: undefined, reachable_after_cutting_this: undefined }
+            this.cutviewData.set(d, cutData)
             li.className = 'cut-row'
-            d.html = li
             ul.appendChild(li)
 
             const cutSizeColumn = document.createElement('span')
@@ -393,12 +463,9 @@ export class CutTool {
             li.appendChild(span)
 
             const nameSpan = document.createElement('span')
-            nameSpan.appendChild(document.createTextNode(d.name))
+            nameSpan.appendChild(document.createTextNode(d.name ?? ''))
             // nameSpan.title = d.fullname
             nameSpan.classList.add('node-text', 'selectable')
-
-            if(node.system)
-                nameSpan.classList.add('system')
 
             if(node.cg_only)
                 nameSpan.classList.add('cg-only')
@@ -409,7 +476,7 @@ export class CutTool {
                 if(this.selectedForPurging.has(node))
                     return;
 
-                const maybe_reachable_in_image_view = this.selectedForPurging.size === 0 ? node.reachable_after_cutting_this : node.reachable_after_additionally_cutting_this
+                const maybe_reachable_in_image_view = this.selectedForPurging.size === 0 ? cutData.reachable_after_cutting_this : cutData.reachable_after_additionally_cutting_this
                 if (maybe_reachable_in_image_view) {
                     this.reachable_in_image_view = maybe_reachable_in_image_view.arr
                     this.updatePurgeValues()
@@ -443,8 +510,8 @@ export class CutTool {
                     this.selectedSimulationResult = undefined
                 }
 
-                if (selected && node.reachable_after_additionally_cutting_this) {
-                    this.reachable_in_image_view = this.reachable_under_selection = node.reachable_after_additionally_cutting_this.arr
+                if (selected && cutData.reachable_after_additionally_cutting_this) {
+                    this.reachable_in_image_view = this.reachable_under_selection = cutData.reachable_after_additionally_cutting_this.arr
                 } else {
                     const purgeSet = [...new Set([...this.selectedForPurging].flatMap(collectCgNodesInSubtree))]
 
@@ -478,7 +545,9 @@ export class CutTool {
                     await this.precomputeCutOverview()
                 } else {
                     forEachInSubtree(this.dataRoot, u => {
-                        delete u.reachable_after_additionally_cutting_this
+                        const uCutData = this.cutviewData.get(u)
+                        if(uCutData)
+                            uCutData.reachable_after_additionally_cutting_this = undefined
                         this.refreshPurgeSizeInCutOverview(u)
                     })
                 }
@@ -490,37 +559,22 @@ export class CutTool {
         return ul
     }
 
-    private generateHtmlImageview(data) {
+    private generateHtmlImageview(data: InternalNode) {
         const ul = document.createElement('ul')
         ul.className = 'nested'
 
-        for (const d of data.children) {
-            let codesize = 0
-            forEachInSubtree(d, (v) => {
-                if (v.cg_nodes)
-                    for (const i of v.cg_nodes)
-                        codesize += this.codesizes[i]
-            })
-            d.size = codesize
-        }
-
-        if (data === this.dataRoot) {
-            this.maxCodeSize = Math.max(...data.children.map(d => d.size))
-        }
-
-        assert(this.maxCodeSize)
-
-        delete data.indirect_cg_nodes
+        const imageViewDataEntry = this.imageviewData.get(data)
+        if (imageViewDataEntry)
+            delete imageViewDataEntry.exclusive_transitive_cg_nodes
 
         for(const d of data.children) {
             if(d.cg_only)
                 continue
 
-            d.indirect_cg_nodes = collectCgNodesInSubtree(d)
-
             const li = document.createElement('li')
+            const viewData: ImageViewData = { exclusive_transitive_cg_nodes: collectCgNodesInSubtree(d), html: li }
+            this.imageviewData.set(d, viewData)
             li.className = 'image-row'
-            d.html_imageview = li
             ul.appendChild(li)
             const span = document.createElement('span')
             li.appendChild(span)
@@ -587,12 +641,12 @@ export class CutTool {
                         this.detailMid = undefined
                         this.detailSelectedNode = undefined
                     } else {
-                        if(this.detailSelectedNode && this.detailSelectedNode.html_imageview) {
-                            this.detailSelectedNode.html_imageview.querySelector('.node-text').classList.remove('selected-for-detail')
+                        if(this.detailSelectedNode) {
+                            this.detailSelectedNode.querySelector<HTMLSpanElement>('.node-text')!.classList.remove('selected-for-detail')
                         }
                         nameSpan.classList.add('selected-for-detail')
                         this.detailMid = mid
-                        this.detailSelectedNode = node
+                        this.detailSelectedNode = this.imageviewData.get(node).html
                     }
 
                     let edges = undefined
@@ -682,7 +736,9 @@ export class CutTool {
     private precomputeCutOverview() {
         for (const node of [...this.selectedForPurging]) {
             forEachInSubtree(node, u => {
-                delete u.reachable_after_additionally_cutting_this
+                const uCutData = this.cutviewData.get(u)
+                if(uCutData)
+                    uCutData.reachable_after_additionally_cutting_this = undefined
                 this.refreshPurgeSizeInCutOverview(u)
             })
         }
@@ -692,32 +748,35 @@ export class CutTool {
 
         return this.recalculateCutOverviewWithSelection(purgeNodeTreeRoot, (index, data) => {
             const node = indexToSrcNode[index]
-            node.reachable_after_additionally_cutting_this = data
+            const uCutData = this.cutviewData.get(node)
+            if(uCutData)
+                uCutData.reachable_after_additionally_cutting_this = data
             this.refreshPurgeSizeInCutOverview(node)
-            return new Promise(resolve => setTimeout(resolve, 1))
         })
     }
 
-    private refreshPurgeSizeInCutOverview(node) {
-        const html = node.html
-        if(!html)
+    private refreshPurgeSizeInCutOverview(node: InternalNode) {
+        const cutData = this.cutviewData.get(node)
+        if (!cutData)
             return
+        const html = cutData.html
 
         assert(this.maxPurgedSize)
 
-        const purged = this.selectedForPurging.size > 0 && this.precomputeCutoffs ? node.reachable_after_additionally_cutting_this : node.reachable_after_cutting_this
 
-        let text = undefined
-        let width = 0
+        const purged = this.selectedForPurging.size > 0 && this.precomputeCutoffs ? cutData.reachable_after_additionally_cutting_this : cutData.reachable_after_cutting_this
+
+        let text = null
+        let width = '0'
         if(purged) {
             text = formatByteSizesWithUnitPrefix(purged.size)
             width = (purged.size / this.maxPurgedSize * 100) + '%'
         }
-        html.querySelector('.cut-size-column').textContent = text
-        html.querySelector('.cut-size-bar').style.width = width
+        html.querySelector<HTMLSpanElement>('.cut-size-column')!.textContent = text
+        html.querySelector<HTMLDivElement>('.cut-size-bar')!.style.width = width
     }
 
-    private async recalculateCutOverviewForSubtree(list, node) {
+    private async recalculateCutOverviewForSubtree(list: HTMLLIElement, node: InternalNode) {
         // The C++ code doesn't handle empty groups well. Therefore we already handle them here.
         const purgeNodeTreeRoot = { children: node.children.map((c, i) => { return { mids: collectCgNodesInSubtree(c), src: i } }).filter(n => n.mids.length > 0) }
 
@@ -725,20 +784,23 @@ export class CutTool {
 
         const updateMax: boolean = node === this.dataRoot
 
-        await this.recalculateCutOverviewWithoutSelection(purgeNodeTreeRoot, (index, data) => {
+        await this.recalculateCutOverviewWithoutSelection(purgeNodeTreeRoot, (index: number, data: ReachabilityVector) => {
             const v = node.children[index]
-            v.reachable_after_cutting_this = data
+            const vCutData = this.cutviewData.get(v)
+            if(!vCutData)
+                return
+
+            const html = vCutData.html
+            vCutData.reachable_after_cutting_this = data
+
             maxPurgedSize = Math.max(maxPurgedSize, data.size)
 
-            const html = v.html
-            if(html) {
-                if (updateMax) {
-                    this.maxPurgedSize = Math.max(maxPurgedSize, data.size)
-                }
-
-                html.querySelector('.cut-size-column').textContent = formatByteSizesWithUnitPrefix(data.size)
-                html.querySelector('.cut-size-bar').style.width = (data.size / this.maxPurgedSize * 100) + '%'
+            if (updateMax) {
+                this.maxPurgedSize = Math.max(maxPurgedSize, data.size)
             }
+
+            html.querySelector<HTMLSpanElement>('.cut-size-column')!.textContent = formatByteSizesWithUnitPrefix(data.size)
+            html.querySelector<HTMLDivElement>('.cut-size-bar')!.style.width = (data.size / this.maxPurgedSize * 100) + '%'
         })
 
         assert(this.maxPurgedSize)
@@ -750,7 +812,7 @@ export class CutTool {
                 return -1
         }
 
-        node.children.sort((a, b) => sortKey(b) - sortKey(a)).map(n => n.html).forEach(node => list.appendChild(node))
+        node.children.sort((a, b) => sortKey(b) - sortKey(a)).map(n => this.cutviewData.get(n).html).forEach(node => list.appendChild(node))
 
         if (this.precomputeCutoffs && this.selectedForPurging.size > 0) {
             let containedInSelection = false
@@ -763,12 +825,16 @@ export class CutTool {
 
             if(containedInSelection) {
                 for (const u of node.children) {
-                    delete u.reachable_after_additionally_cutting_this
+                    const uCutData = this.cutviewData.get(u)
+                    if(uCutData)
+                        uCutData.reachable_after_additionally_cutting_this = undefined
                 }
             } else {
-                await this.recalculateCutOverviewWithSelection(purgeNodeTreeRoot, (index, data) => {
+                await this.recalculateCutOverviewWithSelection(purgeNodeTreeRoot, (index: number, data: ReachabilityVector) => {
                     const v = node.children[index]
-                    v.reachable_after_additionally_cutting_this = data
+                    const vCutData = this.cutviewData.get(v)
+                    if(vCutData)
+                        vCutData.reachable_after_additionally_cutting_this = data
                 })
             }
         }
@@ -779,15 +845,20 @@ export class CutTool {
     }
 
     private updatePurgeValues() {
-        forEachInStrictSubtreePostorder(this.dataRoot, u => u.html_imageview, u => this.refreshPurgeValueForImageviewNode(u))
+        forEachInStrictSubtreePostorder(this.dataRoot, u => this.imageviewData.get(u) !== undefined, u => this.refreshPurgeValueForImageviewNode(u))
     }
 
-    private refreshPurgeValueForImageviewNode(u) {
+    private refreshPurgeValueForImageviewNode(u: InternalNode) {
         const still_reachable = this.reachable_in_image_view ?? this.all_reachable
 
+        const uImageviewData = this.imageviewData.get(u)
+        assert(uImageviewData)
+        if(!uImageviewData)
+            return
+
         let purgedCodesize = 0
-        if(u.indirect_cg_nodes) {
-            for (const i of u.indirect_cg_nodes)
+        if(uImageviewData.exclusive_transitive_cg_nodes) {
+            for (const i of uImageviewData.exclusive_transitive_cg_nodes)
                 if (this.all_reachable[i] !== 0xFF && still_reachable[i] === 0xFF)
                     purgedCodesize += this.codesizes[i]
         } else {
@@ -797,31 +868,35 @@ export class CutTool {
                         purgedCodesize += this.codesizes[i]
             }
             if(u.children) {
-                for (const v of u.children)
-                    purgedCodesize += v.purgedCodesize
+                for (const v of u.children) {
+                    const vImageviewData = this.imageviewData.get(v)
+                    assert(vImageviewData)
+                    purgedCodesize += vImageviewData.purgedCodesize
+                }
             }
         }
 
-        u.purgedCodesize = purgedCodesize
+        uImageviewData.purgedCodesize = purgedCodesize
+        const html = uImageviewData.html
 
         const purgedPercentage = 100 * purgedCodesize / u.size
-        let barWidth = 0
+        let barWidth = '0'
         let percentageText = ''
         if (u.size !== 0) {
             barWidth = purgedPercentage.toFixed(1) + '%'
             percentageText = purgedPercentage === 0 ? '' : purgedPercentage.toFixed(1) + ' %'
         }
-        u.html_imageview.querySelector('.purge-percentage-bar-text').textContent = percentageText
-        u.html_imageview.querySelector('.purge-percentage-bar-inner').style.width = barWidth
-        u.html_imageview.querySelector('.size-bar-inner').style.width = barWidth
+        html.querySelector<HTMLSpanElement>('.purge-percentage-bar-text')!.textContent = percentageText
+        html.querySelector<HTMLDivElement>('.purge-percentage-bar-inner')!.style.width = barWidth
+        html.querySelector<HTMLDivElement>('.size-bar-inner')!.style.width = barWidth
     }
 
-    private renderGraphOnDetailView(edges, targetMid) {
-        const htmlSvg = document.getElementById('chart')
+    private renderGraphOnDetailView(edges: { src: number, dst: number, via_type?: number }[], targetMid: number) {
+        const htmlSvg = document.getElementById('chart')!
         htmlSvg.textContent = ''
 
         const nothingSelected = !edges
-        document.querySelector('.detail-div').hidden = nothingSelected
+        document.querySelector<HTMLDivElement>('.detail-div')!.hidden = nothingSelected
         if(nothingSelected)
             return
 
@@ -829,48 +904,46 @@ export class CutTool {
             return
 
         // Graph construction
-        const graph = {nodes: new Set(), links: []};
+        const nodesSet: Set<number> = new Set()
+        const links: VisGraphLink[] = []
 
         edges.forEach(e => {
             if(e.src === -1 || e.dst === -1)
                 return
 
-            graph.nodes.add(e.src);
-            graph.nodes.add(e.dst);
-            const newObj = { source: e.src, target: e.dst }
+            nodesSet.add(e.src);
+            nodesSet.add(e.dst);
+            const newObj: { source: number, target: number, via_type?: number } = { source: e.src, target: e.dst }
             if (e.via_type)
                 newObj.via_type = e.via_type
-            graph.links.push(newObj);
+            links.push(newObj);
         });
 
-        graph.nodes = [...graph.nodes]
+        const nodeIds = [...nodesSet]
 
         // Modeling adjacency through indices
-        graph.links.forEach((d, i) => {
-            graph.links[i].source = graph.nodes.indexOf(graph.links[i].source);
-            graph.links[i].target = graph.nodes.indexOf(graph.links[i].target);
+        links.forEach((d, i) => {
+            links[i].source = nodeIds.indexOf(links[i].source);
+            links[i].target = nodeIds.indexOf(links[i].target);
         });
 
-        // Store index at each node
-        graph.nodes.forEach((d, i) => {
-            graph.nodes[i] = { index: i, mid: d, name: this.methodList[d] ?? '<root>', adj: [], in_deg: 0 };
-        });
+        const nodes: VisGraphNode[] = nodeIds.map((d, i) => { return { index: i, mid: d, name: this.methodList[d] ?? '<root>', adj: [], in_deg: 0, depth: 0 }})
 
-        graph.links.forEach(l => {
-            graph.nodes[l.source].adj.push(l)
-            graph.nodes[l.target].in_deg++
+        links.forEach(l => {
+            nodes[l.source].adj.push(l)
+            nodes[l.target].in_deg += 1
         })
 
         let order = []
 
-        for(let v = 0; v < graph.nodes.length; v++)
-            if(graph.nodes[v].in_deg === 0)
+        for(let v = 0; v < nodes.length; v++)
+            if(nodes[v].in_deg === 0)
                 order.push(v)
         for(let i = 0; i < order.length; i++)
-            for(const e of graph.nodes[order[i]].adj) {
+            for(const e of nodes[order[i]].adj) {
                 const v = e.target
-                graph.nodes[v].in_deg--
-                if(graph.nodes[v].in_deg === 0)
+                nodes[v].in_deg -= 1
+                if(nodes[v].in_deg === 0)
                     order.push(v)
             }
 
@@ -880,17 +953,17 @@ export class CutTool {
 
         for(const u of order) {
             let depth = 0
-            for(const e of graph.nodes[u].adj) {
+            for(const e of nodes[u].adj) {
                 const v = e.target
-                if(graph.nodes[v].depth + 1 > depth)
-                    depth = graph.nodes[v].depth + 1
+                if(nodes[v].depth + 1 > depth)
+                    depth = nodes[v].depth + 1
             }
-            graph.nodes[u].depth = depth
+            nodes[u].depth = depth
             if(depth > maxDepth)
                 maxDepth = depth
         }
 
-        function applyLayering(n) {
+        function applyLayering<TNode extends { data: VisGraphNode, value?: number, dataChildren: { child: TNode | undefined }[] }>(n: undefined | TNode) {
             if(!n)
                 return
             n.value = n.data.depth
@@ -900,10 +973,10 @@ export class CutTool {
                 }
         }
 
-        const dag = d3dag.dagStratify()
-            .id(({index}) => index.toString())
-            .parentData(({adj}) => adj.map(e => [e.target.toString(), e]))
-            (graph.nodes);
+        const dag: d3dag.Dag<VisGraphNode, VisGraphLink> = d3dag.dagStratify()
+            .id((arg: {index: number}) => arg.index.toString())
+            .parentData((arg: VisGraphNode) => arg.adj.map(e => [e.target.toString(), e]))
+            (nodes);
         const nodeRadius = 20;
         const layout = d3dag
             .sugiyama() // base layout
@@ -927,20 +1000,20 @@ export class CutTool {
         const line = d3
             .line()
             .curve(d3.curveCatmullRom)
-            .x((d) => d.x)
-            .y((d) => d.y);
+            .x(d => d[0])
+            .y(d => d[1]);
 
         // Plot edges
-        const links = svgSelection
+        const linksSelection = svgSelection
             .append('g')
             .selectAll('path')
             .data(dag.links())
             .enter()
             .append('path')
-            .attr('d', ({ points }) => line(points))
+            .attr('d', ({ points }) => line(points.map(({ x, y }) => [x, y])))
             .attr('fill', 'none')
             .attr('stroke-width', 2)
-            .attr('class', ({source, target, data}) => {
+            .attr('class', ({data}) => {
                 if(data.via_type !== undefined) {
                     return 'support-edge'
                 } else {
@@ -948,12 +1021,12 @@ export class CutTool {
                 }
             })
 
-        links
+        linksSelection
             .append('title')
-            .text(({data}) => data.via_type !== undefined ? this.typeList[data.via_type] : undefined)
+            .text(({data}) => data.via_type !== undefined ? this.typeList[data.via_type] : '')
 
         // Select nodes
-        const nodes = svgSelection
+        const nodesSelection = svgSelection
             .append('g')
             .selectAll('g')
             .data(dag.descendants())
@@ -962,21 +1035,21 @@ export class CutTool {
             .attr('transform', ({ x, y }) => `translate(${x}, ${y})`);
 
         // Plot node circles
-        const nodeCircles = nodes
+        const nodeCircles = nodesSelection
             .append('circle')
 
         nodeCircles
             .attr('r', nodeRadius)
             .attr('fill', d => getColorAccordingToCausalityGraphNodeType(d.data.name))
 
-        nodes
+        nodesSelection
             .append('title')
             .text(d => d.data.name)
 
         const textSize = 20
 
         // Add text to nodes
-        const nodeLabels = nodes
+        const nodeLabels = nodesSelection
             .append('text')
 
         nodeLabels
@@ -990,24 +1063,24 @@ export class CutTool {
 
 
         function onZoom() {
-            const transform = d3.zoomTransform(d3.select('#chartpanel').node());
+            const transform = d3.zoomTransform(d3.select<Element, unknown>('#chartpanel').node()!);
 
-            function transX(num)
+            function transX(num: number)
             {
                 return num * transform.k + transform.x
             }
 
-            function transY(num)
+            function transY(num: number)
             {
                 return num * transform.k + transform.y;
             }
 
-            nodes
+            nodesSelection
                 .attr('transform', ({x, y}) => `translate(${transX(x)}, ${transY(y)})`)
             nodeCircles
                 .attr('r', transform.k * nodeRadius)
 
-            links.attr('d', ({ points }) => line(points.map(({x, y}) => {return {x: transX(x), y: transY(y)}})))
+            linksSelection.attr('d', ({ points }) => line(points.map(({x, y}) => {return [transX(x), transY(y)]})))
                 .attr('stroke-width', transform.k * 3)
 
             nodeLabels
@@ -1016,8 +1089,25 @@ export class CutTool {
         }
 
         const zoom = d3.zoom().on('zoom', onZoom);
-        d3.select('#chartpanel').call(zoom.transform, d3.zoomIdentity)
-        d3.select('#chartpanel').call(zoom);
+        d3.select<Element, unknown>('#chartpanel').call(zoom.transform, d3.zoomIdentity)
+        d3.select<Element, unknown>('#chartpanel').call(zoom);
     }
 
+}
+
+interface VisGraphNode
+{
+    index: number
+    name: string
+    adj: VisGraphLink[]
+    in_deg: number
+    mid: number,
+    depth: number
+}
+
+interface VisGraphLink
+{
+    source: number
+    target: number
+    via_type?: number
 }
