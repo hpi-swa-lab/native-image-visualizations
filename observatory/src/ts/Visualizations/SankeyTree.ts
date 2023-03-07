@@ -73,6 +73,18 @@ export class SankeyTree implements MultiverseVisualization {
         // todo
     }
 
+    handleNodesFilterChanged(): void {
+        this.filterNodesFromLeaves(this.tree.leaves, this.sankeyStore.nodesFilter)
+
+        this.redrawTree(
+            createApplyFilterEvent(this.sankeyStore.nodesFilter),
+            this.tree.root,
+            this.tree ?? {} as Tree,
+            this.containerSelections,
+            this.metadata,
+        )
+    }
+
     public setLayer(layer: Layers): void {
         // TODO is it correct?
         this.layer = layer
@@ -227,8 +239,10 @@ export class SankeyTree implements MultiverseVisualization {
         if (node.parent !== undefined) this.markNodeModified(node.parent)
     }
 
-    // FIXME needs to be looked at
+    // FIXME bug: doesn't filter for universes
     private filterNodesFromLeaves(leaves: Node[], filter: NodesFilter) {
+        this.filteredNodes = []
+
         for (const leave of leaves) {
             if (leave.sources.size < 1) continue
             if (filter.diffing.showUnmodified) {

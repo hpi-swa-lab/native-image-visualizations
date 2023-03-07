@@ -70,9 +70,6 @@ function createUniverseMetadata(multiverse: Multiverse, colorScheme: ColorScheme
     console.log('universeMetadata', metadata)
     return metadata
 }
-function handleNodesFilterChanged() {
-    // TODO #39 -> update tree
-}
 
 </script>
 
@@ -85,7 +82,7 @@ function handleNodesFilterChanged() {
         <template #controls>
             <SankeyTreeControls
                 :universes-metadata="metadata"
-                @change="handleNodesFilterChanged()"
+                @change="visualization.handleNodesFilterChanged()"
             ></SankeyTreeControls>
         </template>
 
