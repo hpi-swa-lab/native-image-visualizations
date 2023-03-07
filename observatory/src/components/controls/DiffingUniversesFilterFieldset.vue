@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import ColorLabel from './ColorLabel.vue'
 import ToggleSwitch from './ToggleSwitch.vue'
-import {globalConfigStore, sankeyTreeConfigStore} from '../../ts/stores'
+import { globalConfigStore, sankeyTreeConfigStore } from '../../ts/stores'
 import { UNMODIFIED } from '../../ts/Visualizations/SankeyTree'
 import { UniverseMetadata } from '../../ts/SharedTypes/SankeyTree'
-import {computed} from 'vue';
+import { computed } from 'vue'
 
 defineProps<{
     universesMetadata: UniverseMetadata
@@ -13,20 +13,19 @@ defineProps<{
 const globalStore = globalConfigStore()
 const sankeyStore = sankeyTreeConfigStore()
 
-const isTheOnlyCheckedOption = computed(() => (key: string) =>
-    onlyShowUnmodifiedChecked(key)
-    || onlyOneUniverseChecked(key))
-
+const isTheOnlyCheckedOption = computed(
+    () => (key: string) => onlyShowUnmodifiedChecked(key) || onlyOneUniverseChecked(key)
+)
 
 const onlyShowUnmodifiedChecked = (key: string) =>
-    sankeyStore.diffingFilter.showUnmodified
-    && sankeyStore.diffingFilter.universes.size === 0
-    && key === UNMODIFIED
+    sankeyStore.diffingFilter.showUnmodified &&
+    sankeyStore.diffingFilter.universes.size === 0 &&
+    key === UNMODIFIED
 
 const onlyOneUniverseChecked = (key: string) =>
-    !sankeyStore.diffingFilter.showUnmodified
-    && sankeyStore.diffingFilter.universes.size === 1
-    && sankeyStore.isUniverseFiltered(parseInt(key))
+    !sankeyStore.diffingFilter.showUnmodified &&
+    sankeyStore.diffingFilter.universes.size === 1 &&
+    sankeyStore.isUniverseFiltered(parseInt(key))
 
 const isRealMultiverse = computed(() => globalStore.multiverse.sources.length === 2)
 </script>

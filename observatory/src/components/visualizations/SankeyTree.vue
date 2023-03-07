@@ -3,7 +3,7 @@ import MainLayout from '../layouts/MainLayout.vue'
 import COLORS from '../../ts/constants/ColorPalette'
 import SankeyTreeControls from '../controls/SankeyTreeControls.vue'
 import { SankeyTree } from '../../ts/Visualizations/SankeyTree'
-import {globalConfigStore, sankeyTreeConfigStore} from '../../ts/stores'
+import { globalConfigStore, sankeyTreeConfigStore } from '../../ts/stores'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { Multiverse } from '../../ts/UniverseTypes/Multiverse'
 import { EventType } from '../../ts/enums/EventType'
@@ -97,9 +97,7 @@ function createUniverseMetadata(multiverse: Multiverse, colorScheme: ColorScheme
     >
         <Tooltip :data-model="tooltipModel"></Tooltip>
         <template #controls>
-            <SankeyTreeControls
-                :universes-metadata="metadata"
-            ></SankeyTreeControls>
+            <SankeyTreeControls :universes-metadata="metadata"></SankeyTreeControls>
         </template>
 
         <div id="viz-container" ref="container" class="w-full h-full" />

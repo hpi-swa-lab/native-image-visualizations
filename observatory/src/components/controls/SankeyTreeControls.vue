@@ -28,7 +28,7 @@ const emit = defineEmits([EventType.EXPAND_TREE])
 
             <SortingFilterFieldset />
 
-<!--            TODO maybe remove-->
+            <!--            TODO maybe remove-->
             <button
                 id="expand-tree-btn"
                 type="button"
