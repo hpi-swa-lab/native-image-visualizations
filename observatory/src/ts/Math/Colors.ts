@@ -4,13 +4,13 @@ export function lightenColor(color: string, alpha: number): string {
     const g = parseInt(color.substring(3, 5), 16)
     const b = parseInt(color.substring(5, 7), 16)
 
-    const rr = Math.round(r * alpha + 255 * (1 - alpha))
-    const gg = Math.round(g * alpha + 255 * (1 - alpha))
-    const bb = Math.round(b * alpha + 255 * (1 - alpha))
+    const r2 = Math.round(r * alpha + 255 * (1 - alpha))
+    const g2 = Math.round(g * alpha + 255 * (1 - alpha))
+    const b2 = Math.round(b * alpha + 255 * (1 - alpha))
 
-    const rrr = rr.toString(16).length === 1 ? `0${rr.toString(16)}` : rr.toString(16)
-    const ggg = gg.toString(16).length === 1 ? `0${gg.toString(16)}` : gg.toString(16)
-    const bbb = bb.toString(16).length === 1 ? `0${bb.toString(16)}` : bb.toString(16)
+    const r3 = r2.toString(16).length === 1 ? `0${r2.toString(16)}` : r2.toString(16)
+    const g3 = g2.toString(16).length === 1 ? `0${g2.toString(16)}` : g2.toString(16)
+    const b3 = b2.toString(16).length === 1 ? `0${b2.toString(16)}` : b2.toString(16)
 
-    return `#${rrr}${ggg}${bbb}`
+    return `#${r3}${g3}${b3}`
 }
