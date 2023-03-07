@@ -11,7 +11,22 @@ defineProps<{
 }>()
 
 const globalStore = globalConfigStore()
-const sankeyTreeStore = sankeyTreeConfigStore()
+const sankeyStore = sankeyTreeConfigStore()
+
+const isTheOnlyCheckedOption = computed(() => (key: string) =>
+    onlyShowUnmodifiedChecked(key)
+    || onlyOneUniverseChecked(key))
+
+
+const onlyShowUnmodifiedChecked = (key: string) =>
+    sankeyStore.diffingFilter.showUnmodified
+    && sankeyStore.diffingFilter.universes.size === 0
+    && key === UNMODIFIED
+
+const onlyOneUniverseChecked = (key: string) =>
+    !sankeyStore.diffingFilter.showUnmodified
+    && sankeyStore.diffingFilter.universes.size === 1
+    && sankeyStore.isUniverseFiltered(parseInt(key))
 
 const isRealMultiverse = computed(() => globalStore.multiverse.sources.length === 2)
 </script>
@@ -25,9 +40,9 @@ const isRealMultiverse = computed(() => globalStore.multiverse.sources.length ==
             :id="key"
             :key="key"
             :value="universesMetadata[key].name"
-            :checked="sankeyTreeStore.isUniverseFiltered(parseInt(key))"
-            :disabled="!isRealMultiverse"
-            @input="sankeyTreeStore.changeUniverseSelection(parseInt($event.target.id))"
+            :checked="sankeyStore.isUniverseFiltered(parseInt(key))"
+            :disabled="!isRealMultiverse || isTheOnlyCheckedOption(key)"
+            @input="sankeyStore.changeUniverseSelection(parseInt($event.target.id))"
         >
             <ColorLabel
                 :for-element="key"
@@ -40,19 +55,20 @@ const isRealMultiverse = computed(() => globalStore.multiverse.sources.length ==
             <ToggleSwitch
                 :id="UNMODIFIED"
                 :value="UNMODIFIED"
-                :checked="sankeyTreeStore.diffingFilter.showUnmodified"
-                @input="sankeyTreeStore.setShowUnmodified($event.target.checked)"
+                :checked="sankeyStore.diffingFilter.showUnmodified"
+                :disabled="isTheOnlyCheckedOption(UNMODIFIED)"
+                @input="sankeyStore.setShowUnmodified($event.target.checked)"
             >
                 <ColorLabel
                     :for-element="UNMODIFIED"
                     label="unmodified packages"
-                    :color="sankeyTreeStore.colorUnmodified"
+                    :color="sankeyStore.colorUnmodified"
                 ></ColorLabel>
             </ToggleSwitch>
 
             <ColorLabel
                 label="modified packages"
-                :color="sankeyTreeStore.colorModified"
+                :color="sankeyStore.colorModified"
                 class="ml-[29px]"
             ></ColorLabel>
         </template>
