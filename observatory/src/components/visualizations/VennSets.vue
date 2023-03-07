@@ -6,7 +6,6 @@ import { onMounted, reactive, watch, computed } from 'vue'
 import { globalConfigStore, vennConfigStore } from '../../ts/stores'
 import { VennSets } from '../../ts/Visualizations/VennSets'
 import { Multiverse } from '../../ts/UniverseTypes/Multiverse'
-import { Node } from '../../ts/UniverseTypes/Node'
 import VennControls from '../controls/VennControls.vue'
 import { TooltipModel } from '../../ts/Visualizations/TooltipModel'
 import Tooltip from '../controls/Tooltip.vue'
@@ -49,14 +48,14 @@ watch(currentLayer, (newLayer) => {
 watch(
     highlights,
     (newHighlights) => {
-        visualization.setHighlights(Object.values(newHighlights).flat() as Node[])
+        visualization.setHighlights(newHighlights as Set<string>)
     },
     { deep: true }
 )
 watch(
     selection,
     (newSelection) => {
-        visualization.setSelection(Object.values(newSelection).flat() as Node[])
+        visualization.setSelection(newSelection as Set<string>)
     },
     { deep: true }
 )
@@ -78,7 +77,6 @@ watch(sortingOrder, (newOrder) => {
                 @descending="visualization.sort(SortingOrder.DESCENDING)"
             ></VennControls>
         </template>
-        <div id="container" />
 
         <div id="viz-container" ref="container" class="w-full h-full"></div>
     </MainLayout>
