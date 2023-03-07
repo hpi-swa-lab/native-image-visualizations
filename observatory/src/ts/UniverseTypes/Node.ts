@@ -32,7 +32,7 @@ export class Node {
     }
 
     get identifier(): string {
-        if (this._identifier) return this.identifier
+        if (this._identifier) return this._identifier
 
         this._identifier = this.name
         if (this.parent) {
