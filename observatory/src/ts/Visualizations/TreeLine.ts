@@ -80,7 +80,11 @@ export class TreeLine implements MultiverseVisualization {
     }
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     public setHighlights(highlights: Node[]): void {
-        // TODO; https://github.com/hpi-swa-lab/MPWS2022RH1/issues/118
+        console.log('highlights', highlights)
+
+        this.highlights = highlights
+
+        this.redraw()
     }
 
     private initZoom(): void {
@@ -216,7 +220,8 @@ export class TreeLine implements MultiverseVisualization {
                 top,
                 height,
                 path[path.length - 1],
-                containingCombinations
+                containingCombinations,
+                this.highlights.find((node) => node.name === tree.name) ? true : false
             )
             leftOfSubHierarchy = leftOfHierarchy + widthOfBox + HIERARCHY_GAPS
         }
@@ -271,24 +276,27 @@ export class TreeLine implements MultiverseVisualization {
         top: number,
         height: number,
         text: string,
-        containingCombinations: UniverseCombination[]
+        containingCombinations: UniverseCombination[],
+        isHighlighted: boolean
     ): number {
         const FONT_SIZE = 11
         const TEXT_HORIZONTAL_PADDING = 8
         const TEXT_VERTICAL_PADDING = 2
         const DEFAULT_FILL_STYLE = '#cccccc'
+        const HIGHLIGHT_COLOR = 'pink'
 
         this.context.font = `${FONT_SIZE}px sans-serif`
 
         const textWidth = this.context.measureText(text).width
         const boxWidth = textWidth + 2 * TEXT_HORIZONTAL_PADDING
 
-        this.context.fillStyle =
-            containingCombinations.length == 1
-                ? // The fill styles are calculated for all nodes.
-                  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                  this.fillStyles.get(containingCombinations[0])!
-                : DEFAULT_FILL_STYLE
+        this.context.fillStyle = isHighlighted
+            ? HIGHLIGHT_COLOR
+            : containingCombinations.length == 1
+            ? // The fill styles are calculated for all nodes.
+              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+              this.fillStyles.get(containingCombinations[0])!
+            : DEFAULT_FILL_STYLE
         this.context.fillRect(left, top, boxWidth, height - HIERARCHY_GAPS)
 
         const visibleStart = clamp(top, 0, this.canvas.height)
