@@ -1,5 +1,5 @@
 import * as d3 from 'd3'
-import { hierarchy, HierarchyNode, HierarchyPointNode, Selection, Transition, TreeLayout } from 'd3'
+import {filter, hierarchy, HierarchyNode, HierarchyPointNode, Selection, Transition, TreeLayout} from 'd3'
 import { Node } from '../UniverseTypes/Node'
 import { MultiverseVisualization } from './MultiverseVisualization'
 import { ColorScheme } from '../SharedTypes/Colors'
@@ -19,7 +19,7 @@ import { Bytes, inMB } from '../SharedTypes/Size'
 import {
     asHTML,
     createApplyFilterEvent,
-    filterDiffingUniverses,
+    filterDiffingUniverses, getWithoutRoot,
     sortChildren,
     toggleChildren
 } from './utils/SankeyTreeUtils'
@@ -30,6 +30,8 @@ export const UNMODIFIED = 'UNMODIFIED'
 // constants
 const dx = 20
 let dy = 0
+
+const TRANSITION_DURATION = 500
 
 export class SankeyTree implements MultiverseVisualization {
     colorScheme: ColorScheme = []
@@ -76,7 +78,8 @@ export class SankeyTree implements MultiverseVisualization {
     }
 
     setHighlights(highlights: Set<string>): void {
-        // todo
+        this.highlights = highlights
+        this.applyStyleForChosen(highlights, 'opacity', 0.4, 1)
     }
 
     setSelection(selection: Set<string>): void {
@@ -107,7 +110,7 @@ export class SankeyTree implements MultiverseVisualization {
             height: 720
         }
 
-        dy = bounds.width / 6
+        dy = bounds.width / 5
 
         const svg = d3
             .select(containerSelector)
@@ -176,12 +179,13 @@ export class SankeyTree implements MultiverseVisualization {
 
         const leaves: Set<Node> = new Set()
 
-        let nodes: Node[] = []
         if (layer === Layers.PACKAGES) {
-            nodes = getNodesOnLevel(layer.valueOf(), multiverse.root)
-            nodes.forEach((node, i) => {
-                this.createHierarchyFromPackages(node, nodeTree, leaves)
-            })
+            for (let i = Layers.MODULES.valueOf(); i <= layer.valueOf(); i++) {
+                let nodes: Node[] = getNodesOnLevel(i, multiverse.root)
+                nodes.forEach((node, i) => {
+                    this.createHierarchyFromPackages(node, nodeTree, leaves)
+                })
+            }
         }
         nodeTree.codeSize = nodeTree.children.reduce(
             (sum: number, child: Node) => sum + child.codeSize,
@@ -211,7 +215,7 @@ export class SankeyTree implements MultiverseVisualization {
 
     private createHierarchyFromPackages(node: Node, dataTree: Node, leaves: Set<Node>) {
         let current = dataTree
-        const pathSegments = node.name.split('.')
+        const pathSegments = node.identifier.substring(1).split('.')
         for (let i = 0; i < pathSegments.length; i++) {
             let child = current.children.find((child) => child.name === pathSegments[i])
             if (child) {
@@ -546,6 +550,22 @@ export class SankeyTree implements MultiverseVisualization {
             start: -6,
             end: 26
         }
+    }
+
+    applyStyleForChosen(
+        highlights: Set<string>,
+        style: string,
+        unselected: unknown,
+        selected: unknown
+    ) {
+        const visNodes = this.containerSelections.gNode.selectAll('g') as any
+        visNodes.selectAll('rect').style(style, unselected)
+
+        visNodes
+            .filter((node: HierarchyPointNode<Node>) => highlights.has(getWithoutRoot(node.data.identifier)))
+            .selectAll('rect').transition()
+            .duration(TRANSITION_DURATION)
+            .style(style, selected)
     }
 
     // #############################################################################################

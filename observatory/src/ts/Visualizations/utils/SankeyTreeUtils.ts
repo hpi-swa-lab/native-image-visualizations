@@ -9,9 +9,7 @@ import { NodesFilter, NodesSortingFilter } from '../../SharedTypes/NodesFilter'
 import { SortingOption, SortingOrder } from '../../enums/Sorting'
 import { Node } from '../../UniverseTypes/Node'
 import { HierarchyPointNode } from 'd3'
-import { TooltipModel } from '../TooltipModel'
 import { formatBytes } from '../../SharedTypes/Size'
-import { sankeyTreeConfigStore } from '../../stores'
 
 // #################################################################################################
 // ##### (PRE-)PROCESSING UTILS ####################################################################
@@ -111,17 +109,10 @@ export function asHTML(d: HierarchyPointNode<Node>, metadata: UniverseMetadata) 
     return `<b>Exists in</b>: ${Array.from(node.sources.keys())
         .map((uniIndex) => metadata[uniIndex].name)
         .join(', ')}
-                <b>Name</b>: ${getPathFromRoot(node)}
+                <b>Name</b>: ${node.identifier}
                 <b>Code Size</b>: ${formatBytes(node.codeSize)}`
 }
 
-function getPathFromRoot(node: Node): string {
-    return getBreadcrumbsFromRoot(node).join('.')
-}
-
-function getBreadcrumbsFromRoot(node: Node): string[] {
-    if (!node.parent) return []
-    const breadcrumbs = getBreadcrumbsFromRoot(node.parent)
-    breadcrumbs.push(node.name)
-    return breadcrumbs
+export function getWithoutRoot(identifier: string) {
+    return identifier.substring(4, identifier.length)
 }
