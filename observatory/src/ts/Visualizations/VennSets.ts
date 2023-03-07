@@ -187,7 +187,9 @@ export class VennSets implements MultiverseVisualization {
             case SortingOrder.DESCENDING:
                 return (a: any, b: any) => b.value - a.value
             default:
-                return (a: any, b: any) => a.value + b.value
+                // Reason for disable: Neutral comparator always returns 0
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                return (_a: any, _b: any) => 0
         }
     }
 
