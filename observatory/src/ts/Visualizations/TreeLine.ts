@@ -78,12 +78,9 @@ export class TreeLine implements MultiverseVisualization {
     public setSelection(selection: Set<string>): void {
         // TODO; https://github.com/hpi-swa-lab/MPWS2022RH1/issues/118
     }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
     public setHighlights(highlights: Set<string>): void {
-        console.log('highlights', highlights)
-
         this.highlights = highlights
-
         this.redraw()
     }
 
