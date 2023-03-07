@@ -10,7 +10,7 @@ import {
 } from '../Causality/CausalityGraph';
 import {CausalityGraphUniverse, ReachabilityJson} from '../UniverseTypes/CausalityGraphUniverse';
 
-function assert(cond: unknown) {
+function assert(cond: boolean): asserts cond {
     if(!cond)
         throw new Error('Assertion failed!')
 }
@@ -426,7 +426,7 @@ function createPurgeNodeTree(node: InternalNode, indexToSrcNode: InternalNode[],
 
 class BatchPurgeScheduler {
     callback?: (node: InternalNode, data: ReachabilityVector) => void
-    private readonly purgedSizeBaseline: number
+    private purgedSizeBaseline: number | undefined
     private readonly codesizes: number[]
     private readonly cg: Remote<RemoteCausalityGraph>
     private readonly prepurgeNodes: InternalNode[]
@@ -434,7 +434,7 @@ class BatchPurgeScheduler {
     private runningBatch: Remote<IncrementalSimulationResult<number>> | undefined
     private runningIndexToNode: (InternalNode | undefined)[] = []
 
-    constructor(cg: Remote<RemoteCausalityGraph>, codesizes: number[], purgedSizeBaseline: number, prepurgeNodes: InternalNode[] = []) {
+    constructor(cg: Remote<RemoteCausalityGraph>, codesizes: number[], purgedSizeBaseline: number | undefined, prepurgeNodes: InternalNode[] = []) {
         this.cg = cg
         this.codesizes = codesizes
         this.purgedSizeBaseline = purgedSizeBaseline
@@ -452,24 +452,40 @@ class BatchPurgeScheduler {
                 this.runningBatch.delete()
                 this.runningBatch = undefined
                 return this.waitlist.length > 0
-            }
-
-            const node = this.runningIndexToNode[token]
-            if(node) {
-                if(this.callback) {
-                    const stillReachable = await this.runningBatch.getReachableArray()
-                    let purgedSize = -this.purgedSizeBaseline
-                    for (let i = 0; i < this.codesizes.length; i++)
-                        if (stillReachable[i] === 0xFF)
-                            purgedSize += this.codesizes[i]
-                    this.callback(node, { arr: stillReachable, size: purgedSize })
+            } else if(token === -1) /* empty purge */ {
+                assert(this.purgedSizeBaseline === undefined)
+                const stillReachable = await this.runningBatch.getReachableArray()
+                let purgedSize = 0
+                for (let i = 0; i < this.codesizes.length; i++)
+                    if (stillReachable[i] === 0xFF)
+                        purgedSize += this.codesizes[i]
+                this.purgedSizeBaseline = purgedSize
+            } else {
+                const node = this.runningIndexToNode[token]
+                if(node) {
+                    assert(this.purgedSizeBaseline !== undefined)
+                    if(this.callback) {
+                        const stillReachable = await this.runningBatch.getReachableArray()
+                        let purgedSize = -this.purgedSizeBaseline
+                        for (let i = 0; i < this.codesizes.length; i++)
+                            if (stillReachable[i] === 0xFF)
+                                purgedSize += this.codesizes[i]
+                        this.callback(node, { arr: stillReachable, size: purgedSize })
+                    }
                 }
             }
             return true
         } else if(this.waitlist.length > 0) {
             const [tree, nodesByIndex] = createPurgeNodeTree2(new Set(this.waitlist), new Set(this.prepurgeNodes))
+            assert(tree !== undefined)
+            if(this.purgedSizeBaseline === undefined) {
+                // We need to insert an empty purge node for calculating the baseline
+                assert(tree.children !== undefined)
+                tree.children.unshift({ token: -1, mids: [] })
+            }
+
             this.runningIndexToNode = nodesByIndex
-            this.runningBatch = await this.cg.simulatePurgesBatched(tree!, [...new Set(this.prepurgeNodes)].flatMap(collectCgNodesInSubtree)) as Remote<IncrementalSimulationResult<number>>
+            this.runningBatch = await this.cg.simulatePurgesBatched(tree, [...new Set(this.prepurgeNodes)].flatMap(collectCgNodesInSubtree)) as Remote<IncrementalSimulationResult<number>>
             this.waitlist = []
             return true
         } else {
@@ -557,12 +573,7 @@ class PurgeScheduler {
         if(this._purgeSelectedMids.length === 0)
             return
         if(!this.additionalBatchScheduler) {
-            const stillReachable = await this.cg.simulatePurge([...new Set(this._purgeSelectedMids.flatMap(collectCgNodesInSubtree))])
-            let baseline = 0
-            for (let i = 0; i < this.codesizes.length; i++)
-                if (stillReachable[i] === 0xFF)
-                    baseline += this.codesizes[i]
-            this.additionalBatchScheduler = new BatchPurgeScheduler(this.cg, this.codesizes, baseline, this._purgeSelectedMids)
+            this.additionalBatchScheduler = new BatchPurgeScheduler(this.cg, this.codesizes, undefined, this._purgeSelectedMids)
             this.additionalBatchScheduler.callback = this._additionalPurgeCallback
         }
         this.additionalBatchScheduler.request(v)
@@ -981,8 +992,6 @@ export class CutTool {
     private refreshPurgeSizeInCutOverview(cutData: CutViewData) {
         const html = cutData.html
 
-        assert(this.maxPurgedSize)
-
         const purged = this.selectedForPurging.size > 0 && this.precomputeCutoffs ? cutData.reachable_after_additionally_cutting_this : cutData.reachable_after_cutting_this
 
         let text = null
@@ -1037,9 +1046,7 @@ export class CutTool {
         const still_reachable = this.reachable_in_image_view ?? this.all_reachable
 
         const uImageviewData = this.imageviewData.get(u)
-        assert(uImageviewData)
-        if(!uImageviewData)
-            return
+        assert(uImageviewData !== undefined)
 
         let purgedCodesize = 0
         if(uImageviewData.exclusive_transitive_cg_nodes) {
