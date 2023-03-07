@@ -7,9 +7,20 @@ import {Multiverse} from '../UniverseTypes/Multiverse';
 import {Layers} from '../enums/Layers';
 import {sankeyTreeConfigStore} from '../stores';
 import {NodesFilter} from '../SharedTypes/NodesFilter';
-import {ContainerSelections, NodeTextPositionOffset, Tree, UniverseMetadata} from '../SharedTypes/SankeyTree';
+import {
+    ContainerSelections,
+    CustomEventName,
+    NodeTextPositionOffset,
+    Tree,
+    UniverseMetadata
+} from '../SharedTypes/SankeyTree';
 import {getNodesOnLevel} from '../Math/filters';
 import {Bytes, inMB} from '../SharedTypes/Size';
+import {
+    createApplyFilterEvent,
+    filterDiffingUniverses,
+    sortChildren
+} from "./utils/SankeyTreeUtils";
 
 export const UNMODIFIED = 'UNMODIFIED'
 
@@ -47,20 +58,9 @@ export class SankeyTree implements MultiverseVisualization {
     setMultiverse(multiverse: Multiverse): void {
         // todo show loading screen while computing everything
         if(multiverse.sources.length < 3) {
-            // rebuild everything
-            // todo
             this.multiverse = multiverse
             
-            this.tree = this.buildTree(multiverse, this.layer)
-
-            this.updateTree(
-                // createApplyFilterEvent(this.sankeyStore.nodesFilter),
-                null,
-                this.tree.root,
-                this.tree,
-                this.containerSelections,
-                this.metadata
-            )
+            this.rebuildAndDrawTree(multiverse, this.layer)
             console.log('fully finished')
         }
     }
@@ -76,15 +76,7 @@ export class SankeyTree implements MultiverseVisualization {
     public setLayer(layer: Layers): void {
         // TODO is it correct?
         this.layer = layer
-        this.tree = this.buildTree(this.multiverse, layer)
-        this.updateTree(
-            // createApplyFilterEvent(this.sankeyStore.nodesFilter),
-            null,
-            this.tree.root,
-            this.tree ?? {} as Tree,
-            this.containerSelections,
-            this.metadata,
-        )
+        this.rebuildAndDrawTree(this.multiverse, layer)
     }
 
     private initializeContainerSelections(containerSelector: string): ContainerSelections {
@@ -135,6 +127,24 @@ export class SankeyTree implements MultiverseVisualization {
     // #############################################################################################
     // ### BUILD TREE HELPER FUNCTIONS #############################################################
     // #############################################################################################
+    private rebuildAndDrawTree(multiverse: Multiverse, layer: Layers) {
+        this.tree = this.buildTree(multiverse, layer)
+
+        this.tree.root.descendants().forEach((d: any, i: number) => {
+            d.id = i
+            d._children = d.children
+            // FIXME ? only expand first level of children
+            // if (d.depth > 0) d.children = null; // only expand the first level of children
+        })
+
+        this.redrawTree(
+            createApplyFilterEvent(this.sankeyStore.nodesFilter),
+            this.tree.root,
+            this.tree ?? {} as Tree,
+            this.containerSelections,
+            this.metadata,
+        )
+    }
 
     private buildTree(multiverse: Multiverse, layer: Layers): Tree {
 
@@ -168,11 +178,11 @@ export class SankeyTree implements MultiverseVisualization {
         this.markNodesModifiedFromLeaves(tree.leaves)
         this.filterNodesFromLeaves(tree.leaves, sankeyTreeConfigStore().nodesFilter)
 
-        console.log('tree', tree)
-        console.log('nodeTree', nodeTree)
-        console.log('leaves', tree.leaves, 'exclusive leaves', tree.leaves.filter(leave => Array.from(leave.sources.keys()).length === 1))
-        console.log('modifiedNodes', this.modifiedNodes)
-        console.log('filteredNodes', this.filteredNodes)
+        // console.log('tree', tree)
+        // console.log('nodeTree', nodeTree)
+        // console.log('leaves', tree.leaves, 'exclusive leaves', tree.leaves.filter(leave => Array.from(leave.sources.keys()).length === 1))
+        // console.log('modifiedNodes', this.modifiedNodes)
+        // console.log('filteredNodes', this.filteredNodes)
 
         return tree
     }
@@ -244,33 +254,26 @@ export class SankeyTree implements MultiverseVisualization {
         if (node.parent !== undefined) this.markNodeFiltered(node.parent)
     }
 
-    private updateTree(
+    private redrawTree(
         event: any | null,
         sourceNode: any /* HierarchyPointNode<MyNode>*/,
         tree: Tree,
         containerSelections: ContainerSelections,
         universeMetadata: UniverseMetadata,
     ) {
-        const duration = 0
+        let duration = 0
 
         if (event) {
-            // if (Object.values(CustomEventName).includes(event.type)) {
-            //     handleCustomTreeEvent(event, tree)
-            // } else {
-            //     // if you press alt / option key, then the collapse/extend animation is much slower :D
-            //     duration = event && event.altKey ? 2500 : 250
-            // }
+            if (Object.values(CustomEventName).includes(event.type)) {
+                this.handleCustomTreeEvent(event, tree)
+            } else {
+                // if you press alt / option key, then the collapse/extend animation is much slower :D
+                duration = event && event.altKey ? 2500 : 250
+            }
         }
 
         // Compute the new treeLayout layout.
         tree.layout(tree.root)
-
-        this.tree.root.descendants().forEach((d: any, i: number) => {
-            d.id = i
-            d._children = d.children
-            // FIXME ? only expand first level of children
-            // if (d.depth > 0) d.children = null; // only expand the first level of children
-        })
 
         const nodes = tree.root.descendants().reverse()
         const links = tree.root.links().filter((link) =>
@@ -311,7 +314,7 @@ export class SankeyTree implements MultiverseVisualization {
 
         const nodeEnter = this.enterNode(node, sourceNode, (evt: MouseEvent, d: any) => {
             // toggle(d, evt.shiftKey)
-            // this.updateTree(evt, d, tree, containerSelections, universeMetadata)
+            // this.redrawTree(evt, d, tree, containerSelections, universeMetadata)
         })
         const nodeEnterShape = this.appendShapeToNode(nodeEnter, universeMetadata)
         // nodeEnterShape
@@ -512,4 +515,35 @@ export class SankeyTree implements MultiverseVisualization {
             end: 26
         }
     }
+
+
+    // #############################################################################################
+    // ##### HELPER UTILS ##########################################################################
+    // #############################################################################################
+
+    private handleCustomTreeEvent(event: any, tree: Tree) {
+        if (event.detail.name === CustomEventName.APPLY_FILTER) {
+            console.log(event.detail.name, true)
+            console.log('tree.root', tree.root)
+            tree.root.eachBefore((node: any) => {
+                console.log('node._children', node._children)
+                if (!node._children) return
+                sortChildren(node, event.detail.filter.sorting)
+                console.log(node.data.name, node.children)
+                if (node.children) node.children = filterDiffingUniverses(node, this.filteredNodes)
+            })
+        }
+
+        // // expand full tree
+        // if (event.detail.name === CustomEventName.EXPAND_TREE) {
+        //     console.log(event.detail.name, true)
+        //     tree.root.eachBefore((node: any) => {
+        //         if (!node._children) return
+        //         sortChildren(node, event.detail.filter.sorting)
+        //         node.children = filterDiffingUniverses(node)
+        //     })
+        // }
+    }
 }
+
+
