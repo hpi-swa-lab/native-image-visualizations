@@ -22,7 +22,7 @@ const sankeyTreeStore = sankeyTreeConfigStore()
             :key="key"
             :value="universesMetadata[key].name"
             :checked="sankeyTreeStore.isUniverseFiltered(parseInt(key))"
-            @input="sankeyTreeStore.changeUniverseSelection($event.target.id)"
+            @input="sankeyTreeStore.changeUniverseSelection(parseInt($event.target.id))"
         >
             <ColorLabel
                 :for-element="key"

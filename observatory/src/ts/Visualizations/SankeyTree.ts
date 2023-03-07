@@ -239,7 +239,6 @@ export class SankeyTree implements MultiverseVisualization {
         if (node.parent !== undefined) this.markNodeModified(node.parent)
     }
 
-    // FIXME bug: doesn't filter for universes
     private filterNodesFromLeaves(leaves: Node[], filter: NodesFilter) {
         this.filteredNodes = []
 
