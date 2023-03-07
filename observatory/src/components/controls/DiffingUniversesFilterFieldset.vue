@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import ColorLabel from './ColorLabel.vue'
 import ToggleSwitch from './ToggleSwitch.vue'
-import { sankeyTreeConfigStore } from '../../ts/stores'
+import {globalConfigStore, sankeyTreeConfigStore} from '../../ts/stores'
 import { UNMODIFIED } from '../../ts/Visualizations/SankeyTree'
 import { UniverseMetadata } from '../../ts/SharedTypes/SankeyTree'
+import {computed} from 'vue';
 
 defineProps<{
     universesMetadata: UniverseMetadata
 }>()
 
+const globalStore = globalConfigStore()
 const sankeyTreeStore = sankeyTreeConfigStore()
+
+const isRealMultiverse = computed(() => globalStore.multiverse.sources.length === 2)
 </script>
 
 <template>
@@ -22,6 +26,7 @@ const sankeyTreeStore = sankeyTreeConfigStore()
             :key="key"
             :value="universesMetadata[key].name"
             :checked="sankeyTreeStore.isUniverseFiltered(parseInt(key))"
+            :disabled="!isRealMultiverse"
             @input="sankeyTreeStore.changeUniverseSelection(parseInt($event.target.id))"
         >
             <ColorLabel
@@ -31,23 +36,25 @@ const sankeyTreeStore = sankeyTreeConfigStore()
             ></ColorLabel>
         </ToggleSwitch>
 
-        <ToggleSwitch
-            :id="UNMODIFIED"
-            :value="UNMODIFIED"
-            :checked="sankeyTreeStore.diffingFilter.showUnmodified"
-            @input="sankeyTreeStore.setShowUnmodified($event.target.checked)"
-        >
-            <ColorLabel
-                :for-element="UNMODIFIED"
-                label="unmodified packages"
-                :color="sankeyTreeStore.colorUnmodified"
-            ></ColorLabel>
-        </ToggleSwitch>
+        <template v-if="isRealMultiverse">
+            <ToggleSwitch
+                :id="UNMODIFIED"
+                :value="UNMODIFIED"
+                :checked="sankeyTreeStore.diffingFilter.showUnmodified"
+                @input="sankeyTreeStore.setShowUnmodified($event.target.checked)"
+            >
+                <ColorLabel
+                    :for-element="UNMODIFIED"
+                    label="unmodified packages"
+                    :color="sankeyTreeStore.colorUnmodified"
+                ></ColorLabel>
+            </ToggleSwitch>
 
-        <ColorLabel
-            label="modified packages"
-            :color="sankeyTreeStore.colorModified"
-            class="ml-[29px]"
-        ></ColorLabel>
+            <ColorLabel
+                label="modified packages"
+                :color="sankeyTreeStore.colorModified"
+                class="ml-[29px]"
+            ></ColorLabel>
+        </template>
     </fieldset>
 </template>
