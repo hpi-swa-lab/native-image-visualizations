@@ -32,14 +32,13 @@ export class Node {
     }
 
     get identifier(): string {
-        if (!this._identifier) {
-            this._identifier = this.name
-            const parent: Node | undefined = this.parent
-            if (parent) {
-                this._identifier = parent.identifier + HIERARCHY_NAME_SEPARATOR + this.name
-            }
+        if (this._identifier) return this.identifier
+
+        this._identifier = this.name
+        if (this.parent) {
+            this._identifier = this.parent.identifier + HIERARCHY_NAME_SEPARATOR + this.name
         }
-        return this._identifier ?? ''
+        return this._identifier
     }
 
     get parent(): Node | undefined {
