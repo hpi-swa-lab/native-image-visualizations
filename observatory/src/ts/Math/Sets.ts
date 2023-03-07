@@ -1,6 +1,6 @@
-import { Node } from './../UniverseTypes/Node'
 import { VennPartitions, VennSet } from '../SharedTypes/Venn'
 import { Multiverse } from '../UniverseTypes/Multiverse'
+import { Node } from './../UniverseTypes/Node'
 
 export function createVennPartitions(multiverse: Multiverse): VennPartitions {
     const powerSetCache = new Map<string, string[]>()
@@ -28,14 +28,14 @@ export function createVennPartitions(multiverse: Multiverse): VennPartitions {
 }
 
 // From https://codereview.stackexchange.com/questions/139095/generate-powerset-in-js
-export function powerSet(l: unknown[]): unknown[][] {
-    return (function ps(list): unknown[][] {
+export function powerSet<T>(l: T[]): T[][] {
+    return (function ps(list): T[][] {
         if (list.length === 0) {
             return [[]]
         }
-        const head: unknown = list.pop()
-        const tailPS: unknown[][] = ps(list)
-        return tailPS.concat(tailPS.map((e: unknown[]) => [...e, head]))
+        const head: T | undefined = list.pop()
+        const tailPS: T[][] = ps(list)
+        return tailPS.concat(tailPS.map((e: T[]) => [...e, head as T]))
     })(l.slice())
 }
 

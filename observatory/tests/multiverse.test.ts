@@ -1,12 +1,12 @@
 import { describe, expect, test } from '@jest/globals'
 import clone from 'clone'
 import { UniverseIndex } from '../src/ts/SharedTypes/Indices'
-import { Node } from '../src/ts/UniverseTypes/Node'
+import { Bytes } from '../src/ts/SharedTypes/Size'
 import { InitKind, Leaf } from '../src/ts/UniverseTypes/Leaf'
 import { Multiverse } from '../src/ts/UniverseTypes/Multiverse'
-import { forest } from './data/forest'
+import { Node } from '../src/ts/UniverseTypes/Node'
 import { Universe } from '../src/ts/UniverseTypes/Universe'
-import { Bytes } from '../src/ts/SharedTypes/Size'
+import { forest } from './data/forest'
 
 function node(name: string, sources: Map<UniverseIndex, Node>, children: Node[] = []): Node {
     const node = new Node(name, children)
@@ -46,13 +46,13 @@ describe('Multiverse', () => {
                 ]),
                 node('packageB', new Map([[1, d]]), [
                     node('ClassA', new Map([[1, d.children[0]]]), [
-                        node('methodAA', new Map([[1, d.children[0].children[0]]]))
+                        leaf('methodAA', new Map([[1, d.children[0].children[0]]]), 1)
                     ]),
                     node('ClassX', new Map([[1, d.children[1]]]), [
-                        node('methodXA', new Map([[1, d.children[1].children[0]]]))
+                        leaf('methodXA', new Map([[1, d.children[1].children[0]]]), 1)
                     ]),
                     node('ClassY', new Map([[1, d.children[2]]]), [
-                        node('methodYA', new Map([[1, d.children[2].children[0]]]))
+                        leaf('methodYA', new Map([[1, d.children[2].children[0]]]), 1)
                     ])
                 ])
             ])
@@ -67,10 +67,10 @@ describe('Multiverse', () => {
             const expected = node('', new Map(), [
                 node('packageA', new Map([[0, a]]), [
                     node('ClassA', new Map([[0, a.children[0]]]), [
-                        node('methodAA', new Map([[0, a.children[0].children[0]]]))
+                        leaf('methodAA', new Map([[0, a.children[0].children[0]]]), 1)
                     ]),
                     node('ClassB', new Map([[0, a.children[1]]]), [
-                        node('methodBA', new Map([[0, a.children[1].children[0]]]))
+                        leaf('methodBA', new Map([[0, a.children[1].children[0]]]), 1)
                     ])
                 ])
             ])
@@ -100,12 +100,13 @@ describe('Multiverse', () => {
                                 [1, a.children[0]]
                             ]),
                             [
-                                node(
+                                leaf(
                                     'methodAA',
                                     new Map([
                                         [0, a.children[0].children[0]],
                                         [1, a.children[0].children[0]]
-                                    ])
+                                    ]),
+                                    1
                                 )
                             ]
                         ),
@@ -116,12 +117,13 @@ describe('Multiverse', () => {
                                 [1, a.children[1]]
                             ]),
                             [
-                                node(
+                                leaf(
                                     'methodBA',
                                     new Map([
                                         [0, a.children[1].children[0]],
                                         [1, a.children[1].children[0]]
-                                    ])
+                                    ]),
+                                    1
                                 )
                             ]
                         )
@@ -155,15 +157,15 @@ describe('Multiverse', () => {
                                 [1, b.children[0]]
                             ]),
                             [
-                                node('methodAA', new Map([[0, a.children[0].children[0]]])),
-                                node('methodAC', new Map([[1, b.children[0].children[0]]]))
+                                leaf('methodAA', new Map([[0, a.children[0].children[0]]]), 1),
+                                leaf('methodAC', new Map([[1, b.children[0].children[0]]]), 1)
                             ]
                         ),
                         node('ClassB', new Map([[0, a.children[1]]]), [
-                            node('methodBA', new Map([[0, a.children[1].children[0]]]))
+                            leaf('methodBA', new Map([[0, a.children[1].children[0]]]), 1)
                         ]),
                         node('ClassC', new Map([[1, b.children[1]]]), [
-                            node('methodCA', new Map([[1, b.children[1].children[0]]]))
+                            leaf('methodCA', new Map([[1, b.children[1].children[0]]]), 1)
                         ])
                     ]
                 )
@@ -200,15 +202,15 @@ describe('Multiverse', () => {
                                 [2, c.children[0]]
                             ]),
                             [
-                                node('methodAA', new Map([[0, a.children[0].children[0]]])),
-                                node('methodAC', new Map([[1, b.children[0].children[0]]]))
+                                leaf('methodAA', new Map([[0, a.children[0].children[0]]]), 1),
+                                leaf('methodAC', new Map([[1, b.children[0].children[0]]]), 1)
                             ]
                         ),
                         node('ClassB', new Map([[0, a.children[1]]]), [
-                            node('methodBA', new Map([[0, a.children[1].children[0]]]))
+                            leaf('methodBA', new Map([[0, a.children[1].children[0]]]), 1)
                         ]),
                         node('ClassC', new Map([[1, b.children[1]]]), [
-                            node('methodCA', new Map([[1, b.children[1].children[0]]]))
+                            leaf('methodCA', new Map([[1, b.children[1].children[0]]]), 1)
                         ]),
                         node('ClassX', new Map([[2, c.children[1]]])),
                         node('ClassY', new Map([[2, c.children[2]]]))
@@ -245,27 +247,27 @@ describe('Multiverse', () => {
                                 [1, b.children[0]]
                             ]),
                             [
-                                node('methodAA', new Map([[0, a.children[0].children[0]]])),
-                                node('methodAC', new Map([[1, b.children[0].children[0]]]))
+                                leaf('methodAA', new Map([[0, a.children[0].children[0]]]), 1),
+                                leaf('methodAC', new Map([[1, b.children[0].children[0]]]), 1)
                             ]
                         ),
                         node('ClassB', new Map([[0, a.children[1]]]), [
-                            node('methodBA', new Map([[0, a.children[1].children[0]]]))
+                            leaf('methodBA', new Map([[0, a.children[1].children[0]]]), 1)
                         ]),
                         node('ClassC', new Map([[1, b.children[1]]]), [
-                            node('methodCA', new Map([[1, b.children[1].children[0]]]))
+                            leaf('methodCA', new Map([[1, b.children[1].children[0]]]), 1)
                         ])
                     ]
                 ),
                 node('packageB', new Map([[2, d]]), [
                     node('ClassA', new Map([[2, d.children[0]]]), [
-                        node('methodAA', new Map([[2, d.children[0].children[0]]]))
+                        leaf('methodAA', new Map([[2, d.children[0].children[0]]]), 1)
                     ]),
                     node('ClassX', new Map([[2, d.children[1]]]), [
-                        node('methodXA', new Map([[2, d.children[1].children[0]]]))
+                        leaf('methodXA', new Map([[2, d.children[1].children[0]]]), 1)
                     ]),
                     node('ClassY', new Map([[2, d.children[2]]]), [
-                        node('methodYA', new Map([[2, d.children[2].children[0]]]))
+                        leaf('methodYA', new Map([[2, d.children[2].children[0]]]), 1)
                     ])
                 ])
             ])
