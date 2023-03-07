@@ -23,8 +23,8 @@ const TRANSITION_DURATION = 500
 
 export class VennSets implements MultiverseVisualization {
     colorScheme: ColorScheme = []
-    selection: Node[] = []
-    highlights: Node[] = []
+    selection: Set<string> = new Set<string>()
+    highlights: Set<string> = new Set<string>()
 
     private multiverse: Multiverse = new Multiverse([])
     private layer = Layers.PACKAGES
@@ -55,12 +55,12 @@ export class VennSets implements MultiverseVisualization {
         this.redraw()
     }
 
-    public setSelection(selection: Node[]): void {
+    public setSelection(selection: Set<string>): void {
         this.selection = selection
         this.applyStyleForChosen(this.selection, 'display', 'none', 'block')
     }
 
-    public setHighlights(highlights: Node[]): void {
+    public setHighlights(highlights: Set<string>): void {
         this.highlights = highlights
         this.applyStyleForChosen(this.highlights, 'opacity', 0.4, 1)
     }
@@ -220,23 +220,21 @@ export class VennSets implements MultiverseVisualization {
     }
 
     private applyStyleForChosen(
-        selection: Node[],
+        selection: Set<string>,
         style: string,
         unselected: unknown,
         selected: unknown
     ) {
         const circles = this.container.selectAll('circle')
 
-        if (selection.length === 0) return
+        if (selection.size === 0) return
 
         circles.style(style, unselected)
-        selection.forEach((selectedNode: Node) =>
-            this.container
-                .selectAll(`circle[id='${selectedNode.name}']`)
-                .transition()
-                .duration(TRANSITION_DURATION)
-                .style(style, selected)
-        )
+        circles
+            .filter((circle: PackedHierarchyLeaf) => selection.has(circle.data[0].identifier))
+            .transition()
+            .duration(TRANSITION_DURATION)
+            .style(style, selected)
     }
 
     private cleanContainer() {
