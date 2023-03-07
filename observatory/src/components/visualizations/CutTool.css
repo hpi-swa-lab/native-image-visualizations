@@ -224,6 +224,10 @@ ul {
 }
 
 .cg-only {
+    color: #8080FF;
+}
+
+.synthetic {
     color: #606060;
 }
 

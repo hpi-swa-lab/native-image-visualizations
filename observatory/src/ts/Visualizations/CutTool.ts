@@ -76,6 +76,7 @@ interface InternalNode
     parent: InternalNode | undefined
     exact_cg_node?: number
     main?: boolean
+    synthetic?: boolean
     cg_nodes: number[]
     fullname?: string
     name: string
@@ -151,11 +152,15 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json: ReachabilityJs
 
             for (const [typeName, type] of Object.entries(pkg.types)) {
                 const l3: InternalNode & { fullname: string } = { fullname: prefix + typeName, name: typeName, cg_nodes: [], children: [], size: 0, parent: l2 }
+                if(type.flags?.includes('synthetic'))
+                    l3.synthetic = true
                 prefixToNode[l3.fullname] = l3
                 l2.children.push(l3)
 
                 for (const [methodName, method] of Object.entries(type.methods)) {
                     const l4: InternalNode & { fullname: string } = { fullname: l3.fullname + '.' + methodName, name: methodName, cg_nodes: [], children: [], size: method.size, parent: l3 }
+                    if(method.flags?.includes('synthetic'))
+                        l4.synthetic = true
                     prefixToNode[l4.fullname] = l4
                     l3.children.push(l4)
 
@@ -807,6 +812,8 @@ export class CutTool {
 
             if(node.cg_only)
                 nameSpan.classList.add('cg-only')
+            if(node.synthetic)
+                nameSpan.classList.add('synthetic')
 
             li.appendChild(nameSpan)
 
