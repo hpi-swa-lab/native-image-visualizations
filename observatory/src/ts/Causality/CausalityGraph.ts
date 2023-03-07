@@ -11,26 +11,23 @@ export interface CausalityGraphBinaryData {
     'typeflow_methods.bin': Uint8Array
 }
 
-export interface RecursiveNode<T>
-{
-    children?: T[]
-}
-
-export interface PurgeTreeNode extends RecursiveNode<PurgeTreeNode> {
+export interface PurgeTreeNode<Token> {
     mids?: number[]
+    children?: PurgeTreeNode<Token>[]
+    token?: Token
 }
 
-function calcPurgeNodesCount(purge_root: PurgeTreeNode) {
+function calcPurgeNodesCount(purge_root: PurgeTreeNode<unknown>) {
     let cnt = 1
     if(purge_root.mids && purge_root.children)
-        cnt++
+        cnt += 1
     if(purge_root.children)
         for(const child of purge_root.children)
             cnt += calcPurgeNodesCount(child)
     return cnt
 }
 
-function calcMidsCount(purge_root: PurgeTreeNode) {
+function calcMidsCount(purge_root: PurgeTreeNode<unknown>) {
     let cnt = 0
     if(purge_root.mids)
         cnt += purge_root.mids.length
@@ -166,7 +163,7 @@ export class CausalityGraph extends WasmObjectWrapper {
         return new DetailedSimulationResult(this.nMethods, simulationResultPtr)
     }
 
-    public simulatePurgesBatched<TNode extends PurgeTreeNode & RecursiveNode<TNode>>(purge_root: TNode, prepurgeMids: number[] = []): IncrementalSimulationResult<TNode> {
+    public simulatePurgesBatched<Token>(purge_root: PurgeTreeNode<Token>, prepurgeMids: number[] = []): IncrementalSimulationResult<Token> {
         const purgeNodesCount = calcPurgeNodesCount(purge_root)
 
         const subsetsArrLen = (purgeNodesCount) * 4 /* {{ptr, len}, {child_ptr, child_len}} */
@@ -179,12 +176,12 @@ export class CausalityGraph extends WasmObjectWrapper {
 
         let midsPos: number = midsPtr / 4
 
-        const indexToInputNode = Array(purgeNodesCount)
+        const indexToInputToken: (Token | undefined)[] = new Array(purgeNodesCount)
         {
             let i = 1
 
-            function layoutChildren(purge_root: TNode, offset: number) {
-                indexToInputNode[offset] = purge_root
+            function layoutChildren(purge_root: PurgeTreeNode<Token>, offset: number) {
+                indexToInputToken[offset] = purge_root.token
                 const midsPos_start = midsPos
 
                 const i_start = i
@@ -195,10 +192,12 @@ export class CausalityGraph extends WasmObjectWrapper {
                         subsetsArr[i*4 + 1] /* len */ = purge_root.mids.length
                         subsetsArr[i*4 + 2] = 0 // no children
                         subsetsArr[i*4 + 3] = 0 // no children
-                        i++
+                        i +=1
                     }
-                    for(const mid of purge_root.mids)
-                        Module.HEAPU32[midsPos++] = mid + 1
+                    for(const mid of purge_root.mids) {
+                        Module.HEAPU32[midsPos] = mid + 1
+                        midsPos += 1
+                    }
                 }
 
                 let i_end = i
@@ -209,7 +208,7 @@ export class CausalityGraph extends WasmObjectWrapper {
                     i_end = i
                     for (const child of purge_root.children) {
                         layoutChildren(child, local_i)
-                        local_i++
+                        local_i += 1
                     }
                 }
 
@@ -222,8 +221,10 @@ export class CausalityGraph extends WasmObjectWrapper {
                 slice[3] = i_end - i_start
             }
 
-            for (const mid of prepurgeMids)
-                Module.HEAPU32[midsPos++] = mid + 1
+            for (const mid of prepurgeMids) {
+                Module.HEAPU32[midsPos] = mid + 1
+                midsPos += 1
+            }
             layoutChildren(purge_root, 0)
             // Also include prepurgeMids
             subsetsArr[0] = midsPtr
@@ -231,7 +232,7 @@ export class CausalityGraph extends WasmObjectWrapper {
         }
 
         const wasmObject = CausalityGraph._simulatePurgesBatched(this, subsetsArrBuffer.viewU8.byteOffset)
-        return new IncrementalSimulationResult(this.nMethods, wasmObject, midsBuffer, subsetsArrBuffer, indexToInputNode)
+        return new IncrementalSimulationResult(this.nMethods, wasmObject, midsBuffer, subsetsArrBuffer, indexToInputToken)
     }
 }
 
@@ -286,26 +287,30 @@ export class DetailedSimulationResult extends SimulationResult {
     }
 }
 
-export class IncrementalSimulationResult<TNode> extends SimulationResult {
+export class IncrementalSimulationResult<Token> extends SimulationResult {
     private static readonly _simulateNext = WasmObjectWrapper.instanceCWrap('IncrementalSimulationResult_simulateNext', 'number', [])
 
     mids: NativeBuffer
     subsetsArr: NativeBuffer
-    indexToInputNode: TNode[]
+    indexToInputToken: (Token | undefined)[]
 
-    constructor(nMethods: number, wasmObject: number, mids: NativeBuffer, subsetsArr: NativeBuffer, indexToInputNode: TNode[]) {
+    constructor(nMethods: number, wasmObject: number, mids: NativeBuffer, subsetsArr: NativeBuffer, indexToInputToken: (Token | undefined)[]) {
         super(nMethods, wasmObject)
         this.mids = mids
         this.subsetsArr = subsetsArr
-        this.indexToInputNode = indexToInputNode
+        this.indexToInputToken = indexToInputToken
     }
 
-    simulateNext(): TNode | undefined {
-        const curNode = IncrementalSimulationResult._simulateNext(this)
-        if(curNode === 0)
-            return
-        const index = (curNode - this.subsetsArr.viewU8.byteOffset) / 16
-        return this.indexToInputNode[index]
+    simulateNext(): Token | undefined {
+        while(true) {
+            const curNode = IncrementalSimulationResult._simulateNext(this)
+            if (curNode === 0)
+                return
+            const index = (curNode - this.subsetsArr.viewU8.byteOffset) / 16
+            const inputNode = this.indexToInputToken[index]
+            if(inputNode !== undefined)
+                return inputNode
+        }
     }
 
     delete() {

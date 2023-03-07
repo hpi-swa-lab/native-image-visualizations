@@ -16,7 +16,7 @@ export class RemoteCausalityGraph {
         return Comlink.proxy(this.wrapped.simulatePurgeDetailed(nodesToBePurged))
     }
 
-    public simulatePurgesBatched(purgeRoot: original.PurgeTreeNode, prepurgeMids: number[] = []): original.IncrementalSimulationResult {
+    public simulatePurgesBatched(purgeRoot: original.PurgeTreeNode<number>, prepurgeMids: number[] = []): original.IncrementalSimulationResult<number> {
         return Comlink.proxy(this.wrapped.simulatePurgesBatched(purgeRoot, prepurgeMids))
     }
 }

@@ -3,7 +3,7 @@ import * as d3dag from 'd3-dag'
 import {RemoteCausalityGraph} from '../Causality/RemoteCausalityGraph';
 import {Remote} from 'comlink';
 import {
-    DetailedSimulationResult,
+    DetailedSimulationResult, IncrementalSimulationResult,
     PurgeTreeNode,
     ReachabilityHyperpathEdge,
     RecursiveNode
@@ -88,7 +88,7 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json: ReachabilityJs
     const dict: InternalNode = { children: [], cg_nodes: [], size: 0, name: '', parent: undefined }
     const system: InternalNode = { children: [], cg_nodes: [], name: 'system', size: 0, parent: dict }
     const user: InternalNode = { children: [], cg_nodes: [], name: 'user', size: 0, parent: dict }
-    dict.children.push(system, user)
+    const main: InternalNode = { children: [], cg_nodes: [], name: 'main', size: 0, parent: dict}
 
     const prefixToNode: { [prefix: string]: InternalNode & { fullname: string } } = {}
 
@@ -162,6 +162,10 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json: ReachabilityJs
                     const flags = method.flags
                     if(flags && flags.includes('main')) {
                         l4.main = true
+                        assert(main.children.length === 0)
+                        user.children = user.children.filter(c => c !== l1)
+                        main.children.push(l1)
+                        l1.parent = main
                     }
 
                     for(let cur = l4.parent; cur; cur = cur.parent) {
@@ -215,13 +219,18 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json: ReachabilityJs
                 }
 
                 const newNode = { cg_only: true, fullname: cgNodeName, name: name, cg_nodes: [i], exact_cg_node: i, children: [], size: 0, parent: curNode }
-                if(!curNode.children)
-                    curNode.children = []
                 curNode.children.push(newNode)
                 trie.add(newNode.fullname, newNode)
             }
         }
     }
+
+    if(user.children.length)
+        dict.children.push(user)
+    if(system.children.length)
+        dict.children.push(system)
+    if(main.children.length)
+        dict.children.push(main)
 
     return dict
 }
@@ -331,14 +340,14 @@ interface ReachabilityVector
 
 interface CutViewData
 {
-    html: HTMLElement
+    html: HTMLLIElement
     reachable_after_cutting_this: undefined | ReachabilityVector
     reachable_after_additionally_cutting_this: undefined | ReachabilityVector
 }
 
 interface ImageViewData
 {
-    html: HTMLElement
+    html: HTMLLIElement
     exclusive_transitive_cg_nodes?: number[]
     purgedCodesize?: number
 }
@@ -351,61 +360,239 @@ class Imageview {
 
 }
 
+
+function getDataRoot(node: InternalNode) {
+    let cur: InternalNode
+    for(cur = node; cur.parent; cur = cur.parent);
+    return cur
+}
+
+function createPurgeNodeTree2(nodes: Set<InternalNode>, prepurgeNodes = new Set<InternalNode>()): [ PurgeTreeNode<number> | undefined, (InternalNode | undefined)[] ] {
+    if(nodes.size === 0)
+        return [undefined, []]
+    const root = getDataRoot([...nodes][0])
+
+    const interestingNodes = new Set<InternalNode>()
+    const queriedNodes = new Set<InternalNode>(nodes)
+
+    for(const node of nodes) {
+        for(let cur: InternalNode | undefined = node; cur; cur = cur.parent) {
+            interestingNodes.add(cur)
+        }
+    }
+
+    // Find lowest common ancestor
+    // Starting the batch from the lowest possible root improves performance
+    let lca: InternalNode = root
+    while(!queriedNodes.has(lca) && lca.children.filter(c => interestingNodes.has(c)).length == 1) {
+        lca = lca.children.find(c => interestingNodes.has(c))!
+    }
+
+    const indexToSrcNode: InternalNode[] = []
+    const tree = createPurgeNodeTree(lca, indexToSrcNode, v => prepurgeNodes.has(v) ? undefined : interestingNodes.has(v))
+    return [tree, indexToSrcNode.map(d => queriedNodes.has(d) ? d : undefined)]
+}
+
+function createPurgeNodeTree(node: InternalNode, indexToSrcNode: InternalNode[], expandCallback: (v: InternalNode) => boolean | undefined): PurgeTreeNode<number> | undefined {
+    const root: PurgeTreeNode<number> = { token: indexToSrcNode.length }
+    indexToSrcNode.push(node)
+
+    const mids = [...node.cg_nodes]
+    const children = []
+    for(const child of node.children) {
+        const decision = expandCallback(child)
+        if (decision === undefined)
+            continue;
+        if (decision) {
+            const child_root = createPurgeNodeTree(child, indexToSrcNode, expandCallback)
+            if (child_root)
+                children.push(child_root)
+        } else {
+            mids.push(...collectCgNodesInSubtree(child))
+        }
+    }
+
+    if (children.length === 0 && mids.length === 0)
+        return undefined
+
+    if (mids.length !== 0)
+        root.mids = mids
+
+    if (children.length !== 0)
+        root.children = children
+
+    return root
+}
+
+class BatchPurgeScheduler {
+    callback?: (node: InternalNode, data: ReachabilityVector) => void
+    private readonly purgedSizeBaseline: number
+    private readonly codesizes: number[]
+    private readonly cg: Remote<RemoteCausalityGraph>
+    private readonly prepurgeNodes: InternalNode[]
+    private waitlist: InternalNode[] = []
+    private runningBatch: Remote<IncrementalSimulationResult<number>> | undefined
+    private runningIndexToNode: (InternalNode | undefined)[] = []
+
+    constructor(cg: Remote<RemoteCausalityGraph>, codesizes: number[], purgedSizeBaseline: number, prepurgeNodes: InternalNode[] = []) {
+        this.cg = cg
+        this.codesizes = codesizes
+        this.purgedSizeBaseline = purgedSizeBaseline
+        this.prepurgeNodes = prepurgeNodes
+    }
+
+    request(nodes: InternalNode[]) {
+        this.waitlist.push(...nodes)
+    }
+
+    async next() {
+        if(this.runningBatch) {
+            const token = await this.runningBatch.simulateNext()
+            if(token === undefined) {
+                this.runningBatch.delete()
+                this.runningBatch = undefined
+                return this.waitlist.length > 0
+            }
+
+            const node = this.runningIndexToNode[token]
+            if(node) {
+                if(this.callback) {
+                    const stillReachable = await this.runningBatch.getReachableArray()
+                    let purgedSize = -this.purgedSizeBaseline
+                    for (let i = 0; i < this.codesizes.length; i++)
+                        if (stillReachable[i] === 0xFF)
+                            purgedSize += this.codesizes[i]
+                    this.callback(node, { arr: stillReachable, size: purgedSize })
+                }
+            }
+            return true
+        } else if(this.waitlist.length > 0) {
+            const [tree, nodesByIndex] = createPurgeNodeTree2(new Set(this.waitlist), new Set(this.prepurgeNodes))
+            this.runningIndexToNode = nodesByIndex
+            this.runningBatch = await this.cg.simulatePurgesBatched(tree!, [...new Set(this.prepurgeNodes)].flatMap(collectCgNodesInSubtree)) as Remote<IncrementalSimulationResult<number>>
+            this.waitlist = []
+            return true
+        } else {
+            return false
+        }
+    }
+}
+
 class PurgeScheduler {
     detailSelectedCallback: ((edges: ReachabilityHyperpathEdge[] | undefined) => void) | undefined
 
-    private _purgeSelectedMids: number[] = []
+    private _purgeSelectedMids: InternalNode[] = []
     private _detailSelectedMid: number | undefined
 
     private selectedSimulationResult: DetailedSimulationResult | undefined
+    private detailNeedsUpdate = false
 
     private cg: Remote<RemoteCausalityGraph>
     private codesizes: number[]
     private all_reachable: Uint8Array
 
+    private singleBatchScheduler: BatchPurgeScheduler
+    private additionalBatchScheduler?: BatchPurgeScheduler
+
+    private _additionalPurgeCallback?: (node: InternalNode, data: ReachabilityVector) => void
+
+    private processingRunning = false
+
     constructor(cg: Remote<RemoteCausalityGraph>, codesizes: number[], all_reachable: Uint8Array) {
         this.cg = cg
         this.codesizes = codesizes
         this.all_reachable = all_reachable
+
+        let baseline = 0
+        for (let i = 0; i < this.codesizes.length; i++)
+            if (all_reachable[i] === 0xFF)
+                baseline += this.codesizes[i]
+        this.singleBatchScheduler = new BatchPurgeScheduler(cg, codesizes, baseline)
     }
 
     get detailSelectedMid(): number | undefined {
         return this._detailSelectedMid
     }
 
-    set purgeSelectedMids(mids: number[]) {
-        this.onPurgeSelectedMidsChange(mids)
+    set singlePurgeCallback(callback: (node: InternalNode, data: ReachabilityVector) => void) {
+        this.singleBatchScheduler.callback = callback
     }
 
-    set detailSelectedMid(mid: number | undefined) {
-        this.setDetailSelectedMid(mid)
+    set additionalPurgeCallback(callback: (node: InternalNode, data: ReachabilityVector) => void) {
+        this._additionalPurgeCallback = callback
+        if(this.additionalBatchScheduler)
+            this.additionalBatchScheduler.callback = callback
     }
 
-    private async onPurgeSelectedMidsChange(mids: number[]) {
-        this._purgeSelectedMids = mids
+    set purgeSelectedMids(nodes: InternalNode[]) {
+        this._purgeSelectedMids = nodes
         if(this._detailSelectedMid) {
             if(this.selectedSimulationResult) {
                 this.selectedSimulationResult.delete()
                 this.selectedSimulationResult = undefined
             }
-            this.selectedSimulationResult = await this.cg.simulatePurgeDetailed(this._purgeSelectedMids)
-            const edges = await this.selectedSimulationResult.getReachabilityHyperpath(this._detailSelectedMid)
+            this.detailNeedsUpdate = true
+        }
+        this.additionalBatchScheduler = undefined
+        this.ensureProcessing()
+    }
+
+    set detailSelectedMid(mid: number | undefined) {
+        this._detailSelectedMid = mid
+        if(!mid) {
             if(this.detailSelectedCallback)
-                this.detailSelectedCallback(edges)
+                this.detailSelectedCallback(undefined)
+        } else {
+            this.detailNeedsUpdate = true
+            this.ensureProcessing()
         }
     }
 
-    private async setDetailSelectedMid(mid: number | undefined) {
-        this._detailSelectedMid = mid
-        let edges: ReachabilityHyperpathEdge[] | undefined
-        if(this._detailSelectedMid) {
-            if(!this.selectedSimulationResult) {
-                this.selectedSimulationResult = await this.cg.simulatePurgeDetailed(this._purgeSelectedMids)
-            }
-            edges = await this.selectedSimulationResult.getReachabilityHyperpath(this._detailSelectedMid)
+    requestSinglePurgeInfo(v: InternalNode[]) {
+        this.singleBatchScheduler.request(v)
+        this.ensureProcessing()
+    }
+
+    async requestAdditionalPurgeInfo(v: InternalNode[]) {
+        if(this._purgeSelectedMids.length === 0)
+            return
+        if(!this.additionalBatchScheduler) {
+            const stillReachable = await this.cg.simulatePurge([...new Set(this._purgeSelectedMids.flatMap(collectCgNodesInSubtree))])
+            let baseline = 0
+            for (let i = 0; i < this.codesizes.length; i++)
+                if (stillReachable[i] === 0xFF)
+                    baseline += this.codesizes[i]
+            this.additionalBatchScheduler = new BatchPurgeScheduler(this.cg, this.codesizes, baseline, this._purgeSelectedMids)
+            this.additionalBatchScheduler.callback = this._additionalPurgeCallback
         }
-        if(this.detailSelectedCallback)
-            this.detailSelectedCallback(edges)
+        this.additionalBatchScheduler.request(v)
+        this.ensureProcessing()
+    }
+
+    private async doProcessing() {
+        this.processingRunning = true
+        while(true) {
+            if(this.detailNeedsUpdate) {
+                if(!this.selectedSimulationResult)
+                    this.selectedSimulationResult = await this.cg.simulatePurgeDetailed(this._purgeSelectedMids.flatMap(v => [...new Set(collectCgNodesInSubtree(v))]))
+                const edges = await this.selectedSimulationResult.getReachabilityHyperpath(this._detailSelectedMid)
+                if(this.detailSelectedCallback)
+                    this.detailSelectedCallback(edges)
+                this.detailNeedsUpdate = false
+            }
+            else if(await this.singleBatchScheduler.next()) {
+            }
+            else if(this.additionalBatchScheduler && await this.additionalBatchScheduler.next()) {
+            } else {
+                break
+            }
+        }
+        this.processingRunning = false
+    }
+
+    private ensureProcessing() {
+        if(!this.processingRunning)
+            this.doProcessing()
     }
 }
 
@@ -424,7 +611,7 @@ export class CutTool {
     precomputeCutoffs = true
     reachable_under_selection?: Uint8Array
     reachable_in_image_view?: Uint8Array // Also has the purges of current hover
-    maxPurgedSize?: number
+    maxPurgedSize = 0
     selectedForPurging: Set<InternalNode> = new Set()
 
 
@@ -451,6 +638,48 @@ export class CutTool {
         this.ps = new PurgeScheduler(cg, this.codesizes, allReachable)
         this.ps.detailSelectedCallback = edges => this.renderGraphOnDetailView(edges)
 
+        this.ps.singlePurgeCallback = (v, data) => {
+            const vCutData = this.cutviewData.get(v)
+            if(!vCutData)
+                return
+
+            vCutData.reachable_after_cutting_this = data
+            this.increaseMaxPurgedSize(data.size)
+            this.refreshPurgeSizeInCutOverview(vCutData)
+
+            const parent = v.parent
+            if(!parent)
+                return
+
+            let highestBelowSize = 100000000000
+            let highestBelow = null
+            for(const c of parent.children) {
+                if(c === v)
+                    continue
+                const cCutData = this.cutviewData.get(c)!
+                const comp = cCutData.reachable_after_cutting_this
+                if(!comp)
+                    continue
+                if(comp.size < data.size)
+                    continue
+                if(comp.size < highestBelowSize) {
+                    highestBelow = cCutData.html
+                    highestBelowSize = comp.size
+                }
+            }
+
+            const list = vCutData.html.parentElement!
+            list.insertBefore(vCutData.html, highestBelow ? highestBelow.nextSibling : list.children[0])
+        }
+
+        this.ps.additionalPurgeCallback = (u, data) => {
+            const uCutData = this.cutviewData.get(u)
+            if(uCutData) {
+                uCutData.reachable_after_additionally_cutting_this = data
+                this.refreshPurgeSizeInCutOverview(uCutData)
+            }
+        }
+
         this.dataRoot = generateHierarchyFromReachabilityJsonAndMethodList(reachabilityData, this.methodList)
 
         document.getElementById('loading-panel')!.hidden = true
@@ -473,8 +702,32 @@ export class CutTool {
             list.classList.remove('nested')
             list.classList.add('unpadded')
             list.classList.add('active')
-            this.recalculateCutOverviewForSubtree(list, this.dataRoot)
         }
+
+        let mainMethod: InternalNode | undefined
+        forEachInSubtree(this.dataRoot, v => {
+            if(v.main)
+                mainMethod = v
+        })
+
+        if(mainMethod) {
+
+            const pathToMainMethod: InternalNode[] = []
+            for(let cur: InternalNode = mainMethod; cur.parent; cur = cur.parent) {
+                pathToMainMethod.unshift(cur)
+            }
+
+            pathToMainMethod.pop()
+
+            for(let i = 0; i < pathToMainMethod.length; i++) {
+                const list = this.generateHtmlCutview(pathToMainMethod[i])
+                this.cutviewData.get(pathToMainMethod[i])!.html.appendChild(list)
+                list.classList.add('active')
+                list.parentElement!.querySelector('.caret')!.classList.add('caret-down')
+            }
+        }
+
+        this.ps.requestSinglePurgeInfo([...this.cutviewData.keys()])
     }
 
     public static async create(universe: CausalityGraphUniverse) {
@@ -528,7 +781,7 @@ export class CutTool {
                     expandClickHandler(span, node, () => {
                         const list = this.generateHtmlCutview(node)
                         li.appendChild(list)
-                        return this.recalculateCutOverviewForSubtree(list, node)
+                        return this.recalculateCutOverviewForSubtree(node)
                     });
                 });
             } else {
@@ -579,7 +832,7 @@ export class CutTool {
                     this.selectedForPurging.delete(node)
                 }
 
-                this.ps.purgeSelectedMids = [...new Set([...this.selectedForPurging].flatMap(collectCgNodesInSubtree))]
+                this.ps.purgeSelectedMids = [...this.selectedForPurging]
 
 
                 if (selected && cutData.reachable_after_additionally_cutting_this) {
@@ -598,9 +851,10 @@ export class CutTool {
                 } else {
                     forEachInSubtree(this.dataRoot, u => {
                         const uCutData = this.cutviewData.get(u)
-                        if(uCutData)
+                        if(uCutData) {
                             uCutData.reachable_after_additionally_cutting_this = undefined
-                        this.refreshPurgeSizeInCutOverview(u)
+                            this.refreshPurgeSizeInCutOverview(uCutData)
+                        }
                     })
                 }
 
@@ -716,114 +970,18 @@ export class CutTool {
         return ul
     }
 
-    private async recalculateCutOverviewCustom
-        <Token, TNode extends PurgeTreeNode & RecursiveNode<TNode> & { token?: Token }>
-        (purgeNodeTreeRoot: TNode, additionalPurges: number[], comparison_array: Uint8Array, callback: (token: Token, data: ReachabilityVector) => void) {
-
-        const batchPurger = await this.cg.simulatePurgesBatched(purgeNodeTreeRoot, additionalPurges)
-
-        let node
-        while(node = await batchPurger.simulateNext()) {
-            const still_reachable = await batchPurger.getReachableArray()
-            if(node.token === undefined)
-                continue
-            let purgedSize = 0
-            for (let i = 0; i < this.codesizes.length; i++)
-                if (comparison_array[i] !== 0xFF && still_reachable[i] === 0xFF)
-                    purgedSize += this.codesizes[i]
-            await callback(node.token, { arr: still_reachable.slice(), size: purgedSize })
-        }
-
-        batchPurger.delete()
-    }
-
-    private recalculateCutOverviewWithSelection<Token>(purgeNodeTreeRoot: PurgeTreeNode, callback: (token: Token, data: ReachabilityVector) => void) {
-        return this.recalculateCutOverviewCustom(purgeNodeTreeRoot, [...new Set([...this.selectedForPurging].flatMap(collectCgNodesInSubtree))], this.reachable_under_selection, callback)
-    }
-
-    private recalculateCutOverviewWithoutSelection<Token>(purgeNodeTreeRoot: PurgeTreeNode, callback: (token: Token, data: ReachabilityVector) => void) {
-        return this.recalculateCutOverviewCustom(purgeNodeTreeRoot, [], this.all_reachable, callback)
-    }
-
-    private createPurgeNodeTree2(nodes: InternalNode[]): [ PurgeTreeNode & { token: number } | undefined, (InternalNode | undefined)[] ] {
-        const interestingNodes = new Set<InternalNode>()
-        const queriedNodes = new Set<InternalNode>(nodes)
-
-        for(const node of nodes) {
-            for(let cur: InternalNode | undefined = node; cur; cur = cur.parent) {
-                interestingNodes.add(cur)
-            }
-        }
-
-        const indexToSrcNode: InternalNode[] = []
-        const tree = this.createPurgeNodeTree(this.dataRoot, indexToSrcNode, v => interestingNodes.has(v))
-        return [tree, indexToSrcNode.map(d => queriedNodes.has(d) ? d : undefined)]
-    }
-
-    private createPurgeNodeTree(node: InternalNode, indexToSrcNode: InternalNode[], expandCallback: (v: InternalNode) => boolean): PurgeTreeNode & { token: number } | undefined {
-        const root: PurgeTreeNode & { token: number } = { token: indexToSrcNode.length }
-        indexToSrcNode.push(node)
-
-        let mids = [...node.cg_nodes]
-        const children = []
-        for(const child of node.children) {
-            if (this.selectedForPurging.has(child))
-                continue;
-            if (expandCallback(child)) {
-                const child_root = this.createPurgeNodeTree(child, indexToSrcNode, expandCallback)
-                if (child_root)
-                    children.push(child_root)
-            } else {
-                mids.push(...collectCgNodesInSubtree(child))
-            }
-        }
-
-        if (children.length === 0 && mids.length === 0)
-            return undefined
-
-        if (mids.length !== 0)
-            root.mids = mids
-
-        if (children.length !== 0)
-            root.children = children
-
-        return root
-    }
-
     private precomputeCutOverview() {
-        for (const node of [...this.selectedForPurging]) {
-            forEachInSubtree(node, u => {
-                const uCutData = this.cutviewData.get(u)
-                if(uCutData)
-                    uCutData.reachable_after_additionally_cutting_this = undefined
-                this.refreshPurgeSizeInCutOverview(u)
-            })
+        for(const cCutData of this.cutviewData.values()) {
+            cCutData.reachable_after_additionally_cutting_this = undefined
+            this.refreshPurgeSizeInCutOverview(cCutData)
         }
-
-        const [purgeNodeTreeRoot, indexToSrcNode] = this.createPurgeNodeTree2(Array.from(this.cutviewData.keys()))
-
-        if(!purgeNodeTreeRoot)
-            return
-
-        return this.recalculateCutOverviewWithSelection(purgeNodeTreeRoot, (index: number, data: ReachabilityVector) => {
-            const node = indexToSrcNode[index]
-            if(!node)
-                return
-            const uCutData = this.cutviewData.get(node)
-            if(uCutData)
-                uCutData.reachable_after_additionally_cutting_this = data
-            this.refreshPurgeSizeInCutOverview(node)
-        })
+        this.ps.requestAdditionalPurgeInfo(Array.from(this.cutviewData.keys()))
     }
 
-    private refreshPurgeSizeInCutOverview(node: InternalNode) {
-        const cutData = this.cutviewData.get(node)
-        if (!cutData)
-            return
+    private refreshPurgeSizeInCutOverview(cutData: CutViewData) {
         const html = cutData.html
 
         assert(this.maxPurgedSize)
-
 
         const purged = this.selectedForPurging.size > 0 && this.precomputeCutoffs ? cutData.reachable_after_additionally_cutting_this : cutData.reachable_after_cutting_this
 
@@ -837,46 +995,18 @@ export class CutTool {
         html.querySelector<HTMLDivElement>('.cut-size-bar')!.style.width = width
     }
 
-    private async recalculateCutOverviewForSubtree(list: HTMLUListElement, node: InternalNode) {
-        // The C++ code doesn't handle empty groups well. Therefore we already handle them here.
-        //const purgeNodeTreeRoot = { children: node.children.map((c, i) => { return { mids: collectCgNodesInSubtree(c), token: i } }).filter(n => n.mids.length > 0) }
-        const [purgeNodeTreeRoot, indexToSrcNode] = this.createPurgeNodeTree2(node.children)
+    private increaseMaxPurgedSize(size: number) {
+        if(this.maxPurgedSize && size <= this.maxPurgedSize)
+            return
+        this.maxPurgedSize = size
 
-        let maxPurgedSize = 0
-
-        const updateMax: boolean = node === this.dataRoot
-
-        await this.recalculateCutOverviewWithoutSelection(purgeNodeTreeRoot, (index: number, data: ReachabilityVector) => {
-            const v = indexToSrcNode[index]
-            if(!v)
-                return
-            const vCutData = this.cutviewData.get(v)
-            if(!vCutData)
-                return
-
-            const html = vCutData.html
-            vCutData.reachable_after_cutting_this = data
-
-            maxPurgedSize = Math.max(maxPurgedSize, data.size)
-
-            if (updateMax) {
-                this.maxPurgedSize = Math.max(maxPurgedSize, data.size)
-            }
-
-            html.querySelector<HTMLSpanElement>('.cut-size-column')!.textContent = formatByteSizesWithUnitPrefix(data.size)
-            html.querySelector<HTMLDivElement>('.cut-size-bar')!.style.width = (data.size / this.maxPurgedSize * 100) + '%'
-        })
-
-        assert(this.maxPurgedSize)
-
-        function sortKey(a: CutViewData) {
-            if(a.reachable_after_cutting_this)
-                return a.reachable_after_cutting_this.size
-            else
-                return -1
+        for(const [, v] of this.cutviewData.entries()) {
+            this.refreshPurgeSizeInCutOverview(v)
         }
+    }
 
-        node.children.map(c => this.cutviewData.get(c)!).sort((a, b) => sortKey(b) - sortKey(a)).forEach(a => list.appendChild(a.html))
+    private async recalculateCutOverviewForSubtree(node: InternalNode) {
+        this.ps.requestSinglePurgeInfo(node.children)
 
         if (this.precomputeCutoffs && this.selectedForPurging.size > 0) {
             let containedInSelection = false
@@ -894,17 +1024,8 @@ export class CutTool {
                         uCutData.reachable_after_additionally_cutting_this = undefined
                 }
             } else {
-                await this.recalculateCutOverviewWithSelection(purgeNodeTreeRoot, (index: number, data: ReachabilityVector) => {
-                    const v = node.children[index]
-                    const vCutData = this.cutviewData.get(v)
-                    if(vCutData)
-                        vCutData.reachable_after_additionally_cutting_this = data
-                })
+                this.ps.requestAdditionalPurgeInfo(node.children)
             }
-        }
-
-        for (const c of node.children) {
-            this.refreshPurgeSizeInCutOverview(c)
         }
     }
 
