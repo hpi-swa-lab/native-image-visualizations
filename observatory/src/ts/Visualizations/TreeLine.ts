@@ -17,6 +17,7 @@ import {
     universeCombinationAsIndices
 } from '../UniverseTypes/UniverseCombination'
 import { MultiverseVisualization } from './MultiverseVisualization'
+import { Filter } from '../SharedTypes/Filters'
 
 const LINE_WIDTH = 256
 const LINE_PADDING = 16
@@ -27,6 +28,7 @@ export class TreeLine implements MultiverseVisualization {
     colorScheme: ColorScheme
     selection: Set<string> = new Set<string>()
     highlights: Set<string> = new Set<string>()
+    filters: Filter[] = []
 
     combinations: UniverseCombination[] = []
     exclusiveSizes: Map<Node, ExclusiveSizes> = new Map([[this.multiverse.root, new Map([])]])
@@ -38,8 +40,9 @@ export class TreeLine implements MultiverseVisualization {
     context: CanvasRenderingContext2D
     transform = { y: 0, k: 1 }
 
-    constructor(container: HTMLDivElement, colorScheme: ColorScheme) {
+    constructor(container: HTMLDivElement, colorScheme: ColorScheme, filters: Filter[]) {
         this.colorScheme = colorScheme
+        this.filters = filters
 
         this.canvas = document.createElement('canvas') as HTMLCanvasElement
         container.appendChild(this.canvas)
@@ -81,6 +84,11 @@ export class TreeLine implements MultiverseVisualization {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     public setHighlights(highlights: Set<string>): void {
         // TODO; https://github.com/hpi-swa-lab/MPWS2022RH1/issues/118
+    }
+
+    public setFilters(filters: Filter[]): void {
+        this.filters = filters
+        this.redraw()
     }
 
     private initZoom(): void {
@@ -221,11 +229,16 @@ export class TreeLine implements MultiverseVisualization {
             leftOfSubHierarchy = leftOfHierarchy + widthOfBox + HIERARCHY_GAPS
         }
 
+        const suitableChildren = tree.children.filter((child) =>
+            this.filters.every((filter) => filter(child))
+        )
+
         const shouldExplode =
-            tree.children.length == 1 || (height >= EXPLOSION_THRESHOLD && tree.children.length > 0)
+            suitableChildren.length == 1 ||
+            (height >= EXPLOSION_THRESHOLD && suitableChildren.length > 0)
         if (shouldExplode) {
             let childOffsetFromTop = top
-            for (const child of tree.children) {
+            for (const child of suitableChildren) {
                 const childPath = path.slice()
                 childPath.push(child.name)
                 this.drawDiagram(

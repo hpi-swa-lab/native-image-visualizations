@@ -32,6 +32,19 @@ export class Node {
         return this._name
     }
 
+    // todo
+    get isReflective(): boolean {
+        return this.children.some((child) => child.isReflective)
+    }
+
+    get isJni(): boolean {
+        return this.children.some((child) => child.isJni)
+    }
+
+    get isSynthetic(): boolean {
+        return this.children.some((child) => child.isSynthetic)
+    }
+
     get identifier(): string {
         if (this._identifier) return this._identifier
 

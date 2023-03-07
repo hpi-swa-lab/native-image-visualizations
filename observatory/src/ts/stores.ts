@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import resolveConfig from 'tailwindcss/resolveConfig'
 import { Layers } from './enums/Layers'
+import { Filter, filterEqual } from './SharedTypes/Filters'
 import { SortingOption, SortingOrder } from './enums/Sorting'
 import { componentName, SwappableComponentType } from './enums/SwappableComponentType'
 import { findNodesWithIdentifier } from './Math/filters'
@@ -16,6 +17,7 @@ import { Universe } from './UniverseTypes/Universe'
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import tailwindConfig from '../../tailwind.config.cjs'
+
 const cssConfig = resolveConfig(tailwindConfig)
 
 export const globalConfigStore = defineStore('globalConfig', {
@@ -26,6 +28,7 @@ export const globalConfigStore = defineStore('globalConfig', {
             multiverse: new Multiverse([]),
             selections: new Set<string>(),
             highlights: new Set<string>(),
+            filters: [] as Filter[],
             currentLayer: Layers.PACKAGES,
             currentComponent: SwappableComponentType.Home as SwappableComponentType,
             previousComponent: undefined as SwappableComponentType | undefined,
@@ -108,6 +111,13 @@ export const globalConfigStore = defineStore('globalConfig', {
         },
         changeSearch(newSearch: string): void {
             this.search = newSearch
+
+            if (newSearch.length === 0) {
+                // todo there needs to be a nothing set value
+                this.setHighlights(new Set())
+                return
+            }
+
             this.setHighlights(
                 new Set<string>(
                     findNodesWithIdentifier(this.search, this.multiverse.root as Node).map(
@@ -115,6 +125,18 @@ export const globalConfigStore = defineStore('globalConfig', {
                     )
                 )
             )
+        },
+        isUsingFilter(filter: Filter): boolean {
+            return this.filters.find((active) => filterEqual(active, filter)) != undefined
+        },
+        toggleFilter(filter: Filter): void {
+            const matchingFilter = this.filters.find((active) => filterEqual(active, filter))
+
+            if (matchingFilter) {
+                this.filters.splice(this.filters.indexOf(matchingFilter), 1)
+            } else {
+                this.filters.push(filter)
+            }
         },
         toExportDict(): Record<string, unknown> {
             return {

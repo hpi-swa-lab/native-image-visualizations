@@ -5,6 +5,7 @@ import SearchBar from '../controls/SearchBar.vue'
 import TabLayout from './TabLayout.vue'
 import DataManager from '../controls/DataManager.vue'
 import LayerSelection from '../controls/LayerSelection.vue'
+import FilteringOptions from '../controls/FilteringOptions.vue'
 
 withDefaults(
     defineProps<{
@@ -19,7 +20,7 @@ withDefaults(
 <template>
     <div class="w-full h-full grid grid-cols-12 gap-2">
         <div class="col-span-2 drop-shadow-xl overflow-y-scroll min-w-[300px]">
-            <div class="rounded bg-gray-50 space-y-4 h-full">
+            <div class="rounded h-auto min-h-full bg-gray-50 space-y-4 h-full">
                 <h2 class="text-center">{{ title }}</h2>
 
                 <TabLayout
@@ -37,6 +38,7 @@ withDefaults(
 
                             <SearchBar />
                             <LayerSelection />
+                            <FilteringOptions />
 
                             <ul class="space-y-2">
                                 <slot name="controls"></slot>

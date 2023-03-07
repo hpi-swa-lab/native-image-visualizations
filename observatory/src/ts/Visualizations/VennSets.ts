@@ -12,6 +12,7 @@ import { ColorScheme } from '../SharedTypes/Colors'
 import { formatBytes } from '../SharedTypes/Size'
 import { TooltipModel } from './TooltipModel'
 import { SortingOrder } from '../enums/Sorting'
+import { Filter } from '../SharedTypes/Filters'
 
 type Group = d3.InternMap<string, d3.InternMap<Node, number>>
 type NodeData = [string, d3.InternMap<Node, number>]
@@ -25,6 +26,7 @@ export class VennSets implements MultiverseVisualization {
     colorScheme: ColorScheme = []
     selection: Set<string> = new Set<string>()
     highlights: Set<string> = new Set<string>()
+    filters: Filter[] = []
 
     private multiverse: Multiverse = new Multiverse([])
     private layer = Layers.PACKAGES
@@ -39,12 +41,14 @@ export class VennSets implements MultiverseVisualization {
         layer: Layers,
         colorScheme: ColorScheme,
         tooltip: TooltipModel,
-        sortingOrder: SortingOrder
+        sortingOrder: SortingOrder,
+        filters: Filter[]
     ) {
         this.layer = layer
         this.colorScheme = colorScheme
         this.tooltip = tooltip
         this.sortingOrder = sortingOrder
+        this.filters = filters
 
         this.initializeContainer(containerSelector)
         this.initializeZoom()
@@ -57,12 +61,20 @@ export class VennSets implements MultiverseVisualization {
 
     public setSelection(selection: Set<string>): void {
         this.selection = selection
+        // todo
+        if (selection.size === 0) return
         this.applyStyleForChosen(this.selection, 'display', 'none', 'block')
     }
 
     public setHighlights(highlights: Set<string>): void {
         this.highlights = highlights
-        this.applyStyleForChosen(this.highlights, 'opacity', 0.4, 1)
+        const defaultOpacity = highlights.size == 0 ? 1 : 0.1
+        this.applyStyleForChosen(this.highlights, 'opacity', defaultOpacity, 1)
+    }
+
+    public setFilters(filters: Filter[]): void {
+        this.filters = filters
+        this.redraw()
     }
 
     public setLayer(layer: Layers): void {
@@ -92,7 +104,9 @@ export class VennSets implements MultiverseVisualization {
     private redraw() {
         this.cleanContainer()
 
-        const nodesOnLevel: Node[] = getNodesOnLevel(this.layer, this.multiverse.root)
+        const nodesOnLevel: Node[] = getNodesOnLevel(this.layer, this.multiverse.root).filter(
+            (nodeOnLevel) => this.filters.every((filter) => filter(nodeOnLevel))
+        )
         const root = this.asCombinationPartitionedHierarchy(nodesOnLevel)
 
         if (!root.children) return
@@ -209,7 +223,7 @@ export class VennSets implements MultiverseVisualization {
     private initializeZoom() {
         const zoom = d3
             .zoom()
-            .scaleExtent([0.5, 4])
+            .scaleExtent([0.5, 6])
             .on('zoom', ({ transform }) => this.container.select('g').attr('transform', transform))
         this.container.call(zoom)
     }
@@ -227,9 +241,10 @@ export class VennSets implements MultiverseVisualization {
     ) {
         const circles = this.container.selectAll('circle')
 
+        circles.style(style, unselected)
+
         if (selection.size === 0) return
 
-        circles.style(style, unselected)
         circles
             .filter((circle: PackedHierarchyLeaf) => selection.has(circle.data[0].identifier))
             .transition()

@@ -10,6 +10,7 @@ import VennControls from '../controls/VennControls.vue'
 import { TooltipModel } from '../../ts/Visualizations/TooltipModel'
 import Tooltip from '../controls/Tooltip.vue'
 import { SortingOrder } from '../../ts/enums/Sorting'
+import { Filter } from '../../ts/SharedTypes/Filters'
 
 const emit = defineEmits([EventType.CHANGE])
 const globalStore = globalConfigStore()
@@ -21,6 +22,7 @@ const multiverse = computed(() => globalStore.multiverse)
 const currentLayer = computed(() => globalStore.currentLayer)
 const highlights = computed(() => globalStore.highlights)
 const selection = computed(() => globalStore.selections)
+const filters = computed(() => globalStore.filters)
 
 const sortingOrder = computed(() => vennStore.sortingOrder)
 
@@ -34,7 +36,8 @@ onMounted(() => {
         globalStore.currentLayer,
         globalStore.colorScheme,
         tooltipModel,
-        vennStore.sortingOrder
+        vennStore.sortingOrder,
+        globalStore.filters
     )
     visualization.setMultiverse(globalStore.multiverse as Multiverse)
 })
@@ -59,6 +62,13 @@ watch(
     },
     { deep: true }
 )
+watch(
+    filters,
+    (newFilters) => {
+        visualization.setFilters(newFilters as Filter[])
+    },
+    { deep: true }
+)
 watch(sortingOrder, (newOrder) => {
     visualization.sort(newOrder)
 })
@@ -78,6 +88,6 @@ watch(sortingOrder, (newOrder) => {
             ></VennControls>
         </template>
 
-        <div id="viz-container" ref="container" class="w-full h-full"></div>
+        <div id="viz-container" ref="container" class="min-w-full h-full"></div>
     </MainLayout>
 </template>

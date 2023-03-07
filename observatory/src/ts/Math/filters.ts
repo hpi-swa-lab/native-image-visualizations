@@ -1,28 +1,30 @@
+import { Filter } from '../SharedTypes/Filters'
 import { Node } from '../UniverseTypes/Node'
 
-export function findNodesWithName(name: string, root: Node): Node[] {
+export function applyFilters(filters: Filter[], root: Node): Node[] {
     const result: Node[] = []
 
-    if (root.name.toLowerCase().includes(name.toLowerCase())) {
+    if (filters.every((filter) => filter(root))) {
         result.push(root)
     }
 
     return root.children.reduce(
-        (currentArray, child) => currentArray.concat(findNodesWithName(name, child)),
+        (currentArray, child) => currentArray.concat(applyFilters(filters, child)),
         result
     )
 }
 
+export function findNodesWithName(name: string, root: Node): Node[] {
+    return applyFilters(
+        [(node: Node) => node.name.toLowerCase().includes(name.toLowerCase())],
+        root
+    )
+}
+
 export function findNodesWithIdentifier(identifier: string, root: Node): Node[] {
-    const result: Node[] = []
-
-    if (root.identifier.toLowerCase().includes(identifier.toLowerCase())) {
-        result.push(root)
-    }
-
-    return root.children.reduce(
-        (currentArray, child) => currentArray.concat(findNodesWithIdentifier(identifier, child)),
-        result
+    return applyFilters(
+        [(node: Node) => node.identifier.toLowerCase().includes(identifier.toLowerCase())],
+        root
     )
 }
 
