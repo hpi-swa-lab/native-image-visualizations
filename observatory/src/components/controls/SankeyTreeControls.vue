@@ -3,7 +3,7 @@ import AlertBox from './AlertBox.vue'
 import SortingFilterFieldset from './SortingFilterFieldset.vue'
 import { EventType } from '../../ts/enums/EventType.js'
 import DiffingUniversesFilterFieldset from './DiffingUniversesFilterFieldset.vue'
-import {UniverseMetadata} from "../../ts/SharedTypes/SankeyTree";
+import { UniverseMetadata } from '../../ts/SharedTypes/SankeyTree'
 
 const SHORTCUTS = ['shift+click on node expands branch']
 

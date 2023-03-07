@@ -17,5 +17,5 @@ export function formatBytes(bytes: Bytes, cutOffAt = 2): string {
     return (bytes / BYTES_IN_TB).toFixed(cutOffAt) + ' TB'
 }
 
-export const inKB = (b:Bytes) => b/BYTES_IN_KB
-export const inMB = (b:Bytes) => b/BYTES_IN_MB
+export const inKB = (b: Bytes) => b / BYTES_IN_KB
+export const inMB = (b: Bytes) => b / BYTES_IN_MB

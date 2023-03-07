@@ -1,8 +1,8 @@
 import * as d3 from 'd3'
 import { HierarchyPointNode } from 'd3'
-import {NodesFilter} from "./NodesFilter";
+import { NodesFilter } from './NodesFilter'
 import { Node } from '../UniverseTypes/Node'
-import {UniverseProps} from "../interfaces/UniverseProps";
+import { UniverseProps } from '../interfaces/UniverseProps'
 
 // FIXME can be removed or moved?
 export enum CustomEventName {

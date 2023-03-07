@@ -86,7 +86,7 @@ export class Node {
         this._parent = newParent
     }
 
-    set codeSize(newCodeSize: Bytes ) {
+    set codeSize(newCodeSize: Bytes) {
         this._codeSize = newCodeSize
     }
 

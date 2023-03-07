@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import ColorLabel from './ColorLabel.vue'
 import ToggleSwitch from './ToggleSwitch.vue'
-import {sankeyTreeConfigStore} from '../../ts/stores'
-import {UNMODIFIED} from '../../ts/Visualizations/SankeyTree';
-import {UniverseMetadata} from '../../ts/SharedTypes/SankeyTree';
+import { sankeyTreeConfigStore } from '../../ts/stores'
+import { UNMODIFIED } from '../../ts/Visualizations/SankeyTree'
+import { UniverseMetadata } from '../../ts/SharedTypes/SankeyTree'
 
 defineProps<{
     universesMetadata: UniverseMetadata

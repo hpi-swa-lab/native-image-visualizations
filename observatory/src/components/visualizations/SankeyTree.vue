@@ -2,14 +2,14 @@
 import MainLayout from '../layouts/MainLayout.vue'
 import COLORS from '../../ts/constants/ColorPalette'
 import SankeyTreeControls from '../controls/SankeyTreeControls.vue'
-import {SankeyTree} from '../../ts/Visualizations/SankeyTree';
-import {globalConfigStore} from '../../ts/stores';
-import {computed, onMounted, ref, watch} from 'vue';
-import {Multiverse} from '../../ts/UniverseTypes/Multiverse';
-import {EventType} from '../../ts/enums/EventType';
-import {SwappableComponentType} from '../../ts/enums/SwappableComponentType';
-import {ColorScheme} from '../../ts/SharedTypes/Colors';
-import {UniverseMetadata} from '../../ts/SharedTypes/SankeyTree';
+import { SankeyTree } from '../../ts/Visualizations/SankeyTree'
+import { globalConfigStore } from '../../ts/stores'
+import { computed, onMounted, ref, watch } from 'vue'
+import { Multiverse } from '../../ts/UniverseTypes/Multiverse'
+import { EventType } from '../../ts/enums/EventType'
+import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
+import { ColorScheme } from '../../ts/SharedTypes/Colors'
+import { UniverseMetadata } from '../../ts/SharedTypes/SankeyTree'
 
 const emit = defineEmits([EventType.CHANGE])
 const store = globalConfigStore()
@@ -25,7 +25,6 @@ const metadata = ref<UniverseMetadata>(
     createUniverseMetadata(store.multiverse as Multiverse, store.colorScheme)
 )
 let visualization: SankeyTree
-
 
 onMounted(() => {
     // todo
@@ -69,7 +68,6 @@ function createUniverseMetadata(multiverse: Multiverse, colorScheme: ColorScheme
     console.log('universeMetadata', metadata)
     return metadata
 }
-
 </script>
 
 <template>
