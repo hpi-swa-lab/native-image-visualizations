@@ -20,7 +20,7 @@ import {
     createApplyFilterEvent,
     filterDiffingUniverses,
     sortChildren
-} from "./utils/SankeyTreeUtils";
+} from './utils/SankeyTreeUtils';
 
 export const UNMODIFIED = 'UNMODIFIED'
 
@@ -148,6 +148,10 @@ export class SankeyTree implements MultiverseVisualization {
             // FIXME ? only expand first level of children
             // if (d.depth > 0) d.children = null; // only expand the first level of children
         })
+
+        // clear the selections, because otherwise d3 does not draw the change in color and nodeSize of a node
+        this.containerSelections.gNode.selectAll('g > *').remove()
+        this.containerSelections.gLink.selectAll('g > *').remove()
 
         this.redrawTree(
             createApplyFilterEvent(this.sankeyStore.nodesFilter),
@@ -536,13 +540,9 @@ export class SankeyTree implements MultiverseVisualization {
 
     private handleCustomTreeEvent(event: any, tree: Tree) {
         if (event.detail.name === CustomEventName.APPLY_FILTER) {
-            console.log(event.detail.name, true)
-            console.log('tree.root', tree.root)
             tree.root.eachBefore((node: any) => {
-                console.log('node._children', node._children)
                 if (!node._children) return
                 sortChildren(node, event.detail.filter.sorting)
-                console.log(node.data.name, node.children)
                 if (node.children) node.children = filterDiffingUniverses(node, this.filteredNodes)
             })
         }

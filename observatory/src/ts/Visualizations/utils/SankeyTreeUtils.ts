@@ -108,7 +108,6 @@ export function getCodeSizefromLeaves(node: any): number {
 
 
 export function filterDiffingUniverses(node: any, filteredNodes: Node[]) {
-    console.log('filterDiffingUniverses')
     if (!node._children) return
     return node._children.filter((child: any) => filteredNodes.includes(child.data))
 }
