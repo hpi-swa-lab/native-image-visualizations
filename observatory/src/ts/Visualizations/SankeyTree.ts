@@ -17,11 +17,13 @@ import {
 import { getNodesOnLevel } from '../Math/filters'
 import { Bytes, inMB } from '../SharedTypes/Size'
 import {
+    asHTML,
     createApplyFilterEvent,
     filterDiffingUniverses,
     sortChildren,
     toggleChildren
 } from './utils/SankeyTreeUtils'
+import { TooltipModel } from './TooltipModel'
 
 export const UNMODIFIED = 'UNMODIFIED'
 
@@ -30,13 +32,14 @@ const dx = 20
 let dy = 0
 
 export class SankeyTree implements MultiverseVisualization {
-    sankeyStore = sankeyTreeConfigStore()
     colorScheme: ColorScheme = []
     selection: Set<string> = new Set<string>()
     highlights: Set<string> = new Set<string>()
     private multiverse: Multiverse = new Multiverse([])
     private metadata: UniverseMetadata = {}
     private layer = Layers.PACKAGES
+    private tooltip: TooltipModel
+
     private readonly containerSelections: ContainerSelections
     private tree: Tree = {
         layout: d3.tree(),
@@ -48,8 +51,16 @@ export class SankeyTree implements MultiverseVisualization {
     private modifiedNodes: Node[] = []
     private filteredNodes: Node[] = []
 
-    constructor(containerSelector: string, layer: Layers, colorScheme: ColorScheme) {
+    private sankeyStore = sankeyTreeConfigStore()
+
+    constructor(
+        containerSelector: string,
+        layer: Layers,
+        colorScheme: ColorScheme,
+        tooltip: TooltipModel
+    ) {
         this.colorScheme = colorScheme
+        this.tooltip = tooltip
         this.containerSelections = this.initializeContainerSelections(containerSelector)
     }
 
@@ -327,12 +338,15 @@ export class SankeyTree implements MultiverseVisualization {
             this.redrawTree(evt, d, tree, containerSelections, universeMetadata)
         })
         const nodeEnterShape = this.appendShapeToNode(nodeEnter, universeMetadata)
-        // nodeEnterShape
-        //     .on('mouseover', (event: MouseEvent, d: any) => mouseover(event, d, containerSelections))
-        //     .on('mousemove', (event: MouseEvent, d: any) =>
-        //         mousemove(event, d, containerSelections, universeMetadata)
-        //     )
-        //     .on('mouseout', (event: MouseEvent, d: any) => mouseout(event, d, containerSelections))
+        nodeEnterShape
+            .on('mouseover', (event: MouseEvent, d: any) => {
+                this.tooltip.updateContent(asHTML(d, this.metadata))
+                this.tooltip.display()
+            })
+            .on('mousemove', (event: MouseEvent, d: any) =>
+                this.tooltip.updatePosition(event.pageX, event.pageY)
+            )
+            .on('mouseout', (event: MouseEvent, d: any) => this.tooltip.hide())
 
         this.appendTextToNode(nodeEnter)
 

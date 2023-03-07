@@ -4,17 +4,21 @@ import COLORS from '../../ts/constants/ColorPalette'
 import SankeyTreeControls from '../controls/SankeyTreeControls.vue'
 import { SankeyTree } from '../../ts/Visualizations/SankeyTree'
 import { globalConfigStore } from '../../ts/stores'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { Multiverse } from '../../ts/UniverseTypes/Multiverse'
 import { EventType } from '../../ts/enums/EventType'
 import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
 import { ColorScheme } from '../../ts/SharedTypes/Colors'
 import { UniverseMetadata } from '../../ts/SharedTypes/SankeyTree'
+import { TooltipModel } from '../../ts/Visualizations/TooltipModel'
+import Tooltip from '../controls/Tooltip.vue'
 
 const emit = defineEmits([EventType.CHANGE])
 const store = globalConfigStore()
 
 const container = ref<HTMLDivElement>()
+
+const tooltipModel = reactive(new TooltipModel())
 
 const multiverse = computed(() => store.multiverse)
 const currentLayer = computed(() => store.currentLayer)
@@ -28,7 +32,12 @@ let visualization: SankeyTree
 
 onMounted(() => {
     // todo
-    visualization = new SankeyTree('#viz-container', store.currentLayer, store.colorScheme)
+    visualization = new SankeyTree(
+        '#viz-container',
+        store.currentLayer,
+        store.colorScheme,
+        tooltipModel
+    )
     visualization.setMetadata(metadata.value)
     visualization.setMultiverse(store.multiverse as Multiverse)
 })
@@ -76,6 +85,7 @@ function createUniverseMetadata(multiverse: Multiverse, colorScheme: ColorScheme
         :component-type="SwappableComponentType.SankeyTree"
         @change-page="(componentType: SwappableComponentType) => emit(EventType.CHANGE, componentType)"
     >
+        <Tooltip :data-model="tooltipModel"></Tooltip>
         <template #controls>
             <SankeyTreeControls
                 :universes-metadata="metadata"

@@ -2,11 +2,16 @@ import {
     ContainerSelections,
     CustomEventDetails,
     CustomEventName,
-    Tree
+    Tree,
+    UniverseMetadata
 } from '../../SharedTypes/SankeyTree'
 import { NodesFilter, NodesSortingFilter } from '../../SharedTypes/NodesFilter'
 import { SortingOption, SortingOrder } from '../../enums/Sorting'
 import { Node } from '../../UniverseTypes/Node'
+import { HierarchyPointNode } from 'd3'
+import { TooltipModel } from '../TooltipModel'
+import { formatBytes } from '../../SharedTypes/Size'
+import { sankeyTreeConfigStore } from '../../stores'
 
 // #################################################################################################
 // ##### (PRE-)PROCESSING UTILS ####################################################################
@@ -39,49 +44,6 @@ export function getCodeSizefromLeaves(node: any): number {
 // ##### EVENT UTILS ###############################################################################
 // #################################################################################################
 
-// // see source code: https://d3-graph-gallery.com/graph/interactivity_tooltip.html
-// // Three function that change the tooltip when user hover / move / leave a cell
-// export function mouseover(
-//     event: MouseEvent,
-//     d: HierarchyPointNode<Node>,
-//     containerSelections: ContainerSelections
-// ) {
-//     containerSelections.tooltip.style('opacity', 1)
-// }
-//
-// // FIXME fix it
-// export function mousemove(
-//     event: MouseEvent,
-//     d: HierarchyPointNode<Node>,
-//     containerSelections: ContainerSelections,
-//     universePropsDict: UniverseMetadata
-// ) {
-//     const universesText = universePropsDict[Array.from(d.data.sources).join('')]
-//         ? universePropsDict[Array.from(d.data.sources).join('')].name
-//         : 'N/A'
-//     containerSelections.tooltip
-//         .html(
-//             `**Node data:**
-//                             <br>codeSize: ${d.data.codeSize}
-//                             <br>isFiltered: ${d.data.isFiltered}
-//                             <br>isModified: ${d.data.isModified}
-//                             <br>universes: ${universesText}
-//                             <br>has children: ${d.children?.length || undefined}
-//                             <br>has _children: ${(d as any)._children?.length || undefined}
-//                             `
-//         )
-//         .style('left', event.x + 20 + 'px')
-//         .style('top', event.y + 'px')
-// }
-// export function mouseout(
-//     event: MouseEvent,
-//     d: HierarchyPointNode<Node>,
-//     containerSelections: ContainerSelections
-// ) {
-//     containerSelections.tooltip.style('opacity', 0)
-// }
-
-// Toggle children.
 export function toggleChildren(d: any, doToggleBranch: boolean, filteredNodes: Node[]) {
     if (!d._children) return
 
@@ -138,4 +100,28 @@ function getSortingValue(node: any, filter: NodesSortingFilter) {
         case SortingOption.SIZE:
             return node.data.codeSize
     }
+}
+
+// #################################################################################################
+// ##### HELPER UTILS ##############################################################################
+// #################################################################################################
+
+export function asHTML(d: HierarchyPointNode<Node>, metadata: UniverseMetadata) {
+    const node: Node = d.data
+    return `<b>Exists in</b>: ${Array.from(node.sources.keys())
+        .map((uniIndex) => metadata[uniIndex].name)
+        .join(', ')}
+                <b>Name</b>: ${getPathFromRoot(node)}
+                <b>Code Size</b>: ${formatBytes(node.codeSize)}`
+}
+
+function getPathFromRoot(node: Node): string {
+    return getBreadcrumbsFromRoot(node).join('.')
+}
+
+function getBreadcrumbsFromRoot(node: Node): string[] {
+    if (!node.parent) return []
+    const breadcrumbs = getBreadcrumbsFromRoot(node.parent)
+    breadcrumbs.push(node.name)
+    return breadcrumbs
 }
