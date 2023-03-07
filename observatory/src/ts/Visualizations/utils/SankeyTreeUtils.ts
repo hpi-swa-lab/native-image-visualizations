@@ -1,7 +1,12 @@
-import {ContainerSelections, CustomEventDetails, CustomEventName, Tree} from '../../SharedTypes/SankeyTree';
-import {NodesFilter, NodesSortingFilter} from '../../SharedTypes/NodesFilter';
-import {SortingOption, SortingOrder} from '../../enums/Sorting';
-import {Node} from '../../UniverseTypes/Node';
+import {
+    ContainerSelections,
+    CustomEventDetails,
+    CustomEventName,
+    Tree
+} from '../../SharedTypes/SankeyTree'
+import { NodesFilter, NodesSortingFilter } from '../../SharedTypes/NodesFilter'
+import { SortingOption, SortingOrder } from '../../enums/Sorting'
+import { Node } from '../../UniverseTypes/Node'
 
 // #################################################################################################
 // ##### (PRE-)PROCESSING UTILS ####################################################################
@@ -22,20 +27,6 @@ export function createCustomEventWithDetails(name: string, filter: NodesFilter) 
         }
     })
 }
-//
-// export function collapseChildren(d: any) {
-//     if (!d.children) return
-//
-//     d.children.forEach((child: any) => collapseChildren(child))
-//     d.children = null
-// }
-//
-// export function countCurrentPrivateLeaves(node: any): number {
-//     if (!node._children) {
-//         return 1
-//     }
-//     return node._children.reduce((sum: number, child: any) => sum + countCurrentPrivateLeaves(child), 0)
-// }
 
 export function getCodeSizefromLeaves(node: any): number {
     if (!node._children) {
@@ -90,22 +81,37 @@ export function getCodeSizefromLeaves(node: any): number {
 //     containerSelections.tooltip.style('opacity', 0)
 // }
 
-// // Toggle children.
-// export function toggle(d: any, doToggleBranch: boolean) {
-//     if (!d._children) return
-//
-//     d.children
-//         ? collapseChildren(d)
-//         : (d.children = d._children.filter((child: any) => child.data.isFiltered))
-//
-//     if (doToggleBranch) {
-//         for (const child of d.children) {
-//             toggle(child, doToggleBranch)
-//         }
-//     }
-// }
+// Toggle children.
+export function toggleChildren(d: any, doToggleBranch: boolean, filteredNodes: Node[]) {
+    if (!d._children) return
 
+    d.children
+        ? collapseChildren(d)
+        : (d.children = d._children.filter((child: any) => filteredNodes.includes(d.data)))
 
+    if (doToggleBranch) {
+        for (const child of d.children) {
+            toggleChildren(child, doToggleBranch, filteredNodes)
+        }
+    }
+}
+
+export function collapseChildren(d: any) {
+    if (!d.children) return
+
+    d.children.forEach((child: any) => collapseChildren(child))
+    d.children = null
+}
+
+export function countCurrentPrivateLeaves(node: any): number {
+    if (!node._children) {
+        return 1
+    }
+    return node._children.reduce(
+        (sum: number, child: any) => sum + countCurrentPrivateLeaves(child),
+        0
+    )
+}
 
 export function filterDiffingUniverses(node: any, filteredNodes: Node[]) {
     if (!node._children) return
@@ -133,4 +139,3 @@ function getSortingValue(node: any, filter: NodesSortingFilter) {
             return node.data.codeSize
     }
 }
-
