@@ -4,6 +4,7 @@ export enum SortingOption {
 }
 
 export enum SortingOrder {
+    NONE = 'none',
     ASCENDING = 'ascending',
     DESCENDING = 'descending'
 }

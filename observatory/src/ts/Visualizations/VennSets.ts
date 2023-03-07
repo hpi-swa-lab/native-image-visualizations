@@ -11,6 +11,7 @@ import { HierarchyNode } from 'd3'
 import { ColorScheme } from '../SharedTypes/Colors'
 import { formatBytes } from '../SharedTypes/Size'
 import { TooltipModel } from './TooltipModel'
+import { SortingOrder } from '../enums/Sorting'
 
 type Group = d3.InternMap<string, d3.InternMap<Node, number>>
 type NodeData = [string, d3.InternMap<Node, number>]
@@ -24,20 +25,26 @@ export class VennSets implements MultiverseVisualization {
     colorScheme: ColorScheme = []
     selection: Node[] = []
     highlights: Node[] = []
+
     private multiverse: Multiverse = new Multiverse([])
     private layer = Layers.PACKAGES
+    private nodeHierarchy: HierarchyNode<Group> = d3.hierarchy([] as unknown as Group)
+
     private container: any
     private tooltip: TooltipModel
+    private sortingOrder: SortingOrder = SortingOrder.NONE
 
     constructor(
         containerSelector: string,
         layer: Layers,
         colorScheme: ColorScheme,
-        tooltip: TooltipModel
+        tooltip: TooltipModel,
+        sortingOrder: SortingOrder
     ) {
         this.layer = layer
         this.colorScheme = colorScheme
         this.tooltip = tooltip
+        this.sortingOrder = sortingOrder
 
         this.initializeContainer(containerSelector)
         this.initializeZoom()
@@ -61,6 +68,25 @@ export class VennSets implements MultiverseVisualization {
     public setLayer(layer: Layers): void {
         this.layer = layer
         this.redraw()
+    }
+
+    public sort(sortingOrder: SortingOrder) {
+        this.sortingOrder = sortingOrder
+        this.nodeHierarchy.sort(this.comparatorBySortingOrder(sortingOrder))
+        this.circlePack(this.nodeHierarchy)
+
+        this.container
+            .selectAll('circle')
+            .transition()
+            .duration(TRANSITION_DURATION)
+            .ease(d3.easeCircleInOut)
+            .attr('cx', (leaf: PackedHierarchyLeaf) => leaf.x)
+            .attr('cy', (leaf: PackedHierarchyLeaf) => leaf.y)
+
+        this.container
+            .selectAll('.label')
+            .attr('x', (node: PackedHierarchyNode) => node.x)
+            .attr('y', (node: PackedHierarchyNode) => (node.y ?? 0) - node.r)
     }
 
     private redraw() {
@@ -122,7 +148,7 @@ export class VennSets implements MultiverseVisualization {
     }
 
     private circlePack(root: HierarchyNode<Group>): void {
-        d3.pack().size([this.containerWidth(), this.containerHeight()]).padding(3)(root)
+        d3.pack().size([this.containerWidth(), this.containerHeight()]).padding(5)(root)
     }
 
     private asHTML(leaf: PackedHierarchyLeaf): string {
@@ -146,7 +172,25 @@ export class VennSets implements MultiverseVisualization {
             (node: Node) => node
         )
 
-        return d3.hierarchy(groups).sum((node: Group) => (node as unknown as LeafData)[1])
+        this.nodeHierarchy = d3
+            .hierarchy(groups)
+            .sum((node: Group) => (node as unknown as LeafData)[1])
+            .sort(this.comparatorBySortingOrder(this.sortingOrder))
+
+        return this.nodeHierarchy
+    }
+
+    private comparatorBySortingOrder(sortingOrder: SortingOrder) {
+        switch (sortingOrder) {
+            case SortingOrder.ASCENDING:
+                return (a: any, b: any) => a.value - b.value
+            case SortingOrder.DESCENDING:
+                return (a: any, b: any) => b.value - a.value
+            default:
+                // Reason for disable: Neutral comparator always returns 0
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                return (_a: any, _b: any) => 0
+        }
     }
 
     private initializeContainer(containerSelector: string) {
@@ -188,7 +232,7 @@ export class VennSets implements MultiverseVisualization {
         circles.style(style, unselected)
         selection.forEach((selectedNode: Node) =>
             this.container
-                .select(`circle[id='${selectedNode.name}']`)
+                .selectAll(`circle[id='${selectedNode.name}']`)
                 .transition()
                 .duration(TRANSITION_DURATION)
                 .style(style, selected)
