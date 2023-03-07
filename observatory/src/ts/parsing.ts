@@ -8,9 +8,9 @@
  * accessing them.
  */
 import { Bytes } from './SharedTypes/Size'
-import { Leaf, InitKind } from './UniverseTypes/Leaf'
-import { Universe } from './UniverseTypes/Universe'
+import { InitKind, Leaf } from './UniverseTypes/Leaf'
 import { Node } from './UniverseTypes/Node'
+import { Universe } from './UniverseTypes/Universe'
 
 type Methods = {
     [methodName: string]: { size: Bytes; flags?: string[] }

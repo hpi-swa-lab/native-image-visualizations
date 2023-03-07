@@ -1,22 +1,21 @@
 import { defineStore } from 'pinia'
-import { Universe } from './UniverseTypes/Universe'
-import { createConfigUniverses, createConfigSelections, createConfigHighlights } from './parsing'
-import { SwappableComponentType, componentName } from './enums/SwappableComponentType'
-import { findNodesWithIdentifier } from './Math/filters'
-import { SortingOption, SortingOrder } from './enums/Sorting'
+import resolveConfig from 'tailwindcss/resolveConfig'
 import { Layers } from './enums/Layers'
-import { Node } from './UniverseTypes/Node'
+import { SortingOption, SortingOrder } from './enums/Sorting'
+import { componentName, SwappableComponentType } from './enums/SwappableComponentType'
+import { findNodesWithIdentifier } from './Math/filters'
+import { createConfigHighlights, createConfigSelections, createConfigUniverses } from './parsing'
+import { ColorScheme } from './SharedTypes/Colors'
 import { NodesDiffingFilter, NodesFilter, NodesSortingFilter } from './SharedTypes/NodesFilter'
 import { Multiverse } from './UniverseTypes/Multiverse'
-import { ColorScheme } from './SharedTypes/Colors'
-
+import { Node } from './UniverseTypes/Node'
+import { Universe } from './UniverseTypes/Universe'
 // Reason: Vite does not support commonJS out of box. In the vite.config, the commonjs plugin
 // transpiles the cjs to ts, but the transpilation and mapping happens during run time.
 // Thus, the system cannot find a declaration file for the module statically.
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import tailwindConfig from '../../tailwind.config.cjs'
-import resolveConfig from 'tailwindcss/resolveConfig'
 const cssConfig = resolveConfig(tailwindConfig)
 
 export const globalConfigStore = defineStore('globalConfig', {

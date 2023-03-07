@@ -1,4 +1,5 @@
 import { HIERARCHY_NAME_SEPARATOR } from '../globals'
+import { mapEquals } from '../Math/Maps'
 import { UniverseIndex } from '../SharedTypes/Indices'
 import { Bytes } from '../SharedTypes/Size'
 
@@ -131,10 +132,7 @@ export class Node {
             this.children.every((child: Node, index: number) =>
                 child.equalsIgnoringParents(another.children[index])
             ) &&
-            Array.from(this.sources.entries()).every(([id, node]) => {
-                const other = another.sources.get(id)
-                return other && node.equals(other)
-            })
+            mapEquals(this.sources, another.sources, (a, b) => a.equals(b))
         )
     }
 
