@@ -466,7 +466,9 @@ export class SankeyTree implements MultiverseVisualization {
             .attr('stroke-width', (d: any) => Math.max(1, inMB(d.target.data.codeSize) * dx))
             .attr('stroke', (d: any) =>
                 this.modifiedNodes.includes(d.target.data)
-                    ? this.sankeyStore.colorModified
+                    ? (d.target.data.sources.size === 1
+                        ? this.metadata[d.target.data.sources.keys().next().value].color
+                        : this.sankeyStore.colorModified)
                     : this.sankeyStore.colorUnmodified
             )
     }
