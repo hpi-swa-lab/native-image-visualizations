@@ -10,6 +10,7 @@ export class Node {
     protected _children: Node[]
     protected _codeSize: Bytes = INVALID_SIZE
     protected _sources: Map<UniverseIndex, Node> = new Map()
+    protected _identifier: string | undefined
 
     constructor(
         name: string,
@@ -31,13 +32,13 @@ export class Node {
     }
 
     get identifier(): string {
-        let path = this.name
-        let parent: Node | undefined = this.parent
-        while (parent != undefined) {
-            path = parent.name + HIERARCHY_NAME_SEPARATOR + path
-            parent = parent.parent
+        if (this._identifier) return this._identifier
+
+        this._identifier = this.name
+        if (this.parent) {
+            this._identifier = this.parent.identifier + HIERARCHY_NAME_SEPARATOR + this.name
         }
-        return path
+        return this._identifier
     }
 
     get parent(): Node | undefined {
