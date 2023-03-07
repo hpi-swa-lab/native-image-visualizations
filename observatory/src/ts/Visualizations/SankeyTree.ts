@@ -31,8 +31,8 @@ let dy = 0
 export class SankeyTree implements MultiverseVisualization {
     sankeyStore = sankeyTreeConfigStore()
     colorScheme: ColorScheme = []
-    selection: Node[] = []
-    highlights: Node[] = []
+    selection: Set<string> = new Set<string>()
+    highlights: Set<string> = new Set<string>()
     private multiverse: Multiverse = new Multiverse([])
     private metadata: UniverseMetadata = {}
     private layer = Layers.PACKAGES
@@ -59,17 +59,15 @@ export class SankeyTree implements MultiverseVisualization {
         // todo show loading screen while computing everything
         if(multiverse.sources.length < 3) {
             this.multiverse = multiverse
-            
             this.rebuildAndDrawTree(multiverse, this.layer)
-            console.log('fully finished')
         }
     }
 
-    setHighlights(highlights: Node[]): void {
+    setHighlights(highlights: Set<string>): void {
         // todo
     }
 
-    setSelection(selection: Node[]): void {
+    setSelection(selection: Set<string>): void {
         // todo
     }
 
@@ -163,10 +161,8 @@ export class SankeyTree implements MultiverseVisualization {
     }
 
     private buildTree(multiverse: Multiverse, layer: Layers): Tree {
-
         this.modifiedNodes = []
         this.filteredNodes = []
-        console.log('multiverse', multiverse)
 
         const nodeTree: Node = new Node('root', [])
 

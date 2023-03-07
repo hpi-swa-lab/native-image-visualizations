@@ -4,13 +4,12 @@ import COLORS from '../../ts/constants/ColorPalette'
 import SankeyTreeControls from '../controls/SankeyTreeControls.vue'
 import {SankeyTree} from '../../ts/Visualizations/SankeyTree';
 import {globalConfigStore} from '../../ts/stores';
-import {Node} from '../../ts/UniverseTypes/Node';
 import {computed, onMounted, ref, watch} from 'vue';
 import {Multiverse} from '../../ts/UniverseTypes/Multiverse';
 import {EventType} from '../../ts/enums/EventType';
 import {SwappableComponentType} from '../../ts/enums/SwappableComponentType';
 import {ColorScheme} from '../../ts/SharedTypes/Colors';
-import {UniverseMetadata} from "../../ts/SharedTypes/SankeyTree";
+import {UniverseMetadata} from '../../ts/SharedTypes/SankeyTree';
 
 const emit = defineEmits([EventType.CHANGE])
 const store = globalConfigStore()
@@ -46,14 +45,14 @@ watch(currentLayer, (newLayer) => {
 watch(
     highlights,
     (newHighlights) => {
-        visualization.setHighlights(Object.values(newHighlights)[0] as Node[])
+        visualization.setHighlights(newHighlights as Set<string>)
     },
     { deep: true }
 )
 watch(
     selection,
     (newSelection) => {
-        visualization.setSelection(Object.values(newSelection)[0] as Node[])
+        visualization.setSelection(newSelection as Set<string>)
     },
     { deep: true }
 )
