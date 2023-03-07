@@ -5,239 +5,13 @@ import {Remote} from 'comlink';
 import {
     DetailedSimulationResult, IncrementalSimulationResult,
     PurgeTreeNode,
-    ReachabilityHyperpathEdge,
-    RecursiveNode
+    ReachabilityHyperpathEdge
 } from '../Causality/CausalityGraph';
-import {CausalityGraphUniverse, ReachabilityJson} from '../UniverseTypes/CausalityGraphUniverse';
+import {CausalityGraphUniverse, FullyHierarchicalNode, ReachabilityJson} from '../UniverseTypes/CausalityGraphUniverse';
 
 function assert(cond: boolean): asserts cond {
     if(!cond)
         throw new Error('Assertion failed!')
-}
-
-function getMethodCodesizeDictFromReachabilityJson(data: ReachabilityJson) {
-    const dict: { [fullyQualifiedName: string]: number } = {}
-
-    for (const toplevel of data) {
-        for (const [packageName, pkg] of Object.entries(toplevel.packages)) {
-            for (const [typeName, type] of Object.entries(pkg.types)) {
-                for (const [methodName, method] of Object.entries(type.methods)) {
-                    const fullyQualifiedName = `${packageName}.${typeName}.${methodName}`
-                    dict[fullyQualifiedName] = method.size
-                }
-            }
-        }
-    }
-
-    return dict
-}
-
-interface TrieNode<Value>
-{
-    val?: Value
-    next: { [c: string]: TrieNode<Value> }
-}
-
-class Trie<Value> {
-    root: TrieNode<Value> = { next: {} }
-
-    constructor(dict: { [name: string]: Value }) {
-        for (const [k, v] of Object.entries(dict))
-            this.add(k, v)
-    }
-
-    add(key: string, value: Value) {
-        let node: TrieNode<Value> = this.root
-        for (const c of key) {
-            if (!node.next[c]) {
-                node.next[c] = { next: {} }
-            }
-            node = node.next[c]
-        }
-        node.val = value
-    }
-
-    find(str: string) {
-        let node = this.root
-        let val = undefined
-        for (const c of str) {
-            if (!node.next[c])
-                return val
-            node = node.next[c]
-            if (node.val)
-                val = node.val
-        }
-        return val
-    }
-}
-
-interface InternalNode
-{
-    parent: InternalNode | undefined
-    exact_cg_node?: number
-    main?: boolean
-    synthetic?: boolean
-    cg_nodes: number[]
-    fullname?: string
-    name: string
-    children: InternalNode[]
-    size: number // transitive size of subtree
-    cg_only?: boolean
-}
-
-function generateHierarchyFromReachabilityJsonAndMethodList(json: ReachabilityJson, cgNodes: string[]) {
-    const dict: InternalNode = { children: [], cg_nodes: [], size: 0, name: '', parent: undefined }
-    const system: InternalNode = { children: [], cg_nodes: [], name: 'system', size: 0, parent: dict }
-    const user: InternalNode = { children: [], cg_nodes: [], name: 'user', size: 0, parent: dict }
-    const main: InternalNode = { children: [], cg_nodes: [], name: 'main', size: 0, parent: dict}
-
-    const prefixToNode: { [prefix: string]: InternalNode & { fullname: string } } = {}
-
-    for (const toplevel of json) {
-        let l1name = 'ϵ'
-        let l1fullname = ''
-        const isSystem = toplevel.flags && toplevel.flags.includes('system')
-
-        let display_path = toplevel.path
-        if (display_path && display_path.endsWith('.jar')) {
-            const index = display_path.lastIndexOf('/')
-            if (index !== -1) {
-                display_path = display_path.substring(index+1)
-            }
-        }
-
-        if (toplevel.path && toplevel.module) {
-            l1name = display_path + ':' + toplevel.module
-            l1fullname = toplevel.path + ':' + toplevel.module
-        } else if(display_path && toplevel.path) {
-            l1name = display_path
-            l1fullname = toplevel.path
-        } else if(toplevel.module) {
-            l1name = toplevel.module
-            l1fullname = toplevel.module
-        }
-
-        const l1 = { children: [], name: l1name, fullname: l1fullname, cg_nodes: [], system: isSystem, size: 0, parent: isSystem ? system : user }
-        if (toplevel.path) {
-            prefixToNode[toplevel.path] = l1
-        }
-
-        if(isSystem)
-            system.children.push(l1)
-        else
-            user.children.push(l1)
-
-        for (const [packageName, pkg] of Object.entries(toplevel.packages)) {
-            let prefix = ''
-            let l2: InternalNode = l1
-
-            if(packageName.length !== 0) {
-                for (const subPackageName of packageName.split('.')) {
-                    prefix += subPackageName + '.'
-                    let next = l2.children.find(n => n.name === subPackageName)
-                    if(!next) {
-                        const newNode = { children: [], fullname: prefix, name: subPackageName, cg_nodes: [], parent: l2, size: 0 }
-                        /* Eigentlich sollten keine Causality-Graph-Knoten direkt in einem Package hängen.
-                         * Es gibt jedoch Knoten für Klassen, die nicht reachable sind (z.B. Build-Time-Features).
-                         * Diese müssen unbedingt in die Abschneide-Berechnung miteinbezogen werden.
-                         * Idealerweise sollten sie auch in der Baumstruktur auftauchen.
-                         * Das ist aber gerade noch zu kompliziert umzusetzen... */
-                        prefixToNode[newNode.fullname] = newNode
-                        l2.children.push(newNode)
-                        next = newNode
-                    }
-                    l2 = next
-                }
-            }
-
-            for (const [typeName, type] of Object.entries(pkg.types)) {
-                const l3: InternalNode & { fullname: string } = { fullname: prefix + typeName, name: typeName, cg_nodes: [], children: [], size: 0, parent: l2 }
-                if(type.flags?.includes('synthetic'))
-                    l3.synthetic = true
-                prefixToNode[l3.fullname] = l3
-                l2.children.push(l3)
-
-                for (const [methodName, method] of Object.entries(type.methods)) {
-                    const l4: InternalNode & { fullname: string } = { fullname: l3.fullname + '.' + methodName, name: methodName, cg_nodes: [], children: [], size: method.size, parent: l3 }
-                    if(method.flags?.includes('synthetic'))
-                        l4.synthetic = true
-                    prefixToNode[l4.fullname] = l4
-                    l3.children.push(l4)
-
-                    const flags = method.flags
-                    if(flags && flags.includes('main')) {
-                        l4.main = true
-                        assert(main.children.length === 0)
-                        user.children = user.children.filter(c => c !== l1)
-                        main.children.push(l1)
-                        l1.parent = main
-                    }
-
-                    for(let cur = l4.parent; cur; cur = cur.parent) {
-                        cur.size += method.size
-                    }
-                }
-            }
-        }
-    }
-
-    const trie = new Trie<InternalNode & { fullname: string }>(prefixToNode)
-
-    for (let i = 0; i < cgNodes.length; i++) {
-        const cgNodeName = cgNodes[i]
-        const node = trie.find(cgNodeName)
-        if (node) {
-            if (node.fullname === cgNodeName) {
-                node.exact_cg_node = i
-                node.cg_nodes.push(i)
-            } else {
-                let curNode = node
-                let offset = node.fullname.length
-                let name = cgNodeName.substring(offset).trimStart()
-                if (name.startsWith('.')) {
-                    offset += 1
-                    name = name.substring(1)
-                }
-                while(true) {
-                    const dotIndex = name.indexOf('.')
-                    const semanticChangingSymbols = ['(', '[', '/']
-                    const semanticChangingIndexes = semanticChangingSymbols.map(s => name.indexOf(s))
-
-                    if(dotIndex !== -1 && semanticChangingIndexes.every(i => i === -1 || i > dotIndex)) {
-                    } else {
-                        break
-                    }
-
-                    const newNode = { cg_only: true, fullname: cgNodeName.substring(0, offset + dotIndex), name: name.substring(0, dotIndex), cg_nodes: [], children: [], size: 0, parent: curNode }
-                    curNode.children.push(newNode)
-                    trie.add(newNode.fullname, newNode)
-
-                    offset += dotIndex + 1
-                    name = name.substring(dotIndex + 1)
-                    curNode = newNode
-                }
-
-                // Handle ".../reflect-config.json"
-                const pathSepIndex = name.lastIndexOf('/')
-                if (pathSepIndex !== -1) {
-                    name = name.substring(pathSepIndex+1)
-                }
-
-                const newNode = { cg_only: true, fullname: cgNodeName, name: name, cg_nodes: [i], exact_cg_node: i, children: [], size: 0, parent: curNode }
-                curNode.children.push(newNode)
-                trie.add(newNode.fullname, newNode)
-            }
-        }
-    }
-
-    if(user.children.length)
-        dict.children.push(user)
-    if(system.children.length)
-        dict.children.push(system)
-    if(main.children.length)
-        dict.children.push(main)
-
-    return dict
 }
 
 function formatByteSizesWithUnitPrefix(size: number) {
@@ -275,11 +49,11 @@ function forEachInStrictSubtreePostorder<TNode extends { children?: TNode[] }>(n
             forEachInSubtreePostorder(c, expandCallback, callback)
 }
 
-function collectCgNodesInSubtree(node: InternalNode): number[] {
+function collectCgNodesInSubtree(node: FullyHierarchicalNode): number[] {
     const group: number[] = []
     forEachInSubtree(node, u => {
-        if (u.cg_nodes)
-            group.push(...u.cg_nodes)
+        if(u.exact_cg_node)
+            group.push(u.exact_cg_node)
     })
     return group
 }
@@ -292,7 +66,7 @@ function collectCgNodesInSubtree(node: InternalNode): number[] {
 
 
 
-function expandClickHandler(element: HTMLElement, node: InternalNode, populateCallback: () => void) {
+function expandClickHandler(element: HTMLElement, node: FullyHierarchicalNode, populateCallback: () => void) {
     const expanded = element.classList.toggle('caret-down');
 
     if(!element.parentElement!.querySelector('.nested') && expanded) {
@@ -366,39 +140,38 @@ class Imageview {
 }
 
 
-function getDataRoot(node: InternalNode) {
-    let cur: InternalNode
+function getDataRoot(node: FullyHierarchicalNode) {
+    let cur: FullyHierarchicalNode
     for(cur = node; cur.parent; cur = cur.parent);
     return cur
 }
 
-function createPurgeNodeTree2(nodes: Set<InternalNode>, prepurgeNodes = new Set<InternalNode>()): [ PurgeTreeNode<number> | undefined, (InternalNode | undefined)[] ] {
-    if(nodes.size === 0)
+function createPurgeNodeTree2(queriedNodes: Set<FullyHierarchicalNode>, prepurgeNodes = new Set<FullyHierarchicalNode>()): [ PurgeTreeNode<number> | undefined, (FullyHierarchicalNode | undefined)[] ] {
+    if(queriedNodes.size === 0)
         return [undefined, []]
-    const root = getDataRoot([...nodes][0])
+    const root = getDataRoot([...queriedNodes][0])
 
-    const interestingNodes = new Set<InternalNode>()
-    const queriedNodes = new Set<InternalNode>(nodes)
+    const interestingNodes = new Set<FullyHierarchicalNode>()
 
-    for(const node of nodes) {
-        for(let cur: InternalNode | undefined = node; cur; cur = cur.parent) {
+    for(const node of queriedNodes) {
+        for(let cur: FullyHierarchicalNode | undefined = node; cur; cur = cur.parent) {
             interestingNodes.add(cur)
         }
     }
 
     // Find lowest common ancestor
     // Starting the batch from the lowest possible root improves performance
-    let lca: InternalNode = root
+    let lca: FullyHierarchicalNode = root
     while(!queriedNodes.has(lca) && lca.children.filter(c => interestingNodes.has(c)).length == 1) {
         lca = lca.children.find(c => interestingNodes.has(c))!
     }
 
-    const indexToSrcNode: InternalNode[] = []
+    const indexToSrcNode: FullyHierarchicalNode[] = []
     const tree = createPurgeNodeTree(lca, indexToSrcNode, v => prepurgeNodes.has(v) ? undefined : interestingNodes.has(v))
     return [tree, indexToSrcNode.map(d => queriedNodes.has(d) ? d : undefined)]
 }
 
-function createPurgeNodeTree(node: InternalNode, indexToSrcNode: InternalNode[], expandCallback: (v: InternalNode) => boolean | undefined): PurgeTreeNode<number> | undefined {
+function createPurgeNodeTree(node: FullyHierarchicalNode, indexToSrcNode: FullyHierarchicalNode[], expandCallback: (v: FullyHierarchicalNode) => boolean | undefined): PurgeTreeNode<number> | undefined {
     const root: PurgeTreeNode<number> = { token: indexToSrcNode.length }
     indexToSrcNode.push(node)
 
@@ -430,23 +203,23 @@ function createPurgeNodeTree(node: InternalNode, indexToSrcNode: InternalNode[],
 }
 
 class BatchPurgeScheduler {
-    callback?: (node: InternalNode, data: ReachabilityVector) => void
+    callback?: (node: FullyHierarchicalNode, data: ReachabilityVector) => void
     private purgedSizeBaseline: number | undefined
     private readonly codesizes: number[]
     private readonly cg: Remote<RemoteCausalityGraph>
-    private readonly prepurgeNodes: InternalNode[]
-    private waitlist: InternalNode[] = []
+    private readonly prepurgeNodes: FullyHierarchicalNode[]
+    private waitlist: FullyHierarchicalNode[] = []
     private runningBatch: Remote<IncrementalSimulationResult<number>> | undefined
-    private runningIndexToNode: (InternalNode | undefined)[] = []
+    private runningIndexToNode: (FullyHierarchicalNode | undefined)[] = []
 
-    constructor(cg: Remote<RemoteCausalityGraph>, codesizes: number[], purgedSizeBaseline: number | undefined, prepurgeNodes: InternalNode[] = []) {
+    constructor(cg: Remote<RemoteCausalityGraph>, codesizes: number[], purgedSizeBaseline: number | undefined, prepurgeNodes: FullyHierarchicalNode[] = []) {
         this.cg = cg
         this.codesizes = codesizes
         this.purgedSizeBaseline = purgedSizeBaseline
         this.prepurgeNodes = prepurgeNodes
     }
 
-    request(nodes: InternalNode[]) {
+    request(nodes: FullyHierarchicalNode[]) {
         this.waitlist.push(...nodes)
     }
 
@@ -502,7 +275,7 @@ class BatchPurgeScheduler {
 class PurgeScheduler {
     detailSelectedCallback: ((edges: ReachabilityHyperpathEdge[] | undefined) => void) | undefined
 
-    private _purgeSelectedMids: InternalNode[] = []
+    private _purgeSelectedMids: FullyHierarchicalNode[] = []
     private _detailSelectedMid: number | undefined
 
     private selectedSimulationResult: DetailedSimulationResult | undefined
@@ -515,7 +288,7 @@ class PurgeScheduler {
     private singleBatchScheduler: BatchPurgeScheduler
     private additionalBatchScheduler?: BatchPurgeScheduler
 
-    private _additionalPurgeCallback?: (node: InternalNode, data: ReachabilityVector) => void
+    private _additionalPurgeCallback?: (node: FullyHierarchicalNode, data: ReachabilityVector) => void
 
     private processingRunning = false
 
@@ -535,17 +308,17 @@ class PurgeScheduler {
         return this._detailSelectedMid
     }
 
-    set singlePurgeCallback(callback: (node: InternalNode, data: ReachabilityVector) => void) {
+    set singlePurgeCallback(callback: (node: FullyHierarchicalNode, data: ReachabilityVector) => void) {
         this.singleBatchScheduler.callback = callback
     }
 
-    set additionalPurgeCallback(callback: (node: InternalNode, data: ReachabilityVector) => void) {
+    set additionalPurgeCallback(callback: (node: FullyHierarchicalNode, data: ReachabilityVector) => void) {
         this._additionalPurgeCallback = callback
         if(this.additionalBatchScheduler)
             this.additionalBatchScheduler.callback = callback
     }
 
-    set purgeSelectedMids(nodes: InternalNode[]) {
+    set purgeSelectedMids(nodes: FullyHierarchicalNode[]) {
         this._purgeSelectedMids = nodes
         if(this._detailSelectedMid) {
             if(this.selectedSimulationResult) {
@@ -569,12 +342,12 @@ class PurgeScheduler {
         }
     }
 
-    requestSinglePurgeInfo(v: InternalNode[]) {
+    requestSinglePurgeInfo(v: FullyHierarchicalNode[]) {
         this.singleBatchScheduler.request(v)
         this.ensureProcessing()
     }
 
-    async requestAdditionalPurgeInfo(v: InternalNode[]) {
+    async requestAdditionalPurgeInfo(v: FullyHierarchicalNode[]) {
         if(this._purgeSelectedMids.length === 0)
             return
         if(!this.additionalBatchScheduler) {
@@ -589,6 +362,7 @@ class PurgeScheduler {
         this.processingRunning = true
         while(true) {
             if(this.detailNeedsUpdate) {
+                assert(this._detailSelectedMid !== undefined)
                 if(!this.selectedSimulationResult)
                     this.selectedSimulationResult = await this.cg.simulatePurgeDetailed(this._purgeSelectedMids.flatMap(v => [...new Set(collectCgNodesInSubtree(v))]))
                 const edges = await this.selectedSimulationResult.getReachabilityHyperpath(this._detailSelectedMid)
@@ -619,7 +393,7 @@ export class CutTool {
     methodList: string[]
     typeList: string[]
     all_reachable: Uint8Array
-    dataRoot: InternalNode
+    dataRoot: FullyHierarchicalNode
 
     maxCodeSize: number
     detailSelectedNode?: HTMLElement
@@ -628,11 +402,11 @@ export class CutTool {
     reachable_under_selection?: Uint8Array
     reachable_in_image_view?: Uint8Array // Also has the purges of current hover
     maxPurgedSize = 0
-    selectedForPurging: Set<InternalNode> = new Set()
+    selectedForPurging: Set<FullyHierarchicalNode> = new Set()
 
 
-    cutviewData: Map<InternalNode, CutViewData> = new Map<InternalNode, CutViewData>()
-    imageviewData : Map<InternalNode, ImageViewData> = new Map<InternalNode, ImageViewData>()
+    cutviewData: Map<FullyHierarchicalNode, CutViewData> = new Map<FullyHierarchicalNode, CutViewData>()
+    imageviewData : Map<FullyHierarchicalNode, ImageViewData> = new Map<FullyHierarchicalNode, ImageViewData>()
 
     constructor(universe: CausalityGraphUniverse, cg: any, allReachable: Uint8Array) {
         document.getElementById('main-panel')!.hidden = true
@@ -641,13 +415,8 @@ export class CutTool {
         const reachabilityData = universe.reachabilityData
         this.methodList = universe.cgNodeLabels
         this.typeList = universe.cgTypeLabels
-
-        const codesizesDict = getMethodCodesizeDictFromReachabilityJson(reachabilityData)
-        this.codesizes = new Array(this.methodList.length)
-
-        for(let i = 0; i < this.methodList.length; i++) {
-            this.codesizes[i] = codesizesDict[this.methodList[i]] ?? 0
-        }
+        this.codesizes = universe.codesizeByCgNodeLabels
+        this.dataRoot = universe.causalityRoot
 
         this.cg = cg
         this.reachable_in_image_view = this.reachable_under_selection = this.all_reachable = allReachable
@@ -696,8 +465,6 @@ export class CutTool {
             }
         }
 
-        this.dataRoot = generateHierarchyFromReachabilityJsonAndMethodList(reachabilityData, this.methodList)
-
         document.getElementById('loading-panel')!.hidden = true
         document.getElementById('main-panel')!.hidden = false
 
@@ -720,7 +487,7 @@ export class CutTool {
             list.classList.add('active')
         }
 
-        let mainMethod: InternalNode | undefined
+        let mainMethod: FullyHierarchicalNode | undefined
         forEachInSubtree(this.dataRoot, v => {
             if(v.main)
                 mainMethod = v
@@ -728,8 +495,8 @@ export class CutTool {
 
         if(mainMethod) {
 
-            const pathToMainMethod: InternalNode[] = []
-            for(let cur: InternalNode = mainMethod; cur.parent; cur = cur.parent) {
+            const pathToMainMethod: FullyHierarchicalNode[] = []
+            for(let cur: FullyHierarchicalNode = mainMethod; cur.parent; cur = cur.parent) {
                 pathToMainMethod.unshift(cur)
             }
 
@@ -770,7 +537,7 @@ export class CutTool {
 
 
 
-    private generateHtmlCutview(data: InternalNode) {
+    private generateHtmlCutview(data: FullyHierarchicalNode) {
         const ul = document.createElement('ul')
         ul.className = 'nested'
 
@@ -883,7 +650,7 @@ export class CutTool {
         return ul
     }
 
-    private generateHtmlImageview(data: InternalNode) {
+    private generateHtmlImageview(data: FullyHierarchicalNode) {
         const ul = document.createElement('ul')
         ul.className = 'nested'
 
@@ -1021,7 +788,7 @@ export class CutTool {
         }
     }
 
-    private async recalculateCutOverviewForSubtree(node: InternalNode) {
+    private async recalculateCutOverviewForSubtree(node: FullyHierarchicalNode) {
         this.ps.requestSinglePurgeInfo(node.children)
 
         if (this.precomputeCutoffs && this.selectedForPurging.size > 0) {
@@ -1049,7 +816,7 @@ export class CutTool {
         forEachInStrictSubtreePostorder(this.dataRoot, u => this.imageviewData.get(u) !== undefined, u => this.refreshPurgeValueForImageviewNode(u))
     }
 
-    private refreshPurgeValueForImageviewNode(u: InternalNode) {
+    private refreshPurgeValueForImageviewNode(u: FullyHierarchicalNode) {
         const still_reachable = this.reachable_in_image_view ?? this.all_reachable
 
         const uImageviewData = this.imageviewData.get(u)
