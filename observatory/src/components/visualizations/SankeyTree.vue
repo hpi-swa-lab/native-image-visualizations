@@ -3,7 +3,7 @@ import MainLayout from '../layouts/MainLayout.vue'
 import COLORS from '../../ts/constants/ColorPalette'
 import SankeyTreeControls from '../controls/SankeyTreeControls.vue'
 import {SankeyTree} from '../../ts/Visualizations/SankeyTree';
-import {globalConfigStore, sankeyTreeConfigStore} from '../../ts/stores';
+import {globalConfigStore} from '../../ts/stores';
 import {Node} from '../../ts/UniverseTypes/Node';
 import {computed, onMounted, ref, watch} from 'vue';
 import {Multiverse} from '../../ts/UniverseTypes/Multiverse';

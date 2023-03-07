@@ -5,16 +5,11 @@ import {MultiverseVisualization} from './MultiverseVisualization';
 import {ColorScheme} from '../SharedTypes/Colors';
 import {Multiverse} from '../UniverseTypes/Multiverse';
 import {Layers} from '../enums/Layers';
-import {Leaf} from '../UniverseTypes/Leaf';
 import {sankeyTreeConfigStore} from '../stores';
 import {NodesFilter} from '../SharedTypes/NodesFilter';
-import {UniverseProps} from '../interfaces/UniverseProps';
 import {ContainerSelections, NodeTextPositionOffset, Tree, UniverseMetadata} from '../SharedTypes/SankeyTree';
-import {
-    countPrivateLeaves,
-    createApplyFilterEvent,
-} from './utils/SankeyTreeUtils';
 import {getNodesOnLevel} from '../Math/filters';
+import {Bytes, inMB, inMB, inMB} from '../SharedTypes/Size';
 
 export const UNMODIFIED = 'UNMODIFIED'
 
@@ -51,7 +46,7 @@ export class SankeyTree implements MultiverseVisualization {
     }
     setMultiverse(multiverse: Multiverse): void {
         // todo show loading screen while computing everything
-        if(multiverse.sources.length === 2) {
+        if(multiverse.sources.length < 3) {
             // rebuild everything
             // todo
             this.multiverse = multiverse
@@ -59,7 +54,8 @@ export class SankeyTree implements MultiverseVisualization {
             this.tree = this.buildTree(multiverse, this.layer)
 
             this.updateTree(
-                createApplyFilterEvent(this.sankeyStore.nodesFilter),
+                // createApplyFilterEvent(this.sankeyStore.nodesFilter),
+                null,
                 this.tree.root,
                 this.tree,
                 this.containerSelections,
@@ -82,7 +78,8 @@ export class SankeyTree implements MultiverseVisualization {
         this.layer = layer
         this.tree = this.buildTree(this.multiverse, layer)
         this.updateTree(
-            createApplyFilterEvent(this.sankeyStore.nodesFilter),
+            // createApplyFilterEvent(this.sankeyStore.nodesFilter),
+            null,
             this.tree.root,
             this.tree ?? {} as Tree,
             this.containerSelections,
@@ -132,31 +129,8 @@ export class SankeyTree implements MultiverseVisualization {
                 .append('g')
                 .attr('cursor', 'pointer')
                 .attr('pointer-events', 'all'),
-            // tooltip: d3
-            //     .select('body')
-            //     .append('div')
-            //     .style('opacity', 0)
-            //     .attr('class', 'tooltip')
-            //     .style('background-color', 'white')
-            //     .style('border', 'solid')
-            //     .style('border-width', '2px')
-            //     .style('border-radius', '5px')
-            //     .style('padding', '5px')
-            //     .style('position', 'absolute')
         }
     }
-
-    // private getAllLeafNodes(node: Node): Set<Node> {
-    //     const leafNodes: Set<Node> = new Set()
-    //     if (node.children.length === 0) {
-    //         leafNodes.add(node as Leaf);
-    //     } else {
-    //         for (const child of node.children) {
-    //             this.getAllLeafNodes(child).forEach(item => leafNodes.add(item));
-    //         }
-    //     }
-    //     return leafNodes;
-    // }
 
     // #############################################################################################
     // ### BUILD TREE HELPER FUNCTIONS #############################################################
@@ -180,6 +154,7 @@ export class SankeyTree implements MultiverseVisualization {
             })
 
         }
+        nodeTree.codeSize = nodeTree.children.reduce((sum: number, child: Node) => sum + child.codeSize, 0)
 
         const tree: Tree = {
             layout: d3
@@ -199,12 +174,6 @@ export class SankeyTree implements MultiverseVisualization {
         console.log('modifiedNodes', this.modifiedNodes)
         console.log('filteredNodes', this.filteredNodes)
 
-        this.tree.root.descendants().forEach((d: any, i: number) => {
-            d.id = i
-            d._children = d.children
-            // FIXME ? only expand first level of children
-            // if (d.depth > 0) d.children = null; // only expand the first level of children
-        })
         return tree
     }
 
@@ -222,6 +191,8 @@ export class SankeyTree implements MultiverseVisualization {
                     node.sources.keys().next().value,
                     node.sources.values().next().value
                 )
+                child.codeSize = child.codeSize + node.codeSize
+
                 // FIXME set correct codeSize in child (right now only node A's codesize is stored in the merged node)
             } else {
                 child = new Node(pathSegments[i], [], current, node.codeSize)
@@ -246,6 +217,7 @@ export class SankeyTree implements MultiverseVisualization {
         if (node.parent !== undefined) this.markNodeModified(node.parent)
     }
 
+    // FIXME needs to be looked at
     private filterNodesFromLeaves(leaves: Node[], filter: NodesFilter) {
         for (const leave of leaves) {
             if (leave.sources.size < 1) continue
@@ -293,6 +265,13 @@ export class SankeyTree implements MultiverseVisualization {
         // Compute the new treeLayout layout.
         tree.layout(tree.root)
 
+        this.tree.root.descendants().forEach((d: any, i: number) => {
+            d.id = i
+            d._children = d.children
+            // FIXME ? only expand first level of children
+            // if (d.depth > 0) d.children = null; // only expand the first level of children
+        })
+
         const nodes = tree.root.descendants().reverse()
         const links = tree.root.links().filter((link) =>
             this.filteredNodes.includes(link.target.data)
@@ -307,13 +286,14 @@ export class SankeyTree implements MultiverseVisualization {
         // TODO needed or can be removed?
         // console.debug(`${nodes.length} nodes, ${links.length} links visible`)
 
-        // figure out the most left and most right node in a top-down treeLayout
-        let left: any = tree.root
-        let right: any = tree.root
-        tree.root.eachBefore((node: any) => {
-            if (node.x < left.x) left = node
-            if (node.x > right.x) right = node
-        })
+        // TODO may be useful when wanting to set the viewbox on init
+        // // figure out the most left and most right node in a top-down treeLayout
+        // let left: any = tree.root
+        // let right: any = tree.root
+        // tree.root.eachBefore((node: any) => {
+        //     if (node.x < left.x) left = node
+        //     if (node.x > right.x) right = node
+        // })
 
         // define a transition
         const transition = containerSelections.zoomG
@@ -329,10 +309,9 @@ export class SankeyTree implements MultiverseVisualization {
         // Update the nodes…
         const node = containerSelections.gNode.selectAll('g').data(nodes, (d: any) => d.id)
 
-        console.log('drawing viz')
         const nodeEnter = this.enterNode(node, sourceNode, (evt: MouseEvent, d: any) => {
             // toggle(d, evt.shiftKey)
-            this.updateTree(evt, d, tree, containerSelections, universeMetadata)
+            // this.updateTree(evt, d, tree, containerSelections, universeMetadata)
         })
         const nodeEnterShape = this.appendShapeToNode(nodeEnter, universeMetadata)
         // nodeEnterShape
@@ -382,13 +361,20 @@ export class SankeyTree implements MultiverseVisualization {
 
     private appendShapeToNode(nodeEnter: any, universeMetadata: UniverseMetadata) {
         const minSize = 20
+        const getBarHeight = (b: Bytes) => {
+            // const res = Math.max(minSize, (inMB(b) * minSize));
+            const res = minSize + (inMB(b) * minSize);
+            return res
+        }
+
+
         return nodeEnter
             .append('rect')
             .attr('width', function () {
                 return minSize
             })
-            .attr('height', (d: any) => (d._children ? minSize + d.data.codeSize : minSize))
-            .attr('y', (d: any) => (d.data ? -(d.data.codeSize + minSize) / 2 : 0))
+            .attr('height', (d: any) => getBarHeight(d.data.codeSize))
+            .attr('y', (d: any) => (d.data ? -(getBarHeight(d.data.codeSize)) / 2 : 0))
             .style('fill', (d: HierarchyPointNode<Node>) => {
                 if (d.data.sources.size == 1) {
                     return universeMetadata[Array.from(d.data.sources.keys())[0]]?.color
@@ -400,9 +386,9 @@ export class SankeyTree implements MultiverseVisualization {
             })
     }
 
-    private appendTextToNode(node: any) {
+    private appendTextToNode(nodeEnter: any) {
         const positionOffset = this.getNodeTextPositionOffset()
-        return node
+        return nodeEnter
             .append('text')
             .attr('dy', '0.31em')
             .attr('x', (d: any) => (d._children ? positionOffset.start : positionOffset.end))
@@ -457,8 +443,7 @@ export class SankeyTree implements MultiverseVisualization {
                 const o = { x: sourceNode.x0, y: sourceNode.y0 }
                 return linkGenerator({ source: o, target: o })
             })
-            // .attr('stroke-width', (d: any) => d.target.data.codeSize) // FIXME
-            .attr('stroke-width', (d: any) => 5) // 5
+            .attr('stroke-width', (d: any) => Math.max(1, inMB(d.target.data.codeSize) * dx))
             .attr('stroke', (d: any) =>
                 this.modifiedNodes.includes(d.target.data)
                     ? this.sankeyStore.colorModified
@@ -481,13 +466,13 @@ export class SankeyTree implements MultiverseVisualization {
                 let sourceX = d.source.children
                     .map((child: any, index: number) => {
                         if (index >= targetsIndex) return 0
-                        return child.data ? child.data.codeSize : 0
+                        return child.data ? inMB(child.data.codeSize) : 0
                     })
                     .reduce((a: any, b: any, c: number) => {
                         return a + b
                     })
-                sourceX += d.source.x - d.source.data.codeSize / 2
-                sourceX += d.target.data.codeSize / 2
+                sourceX += d.source.x - inMB(d.source.data.codeSize) / 2
+                sourceX += inMB(d.target.data.codeSize) / 2
                 const source = { x: sourceX, y: d.source.y0 }
                 return linkGenerator({ source: source, target: d.target })
             })
@@ -514,12 +499,13 @@ export class SankeyTree implements MultiverseVisualization {
         a: HierarchyPointNode<unknown>,
         b: HierarchyPointNode<unknown>,
         dx: number) {
-        const totalWidth = countPrivateLeaves(a) + countPrivateLeaves(b)
-        return totalWidth / dx + 1
-        return 0
+        const totalWidth = a.data.codeSize + b.data.codeSize
+
+        // const res = Math.max(1, inMB(totalWidth)/2)
+        const res = inMB(totalWidth)/2/dx + 1.1
+        return res
     }
 
-    // FIXME can be removed or moved?
     private getNodeTextPositionOffset(): NodeTextPositionOffset {
         return {
             start: -6,
