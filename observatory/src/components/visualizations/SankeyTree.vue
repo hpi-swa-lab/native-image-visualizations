@@ -3,7 +3,7 @@ import MainLayout from '../layouts/MainLayout.vue'
 import COLORS from '../../ts/constants/ColorPalette'
 import SankeyTreeControls from '../controls/SankeyTreeControls.vue'
 import { SankeyTree } from '../../ts/Visualizations/SankeyTree'
-import { globalConfigStore } from '../../ts/stores'
+import {globalConfigStore, sankeyTreeConfigStore} from '../../ts/stores'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { Multiverse } from '../../ts/UniverseTypes/Multiverse'
 import { EventType } from '../../ts/enums/EventType'
@@ -15,6 +15,7 @@ import Tooltip from '../controls/Tooltip.vue'
 
 const emit = defineEmits([EventType.CHANGE])
 const store = globalConfigStore()
+const sankeyStore = sankeyTreeConfigStore()
 
 const container = ref<HTMLDivElement>()
 
@@ -24,6 +25,8 @@ const multiverse = computed(() => store.multiverse)
 const currentLayer = computed(() => store.currentLayer)
 const highlights = computed(() => store.highlights)
 const selection = computed(() => store.selections)
+
+const nodesFilter = computed(() => sankeyStore.nodesFilter)
 
 const metadata = ref<UniverseMetadata>(
     createUniverseMetadata(store.multiverse as Multiverse, store.colorScheme)
@@ -65,9 +68,16 @@ watch(
     { deep: true }
 )
 
+watch(
+    nodesFilter,
+    () => {
+        visualization.handleNodesFilterChanged()
+    },
+    { deep: true }
+)
+
 function createUniverseMetadata(multiverse: Multiverse, colorScheme: ColorScheme) {
     const metadata: UniverseMetadata = {}
-
     multiverse.sources.forEach((universe, index) => {
         metadata[index] = {
             name: universe.name,
@@ -89,7 +99,6 @@ function createUniverseMetadata(multiverse: Multiverse, colorScheme: ColorScheme
         <template #controls>
             <SankeyTreeControls
                 :universes-metadata="metadata"
-                @change="visualization.handleNodesFilterChanged()"
             ></SankeyTreeControls>
         </template>
 

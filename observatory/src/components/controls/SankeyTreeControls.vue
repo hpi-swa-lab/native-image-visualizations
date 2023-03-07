@@ -16,12 +16,7 @@ withDefaults(
     }
 )
 
-const emit = defineEmits([EventType.CHANGE, EventType.EXPAND_TREE])
-
-function onChange(event: MouseEvent): void {
-    event.preventDefault()
-    emit(EventType.CHANGE, event)
-}
+const emit = defineEmits([EventType.EXPAND_TREE])
 </script>
 
 <template>
@@ -33,12 +28,11 @@ function onChange(event: MouseEvent): void {
 
             <SortingFilterFieldset />
 
-            <button type="submit" class="btn btn-sm btn-primary" @click="onChange">update</button>
-
+<!--            TODO maybe remove-->
             <button
                 id="expand-tree-btn"
                 type="button"
-                class="btn btn-light m-2"
+                class="btn btn-light"
                 @click="emit(EventType.EXPAND_TREE, $event)"
             >
                 expand full tree
