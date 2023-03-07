@@ -9,7 +9,7 @@ import {sankeyTreeConfigStore} from '../stores';
 import {NodesFilter} from '../SharedTypes/NodesFilter';
 import {ContainerSelections, NodeTextPositionOffset, Tree, UniverseMetadata} from '../SharedTypes/SankeyTree';
 import {getNodesOnLevel} from '../Math/filters';
-import {Bytes, inMB, inMB, inMB} from '../SharedTypes/Size';
+import {Bytes, inMB} from '../SharedTypes/Size';
 
 export const UNMODIFIED = 'UNMODIFIED'
 
@@ -466,13 +466,13 @@ export class SankeyTree implements MultiverseVisualization {
                 let sourceX = d.source.children
                     .map((child: any, index: number) => {
                         if (index >= targetsIndex) return 0
-                        return child.data ? inMB(child.data.codeSize) : 0
+                        return child.data ? inMB(child.data.codeSize)*dx : 0
                     })
                     .reduce((a: any, b: any, c: number) => {
                         return a + b
                     })
-                sourceX += d.source.x - inMB(d.source.data.codeSize) / 2
-                sourceX += inMB(d.target.data.codeSize) / 2
+                sourceX += d.source.x - inMB(d.source.data.codeSize)*dx / 2
+                sourceX += inMB(d.target.data.codeSize)*dx / 2
                 const source = { x: sourceX, y: d.source.y0 }
                 return linkGenerator({ source: source, target: d.target })
             })
@@ -502,7 +502,7 @@ export class SankeyTree implements MultiverseVisualization {
         const totalWidth = a.data.codeSize + b.data.codeSize
 
         // const res = Math.max(1, inMB(totalWidth)/2)
-        const res = inMB(totalWidth)/2/dx + 1.1
+        const res = inMB(totalWidth)/2/dx + 1.2
         return res
     }
 
