@@ -170,6 +170,13 @@ export interface FullyHierarchicalNode
     cg_nodes: number[]
 }
 
+function computeCodesizePartialSum(root: FullyHierarchicalNode) {
+    for(const child of root.children) {
+        computeCodesizePartialSum(child)
+        root.size += child.size
+    }
+}
+
 function generateHierarchyFromReachabilityJsonAndMethodList(json: ReachabilityJson, cgNodes: string[]) {
     const dict: FullyHierarchicalNode = { children: [], cg_nodes: [], size: 0, name: '', parent: undefined }
     const system: FullyHierarchicalNode = { children: [], cg_nodes: [], name: 'system', size: 0, parent: dict }
@@ -182,6 +189,7 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json: ReachabilityJs
         let l1name = 'ϵ'
         let l1fullname = ''
         const isSystem = toplevel.flags && toplevel.flags.includes('system')
+        let containsMain = false
 
         let display_path = toplevel.path
         if (display_path && display_path.endsWith('.jar')) {
@@ -202,15 +210,10 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json: ReachabilityJs
             l1fullname = toplevel.module
         }
 
-        const l1 = { children: [], name: l1name, fullname: l1fullname, cg_nodes: [], system: isSystem, size: 0, parent: isSystem ? system : user }
+        const l1: FullyHierarchicalNode & {fullname: string} = { children: [], name: l1name, fullname: l1fullname, cg_nodes: [], size: 0, parent: undefined }
         if (toplevel.path) {
             prefixToNode[toplevel.path] = l1
         }
-
-        if(isSystem)
-            system.children.push(l1)
-        else
-            user.children.push(l1)
 
         for (const [packageName, pkg] of Object.entries(toplevel.packages)) {
             let prefix = ''
@@ -252,18 +255,15 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json: ReachabilityJs
                     const flags = method.flags
                     if(flags && flags.includes('main')) {
                         l4.main = true
-                        assert(main.children.length === 0)
-                        user.children = user.children.filter(c => c !== l1)
-                        main.children.push(l1)
-                        l1.parent = main
-                    }
-
-                    for(let cur = l4.parent; cur; cur = cur.parent) {
-                        cur.size += method.size
+                        containsMain = true
                     }
                 }
             }
         }
+
+        const l0: FullyHierarchicalNode = containsMain ? main : isSystem ? system : user
+        l0.children.push(l1)
+        l1.parent = l0
     }
 
     const trie = new Trie<FullyHierarchicalNode & { fullname: string }>(prefixToNode)
@@ -321,6 +321,8 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json: ReachabilityJs
         dict.children.push(system)
     if(main.children.length)
         dict.children.push(main)
+
+    computeCodesizePartialSum(dict)
 
     return dict
 }
