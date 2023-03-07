@@ -1,5 +1,5 @@
 import { describe, expect, test } from '@jest/globals'
-import { findNodesWithName, getNodesOnLevel } from '../src/ts/Math/filters'
+import { findNodesWithName, getNodesOnLevel, findNodesWithIdentifier } from '../src/ts/Math/filters'
 import { Layers } from '../src/ts/enums/Layers'
 import { forest } from './data/forest'
 import { Node } from '../src/ts/UniverseTypes/Node'
@@ -25,6 +25,31 @@ describe('filters', () => {
                 forest.duplicatedNames.children[0].children[1].children[0],
                 forest.duplicatedNames.children[1].children[0].children[0]
             ]
+
+            expect(actual.length).toBe(expected.length)
+            expected.forEach((value, index) => expect(actual[index].equals(value)).toBeTruthy())
+        })
+    })
+
+    describe('findNodesWithIdentifier', () => {
+        test('returns empty array when none found', () => {
+            expect(findNodesWithIdentifier('something', forest.overlappingImageA)).toEqual([])
+        })
+
+        test('returns array with single found element', () => {
+            const actual = findNodesWithIdentifier('ClassAA', forest.layeredTree)
+            const expected = [
+                findNodesWithName('ClassAA', forest.layeredTree)[0],
+                findNodesWithName('methodAAA', forest.layeredTree)[0]
+            ]
+
+            expect(actual.length).toBe(expected.length)
+            expected.forEach((value, index) => expect(actual[index].equals(value)).toBeTruthy())
+        })
+
+        test('returns array with multiple elements corresponding to name', () => {
+            const actual = findNodesWithIdentifier('methodA', forest.duplicatedNames)
+            const expected = findNodesWithName('methodA', forest.duplicatedNames)
 
             expect(actual.length).toBe(expected.length)
             expected.forEach((value, index) => expect(actual[index].equals(value)).toBeTruthy())

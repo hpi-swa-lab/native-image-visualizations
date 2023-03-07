@@ -25,8 +25,8 @@ const HIERARCHY_GAPS = 2
 export class TreeLine implements MultiverseVisualization {
     multiverse: Multiverse = new Multiverse([])
     colorScheme: ColorScheme
-    selection: Node[] = []
-    highlights: Node[] = []
+    selection: Set<string> = new Set<string>()
+    highlights: Set<string> = new Set<string>()
 
     combinations: UniverseCombination[] = []
     exclusiveSizes: Map<Node, ExclusiveSizes> = new Map([[this.multiverse.root, new Map([])]])
@@ -75,11 +75,11 @@ export class TreeLine implements MultiverseVisualization {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    public setSelection(selection: Node[]): void {
+    public setSelection(selection: Set<string>): void {
         // TODO; https://github.com/hpi-swa-lab/MPWS2022RH1/issues/118
     }
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    public setHighlights(highlights: Node[]): void {
+    public setHighlights(highlights: Set<string>): void {
         console.log('highlights', highlights)
 
         this.highlights = highlights
@@ -221,7 +221,7 @@ export class TreeLine implements MultiverseVisualization {
                 height,
                 path[path.length - 1],
                 containingCombinations,
-                this.highlights.find((node) => node.name === tree.name) ? true : false
+                this.highlights.has(tree.identifier)
             )
             leftOfSubHierarchy = leftOfHierarchy + widthOfBox + HIERARCHY_GAPS
         }

@@ -22,9 +22,7 @@ onMounted(() => {
         // `ref` exists below and this code is executed after mounting.
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         container.value!,
-        // We always have a color scheme.
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        colorScheme.value!
+        colorScheme.value
     )
     visualization.setMultiverse(multiverse.value as Multiverse)
 })

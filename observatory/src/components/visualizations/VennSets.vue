@@ -2,29 +2,41 @@
 import MainLayout from '../layouts/MainLayout.vue'
 import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
 import { EventType } from '../../ts/enums/EventType'
-import { onMounted, ref, watch, computed } from 'vue'
-import { globalConfigStore } from '../../ts/stores'
+import { onMounted, reactive, watch, computed } from 'vue'
+import { globalConfigStore, vennConfigStore } from '../../ts/stores'
 import { VennSets } from '../../ts/Visualizations/VennSets'
 import { Multiverse } from '../../ts/UniverseTypes/Multiverse'
-import { Node } from '../../ts/UniverseTypes/Node'
+import VennControls from '../controls/VennControls.vue'
+import { TooltipModel } from '../../ts/Visualizations/TooltipModel'
+import Tooltip from '../controls/Tooltip.vue'
+import { SortingOrder } from '../../ts/enums/Sorting'
 
 const emit = defineEmits([EventType.CHANGE])
-const store = globalConfigStore()
+const globalStore = globalConfigStore()
+const vennStore = vennConfigStore()
 
-const container = ref<HTMLDivElement>()
+const tooltipModel = reactive(new TooltipModel())
 
-const multiverse = computed(() => store.multiverse)
-const currentLayer = computed(() => store.currentLayer)
-const highlights = computed(() => store.highlights)
-const selection = computed(() => store.selections)
+const multiverse = computed(() => globalStore.multiverse)
+const currentLayer = computed(() => globalStore.currentLayer)
+const highlights = computed(() => globalStore.highlights)
+const selection = computed(() => globalStore.selections)
+
+const sortingOrder = computed(() => vennStore.sortingOrder)
 
 let visualization: VennSets
 
 // The reason for using as <...> is that the store saves Proxy Types of the objects
 
 onMounted(() => {
-    visualization = new VennSets('#viz-container', store.currentLayer, store.colorScheme)
-    visualization.setMultiverse(store.multiverse as Multiverse)
+    visualization = new VennSets(
+        '#viz-container',
+        globalStore.currentLayer,
+        globalStore.colorScheme,
+        tooltipModel,
+        vennStore.sortingOrder
+    )
+    visualization.setMultiverse(globalStore.multiverse as Multiverse)
 })
 
 watch(multiverse, (newMultiverse) => {
@@ -36,17 +48,20 @@ watch(currentLayer, (newLayer) => {
 watch(
     highlights,
     (newHighlights) => {
-        visualization.setHighlights(Object.values(newHighlights)[0] as Node[])
+        visualization.setHighlights(newHighlights as Set<string>)
     },
     { deep: true }
 )
 watch(
     selection,
     (newSelection) => {
-        visualization.setSelection(Object.values(newSelection)[0] as Node[])
+        visualization.setSelection(newSelection as Set<string>)
     },
     { deep: true }
 )
+watch(sortingOrder, (newOrder) => {
+    visualization.sort(newOrder)
+})
 </script>
 
 <template>
@@ -55,6 +70,14 @@ watch(
         :component-type="SwappableComponentType.VennSets"
         @change-page="(componentType: SwappableComponentType) => emit(EventType.CHANGE, componentType)"
     >
+        <Tooltip :data-model="tooltipModel"></Tooltip>
+        <template #controls>
+            <VennControls
+                @ascending="visualization.sort(SortingOrder.ASCENDING)"
+                @descending="visualization.sort(SortingOrder.DESCENDING)"
+            ></VennControls>
+        </template>
+
         <div id="viz-container" ref="container" class="w-full h-full"></div>
     </MainLayout>
 </template>

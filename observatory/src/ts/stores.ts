@@ -3,7 +3,7 @@ import resolveConfig from 'tailwindcss/resolveConfig'
 import { Layers } from './enums/Layers'
 import { SortingOption, SortingOrder } from './enums/Sorting'
 import { componentName, SwappableComponentType } from './enums/SwappableComponentType'
-import { findNodesWithName } from './Math/filters'
+import { findNodesWithIdentifier } from './Math/filters'
 import { createConfigHighlights, createConfigSelections, createConfigUniverses } from './parsing'
 import { ColorScheme } from './SharedTypes/Colors'
 import { NodesDiffingFilter, NodesFilter, NodesSortingFilter } from './SharedTypes/NodesFilter'
@@ -24,9 +24,9 @@ export const globalConfigStore = defineStore('globalConfig', {
             universes: [] as Universe[],
             observedUniverses: [] as Universe[],
             multiverse: new Multiverse([]),
-            selections: {} as Record<string, Node[]>,
+            selections: new Set<string>(),
+            highlights: new Set<string>(),
             currentLayer: Layers.PACKAGES,
-            highlights: {} as Record<string, Node[]>,
             currentComponent: SwappableComponentType.Home as SwappableComponentType,
             previousComponent: undefined as SwappableComponentType | undefined,
             // Reason: Since our schemes are custom added, they're not part of the type declaration
@@ -60,6 +60,7 @@ export const globalConfigStore = defineStore('globalConfig', {
 
             if (matchingUniverse) {
                 this.universes.splice(this.universes.indexOf(matchingUniverse), 1)
+                this.toggleObservationByName(matchingUniverse.name)
             }
         },
         updateUniverseName(oldName: string, newName: string): void {
@@ -68,7 +69,7 @@ export const globalConfigStore = defineStore('globalConfig', {
                 universe.name = newName
             }
         },
-        toggleUniverseByName(universeName: string): void {
+        toggleObservationByName(universeName: string): void {
             const matchingUniverse = this.observedUniverses.find(
                 (universe) => universe.name === universeName
             )
@@ -84,14 +85,14 @@ export const globalConfigStore = defineStore('globalConfig', {
 
             this.multiverse = new Multiverse(this.observedUniverses as Universe[])
         },
-        setSelection(universeName: string, selection: Node[]): void {
-            this.selections[universeName] = selection
+        setSelection(selections: Set<string>): void {
+            this.selections = selections
         },
         switchToLayer(newLayer: Layers): void {
             this.currentLayer = newLayer
         },
-        setHighlights(universeName: string, highlight: Node[]): void {
-            this.highlights[universeName] = highlight
+        setHighlights(highlights: Set<string>): void {
+            this.highlights = highlights
         },
         switchColorScheme(newScheme: ColorScheme): void {
             this.colorScheme = newScheme
@@ -107,16 +108,15 @@ export const globalConfigStore = defineStore('globalConfig', {
         },
         changeSearch(newSearch: string): void {
             this.search = newSearch
-
-            const universes = this.universes as Universe[]
-            universes.forEach((universe: Universe) => {
-                this.setHighlights(universe.name, findNodesWithName(this.search, universe.root))
-            })
+            this.setHighlights(
+                new Set<string>(
+                    findNodesWithIdentifier(this.search, this.multiverse.root as Node).map(
+                        (node: Node) => node.identifier
+                    )
+                )
+            )
         },
-        toExportDict(): Record<
-            string,
-            Record<string, Record<string, unknown>> | SwappableComponentType | string
-        > {
+        toExportDict(): Record<string, unknown> {
             return {
                 universes: createConfigUniverses(this.universes as Universe[]),
                 selections: createConfigSelections(this.selections),
@@ -129,9 +129,22 @@ export const globalConfigStore = defineStore('globalConfig', {
 })
 
 export const vennConfigStore = defineStore('vennConfig', {
+    state: () => {
+        return {
+            sortingOrder: SortingOrder.NONE
+        }
+    },
+    getters: {
+        isSortingOrder: (state) => (option: string) => option === state.sortingOrder
+    },
     actions: {
         toExportDict(): Record<string, unknown> {
-            return {}
+            return {
+                sortingOrder: this.sortingOrder
+            }
+        },
+        setSortingOrder(order: SortingOrder) {
+            this.sortingOrder = order
         }
     }
 })
