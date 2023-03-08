@@ -187,64 +187,37 @@ export class TreeLine implements MultiverseVisualization {
 
         const leftOfHierarchy = LINE_PADDING + LINE_WIDTH + LINE_PADDING
 
-        this.drawDiagram(multiverse.root, top, pixelsPerByte, [], leftOfHierarchy)
+        this.drawDiagram(multiverse.root, top, pixelsPerByte, leftOfHierarchy)
     }
 
-    private drawDiagram(
-        tree: Node,
-        top: number,
-        pixelsPerByte: number,
-        path: string[],
-        leftOfHierarchy: number
-    ) {
+    private drawDiagram(node: Node, top: number, pixelsPerByte: number, leftOfHierarchy: number) {
         // At this height, entities explode into children.
         const EXPLOSION_THRESHOLD = 100
 
-        const height = tree.codeSize * pixelsPerByte
+        const height = node.codeSize * pixelsPerByte
 
         if (!this.isVisible(top, height)) return
 
         // Show the hierarchy on the right.
         let leftOfSubHierarchy = leftOfHierarchy
-        if (path.length > 0) {
-            // The exclusive sizes are calculated for all nodes.
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            const containingCombinations = Array.from(this.exclusiveSizes.get(tree)!.entries())
-                .filter(([_, size]) => size > 0)
-                .map(([combination, _]) => combination)
-
-            const widthOfBox = this.drawHierarchyBox(
-                leftOfHierarchy,
-                top,
-                height,
-                path[path.length - 1],
-                containingCombinations,
-                this.highlights.has(tree.identifier)
-            )
+        if (node.parent) {
+            const widthOfBox = this.drawHierarchyBox(leftOfHierarchy, top, height, node)
             leftOfSubHierarchy = leftOfHierarchy + widthOfBox + HIERARCHY_GAPS
         }
 
         const shouldExplode =
-            tree.children.length == 1 || (height >= EXPLOSION_THRESHOLD && tree.children.length > 0)
+            node.children.length == 1 || (height >= EXPLOSION_THRESHOLD && node.children.length > 0)
         if (shouldExplode) {
             let childOffsetFromTop = top
-            for (const child of tree.children) {
-                const childPath = path.slice()
-                childPath.push(child.name)
-                this.drawDiagram(
-                    child,
-                    childOffsetFromTop,
-                    pixelsPerByte,
-                    childPath,
-                    leftOfSubHierarchy
-                )
+            for (const child of node.children) {
+                this.drawDiagram(child, childOffsetFromTop, pixelsPerByte, leftOfSubHierarchy)
                 childOffsetFromTop += child.codeSize * pixelsPerByte
             }
         } else {
             let offsetFromLeft = LINE_PADDING
             // The exclusive sizes are calculated for all nodes.
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            const exclusiveSizes = this.exclusiveSizes.get(tree)!
+            const exclusiveSizes = this.exclusiveSizes.get(node)!
             const totalSize = Array.from(exclusiveSizes.values()).reduce((a, b) => a + b, 0)
 
             for (const combination of this.combinations) {
@@ -269,25 +242,24 @@ export class TreeLine implements MultiverseVisualization {
         return top < this.canvas.height && top + height > 0
     }
 
-    private drawHierarchyBox(
-        left: number,
-        top: number,
-        height: number,
-        text: string,
-        containingCombinations: UniverseCombination[],
-        isHighlighted: boolean
-    ): number {
+    private drawHierarchyBox(left: number, top: number, height: number, node: Node): number {
         const FONT_SIZE = 11
         const TEXT_HORIZONTAL_PADDING = 8
         const TEXT_VERTICAL_PADDING = 2
         const DEFAULT_FILL_STYLE = '#cccccc'
 
-        this.context.font = `${FONT_SIZE}px sans-serif`
+        // The exclusive sizes are calculated for all nodes.
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const containingCombinations = Array.from(this.exclusiveSizes.get(node)!.entries())
+            .filter(([_, size]) => size > 0)
+            .map(([combination, _]) => combination)
 
+        const text = node.name
+        this.context.font = `${FONT_SIZE}px sans-serif`
         const textWidth = this.context.measureText(text).width
         const boxWidth = textWidth + 2 * TEXT_HORIZONTAL_PADDING
 
-        const isFaded = this.highlights.size > 0 && !isHighlighted
+        const isFaded = this.highlights.size > 0 && !this.highlights.has(node.identifier)
         if (containingCombinations.length > 1) {
             this.context.fillStyle = isFaded
                 ? lightenColor(DEFAULT_FILL_STYLE, 0.5)
