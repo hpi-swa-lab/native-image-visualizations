@@ -78,7 +78,7 @@ export function filterDiffingUniverses(node: any, filteredNodes: Node[]) {
     return node._children.filter((child: any) => filteredNodes.includes(child.data))
 }
 
-export function sortChildren(node: any, filter: NodesSortingFilter) {
+export function sortPrivateChildren(node: any, filter: NodesSortingFilter) {
     return node._children.sort((a: any, b: any) => {
         const valueA = getSortingValue(a, filter)
         const valueB = getSortingValue(b, filter)
@@ -87,7 +87,8 @@ export function sortChildren(node: any, filter: NodesSortingFilter) {
             // FIXME it's magically alphabetically reversed sometimes ò.ó
             return a.name > b.name
         }
-        return filter.order == SortingOrder.ASCENDING ? valueA > valueB : valueA < valueB
+        // () ? 1 : -1 is a fixes sorting when using Chrome
+        return (filter.order == SortingOrder.ASCENDING ? valueA > valueB : valueA < valueB) ? 1 : -1
     })
 }
 

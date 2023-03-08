@@ -20,7 +20,7 @@ import {
     asHTML,
     createApplyFilterEvent,
     filterDiffingUniverses, getWithoutRoot,
-    sortChildren,
+    sortPrivateChildren,
     toggleChildren
 } from './utils/SankeyTreeUtils'
 import { TooltipModel } from './TooltipModel'
@@ -89,7 +89,6 @@ export class SankeyTree implements MultiverseVisualization {
 
     handleNodesFilterChanged(): void {
         this.filterNodesFromLeaves(this.tree.leaves, this.sankeyStore.nodesFilter)
-
         this.redrawTree(
             createApplyFilterEvent(this.sankeyStore.nodesFilter),
             this.tree.root,
@@ -575,7 +574,7 @@ export class SankeyTree implements MultiverseVisualization {
         if (event.detail.name === CustomEventName.APPLY_FILTER) {
             tree.root.eachBefore((node: any) => {
                 if (!node._children) return
-                sortChildren(node, event.detail.filter.sorting)
+                sortPrivateChildren(node, event.detail.filter.sorting)
                 if (node.children) node.children = filterDiffingUniverses(node, this.filteredNodes)
             })
         }
@@ -585,7 +584,7 @@ export class SankeyTree implements MultiverseVisualization {
         //     console.log(event.detail.name, true)
         //     tree.root.eachBefore((node: any) => {
         //         if (!node._children) return
-        //         sortChildren(node, event.detail.filter.sorting)
+        //         sortPrivateChildren(node, event.detail.filter.sorting)
         //         node.children = filterDiffingUniverses(node)
         //     })
         // }
