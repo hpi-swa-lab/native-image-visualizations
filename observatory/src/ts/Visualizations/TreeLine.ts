@@ -111,8 +111,6 @@ export class TreeLine implements MultiverseVisualization {
             // There exists a color for every universe.
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const colors = indices.map((index) => this.colorsByIndex.get(index)!)
-            console.log('indices', indices)
-            console.log('colors', indices)
 
             if (indices.length == 1) {
                 const color = colors[0]
