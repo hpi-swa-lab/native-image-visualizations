@@ -8,6 +8,7 @@ export function sortingOptionForExport(option: SortingOption): string {
 }
 
 export enum SortingOrder {
+    NONE = 'none',
     ASCENDING = 'ascending',
     DESCENDING = 'descending'
 }

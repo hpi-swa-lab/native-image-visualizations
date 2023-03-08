@@ -19,10 +19,10 @@ function applyLayer(event: Event) {
         <div class="slider">
             <input
                 id="layer-selection"
-                v-model="store.currentLayer"
                 name="Layer"
                 type="range"
                 class="block w-full"
+                :value="store.currentLayer"
                 :min="Layers.MODULES"
                 :max="Layers.METHODS"
                 :step="1"

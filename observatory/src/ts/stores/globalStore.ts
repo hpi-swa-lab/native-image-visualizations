@@ -6,12 +6,13 @@ import {
     componentName,
     serializeComponent
 } from '../enums/SwappableComponentType'
-import { findNodesWithName } from '../Math/filters'
 import { serializerLayer, Layers } from '../enums/Layers'
 import { Multiverse } from '../UniverseTypes/Multiverse'
 import { objectMap } from '../helpers'
 import { InvalidInputError } from '../errors'
 import { ColorScheme } from '../SharedTypes/Colors'
+import { findNodesWithIdentifier } from '../Math/filters'
+
 // Reason: Vite does not support commonJS out of box. In the vite.config, the commonjs plugin
 // transpiles the cjs to ts, but the transpilation and mapping happens during run time.
 // Thus, the system cannot find a declaration file for the module statically.
@@ -42,9 +43,9 @@ export const useGlobalStore = defineStore('globalConfig', {
             rawData: {} as Record<string, unknown>,
             observedUniverses: [] as Universe[],
             multiverse: new Multiverse([]),
-            selections: {} as Record<string, Node[]>,
+            selections: new Set<string>(),
+            highlights: new Set<string>(),
             currentLayer: Layers.PACKAGES,
-            highlights: {} as Record<string, Node[]>,
             currentComponent: SwappableComponentType.Home as SwappableComponentType,
             previousComponent: undefined as SwappableComponentType | undefined,
             // Reason: Since our schemes are custom added, they're not part of the type declaration
@@ -81,6 +82,7 @@ export const useGlobalStore = defineStore('globalConfig', {
 
             if (matchingUniverse) {
                 this.universes.splice(this.universes.indexOf(matchingUniverse), 1)
+                this.toggleObservationByName(matchingUniverse.name)
             }
 
             if (this.rawData[universeName]) {
@@ -95,22 +97,12 @@ export const useGlobalStore = defineStore('globalConfig', {
                 universe.name = newName
             }
 
-            if (this.selections[oldName]) {
-                this.selections[newName] = this.selections[oldName]
-                delete this.selections[oldName]
-            }
-
-            if (this.highlights[oldName]) {
-                this.highlights[newName] = this.highlights[oldName]
-                delete this.highlights[oldName]
-            }
-
             if (this.rawData[oldName]) {
                 this.rawData[newName] = this.rawData[oldName]
                 delete this.rawData[oldName]
             }
         },
-        toggleUniverseByName(universeName: string): void {
+        toggleObservationByName(universeName: string): void {
             const matchingUniverse = this.observedUniverses.find(
                 (universe) => universe.name === universeName
             )
@@ -126,14 +118,14 @@ export const useGlobalStore = defineStore('globalConfig', {
 
             this.multiverse = new Multiverse(this.observedUniverses as Universe[])
         },
-        setSelection(universeName: string, selection: Node[]): void {
-            this.selections[universeName] = selection
+        setSelection(selections: Set<string>): void {
+            this.selections = selections
         },
         switchToLayer(newLayer: Layers): void {
             this.currentLayer = newLayer
         },
-        setHighlights(universeName: string, highlight: Node[]): void {
-            this.highlights[universeName] = highlight
+        setHighlights(highlights: Set<string>): void {
+            this.highlights = highlights
         },
         switchColorScheme(newScheme: ColorScheme): void {
             this.colorScheme = newScheme
@@ -149,11 +141,13 @@ export const useGlobalStore = defineStore('globalConfig', {
         },
         changeSearch(newSearch: string): void {
             this.search = newSearch
-
-            const universes = this.universes as Universe[]
-            universes.forEach((universe: Universe) => {
-                this.setHighlights(universe.name, findNodesWithName(this.search, universe.root))
-            })
+            this.setHighlights(
+                new Set<string>(
+                    findNodesWithIdentifier(this.search, this.multiverse.root as Node).map(
+                        (node: Node) => node.identifier
+                    )
+                )
+            )
         },
         toExportDict(): GlobalConfig {
             return {

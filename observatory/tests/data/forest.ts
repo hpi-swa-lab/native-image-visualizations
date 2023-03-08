@@ -47,14 +47,14 @@ export const forestFactory = () => ({
     ]),
     overlappingTreeA: new Node('universe', [
         new Node('packageA', [
-            new Node('ClassA', [new Node('methodAA')]),
-            new Node('ClassB', [new Node('methodBA')])
+            new Node('ClassA', [new Leaf('methodAA', 1, [InitKind.BUILD_TIME])]),
+            new Node('ClassB', [new Leaf('methodBA', 1, [InitKind.BUILD_TIME])])
         ])
     ]),
     overlappingTreeB: new Node('universe', [
         new Node('packageA', [
-            new Node('ClassA', [new Node('methodAC')]),
-            new Node('ClassC', [new Node('methodCA')])
+            new Node('ClassA', [new Leaf('methodAC', 1, [InitKind.BUILD_TIME])]),
+            new Node('ClassC', [new Leaf('methodCA', 1, [InitKind.BUILD_TIME])])
         ])
     ]),
     overlappingTreeC: new Node('universe', [
@@ -62,9 +62,9 @@ export const forestFactory = () => ({
     ]),
     differentPackageTree: new Node('universe', [
         new Node('packageB', [
-            new Node('ClassA', [new Node('methodAA')]),
-            new Node('ClassX', [new Node('methodXA')]),
-            new Node('ClassY', [new Node('methodYA')])
+            new Node('ClassA', [new Leaf('methodAA', 1, [InitKind.BUILD_TIME])]),
+            new Node('ClassX', [new Leaf('methodXA', 1, [InitKind.BUILD_TIME])]),
+            new Node('ClassY', [new Leaf('methodYA', 1, [InitKind.BUILD_TIME])])
         ])
     ]),
     overlappingImageA: new Node('universe', [

@@ -6,6 +6,18 @@ import { createVennPartitions } from '../src/ts/Math/Sets'
 import { Node } from '../src/ts/UniverseTypes/Node'
 
 describe('Venn', () => {
+    test('For an empty multiverse returns a valid object from type VennSet', () => {
+        const multiverse = new Multiverse([])
+
+        const actual = createVennPartitions(multiverse)
+        const expected = {
+            inclusive: [],
+            exclusive: []
+        }
+
+        expect(actual).toEqual(expected)
+    })
+
     test('For a tree with only occurences in one universe, has one set with count equal to tree size', () => {
         const multiverse = new Multiverse([
             new Universe('simpleTree', new Node('Universe', [forest.simpleTree]))
