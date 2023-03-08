@@ -194,7 +194,7 @@ export class SankeyTree implements MultiverseVisualization {
             layout: d3
                 .tree()
                 .nodeSize([dx, dy])
-                .separation((a, b) => this.getNodeSeparation(a, b, dx)),
+                .separation((a, b) => this.getNodeSeparation(a, b)),
             root: hierarchy(nodeTree) as HierarchyPointNode<Node>,
             leaves: Array.from(leaves),
             rootNode: nodeTree
@@ -534,13 +534,12 @@ export class SankeyTree implements MultiverseVisualization {
     private getNodeSeparation(
         a: HierarchyPointNode<unknown>,
         b: HierarchyPointNode<unknown>,
-        dx: number
     ) {
-        const totalWidth = a.data.codeSize + b.data.codeSize
+        const totalHeight = a.data.codeSize + b.data.codeSize
+        let separation = inMB(totalHeight)/2
+        separation += a.parent === b.parent ? 1.2 : 2
 
-        // const res = Math.max(1, inMB(totalWidth)/2)
-        const res = inMB(totalWidth) / 2 / dx + 1.2
-        return res
+        return Math.max(1, separation)
     }
 
     private getNodeTextPositionOffset(): NodeTextPositionOffset {
