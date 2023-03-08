@@ -83,7 +83,8 @@ export class SankeyTree implements MultiverseVisualization {
     }
 
     setSelection(selection: Set<string>): void {
-        // todo
+        this.selection = selection
+        this.applyStyleForChosen(this.selection, 'display', 'none', 'block')
     }
 
     handleNodesFilterChanged(): void {
