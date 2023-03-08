@@ -21,6 +21,7 @@ const causalityGraphStore = useCausalityGraphStore()
 const sankeyStore = useSankeyStore()
 
 const uploadError = ref<Error | undefined>(undefined)
+const configLoadError = ref<Error | undefined>(undefined)
 
 const nameFields = ref<InstanceType<typeof InlineEditableField>[]>()
 
@@ -30,18 +31,26 @@ async function validateFileAndAddUniverseOnSuccess(
 ): Promise<void> {
     try {
         const parsedJSON = await loadJson(file)
-        const newUniverse = new Universe(
-            universeName,
-            parseReachabilityExport(parsedJSON, universeName)
-        )
+        await loadUniverseData(parsedJSON, universeName)
 
-        globalStore.addUniverse(newUniverse, parsedJSON)
         uploadError.value = undefined
     } catch (error: unknown) {
         if (error instanceof Error) {
             uploadError.value = error
         }
     }
+}
+
+async function loadUniverseData(
+    universeData: Record<string, any>,
+    universeName: string
+): Promise<void> {
+    const newUniverse = new Universe(
+        universeName,
+        parseReachabilityExport(universeData, universeName)
+    )
+
+    globalStore.addUniverse(newUniverse, universeData)
 }
 
 function addUniverses(event: Event) {
@@ -77,6 +86,49 @@ function exportConfig() {
     })
 }
 
+async function loadConfig(event: Event) {
+    const input = event.target as HTMLInputElement
+    if (!input.files) {
+        configLoadError.value = Error(
+            'The loading function was triggert, but the input element does not hold any files.'
+        )
+        return
+    }
+
+    const errors: string[] = []
+
+    const zip = await JSZip.loadAsync(input.files[0])
+
+    await Promise.all(
+        Object.keys(zip.files)
+            .filter((filename: string) => filename !== `${CONFIG_NAME}.json`)
+            .map(async (filename: string) => {
+                const universeName = filename.replace(/\.[^/.]+$/, '')
+
+                try {
+                    const rawData = await zip.files[filename].async('string')
+                    const parsedJSON = JSON.parse(rawData)
+
+                    await loadUniverseData(parsedJSON, universeName)
+                } catch (error: unknown) {
+                    if (error instanceof Error) {
+                        errors.push(`Failed loading the universe '${universeName}'`)
+                    }
+                }
+            })
+    )
+
+    if (!(`${CONFIG_NAME}.json` in zip.files)) {
+        errors.push(`The config.zip does not include the expected '${CONFIG_NAME}.json' file`)
+    }
+
+    if (errors.length > 0) {
+        configLoadError.value = Error(errors.join('\n'))
+    } else {
+        configLoadError.value = undefined
+    }
+}
+
 function changeUniverseName(oldName: string, newName: string, inputIndex: number) {
     try {
         globalStore.updateUniverseName(oldName, newName)
@@ -95,6 +147,21 @@ function changeUniverseName(oldName: string, newName: string, inputIndex: number
 
 <template>
     <div class="space-y-4">
+        <div class="mb-2">
+            <label for="input-config" class="block">Upload a Config Archive:</label>
+            <input
+                id="input-config"
+                class="w-full space-y-4"
+                type="file"
+                accept="application/zip"
+                @change="loadConfig"
+            />
+
+            <p v-if="configLoadError" class="warning-text space-y-4">
+                {{ configLoadError.message }}
+            </p>
+        </div>
+
         <div class="mb-2">
             <label for="input-report-data" class="block">Upload Build Reports:</label>
             <input
