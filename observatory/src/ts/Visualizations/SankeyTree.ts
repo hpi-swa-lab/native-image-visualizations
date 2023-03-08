@@ -122,11 +122,19 @@ export class SankeyTree implements MultiverseVisualization {
             .attr('id', 'zoomG')
             .attr('width', bounds.width)
             .attr('height', bounds.height)
-            .attr('transform', `translate(${bounds.width * 1/5}, ${bounds.height * 0.5})`)
 
         const zoom = d3
             .zoom()
             .on('zoom', ({ transform }) => zoomG.attr('transform', transform))
+        const transform = d3.zoomIdentity
+            .translate(bounds.width * 1/5,bounds.height * 0.5)
+            .scale(0.5)
+
+        // ts-ignore because of typing error
+        // @ts-ignore
+        svg.call(zoom.transform, transform)
+        // call(zoom) again to make it panable & zoomable
+        // ts-ignore because of typing error
         // @ts-ignore
         svg.call(zoom)
 
