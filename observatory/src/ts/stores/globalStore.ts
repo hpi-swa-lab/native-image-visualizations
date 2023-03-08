@@ -7,7 +7,7 @@ import {
     serializeComponent,
     deserializeComponent
 } from '../enums/SwappableComponentType'
-import { serializerLayer, Layers } from '../enums/Layers'
+import { serializerLayer, Layers, deserializeLayer } from '../enums/Layers'
 import { Multiverse } from '../UniverseTypes/Multiverse'
 import { InvalidInputError } from '../errors'
 import { ColorScheme } from '../SharedTypes/Colors'
@@ -150,11 +150,48 @@ export const useGlobalStore = defineStore('globalConfig', {
             )
         },
         loadExportDict(config: GlobalConfig) {
-            // TODO: observedUniverses
-            // TODO: selections
-            // TODO: highlights
-            // TODO: currentLayer
-            // TODO: colorScheme
+            if (
+                'observedUniverses' in config &&
+                Array.isArray(config['observedUniverses']) &&
+                config['observedUniverses'].every((name) => typeof name === 'string')
+            ) {
+                const universeNames: string[] = config['observedUniverses']
+                this.observedUniverses = (this.universes as Universe[]).filter(
+                    (universe: Universe) => universeNames.includes(universe.name)
+                )
+            }
+
+            if (
+                'selections' in config &&
+                Array.isArray(config['selections']) &&
+                config['selections'].every((selection) => typeof selection === 'string')
+            ) {
+                this.selections = new Set(config['selections'])
+            }
+
+            if (
+                'highlights' in config &&
+                Array.isArray(config['highlights']) &&
+                config['highlights'].every((highlight) => typeof highlight === 'string')
+            ) {
+                this.highlights = new Set(config['highlights'])
+            }
+
+            if ('currentLayer' in config && typeof config['currentLayer'] === 'string') {
+                const layer = deserializeLayer(config['currentLayer'])
+
+                if (layer) {
+                    this.currentLayer = layer
+                }
+            }
+
+            if (
+                'colorScheme' in config &&
+                Array.isArray(config['colorScheme']) &&
+                config['colorScheme'].every((color) => typeof color === 'string')
+            ) {
+                this.colorScheme = config['colorScheme']
+            }
 
             if ('currentComponent' in config && typeof config['currentComponent'] === 'string') {
                 const component = deserializeComponent(config['currentComponent'])
