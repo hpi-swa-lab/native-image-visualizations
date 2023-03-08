@@ -43,6 +43,9 @@ onMounted(() => {
         tooltip.updatePosition(event.pageX, event.pageY)
         tooltip.display()
     })
+    theContainer.addEventListener('mouseout', (_) => {
+        tooltip.hide()
+    })
 })
 
 function tooltipContentForNode(node: Node): string {
