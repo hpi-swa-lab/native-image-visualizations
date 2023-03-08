@@ -4,7 +4,8 @@ import { Node } from '../UniverseTypes/Node'
 import {
     SwappableComponentType,
     componentName,
-    serializeComponent
+    serializeComponent,
+    deserializeComponent
 } from '../enums/SwappableComponentType'
 import { serializerLayer, Layers } from '../enums/Layers'
 import { Multiverse } from '../UniverseTypes/Multiverse'
@@ -149,7 +150,31 @@ export const useGlobalStore = defineStore('globalConfig', {
             )
         },
         loadExportDict(config: GlobalConfig) {
-            // TODO
+            // TODO: observedUniverses
+            // TODO: selections
+            // TODO: highlights
+            // TODO: currentLayer
+            // TODO: colorScheme
+
+            if ('currentComponent' in config && typeof config['currentComponent'] === 'string') {
+                const component = deserializeComponent(config['currentComponent'])
+
+                if (component) {
+                    this.currentComponent = component
+                }
+            }
+
+            if ('previousComponent' in config && typeof config['previousComponent'] === 'string') {
+                const component = deserializeComponent(config['previousComponent'])
+
+                if (component) {
+                    this.previousComponent = component
+                }
+            }
+
+            if ('search' in config && typeof config['search'] === 'string') {
+                this.changeSearch(config['search'])
+            }
         },
         toExportDict(): GlobalConfig {
             return {
