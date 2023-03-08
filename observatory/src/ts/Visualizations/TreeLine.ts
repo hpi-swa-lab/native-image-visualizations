@@ -230,7 +230,7 @@ export class TreeLine implements MultiverseVisualization {
         }
 
         const suitableChildren = tree.children.filter((child) =>
-            this.filters.every((filter) => filter(child))
+            Filter.applyAll(this.filters, child)
         )
 
         const shouldExplode =

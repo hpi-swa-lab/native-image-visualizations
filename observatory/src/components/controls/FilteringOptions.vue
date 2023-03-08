@@ -1,29 +1,23 @@
 <script setup lang="ts">
-import ToggleSwitch from './ToggleSwitch.vue'
-import { globalConfigStore } from '../../ts/stores'
-import { Node } from '../../ts/UniverseTypes/Node'
 import { Filter } from '../../ts/SharedTypes/Filters';
-
-const FILTERS_BY_LABEL = new Map<string, Filter>([
-    ['Java Native Interface', (node: Node) => node.isJni], 
-    ['Synthetic', (node: Node) => node.isSynthetic], 
-    ['Reflective', (node: Node) => node.isReflective]
-])
+import { globalConfigStore } from '../../ts/stores'
+import MultiToggleSwitch from './MultiToggleSwitch.vue';
 
 const store = globalConfigStore()
 </script>
 
 <template>
     <fieldset class="w-auto">
-        <ToggleSwitch
-            v-for="label in FILTERS_BY_LABEL.keys()"
-            :id="label"
-            :key="label"
-            :value="label"
-            :checked="store.isUsingFilter(FILTERS_BY_LABEL.get(label) as Filter)"
-            @input="store.toggleFilter(FILTERS_BY_LABEL.get(label) as Filter)"
+        <MultiToggleSwitch
+            v-for="(filter, index) in store.filters"
+            :key="index"
+            :ids="[filter.description, 'not ' + filter.description]"
+            :values="[false, true]"
+            :checked="[store.isFilterActive(filter, false), store.isFilterActive(filter, true)]"
+            @change.self ="store.toggleFilter(filter, $event)"
         >
-            <label for="label">{{label}}</label>
-        </ToggleSwitch>
+            <label for="label">{{filter.description}}</label>
+        </MultiToggleSwitch>
+        
     </fieldset>
 </template>

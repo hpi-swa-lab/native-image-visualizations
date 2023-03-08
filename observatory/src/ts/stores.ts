@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import resolveConfig from 'tailwindcss/resolveConfig'
 import { Layers } from './enums/Layers'
-import { Filter, filterEqual } from './SharedTypes/Filters'
+import { Filter } from './SharedTypes/Filters'
 import { SortingOption, SortingOrder } from './enums/Sorting'
 import { componentName, SwappableComponentType } from './enums/SwappableComponentType'
 import { findNodesWithIdentifier } from './Math/filters'
@@ -28,7 +28,12 @@ export const globalConfigStore = defineStore('globalConfig', {
             multiverse: new Multiverse([]),
             selections: new Set<string>(),
             highlights: new Set<string>(),
-            filters: [] as Filter[],
+            filters: [
+                new Filter('Java Native Interface', (node: Node) => node.isJni),
+                new Filter('Synthetic', (node: Node) => node.isSynthetic),
+                new Filter('Reflective', (node: Node) => node.isReflective)
+            ],
+            activeFilters: [] as Filter[],
             currentLayer: Layers.PACKAGES,
             currentComponent: SwappableComponentType.Home as SwappableComponentType,
             previousComponent: undefined as SwappableComponentType | undefined,
@@ -126,16 +131,47 @@ export const globalConfigStore = defineStore('globalConfig', {
                 )
             )
         },
-        isUsingFilter(filter: Filter): boolean {
-            return this.filters.find((active) => filterEqual(active, filter)) != undefined
+        addFilter(filter: Filter): void {
+            this.filters.push(filter)
         },
-        toggleFilter(filter: Filter): void {
-            const matchingFilter = this.filters.find((active) => filterEqual(active, filter))
-
-            if (matchingFilter) {
-                this.filters.splice(this.filters.indexOf(matchingFilter), 1)
+        removeFilter(filter: Filter): void {
+            const matchingFilter = this.filters.find((existing) => existing.equals(filter))
+            if (!matchingFilter) return
+            this.filters.splice(this.filters.indexOf(matchingFilter), 1)
+        },
+        hasFilter(filter: Filter): boolean {
+            return this.filters.find((existing) => existing.equals(filter)) != undefined
+        },
+        isFilterActive(filter: Filter, appliesComplement = false): boolean {
+            if (appliesComplement) {
+                return (
+                    this.activeFilters.find(
+                        (existing) => existing.equals(filter) && existing.applyComplement
+                    ) != undefined
+                )
             } else {
-                this.filters.push(filter)
+                return (
+                    this.activeFilters.find(
+                        (existing) => existing.equals(filter) && !existing.applyComplement
+                    ) != undefined
+                )
+            }
+        },
+        toggleFilter(filter: Filter, appliesComplement = false): void {
+            const matchingActiveFilter = this.activeFilters.find((active) => active.equals(filter))
+
+            if (matchingActiveFilter) {
+                this.activeFilters.splice(this.activeFilters.indexOf(matchingActiveFilter), 1)
+                if (appliesComplement != matchingActiveFilter.applyComplement) {
+                    matchingActiveFilter.applyComplement = appliesComplement
+                    this.activeFilters.push(matchingActiveFilter)
+                }
+            } else {
+                const matchingFilter = this.filters.find((existing) => existing.equals(filter))
+                if (matchingFilter) {
+                    matchingFilter.applyComplement = appliesComplement
+                    this.activeFilters.push(matchingFilter)
+                }
             }
         },
         toExportDict(): Record<string, unknown> {

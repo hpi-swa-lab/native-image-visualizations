@@ -4,7 +4,7 @@ import { Node } from '../UniverseTypes/Node'
 export function applyFilters(filters: Filter[], root: Node): Node[] {
     const result: Node[] = []
 
-    if (filters.every((filter) => filter(root))) {
+    if (Filter.applyAll(filters, root)) {
         result.push(root)
     }
 
@@ -16,14 +16,18 @@ export function applyFilters(filters: Filter[], root: Node): Node[] {
 
 export function findNodesWithName(name: string, root: Node): Node[] {
     return applyFilters(
-        [(node: Node) => node.name.toLowerCase().includes(name.toLowerCase())],
+        [new Filter('', (node: Node) => node.name.toLowerCase().includes(name.toLowerCase()))],
         root
     )
 }
 
 export function findNodesWithIdentifier(identifier: string, root: Node): Node[] {
     return applyFilters(
-        [(node: Node) => node.identifier.toLowerCase().includes(identifier.toLowerCase())],
+        [
+            new Filter('', (node: Node) =>
+                node.identifier.toLowerCase().includes(identifier.toLowerCase())
+            )
+        ],
         root
     )
 }

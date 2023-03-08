@@ -42,6 +42,8 @@ export class VennSets implements MultiverseVisualization {
         colorScheme: ColorScheme,
         tooltip: TooltipModel,
         sortingOrder: SortingOrder,
+        highlights: Set<string>,
+        selection: Set<string>,
         filters: Filter[]
     ) {
         this.layer = layer
@@ -49,6 +51,8 @@ export class VennSets implements MultiverseVisualization {
         this.tooltip = tooltip
         this.sortingOrder = sortingOrder
         this.filters = filters
+        this.highlights = highlights
+        this.selection = selection
 
         this.initializeContainer(containerSelector)
         this.initializeZoom()
@@ -105,7 +109,7 @@ export class VennSets implements MultiverseVisualization {
         this.cleanContainer()
 
         const nodesOnLevel: Node[] = getNodesOnLevel(this.layer, this.multiverse.root).filter(
-            (nodeOnLevel) => this.filters.every((filter) => filter(nodeOnLevel))
+            (nodeOnLevel) => Filter.applyAll(this.filters, nodeOnLevel)
         )
         const root = this.asCombinationPartitionedHierarchy(nodesOnLevel)
 

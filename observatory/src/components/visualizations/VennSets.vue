@@ -2,7 +2,7 @@
 import MainLayout from '../layouts/MainLayout.vue'
 import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
 import { EventType } from '../../ts/enums/EventType'
-import { onMounted, reactive, watch, computed } from 'vue'
+import { onMounted, reactive, watch, computed, toRaw } from 'vue'
 import { globalConfigStore, vennConfigStore } from '../../ts/stores'
 import { VennSets } from '../../ts/Visualizations/VennSets'
 import { Multiverse } from '../../ts/UniverseTypes/Multiverse'
@@ -22,7 +22,7 @@ const multiverse = computed(() => globalStore.multiverse)
 const currentLayer = computed(() => globalStore.currentLayer)
 const highlights = computed(() => globalStore.highlights)
 const selection = computed(() => globalStore.selections)
-const filters = computed(() => globalStore.filters)
+const activeFilters = computed(() => globalStore.activeFilters)
 
 const sortingOrder = computed(() => vennStore.sortingOrder)
 
@@ -37,40 +37,42 @@ onMounted(() => {
         globalStore.colorScheme,
         tooltipModel,
         vennStore.sortingOrder,
-        globalStore.filters
+        globalStore.highlights,
+        globalStore.selections,
+        globalStore.activeFilters
     )
-    visualization.setMultiverse(globalStore.multiverse as Multiverse)
+    visualization.setMultiverse(toRaw(globalStore.multiverse) as Multiverse)
 })
 
 watch(multiverse, (newMultiverse) => {
-    visualization.setMultiverse(newMultiverse as Multiverse)
+    visualization.setMultiverse(toRaw(newMultiverse) as Multiverse)
 })
 watch(currentLayer, (newLayer) => {
-    visualization.setLayer(newLayer)
+    visualization.setLayer(toRaw(newLayer))
 })
 watch(
     highlights,
     (newHighlights) => {
-        visualization.setHighlights(newHighlights as Set<string>)
+        visualization.setHighlights(toRaw(newHighlights) as Set<string>)
     },
     { deep: true }
 )
 watch(
     selection,
     (newSelection) => {
-        visualization.setSelection(newSelection as Set<string>)
+        visualization.setSelection(toRaw(newSelection) as Set<string>)
     },
     { deep: true }
 )
 watch(
-    filters,
+    activeFilters,
     (newFilters) => {
-        visualization.setFilters(newFilters as Filter[])
+        visualization.setFilters(toRaw(newFilters) as Filter[])
     },
     { deep: true }
 )
 watch(sortingOrder, (newOrder) => {
-    visualization.sort(newOrder)
+    visualization.sort(toRaw(newOrder))
 })
 </script>
 
