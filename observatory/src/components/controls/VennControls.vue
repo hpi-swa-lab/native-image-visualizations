@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { vennConfigStore } from '../../ts/stores'
+import { useVennStore } from '../../ts/stores/vennStore'
 import { SortingOrder } from '../../ts/enums/Sorting'
 
-const vennStore = vennConfigStore()
+const vennStore = useVennStore()
 </script>
 
 <template>

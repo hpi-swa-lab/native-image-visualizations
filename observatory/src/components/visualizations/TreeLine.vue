@@ -2,7 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ColorScheme } from '../../ts/SharedTypes/Colors'
 import { formatBytes } from '../../ts/SharedTypes/Size'
-import { globalConfigStore } from '../../ts/stores'
+import { useGlobalStore } from '../../ts/stores/globalStore'
 import { Multiverse } from '../../ts/UniverseTypes/Multiverse'
 import { Node } from '../../ts/UniverseTypes/Node'
 import { universeCombinationAsIndices } from '../../ts/UniverseTypes/UniverseCombination'
@@ -11,7 +11,7 @@ import { SizeInfo, TreeLine } from '../../ts/Visualizations/TreeLine'
 import Tooltip from '../controls/Tooltip.vue'
 import MainLayout from '../layouts/MainLayout.vue'
 
-const store = globalConfigStore()
+const store = useGlobalStore()
 const multiverse = computed(() => store.multiverse)
 const colorScheme = computed(() => store.colorScheme)
 const highlights = computed(() => store.highlights)
