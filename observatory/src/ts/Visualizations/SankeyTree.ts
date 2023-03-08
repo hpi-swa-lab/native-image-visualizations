@@ -100,7 +100,6 @@ export class SankeyTree implements MultiverseVisualization {
     }
 
     public setLayer(layer: Layers): void {
-        // TODO is it correct?
         this.layer = layer
         this.rebuildAndDrawTree(this.multiverse, layer)
     }
@@ -180,14 +179,13 @@ export class SankeyTree implements MultiverseVisualization {
 
         const leaves: Set<Node> = new Set()
 
-        if (layer === Layers.PACKAGES) {
-            for (let i = Layers.MODULES.valueOf(); i <= layer.valueOf(); i++) {
-                let nodes: Node[] = getNodesOnLevel(i, multiverse.root)
-                nodes.forEach((node, i) => {
-                    this.createHierarchyFromPackages(node, nodeTree, leaves)
-                })
-            }
+        for (let i = Layers.MODULES.valueOf(); i <= layer.valueOf(); i++) {
+            let nodes: Node[] = getNodesOnLevel(i, multiverse.root)
+            nodes.forEach((node, i) => {
+                this.createHierarchyFromPackages(node, nodeTree, leaves)
+            })
         }
+
         nodeTree.codeSize = nodeTree.children.reduce(
             (sum: number, child: Node) => sum + child.codeSize,
             0
