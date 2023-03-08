@@ -5,8 +5,9 @@ import { formatBytes } from '../../ts/SharedTypes/Size'
 import { globalConfigStore } from '../../ts/stores'
 import { Multiverse } from '../../ts/UniverseTypes/Multiverse'
 import { Node } from '../../ts/UniverseTypes/Node'
+import { universeCombinationAsIndices } from '../../ts/UniverseTypes/UniverseCombination'
 import { TooltipModel } from '../../ts/Visualizations/TooltipModel'
-import { TreeLine } from '../../ts/Visualizations/TreeLine'
+import { SizeInfo, TreeLine } from '../../ts/Visualizations/TreeLine'
 import Tooltip from '../controls/Tooltip.vue'
 import MainLayout from '../layouts/MainLayout.vue'
 
@@ -34,12 +35,12 @@ onMounted(() => {
 
     theContainer.addEventListener('mousemove', (event) => {
         var containerRect = theContainer.getBoundingClientRect()
-        const node = visualization.getNodeAtPosition(event.x - containerRect.x, event.y - containerRect.y)
-        if (!node) {
+        const info = visualization.getInfoAtPosition(event.x - containerRect.x, event.y - containerRect.y)
+        if (!info) {
             tooltip.hide()
             return;
         }
-        tooltip.updateContent(tooltipContentForNode(node))
+        tooltip.updateContent(tooltipContentForInfo(info))
         tooltip.updatePosition(event.pageX, event.pageY)
         tooltip.display()
     })
@@ -48,12 +49,30 @@ onMounted(() => {
     })
 })
 
+function tooltipContentForInfo(info: SizeInfo | Node): string {
+    return (info instanceof Node) ? tooltipContentForNode(info) : tooltipContentForSizeInfo(info)
+}
+function tooltipContentForSizeInfo(info: SizeInfo): string {
+    const allSources = multiverse.value.sources
+    let content = `${formatBytes(info.size)}`
+
+    let indices = universeCombinationAsIndices(info.sources)
+    if (indices.length == 1) {
+        content += ` exclusively in ${allSources[indices[0]].name}`
+    } else {
+        content += ` shared among ${indices.map((index) => allSources[index].name).join(', ')}`
+    }
+
+    return content
+}
 function tooltipContentForNode(node: Node): string {
     const allSources = multiverse.value.sources
     let content = `<b>Name</b>: ${node.identifier}`;
+
     for (const [index, source] of node.sources) {
         content += `<br><b>${allSources[index].name}</b>: ${formatBytes(source.codeSize)}`;
     }
+
     return content
 }
 

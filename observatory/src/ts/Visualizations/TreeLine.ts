@@ -22,14 +22,22 @@ const LINE_WIDTH = 256
 const LINE_PADDING = 16
 const HIERARCHY_GAPS = 2
 
-type NodeArea = {
-    node: Node
+// Info areas correspond to interactive parts of the layout. They are used by
+// tooltips.
+type InfoArea = {
+    // In the line on the left, size information is shown. In the package
+    // hierarchy on the right, information about nodes is shown.
+    info: SizeInfo | Node
     x: number
     y: number
     width: number
     height: number
 }
-function doesAreaContain(area: NodeArea, x: number, y: number): boolean {
+export type SizeInfo = {
+    sources: UniverseCombination
+    size: number
+}
+function doesAreaContain(area: InfoArea, x: number, y: number): boolean {
     return area.x <= x && area.x + area.width >= x && area.y <= y && area.y + area.height >= y
 }
 
@@ -49,7 +57,7 @@ export class TreeLine implements MultiverseVisualization {
     canvas: HTMLCanvasElement
     context: CanvasRenderingContext2D
     transform = { y: 0, k: 1 }
-    nodeAreas = [] as NodeArea[]
+    infoAreas = [] as InfoArea[]
 
     constructor(container: HTMLDivElement, colorScheme: ColorScheme) {
         this.colorScheme = colorScheme
@@ -199,7 +207,7 @@ export class TreeLine implements MultiverseVisualization {
 
         const leftOfHierarchy = LINE_PADDING + LINE_WIDTH + LINE_PADDING
 
-        this.nodeAreas = []
+        this.infoAreas = []
         this.drawDiagram(multiverse.root, top, pixelsPerByte, leftOfHierarchy)
     }
 
@@ -216,12 +224,12 @@ export class TreeLine implements MultiverseVisualization {
         if (node.parent) {
             const widthOfBox = this.drawHierarchyBox(leftOfHierarchy, top, height, node)
             if (height > 2) {
-                this.nodeAreas.push({
+                this.infoAreas.push({
                     x: leftOfHierarchy,
                     y: top,
                     height: height,
                     width: widthOfBox,
-                    node: node
+                    info: node
                 })
             }
             leftOfSubHierarchy = leftOfHierarchy + widthOfBox + HIERARCHY_GAPS
@@ -254,6 +262,19 @@ export class TreeLine implements MultiverseVisualization {
                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 this.context.fillStyle = this.fillStyles.get(combination)!
                 this.context.fillRect(offsetFromLeft, Math.floor(top), width, Math.ceil(height))
+
+                if (height > 2) {
+                    this.infoAreas.push({
+                        x: offsetFromLeft,
+                        y: top,
+                        height: height,
+                        width: width,
+                        info: {
+                            sources: combination,
+                            size: size
+                        }
+                    })
+                }
 
                 offsetFromLeft += width
             }
@@ -314,7 +335,7 @@ export class TreeLine implements MultiverseVisualization {
         return boxWidth
     }
 
-    public getNodeAtPosition(x: number, y: number): Node | undefined {
-        return this.nodeAreas.find((area) => doesAreaContain(area, x, y))?.node
+    public getInfoAtPosition(x: number, y: number): SizeInfo | Node | undefined {
+        return this.infoAreas.find((area) => doesAreaContain(area, x, y))?.info
     }
 }
