@@ -8,7 +8,6 @@ import {
 } from '../enums/SwappableComponentType'
 import { serializerLayer, Layers } from '../enums/Layers'
 import { Multiverse } from '../UniverseTypes/Multiverse'
-import { objectMap } from '../helpers'
 import { InvalidInputError } from '../errors'
 import { ColorScheme } from '../SharedTypes/Colors'
 import { findNodesWithIdentifier } from '../Math/filters'
@@ -154,12 +153,8 @@ export const useGlobalStore = defineStore('globalConfig', {
                 observedUniverses: (this.observedUniverses as Universe[]).map(
                     (universe: Universe) => universe.name
                 ),
-                selections: objectMap<string[]>(this.selections, (_, selection: Node[]) => {
-                    return selection.map((node: Node) => node.identifier)
-                }),
-                highlights: objectMap<string[]>(this.highlights, (_, highlight: Node[]) => {
-                    return highlight.map((node: Node) => node.identifier)
-                }),
+                selections: Array.from(this.selections),
+                highlights: Array.from(this.highlights),
                 currentLayer: serializerLayer(this.currentLayer),
                 colorScheme: this.colorScheme,
                 currentComponent: serializeComponent(this.currentComponent),
