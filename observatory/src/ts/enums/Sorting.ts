@@ -7,6 +7,10 @@ export function serializeSortingOption(option: SortingOption): string {
     return option.toString()
 }
 
+export function deserializeSortingOption(optionName: string): SortingOption | undefined {
+    return Object.values(SortingOption).find((option) => option === optionName)
+}
+
 export enum SortingOrder {
     NONE = 'none',
     ASCENDING = 'ascending',

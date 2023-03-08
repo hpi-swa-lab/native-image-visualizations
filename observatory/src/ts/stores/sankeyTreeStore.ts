@@ -5,7 +5,9 @@ import {
     serializeNodesDiffingFilter,
     NodesFilter,
     NodesSortingFilter,
-    serializeNodesSortingFilter
+    serializeNodesSortingFilter,
+    deserializeNodesDiffingFilter,
+    deserializeNodesSortingFilter
 } from '../SharedTypes/NodesFilter'
 
 export type SankeyStoreConfig = Record<
@@ -39,7 +41,19 @@ export const useSankeyStore = defineStore('sankeyTreeConfig', {
     },
     actions: {
         loadExportDict(config: SankeyStoreConfig) {
-            // TODO
+            if (!('diffing' in config) || !('sorting' in config)) {
+                return
+            }
+
+            const diffing = deserializeNodesDiffingFilter(config['diffing'])
+            if (diffing) {
+                this.diffingFilter = diffing
+            }
+
+            const sorting = deserializeNodesSortingFilter(config['sorting'])
+            if (sorting) {
+                this.sortingFilter = sorting
+            }
         },
         toExportDict(): SankeyStoreConfig {
             return {
