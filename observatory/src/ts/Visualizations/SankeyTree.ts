@@ -1,5 +1,5 @@
 import * as d3 from 'd3'
-import {filter, hierarchy, HierarchyNode, HierarchyPointNode, Selection, Transition, TreeLayout} from 'd3'
+import {hierarchy, HierarchyPointNode, Transition} from 'd3'
 import { Node } from '../UniverseTypes/Node'
 import { MultiverseVisualization } from './MultiverseVisualization'
 import { ColorScheme } from '../SharedTypes/Colors'
@@ -563,15 +563,5 @@ export class SankeyTree implements MultiverseVisualization {
                 if (node.children) node.children = filterDiffingUniverses(node, this.filteredNodes)
             })
         }
-
-        // // expand full tree
-        // if (event.detail.name === CustomEventName.EXPAND_TREE) {
-        //     console.log(event.detail.name, true)
-        //     tree.root.eachBefore((node: any) => {
-        //         if (!node._children) return
-        //         sortPrivateChildren(node, event.detail.filter.sorting)
-        //         node.children = filterDiffingUniverses(node)
-        //     })
-        // }
     }
 }

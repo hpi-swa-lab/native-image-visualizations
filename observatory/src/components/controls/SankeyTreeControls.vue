@@ -27,16 +27,6 @@ const emit = defineEmits([EventType.EXPAND_TREE])
             ></DiffingUniversesFilterFieldset>
 
             <SortingFilterFieldset />
-
-            <!--            TODO maybe remove-->
-            <button
-                id="expand-tree-btn"
-                type="button"
-                class="btn btn-light"
-                @click="emit(EventType.EXPAND_TREE, $event)"
-            >
-                expand full tree
-            </button>
         </form>
 
         <AlertBox title="Shortcuts" :alert-infos="SHORTCUTS"></AlertBox>

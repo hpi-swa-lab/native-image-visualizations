@@ -7,7 +7,6 @@ import { UniverseProps } from '../interfaces/UniverseProps'
 // FIXME can be removed or moved?
 export enum CustomEventName {
     APPLY_FILTER = 'apply-filter',
-    EXPAND_TREE = 'expand-tree'
 }
 
 // FIXME can be removed or moved?
