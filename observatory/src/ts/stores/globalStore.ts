@@ -148,6 +148,9 @@ export const useGlobalStore = defineStore('globalConfig', {
                 )
             )
         },
+        loadExportDict(config: GlobalConfig) {
+            // TODO
+        },
         toExportDict(): GlobalConfig {
             return {
                 observedUniverses: (this.observedUniverses as Universe[]).map(

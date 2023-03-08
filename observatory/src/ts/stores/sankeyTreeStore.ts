@@ -38,6 +38,9 @@ export const useSankeyStore = defineStore('sankeyTreeConfig', {
             option === state.sortingFilter.option
     },
     actions: {
+        loadExportDict(config: SankeyStoreConfig) {
+            // TODO
+        },
         toExportDict(): SankeyStoreConfig {
             return {
                 diffing: serializeNodesDiffingFilter(this.diffingFilter),
