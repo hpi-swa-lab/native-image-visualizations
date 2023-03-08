@@ -58,14 +58,14 @@ function toggleSidebarCollapse(): void {
             </TabLayout>
         </div>
         <button
-            class="transition-[left] absolute top-0 z-10 btn btn-primary mt-4 ml-4 -rotate-90 drop-shadow-xl"
+            class="transition-[left] absolute top-0 z-10 btn bg-gray-50 mt-2 ml-2 hover:bg-gray-200 shadow-md"
             :class="collapsed ? 'left-0' : 'left-[300px]'"
             @click="toggleSidebarCollapse"
         >
             <font-awesome-icon
-                icon="chevron-right"
+                icon="chevron-left"
                 class="transition-[rotate]"
-                :class="collapsed ? 'rotate-90' : '-rotate-90'"
+                :class="collapsed ? 'rotate-180' : ''"
             />
         </button>
         <div class="h-full w-full overflow-y-auto"><slot /></div>
