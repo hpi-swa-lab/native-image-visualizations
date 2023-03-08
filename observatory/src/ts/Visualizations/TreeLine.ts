@@ -22,6 +22,17 @@ const LINE_WIDTH = 256
 const LINE_PADDING = 16
 const HIERARCHY_GAPS = 2
 
+type NodeArea = {
+    node: Node
+    x: number
+    y: number
+    width: number
+    height: number
+}
+function doesAreaContain(area: NodeArea, x: number, y: number): boolean {
+    return area.x <= x && area.x + area.width >= x && area.y <= y && area.y + area.height >= y
+}
+
 export class TreeLine implements MultiverseVisualization {
     multiverse: Multiverse = new Multiverse([])
     colorScheme: ColorScheme
@@ -38,6 +49,7 @@ export class TreeLine implements MultiverseVisualization {
     canvas: HTMLCanvasElement
     context: CanvasRenderingContext2D
     transform = { y: 0, k: 1 }
+    nodeAreas = [] as NodeArea[]
 
     constructor(container: HTMLDivElement, colorScheme: ColorScheme) {
         this.colorScheme = colorScheme
@@ -187,6 +199,7 @@ export class TreeLine implements MultiverseVisualization {
 
         const leftOfHierarchy = LINE_PADDING + LINE_WIDTH + LINE_PADDING
 
+        this.nodeAreas = []
         this.drawDiagram(multiverse.root, top, pixelsPerByte, leftOfHierarchy)
     }
 
@@ -202,6 +215,15 @@ export class TreeLine implements MultiverseVisualization {
         let leftOfSubHierarchy = leftOfHierarchy
         if (node.parent) {
             const widthOfBox = this.drawHierarchyBox(leftOfHierarchy, top, height, node)
+            if (height > 2) {
+                this.nodeAreas.push({
+                    x: leftOfHierarchy,
+                    y: top,
+                    height: height,
+                    width: widthOfBox,
+                    node: node
+                })
+            }
             leftOfSubHierarchy = leftOfHierarchy + widthOfBox + HIERARCHY_GAPS
         }
 
@@ -290,5 +312,9 @@ export class TreeLine implements MultiverseVisualization {
         }
 
         return boxWidth
+    }
+
+    public getNodeAtPosition(x: number, y: number): Node | undefined {
+        return this.nodeAreas.find((area) => doesAreaContain(area, x, y))?.node
     }
 }
