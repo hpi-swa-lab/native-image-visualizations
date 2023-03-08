@@ -153,7 +153,7 @@ export const sankeyTreeConfigStore = defineStore('sankeyTreeConfig', {
     state: () => {
         return {
             diffingFilter: {
-                universes: new Set([0, 1]),
+                universes: new Set(),
                 showUnmodified: false
             } as NodesDiffingFilter,
             sortingFilter: {
@@ -185,6 +185,9 @@ export const sankeyTreeConfigStore = defineStore('sankeyTreeConfig', {
             } else {
                 this.diffingFilter.universes.add(universeId)
             }
+        },
+        addSelectedUniverse(universe: number) {
+            this.diffingFilter.universes.add(universe)
         },
         setSortingOption(option: string) {
             const sortingOption = Object.values(SortingOption).find(

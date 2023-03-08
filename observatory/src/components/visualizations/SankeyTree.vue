@@ -83,6 +83,7 @@ function createUniverseMetadata(multiverse: Multiverse, colorScheme: ColorScheme
             name: universe.name,
             color: colorScheme[index] ?? COLORS.white
         }
+        sankeyStore.addSelectedUniverse(index)
     })
     console.log('universeMetadata', metadata)
     return metadata
