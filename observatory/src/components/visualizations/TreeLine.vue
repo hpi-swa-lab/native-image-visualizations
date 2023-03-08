@@ -9,6 +9,7 @@ import MainLayout from '../layouts/MainLayout.vue'
 const store = globalConfigStore()
 const multiverse = computed(() => store.multiverse)
 const colorScheme = computed(() => store.colorScheme)
+const highlights = computed(() => store.highlights)
 
 const container = ref<HTMLDivElement>()
 let visualization: TreeLine
@@ -27,10 +28,16 @@ onMounted(() => {
 watch(multiverse, (newMultiverse) => {
     visualization.setMultiverse(newMultiverse as Multiverse)
 })
-
 watch(colorScheme, (newColorScheme) => {
     visualization.setColorScheme(newColorScheme as ColorScheme)
 })
+watch(
+    highlights,
+    (newHighlights) => {
+        visualization.setHighlights(newHighlights as Set<string>)
+    },
+    { deep: true }
+)
 </script>
 
 <template>
