@@ -5,6 +5,9 @@ import SearchBar from '../controls/SearchBar.vue'
 import TabLayout from './TabLayout.vue'
 import DataManager from '../controls/DataManager.vue'
 import LayerSelection from '../controls/LayerSelection.vue'
+import { computed } from 'vue'
+
+import { globalConfigStore } from '../../ts/stores'
 
 withDefaults(
     defineProps<{
@@ -14,11 +17,20 @@ withDefaults(
         title: ''
     }
 )
+
+const store = globalConfigStore()
+
+const collapsed = computed(() => {
+    return store.sidebarCollapsed
+})
 </script>
 
 <template>
-    <div class="w-full h-full grid grid-cols-12 gap-2">
-        <div class="col-span-2 drop-shadow-xl overflow-y-scroll min-w-[300px]">
+    <div class="w-full h-full flex flex-row">
+        <div
+            class="drop-shadow-xl overflow-y-scroll"
+            :class="collapsed ? 'min-w-0' : 'min-w-[300px]'"
+        >
             <div class="rounded bg-gray-50 space-y-4 h-full">
                 <h2 class="text-center">{{ title }}</h2>
 
@@ -49,6 +61,6 @@ withDefaults(
                 </TabLayout>
             </div>
         </div>
-        <div class="col-span-10 h-full overflow-y-auto"><slot /></div>
+        <div class="h-full w-full overflow-y-auto"><slot /></div>
     </div>
 </template>
