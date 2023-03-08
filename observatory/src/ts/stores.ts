@@ -32,8 +32,7 @@ export const globalConfigStore = defineStore('globalConfig', {
             // Reason: Since our schemes are custom added, they're not part of the type declaration
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             colorScheme: Object.values((cssConfig as any).theme.colors.TABLEAU_10) as ColorScheme,
-            search: '',
-            sidebarCollapsed: false
+            search: ''
         }
     },
     getters: {
@@ -53,9 +52,6 @@ export const globalConfigStore = defineStore('globalConfig', {
             }
 
             this.universes.push(newUniverse)
-        },
-        toggleSidebarCollapse(): void {
-            this.sidebarCollapsed = !this.sidebarCollapsed
         },
         removeUniverse(universeName: string): void {
             const matchingUniverse = this.universes.find(
@@ -126,8 +122,7 @@ export const globalConfigStore = defineStore('globalConfig', {
                 selections: createConfigSelections(this.selections),
                 highlights: createConfigHighlights(this.highlights),
                 currentComponent: this.currentComponent,
-                search: this.search,
-                sidebarCollapsed: this.sidebarCollapsed
+                search: this.search
             }
         }
     }

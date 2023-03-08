@@ -5,9 +5,7 @@ import SearchBar from '../controls/SearchBar.vue'
 import TabLayout from './TabLayout.vue'
 import DataManager from '../controls/DataManager.vue'
 import LayerSelection from '../controls/LayerSelection.vue'
-import { computed } from 'vue'
-
-import { globalConfigStore } from '../../ts/stores'
+import { ref } from 'vue'
 
 withDefaults(
     defineProps<{
@@ -18,11 +16,11 @@ withDefaults(
     }
 )
 
-const store = globalConfigStore()
+const collapsed = ref(false)
 
-const collapsed = computed(() => {
-    return store.sidebarCollapsed
-})
+function toggleSidebarCollapse(): void {
+    collapsed.value = !collapsed.value
+}
 </script>
 
 <template>
@@ -62,7 +60,7 @@ const collapsed = computed(() => {
         <button
             class="transition-[left] absolute top-0 z-10 btn btn-primary mt-4 ml-4 -rotate-90 drop-shadow-xl"
             :class="collapsed ? 'left-0' : 'left-[300px]'"
-            @click="store.toggleSidebarCollapse"
+            @click="toggleSidebarCollapse"
         >
             <font-awesome-icon
                 icon="chevron-right"
