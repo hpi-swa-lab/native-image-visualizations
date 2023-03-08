@@ -33,6 +33,7 @@ export class TreeLine implements MultiverseVisualization {
 
     colorsByIndex: Map<UniverseIndex, string> = new Map()
     fillStyles: Map<UniverseCombination, string | CanvasGradient> = new Map()
+    fadedOutFillStyles: Map<UniverseCombination, string | CanvasGradient> = new Map()
 
     canvas: HTMLCanvasElement
     context: CanvasRenderingContext2D
@@ -78,9 +79,10 @@ export class TreeLine implements MultiverseVisualization {
     public setSelection(selection: Set<string>): void {
         // TODO; https://github.com/hpi-swa-lab/MPWS2022RH1/issues/118
     }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
     public setHighlights(highlights: Set<string>): void {
-        // TODO; https://github.com/hpi-swa-lab/MPWS2022RH1/issues/118
+        this.highlights = highlights
+        this.redraw()
     }
 
     private initZoom(): void {
@@ -104,27 +106,27 @@ export class TreeLine implements MultiverseVisualization {
     }
 
     private buildFillStyles() {
-        const lightenedColors = new Map(
-            Array.from(this.colorsByIndex.entries()).map(([index, color]) => [
-                index,
-                lightenColor(color, 0.4)
-            ])
-        )
-
         for (const combination of this.combinations) {
             const indices = universeCombinationAsIndices(combination)
+            // There exists a color for every universe.
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const colors = indices.map((index) => this.colorsByIndex.get(index)!)
 
             if (indices.length == 1) {
-                // There exists a color for every universe.
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                this.fillStyles.set(combination, this.colorsByIndex.get(indices[0])!)
+                const color = colors[0]
+                this.fillStyles.set(combination, color)
+                this.fadedOutFillStyles.set(combination, lightenColor(color, 0.2))
                 continue
             }
 
-            // There exists a color for every universe.
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            const gradientColors = indices.map((index) => lightenedColors.get(index)!)
-            this.fillStyles.set(combination, this.buildGradient(gradientColors))
+            this.fillStyles.set(
+                combination,
+                this.buildGradient(colors.map((color) => lightenColor(color, 0.6)))
+            )
+            this.fadedOutFillStyles.set(
+                combination,
+                this.buildGradient(colors.map((color) => lightenColor(color, 0.2)))
+            )
         }
     }
 
@@ -216,7 +218,8 @@ export class TreeLine implements MultiverseVisualization {
                 top,
                 height,
                 path[path.length - 1],
-                containingCombinations
+                containingCombinations,
+                this.highlights.has(tree.identifier)
             )
             leftOfSubHierarchy = leftOfHierarchy + widthOfBox + HIERARCHY_GAPS
         }
@@ -271,7 +274,8 @@ export class TreeLine implements MultiverseVisualization {
         top: number,
         height: number,
         text: string,
-        containingCombinations: UniverseCombination[]
+        containingCombinations: UniverseCombination[],
+        isHighlighted: boolean
     ): number {
         const FONT_SIZE = 11
         const TEXT_HORIZONTAL_PADDING = 8
@@ -283,12 +287,18 @@ export class TreeLine implements MultiverseVisualization {
         const textWidth = this.context.measureText(text).width
         const boxWidth = textWidth + 2 * TEXT_HORIZONTAL_PADDING
 
-        this.context.fillStyle =
-            containingCombinations.length == 1
-                ? // The fill styles are calculated for all nodes.
-                  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                  this.fillStyles.get(containingCombinations[0])!
+        const isFaded = this.highlights.size > 0 && !isHighlighted
+        if (containingCombinations.length > 1) {
+            this.context.fillStyle = isFaded
+                ? lightenColor(DEFAULT_FILL_STYLE, 0.5)
                 : DEFAULT_FILL_STYLE
+        } else {
+            const fillStyles = isFaded ? this.fadedOutFillStyles : this.fillStyles
+            // The fill styles are calculated for all nodes.
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            this.context.fillStyle = fillStyles.get(containingCombinations[0])!
+        }
+
         this.context.fillRect(left, top, boxWidth, height - HIERARCHY_GAPS)
 
         const visibleStart = clamp(top, 0, this.canvas.height)

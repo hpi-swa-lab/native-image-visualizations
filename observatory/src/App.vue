@@ -5,9 +5,9 @@ import SankeyTree from './components/visualizations/SankeyTree.vue'
 import { SwappableComponentType } from './ts/enums/SwappableComponentType'
 import TreeLine from './components/visualizations/TreeLine.vue'
 import Venn from './components/visualizations/VennSets.vue'
-import { globalConfigStore } from './ts/stores'
+import { useGlobalStore } from './ts/stores/globalStore'
 
-const store = globalConfigStore()
+const store = useGlobalStore()
 </script>
 
 <template>
