@@ -3,7 +3,8 @@ import MainLayout from '../layouts/MainLayout.vue'
 import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
 import { EventType } from '../../ts/enums/EventType'
 import { onMounted, reactive, watch, computed } from 'vue'
-import { globalConfigStore, vennConfigStore } from '../../ts/stores'
+import { useVennStore } from '../../ts/stores/vennStore'
+import { useGlobalStore } from '../../ts/stores/globalStore'
 import { VennSets } from '../../ts/Visualizations/VennSets'
 import { Multiverse } from '../../ts/UniverseTypes/Multiverse'
 import VennControls from '../controls/VennControls.vue'
@@ -12,8 +13,8 @@ import Tooltip from '../controls/Tooltip.vue'
 import { SortingOrder } from '../../ts/enums/Sorting'
 
 const emit = defineEmits([EventType.CHANGE])
-const globalStore = globalConfigStore()
-const vennStore = vennConfigStore()
+const globalStore = useGlobalStore()
+const vennStore = useVennStore()
 
 const tooltipModel = reactive(new TooltipModel())
 

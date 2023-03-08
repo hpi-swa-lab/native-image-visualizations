@@ -13,6 +13,22 @@ export function findNodesWithName(name: string, root: Node): Node[] {
     )
 }
 
+export function findNodeWithIdentifier(identifier: string, root: Node): Node | undefined {
+    if (root.identifier === identifier) {
+        return root
+    }
+
+    return root.children
+        .map((child) => findNodeWithIdentifier(identifier, child))
+        .find((value: Node | undefined) => value !== undefined)
+}
+
+export function findNodesWithIdentifiers(identifiers: string[], root: Node): Node[] {
+    return identifiers
+        .map((identifier: string) => findNodeWithIdentifier(identifier, root))
+        .filter((mapResult: Node | undefined) => mapResult !== undefined) as Node[]
+}
+
 export function findNodesWithIdentifier(identifier: string, root: Node): Node[] {
     const result: Node[] = []
 

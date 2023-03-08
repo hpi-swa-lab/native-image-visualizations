@@ -8,9 +8,9 @@
  * accessing them.
  */
 import { Bytes } from './SharedTypes/Size'
-import { InitKind, Leaf } from './UniverseTypes/Leaf'
+import { Leaf } from './UniverseTypes/Leaf'
+import { InitKind } from './enums/InitKind'
 import { Node } from './UniverseTypes/Node'
-import { Universe } from './UniverseTypes/Universe'
 
 type Methods = {
     [methodName: string]: { size: Bytes; flags?: string[] }
@@ -89,36 +89,6 @@ export class InvalidReachabilityFormatError extends Error {
 
         Object.setPrototypeOf(this, InvalidReachabilityFormatError.prototype)
     }
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function createConfigSelections(identifiers: Set<string>): unknown {
-    // TODO: implement this, corresponding issue: [#85](https://github.com/hpi-swa-lab/MPWS2022RH1/issues/85)
-    return {}
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function createConfigHighlights(identifiers: Set<string>): unknown {
-    // TODO: implement this, corresponding issue: [#85](https://github.com/hpi-swa-lab/MPWS2022RH1/issues/85)
-    return {}
-}
-
-export function createConfigUniverses(
-    universes: Universe[]
-): Record<string, Record<string, unknown>> {
-    const result: Record<string, Record<string, unknown>> = {}
-
-    universes.forEach((universe) => {
-        result[universe.name] = createConfigUniverse(universe)
-    })
-
-    return result
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function createConfigUniverse(universe: Universe): Record<string, unknown> {
-    // TODO: implement this, corresponding issue: [#85](https://github.com/hpi-swa-lab/MPWS2022RH1/issues/85v)
-    return {}
 }
 
 export async function loadJson(file: File): Promise<object> {

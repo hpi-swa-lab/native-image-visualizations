@@ -29,24 +29,27 @@ function toggleEdit() {
         }
     })
 }
+
+function reset() {
+    inputValue.value = props.label
+}
+
+defineExpose({ reset: reset })
 </script>
 
 <template>
     <div :class="!isEditEnabled && 'overflow-x-hidden'">
-        <template v-if="isEditEnabled">
-            <input
-                ref="inputElement"
-                v-model="inputValue"
-                type="text"
-                class="p-1 m-0 w-full"
-                @focusout="onInputUpdate"
-                @keyup.enter="onInputUpdate"
-            />
-        </template>
-        <template v-else>
-            <label class="mx-1 hover:cursor-text block my-auto" @click="toggleEdit">
-                {{ inputValue }}
-            </label>
-        </template>
+        <input
+            v-if="isEditEnabled"
+            ref="inputElement"
+            v-model="inputValue"
+            type="text"
+            class="p-1 m-0 w-full"
+            @focusout="onInputUpdate"
+            @keyup.enter="onInputUpdate"
+        />
+        <label v-else class="mx-1 hover:cursor-text block my-auto" @click="toggleEdit">
+            {{ inputValue }}
+        </label>
     </div>
 </template>
