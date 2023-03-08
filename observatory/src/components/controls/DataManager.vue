@@ -28,13 +28,13 @@ async function validateFileAndAddUniverseOnSuccess(
     file: File,
     universeName: string
 ): Promise<void> {
-    const parsedJSON = await loadJson(file)
-    const newUniverse = new Universe(
-        universeName,
-        parseReachabilityExport(parsedJSON, universeName)
-    )
-
     try {
+        const parsedJSON = await loadJson(file)
+        const newUniverse = new Universe(
+            universeName,
+            parseReachabilityExport(parsedJSON, universeName)
+        )
+
         globalStore.addUniverse(newUniverse, parsedJSON)
         uploadError.value = undefined
     } catch (error: unknown) {
