@@ -1,8 +1,8 @@
 import {
     SortingOption,
-    sortingOptionForExport,
+    serializeSortingOption,
     SortingOrder,
-    sortingOrderForExport
+    serializeSortingOrder
 } from '../enums/Sorting'
 
 export type NodesFilter = {
@@ -45,7 +45,7 @@ export type NodesSortingFilter = {
 
 export function serializeNodesSortingFilter(filter: NodesSortingFilter): Record<string, string> {
     return {
-        option: sortingOptionForExport(filter.option),
-        order: sortingOrderForExport(filter.order)
+        option: serializeSortingOption(filter.option),
+        order: serializeSortingOrder(filter.order)
     }
 }

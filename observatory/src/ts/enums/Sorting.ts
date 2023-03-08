@@ -3,7 +3,7 @@ export enum SortingOption {
     SIZE = 'size'
 }
 
-export function sortingOptionForExport(option: SortingOption): string {
+export function serializeSortingOption(option: SortingOption): string {
     return option.toString()
 }
 
@@ -13,6 +13,10 @@ export enum SortingOrder {
     DESCENDING = 'descending'
 }
 
-export function sortingOrderForExport(order: SortingOrder): string {
+export function serializeSortingOrder(order: SortingOrder): string {
     return order.toString()
+}
+
+export function deserializeSortingOrder(orderName: string): SortingOrder | undefined {
+    return Object.values(SortingOrder).find((order) => order === orderName)
 }
