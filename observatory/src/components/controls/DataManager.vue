@@ -13,6 +13,7 @@ import JSZip from 'jszip'
 import FileSaver from 'file-saver'
 import { InvalidInputError } from '../../ts/errors'
 import { ExportConfig } from '../../ts/stores/ExportConfig'
+import { map } from 'd3-array'
 
 const globalStore = useGlobalStore()
 const vennStore = useVennStore()
@@ -86,7 +87,7 @@ function exportConfig() {
     })
 }
 
-async function loadConfig(event: Event) {
+async function loadConfigAndData(event: Event) {
     const input = event.target as HTMLInputElement
     if (!input.files) {
         configLoadError.value = Error(
@@ -95,32 +96,11 @@ async function loadConfig(event: Event) {
         return
     }
 
-    const errors: string[] = []
-
+    let errors: string[] = []
     const zip = await JSZip.loadAsync(input.files[0])
 
-    await Promise.all(
-        Object.keys(zip.files)
-            .filter((filename: string) => filename !== `${CONFIG_NAME}.json`)
-            .map(async (filename: string) => {
-                const universeName = filename.replace(/\.[^/.]+$/, '')
-
-                try {
-                    const rawData = await zip.files[filename].async('string')
-                    const parsedJSON = JSON.parse(rawData)
-
-                    await loadUniverseData(parsedJSON, universeName)
-                } catch (error: unknown) {
-                    if (error instanceof Error) {
-                        errors.push(`Failed loading the universe '${universeName}'`)
-                    }
-                }
-            })
-    )
-
-    if (!(`${CONFIG_NAME}.json` in zip.files)) {
-        errors.push(`The config.zip does not include the expected '${CONFIG_NAME}.json' file`)
-    }
+    errors = errors.concat(await loadData(zip))
+    errors = errors.concat(await loadConfig(zip))
 
     if (errors.length > 0) {
         configLoadError.value = Error(errors.join('\n'))
@@ -143,6 +123,77 @@ function changeUniverseName(oldName: string, newName: string, inputIndex: number
         }
     }
 }
+
+async function loadData(zip: JSZip): Promise<string[]> {
+    const errors: string[] = []
+    await Promise.all(
+        Object.keys(zip.files)
+            .filter((filename: string) => filename !== `${CONFIG_NAME}.json`)
+            .map(async (filename: string) => {
+                const universeName = filename.replace(/\.[^/.]+$/, '')
+
+                try {
+                    const rawData = await zip.files[filename].async('string')
+                    const parsedJSON = JSON.parse(rawData)
+
+                    await loadUniverseData(parsedJSON, universeName)
+                } catch (error: unknown) {
+                    if (error instanceof Error) {
+                        errors.push(`Failed loading the universe '${universeName}'`)
+                    }
+                }
+            })
+    )
+    return errors
+}
+
+async function loadConfig(zip: JSZip): Promise<string[]> {
+    const errors: string[] = []
+
+    if (`${CONFIG_NAME}.json` in zip.files) {
+        const rawConfig = await zip.files[`${CONFIG_NAME}.json`].async('string')
+        const config = JSON.parse(rawConfig)
+
+        const configMappings = [
+            {
+                name: 'venn',
+                store: vennStore
+            },
+            {
+                name: 'sankey',
+                store: sankeyStore
+            },
+            {
+                name: 'treeLine',
+                store: treeLineStore
+            },
+            {
+                name: 'causalityGraph',
+                store: causalityGraphStore
+            },
+            {
+                name: 'global',
+                store: globalStore
+            }
+        ]
+
+        configMappings.forEach((mapping) => {
+            if (mapping.name in config) {
+                mapping.store.loadExportDict(config[mapping.name])
+            } else {
+                errors.push(`
+                    Could not load the ${mapping.name} config, 
+                    as the key '${mapping.name}' is not present 
+                    in the config
+                `)
+            }
+        })
+    } else {
+        errors.push(`The config.zip does not include the expected '${CONFIG_NAME}.json' file`)
+    }
+
+    return errors
+}
 </script>
 
 <template>
@@ -154,7 +205,7 @@ function changeUniverseName(oldName: string, newName: string, inputIndex: number
                 class="w-full space-y-4"
                 type="file"
                 accept="application/zip"
-                @change="loadConfig"
+                @change="loadConfigAndData"
             />
 
             <p v-if="configLoadError" class="warning-text space-y-4">
