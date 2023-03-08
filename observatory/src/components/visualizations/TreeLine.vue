@@ -26,37 +26,37 @@ onMounted(() => {
     // `ref` exists below and this code is executed after mounting.
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const theContainer = container.value!
-    
-    visualization = new TreeLine(
-        theContainer,
-        colorScheme.value
-    )
+
+    visualization = new TreeLine(theContainer, colorScheme.value)
     visualization.setMultiverse(multiverse.value as Multiverse)
 
     theContainer.addEventListener('mousemove', (event) => {
-        var containerRect = theContainer.getBoundingClientRect()
-        const info = visualization.getInfoAtPosition(event.x - containerRect.x, event.y - containerRect.y)
+        const containerRect = theContainer.getBoundingClientRect()
+        const info = visualization.getInfoAtPosition(
+            event.x - containerRect.x,
+            event.y - containerRect.y
+        )
         if (!info) {
             tooltip.hide()
-            return;
+            return
         }
         tooltip.updateContent(tooltipContentForInfo(info))
         tooltip.updatePosition(event.pageX, event.pageY)
         tooltip.display()
     })
-    theContainer.addEventListener('mouseout', (_) => {
+    theContainer.addEventListener('mouseout', () => {
         tooltip.hide()
     })
 })
 
 function tooltipContentForInfo(info: SizeInfo | Node): string {
-    return (info instanceof Node) ? tooltipContentForNode(info) : tooltipContentForSizeInfo(info)
+    return info instanceof Node ? tooltipContentForNode(info) : tooltipContentForSizeInfo(info)
 }
 function tooltipContentForSizeInfo(info: SizeInfo): string {
     const allSources = multiverse.value.sources
     let content = `${formatBytes(info.size)}`
 
-    let indices = universeCombinationAsIndices(info.sources)
+    const indices = universeCombinationAsIndices(info.sources)
     if (indices.length == 1) {
         content += ` exclusively in ${allSources[indices[0]].name}`
     } else {
@@ -67,10 +67,10 @@ function tooltipContentForSizeInfo(info: SizeInfo): string {
 }
 function tooltipContentForNode(node: Node): string {
     const allSources = multiverse.value.sources
-    let content = `<b>Name</b>: ${node.identifier}`;
+    let content = `<b>Name</b>: ${node.identifier}`
 
     for (const [index, source] of node.sources) {
-        content += `<br><b>${allSources[index].name}</b>: ${formatBytes(source.codeSize)}`;
+        content += `<br><b>${allSources[index].name}</b>: ${formatBytes(source.codeSize)}`
     }
 
     return content

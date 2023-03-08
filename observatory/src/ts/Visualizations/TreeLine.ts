@@ -105,6 +105,10 @@ export class TreeLine implements MultiverseVisualization {
         this.redraw()
     }
 
+    public getInfoAtPosition(x: number, y: number): SizeInfo | Node | undefined {
+        return this.infoAreas.find((area) => doesAreaContain(area, x, y))?.info
+    }
+
     private initZoom(): void {
         // `d3.zoom().on(..., ...)` expects a function accepting `any`.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -333,9 +337,5 @@ export class TreeLine implements MultiverseVisualization {
         }
 
         return boxWidth
-    }
-
-    public getInfoAtPosition(x: number, y: number): SizeInfo | Node | undefined {
-        return this.infoAreas.find((area) => doesAreaContain(area, x, y))?.info
     }
 }
