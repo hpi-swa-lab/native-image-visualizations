@@ -1,3 +1,7 @@
+* {
+    font-family: system-ui;
+}
+
 #cut-tool-root {
     all: initial;
     height: 98%;
@@ -73,7 +77,7 @@ ul {
     float: right;
     margin-right: 5px;
     margin-left: 5px;
-    color: #B02020;
+    color: #CF8020;
     grid-row-start: 1;
     grid-column-start: 3;
     text-align: right;
@@ -82,7 +86,7 @@ ul {
 
 .size-bar-outer {
     float: right;
-    height: 16px;
+    height: 17px;
     grid-row-start: 1;
     grid-column-start: 2;
     grid-template-columns: 1fr;
@@ -94,10 +98,25 @@ ul {
     grid-column-start: 1;
 }
 
-.size-bar-inner {
+.size-bar-inner-0 {
+    float: right;
+    height: 100%;
+    width: 0;
+    background-color: #FFFFFF80;
+}
+
+.size-bar-inner-1 {
+    float: left;
     height: 100%;
     width: 0;
     background-color: #FF202060;
+}
+
+.size-bar-inner-2 {
+    float: left;
+    height: 100%;
+    width: 0;
+    background-color: #FFA02060;
 }
 
 .purge-percentage-bar-outer {
@@ -175,16 +194,19 @@ ul {
 }
 
 .hovered-for-purge {
-    border: 1px solid #8080FF80;
-    background-color: #0000FF10;
+    margin: -1px;
+    border: 1px solid #CF900080;
+    background-color: #CF900010;
 }
 
 .selected-for-purge {
-    border: 1px solid #8080FF;
-    background-color: #0000FF20;
+    margin: -1px;
+    border: 1px solid #DF0000;
+    background-color: #FF000040;
 }
 
 .selected-for-detail {
+    margin: -1px;
     border: 1px solid #80FF80;
     background-color: #00FF0020;
 }
@@ -206,7 +228,7 @@ ul {
 }
 
 .cut-size-bar {
-    background-color: #B0404080;
+    background-color: #CF9000;
     height: 2px;
     width: 0;
     margin-top: -2px;
@@ -229,6 +251,10 @@ ul {
 
 .synthetic {
     color: #808080;
+}
+
+.purged {
+    text-decoration: line-through;
 }
 
 .node {

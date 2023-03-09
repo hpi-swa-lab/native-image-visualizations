@@ -39,19 +39,19 @@ function forEachInSubtree<TNode extends { children?: TNode[] }>(node: TNode, cal
     }
 }
 
-function forEachInSubtreePostorder<TNode extends { children?: TNode[] }>(node: TNode, expandCallback: (v: TNode) => boolean, callback: (v: TNode) => void) {
+function forEachInSubtreePostorder<TNode extends { children: TNode[] }, TResult>(node: TNode, expandCallback: (v: TNode) => boolean, callback: (v: TNode, childResults: (TResult | undefined)[]) => TResult): TResult | undefined {
     if(!expandCallback(node))
-        return
-    if(node.children)
-        for(const c of node.children)
-            forEachInSubtreePostorder(c, expandCallback, callback)
-    callback(node)
+        return undefined
+    const childrenResults: (TResult | undefined)[] = new Array(node.children.length)
+    for(let i = 0; i < node.children.length; i++)
+        childrenResults[i] = forEachInSubtreePostorder(node.children[i], expandCallback, callback)
+    return callback(node, childrenResults)
 }
 
-function forEachInStrictSubtreePostorder<TNode extends { children?: TNode[] }>(node: TNode, expandCallback: (v: TNode) => boolean, callback: (v: TNode) => void) {
-    if(node.children)
-        for(const c of node.children)
-            forEachInSubtreePostorder(c, expandCallback, callback)
+function forEachInStrictSubtreePostorder<TNode extends { children: TNode[] }, TResult>(node: TNode, expandCallback: (v: TNode) => boolean, callback: (v: TNode, childResults: (TResult | undefined)[]) => TResult) {
+
+    for(const c of node.children)
+        forEachInSubtreePostorder(c, expandCallback, callback)
 }
 
 function collectCgNodesInSubtree(node: FullyHierarchicalNode): number[] {
@@ -133,7 +133,6 @@ interface ImageViewData
 {
     html: HTMLLIElement
     exclusive_transitive_cg_nodes?: number[]
-    purgedCodesize?: number
 }
 
 class Cutview {
@@ -689,9 +688,11 @@ export class CutTool {
                 sizeBarOuter.style.width = (d.size / this.maxCodeSize * 100) + '%'
                 li.appendChild(sizeBarOuter)
 
-                const sizeBarInner = document.createElement('div')
-                sizeBarInner.className = 'size-bar-inner'
-                sizeBarOuter.appendChild(sizeBarInner)
+                for(let i = 0; i < 3; i++) {
+                    const sizeBarInner = document.createElement('div')
+                    sizeBarInner.className = `size-bar-inner-${i}`
+                    sizeBarOuter.appendChild(sizeBarInner)
+                }
             }
 
             {
@@ -714,7 +715,7 @@ export class CutTool {
                 span.addEventListener('click', () => {
                     expandClickHandler(span, node, () => {
                         li.appendChild(this.generateHtmlImageview(node))
-                        node.children.forEach(u => this.refreshPurgeValueForImageviewNode(u))
+                        this.updatePurgeValues(node)
                     });
                 });
             } else {
@@ -818,45 +819,80 @@ export class CutTool {
         }
     }
 
-    private updatePurgeValues() {
-        forEachInStrictSubtreePostorder(this.dataRoot, u => this.imageviewData.get(u) !== undefined, u => this.refreshPurgeValueForImageviewNode(u))
+    private updatePurgeValues(root = this.dataRoot) {
+        forEachInStrictSubtreePostorder<FullyHierarchicalNode, [number, number, number] | undefined>(root, u => this.imageviewData.get(u) !== undefined, (u, childResults) => this.refreshPurgeValueForImageviewNode(u, childResults))
     }
 
-    private refreshPurgeValueForImageviewNode(u: FullyHierarchicalNode) {
+    private sumPurged(reachable: Uint8Array | undefined, cg_nodes: number[]) {
+        if(reachable === undefined)
+            return 0
+
+        let sum = 0
+        if (reachable) {
+            for (const i of cg_nodes)
+                if (reachable[i] === 0xFF)
+                    sum += this.codesizes[i]
+        }
+        return sum
+    }
+
+    private refreshPurgeValueForImageviewNode(u: FullyHierarchicalNode, childResults: ([number, number, number] | undefined)[]): [number, number, number] | undefined {
         const still_reachable = this.reachable_in_image_view ?? this.all_reachable
 
         const uImageviewData = this.imageviewData.get(u)
-        assert(uImageviewData !== undefined)
+        if(uImageviewData === undefined)
+            return
 
-        let purgedCodesize = 0
+        let results
+        const reachableArrs = [
+            this.all_reachable,
+            this.reachable_under_selection,
+            this.reachable_in_image_view
+        ]
+
         if(uImageviewData.exclusive_transitive_cg_nodes) {
-            for (const i of uImageviewData.exclusive_transitive_cg_nodes)
-                if (this.all_reachable[i] !== 0xFF && still_reachable[i] === 0xFF)
-                    purgedCodesize += this.codesizes[i]
+            results = reachableArrs
+                .map(reachable => this.sumPurged(reachable, uImageviewData.exclusive_transitive_cg_nodes!))
         } else {
-            for (const i of u.cg_nodes)
-                if (this.all_reachable[i] !== 0xFF && still_reachable[i] === 0xFF)
-                    purgedCodesize += this.codesizes[i]
-            for (const v of u.children) {
-                const vImageviewData = this.imageviewData.get(v)
-                if(vImageviewData)
-                    purgedCodesize += vImageviewData.purgedCodesize
-            }
+            results = reachableArrs.map(reachable => this.sumPurged(reachable, u.cg_nodes))
+            for(const cr of childResults)
+                if(cr)
+                    for(let i = 0; i < 3; i++)
+                        results[i] += cr[i]
         }
-
-        uImageviewData.purgedCodesize = purgedCodesize
         const html = uImageviewData.html
 
-        const purgedPercentage = 100 * purgedCodesize / u.size
-        let barWidth = '0'
+        const [purgedBaseline, purgedWithSelection, purgedWithSelectionAndHoverPreview] = results
+
+        const purgedPercentage0 = 100 * purgedBaseline / u.size
+        const purgedPercentage1 = 100 * (purgedWithSelection - purgedBaseline) / u.size
+        const purgedPercentage2 = 100 * (purgedWithSelectionAndHoverPreview - purgedWithSelection) / u.size
+        const purgedPercentageTotal = purgedPercentage1 + purgedPercentage2
+        let barWidth0 = '0'
+        let barWidth1 = '0'
+        let barWidth2 = '0'
+        let barWidthTotal = '0'
         let percentageText = ''
         if (u.size !== 0) {
-            barWidth = purgedPercentage.toFixed(1) + '%'
-            percentageText = purgedPercentage === 0 ? '' : purgedPercentage.toFixed(1) + ' %'
+            barWidth0 = purgedPercentage0.toFixed(1) + '%'
+            barWidth1 = purgedPercentage1.toFixed(1) + '%'
+            barWidth2 = purgedPercentage2.toFixed(1) + '%'
+            barWidthTotal = purgedPercentageTotal.toFixed(1) + '%'
+            percentageText = purgedPercentageTotal === 0 ? '' : purgedPercentageTotal.toFixed(1) + ' %'
         }
         html.querySelector<HTMLSpanElement>('.purge-percentage-bar-text')!.textContent = percentageText
-        html.querySelector<HTMLDivElement>('.purge-percentage-bar-inner')!.style.width = barWidth
-        html.querySelector<HTMLDivElement>('.size-bar-inner')!.style.width = barWidth
+        html.querySelector<HTMLDivElement>('.purge-percentage-bar-inner')!.style.width = barWidthTotal
+        html.querySelector<HTMLDivElement>('.size-bar-inner-0')!.style.width = barWidth0
+        html.querySelector<HTMLDivElement>('.size-bar-inner-1')!.style.width = barWidth1
+        html.querySelector<HTMLDivElement>('.size-bar-inner-2')!.style.width = barWidth2
+        const cl = html.querySelector<HTMLDivElement>('.node-text')!.classList
+        if(purgedWithSelection >= u.size && purgedWithSelection > 0) {
+            cl.add('purged')
+        } else {
+            cl.remove('purged')
+        }
+
+        return results as [number, number, number]
     }
 
     private renderGraphOnDetailView(edges: { src: number, dst: number, via_type?: number }[] | undefined) {
@@ -902,7 +938,7 @@ export class CutTool {
             nodes[l.target].in_deg += 1
         })
 
-        let order = []
+        let order: number[] = []
 
         for(let v = 0; v < nodes.length; v++)
             if(nodes[v].in_deg === 0)
