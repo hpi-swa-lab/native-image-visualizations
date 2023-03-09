@@ -10,7 +10,7 @@ import { serializerLayer, Layers } from '../enums/Layers'
 import { Multiverse } from '../UniverseTypes/Multiverse'
 import { InvalidInputError } from '../errors'
 import { ColorScheme } from '../SharedTypes/Colors'
-import { findNodeEqualingIdentifier } from '../Math/filters'
+import { findNodesIncludingIdentifier } from '../Math/filters'
 import { toRaw } from 'vue'
 
 // Reason: Vite does not support commonJS out of box. In the vite.config, the commonjs plugin
@@ -149,7 +149,7 @@ export const useGlobalStore = defineStore('globalConfig', {
 
             this.setHighlights(
                 new Set<string>(
-                    findNodeEqualingIdentifier(this.search, this.multiverse.root as Node).map(
+                    findNodesIncludingIdentifier(this.search, this.multiverse.root as Node).map(
                         (node: Node) => node.identifier
                     )
                 )
