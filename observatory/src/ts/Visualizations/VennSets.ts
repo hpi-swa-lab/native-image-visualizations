@@ -31,6 +31,7 @@ export class VennSets implements MultiverseVisualization {
     private multiverse: Multiverse = new Multiverse([])
     private layer = Layers.PACKAGES
     private nodeHierarchy: HierarchyNode<Group> = d3.hierarchy([] as unknown as Group)
+    private colorsByName: Map<string, string> = new Map()
 
     private container: any
     private tooltip: TooltipModel
@@ -112,7 +113,6 @@ export class VennSets implements MultiverseVisualization {
             (nodeOnLevel) => Filter.applyAll(this.filters, nodeOnLevel)
         )
         const root = this.asCombinationPartitionedHierarchy(nodesOnLevel)
-
         if (!root.children) return
 
         this.circlePack(root)
@@ -122,13 +122,6 @@ export class VennSets implements MultiverseVisualization {
     }
 
     private drawCircles(root: HierarchyNode<Group>) {
-        const colorsByName: Map<string, string> = new Map(
-            root.children?.map((node: HierarchyNode<Group>, index: number) => [
-                (node as unknown as HierarchyNode<NodeData>).data[0],
-                this.colorScheme[index]
-            ])
-        )
-
         this.container
             .append('g')
             .attr('class', 'nodes')
@@ -141,7 +134,7 @@ export class VennSets implements MultiverseVisualization {
             .attr('cy', (leaf: PackedHierarchyLeaf) => leaf.y)
             .attr('r', (leaf: PackedHierarchyLeaf) => leaf.r)
             .attr('fill', (leaf: PackedHierarchyLeaf) =>
-                colorsByName.get((leaf.parent as unknown as PackedHierarchyNode).data[0])
+                this.colorsByName.get((leaf.parent as unknown as PackedHierarchyNode).data[0])
             )
             .on('mouseenter', (_event: any, data: PackedHierarchyLeaf) => {
                 this.tooltip.display()
@@ -188,6 +181,13 @@ export class VennSets implements MultiverseVisualization {
             (group: Node[]) => d3.sum(group, (node: Node) => node.codeSize),
             indicesToNames,
             (node: Node) => node
+        )
+
+        this.colorsByName = new Map(
+            [...groups.entries()]
+                .map((group: Array<unknown>) => group[0] as string)
+                .sort()
+                .map((group: string, index: number) => [group, this.colorScheme[index]])
         )
 
         this.nodeHierarchy = d3
