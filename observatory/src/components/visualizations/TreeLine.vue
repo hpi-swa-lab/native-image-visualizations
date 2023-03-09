@@ -90,7 +90,7 @@ watch(
     (newFilters) => {
         visualization.setFilters(newFilters as Filter[])
     },
-    {deep:true}
+    { deep: true }
 )
 watch(
     highlights,

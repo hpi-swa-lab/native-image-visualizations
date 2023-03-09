@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref } from 'vue'
 import { useGlobalStore } from '../../ts/stores/globalStore'
-import ToggleSwitch from './ToggleSwitch.vue';
+import ToggleSwitch from './ToggleSwitch.vue'
 
 const expanded = ref(false)
 const store = useGlobalStore()
@@ -44,7 +44,12 @@ function toggleDropdown() {
                 aria-orientation="vertical"
                 aria-labelledby="menu-button"
             >
-                <div v-for="(filter, index) in store.filters" :key="index" class="py-2 px-2 w-full" role="none">
+                <div
+                    v-for="(filter, index) in store.filters"
+                    :key="index"
+                    class="py-2 px-2 w-full"
+                    role="none"
+                >
                     <ToggleSwitch
                         :id="filter.description"
                         :value="false"
@@ -52,7 +57,9 @@ function toggleDropdown() {
                         role="menuitem"
                         @change.self="store.toggleFilter(filter, $event)"
                     >
-                      <label class='text-sm' :for="filter.description"> {{ filter.description }} </label>
+                        <label class="text-sm" :for="filter.description">
+                            {{ filter.description }}
+                        </label>
                     </ToggleSwitch>
                     <ToggleSwitch
                         :id="filter.description"
@@ -62,7 +69,9 @@ function toggleDropdown() {
                         role="menuitem"
                         @change.self="store.toggleFilter(filter, $event)"
                     >
-                      <label class='text-gray-500 text-xs' :for="filter.description"> {{ 'All but ' + filter.description }} </label>
+                        <label class="text-gray-500 text-xs" :for="filter.description">
+                            {{ 'All but ' + filter.description }}
+                        </label>
                     </ToggleSwitch>
                 </div>
             </div>

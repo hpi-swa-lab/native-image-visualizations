@@ -45,9 +45,9 @@ function toggleSidebarCollapse(): void {
                         <UniverseSelectionList />
                         <hr />
 
-                            <SearchBar />
-                            <LayerSelection />
-                            <FilteringOptions />
+                        <SearchBar />
+                        <LayerSelection />
+                        <FilteringOptions />
 
                         <ul class="space-y-2">
                             <slot name="controls"></slot>
