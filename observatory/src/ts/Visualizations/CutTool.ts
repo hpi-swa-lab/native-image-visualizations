@@ -12,6 +12,7 @@ import {
     AsyncDetailedSimulationResult,
     AsyncIncrementalSimulationResult
 } from '../Causality/AsyncCausalityGraph';
+import {toRaw} from 'vue';
 
 function assert(cond: boolean): asserts cond {
     if(!cond)
@@ -518,9 +519,10 @@ export class CutTool {
     }
 
     public static async create(universe: CausalityGraphUniverse) {
-        const cg = await universe.getCausalityGraph()
+        const universeRaw = toRaw(universe)
+        const cg = await universeRaw.getCausalityGraph()
         const allReachable = await cg.simulatePurge()
-        return new CutTool(universe, cg, allReachable)
+        return new CutTool(universeRaw, cg, allReachable)
     }
 
     public dispose() {
