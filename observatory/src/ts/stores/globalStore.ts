@@ -1,30 +1,47 @@
 import { defineStore } from 'pinia'
-import resolveConfig from 'tailwindcss/resolveConfig'
-import { Layers } from './enums/Layers'
-import { Filter } from './SharedTypes/Filters'
-import { SortingOption, SortingOrder } from './enums/Sorting'
-import { componentName, SwappableComponentType } from './enums/SwappableComponentType'
-import { findNodesWithIdentifier } from './Math/filters'
-import { createConfigHighlights, createConfigSelections, createConfigUniverses } from './parsing'
-import { ColorScheme } from './SharedTypes/Colors'
-import { NodesDiffingFilter, NodesFilter, NodesSortingFilter } from './SharedTypes/NodesFilter'
-import { Multiverse } from './UniverseTypes/Multiverse'
-import { Node } from './UniverseTypes/Node'
-import { Universe } from './UniverseTypes/Universe'
+import { Universe } from '../UniverseTypes/Universe'
+import { Node } from '../UniverseTypes/Node'
+import {
+    SwappableComponentType,
+    componentName,
+    serializeComponent
+} from '../enums/SwappableComponentType'
+import { serializerLayer, Layers } from '../enums/Layers'
+import { Multiverse } from '../UniverseTypes/Multiverse'
+import { InvalidInputError } from '../errors'
+import { ColorScheme } from '../SharedTypes/Colors'
+import { findNodeEqualingIdentifier } from '../Math/filters'
+import { toRaw } from 'vue'
+
 // Reason: Vite does not support commonJS out of box. In the vite.config, the commonjs plugin
 // transpiles the cjs to ts, but the transpilation and mapping happens during run time.
 // Thus, the system cannot find a declaration file for the module statically.
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
-import tailwindConfig from '../../tailwind.config.cjs'
-import { toRaw } from 'vue'
+import tailwindConfig from '../../../tailwind.config.cjs'
+import resolveConfig from 'tailwindcss/resolveConfig'
+import { Filter } from '../SharedTypes/Filters'
 
 const cssConfig = resolveConfig(tailwindConfig)
 
-export const globalConfigStore = defineStore('globalConfig', {
+type NodeIdentifiersPerUniverse = Record<string, string[]>
+
+export type GlobalConfig = Record<string, string | string[] | NodeIdentifiersPerUniverse>
+
+export const CONFIG_NAME = '_config'
+export const reservedNames = [CONFIG_NAME]
+
+function validateUniverseName(name: string) {
+    if (reservedNames.includes(name)) {
+        throw new InvalidInputError(`The name ${name} is reserved and cannot be used for universes`)
+    }
+}
+
+export const useGlobalStore = defineStore('globalConfig', {
     state: () => {
         return {
             universes: [] as Universe[],
+            rawData: {} as Record<string, unknown>,
             observedUniverses: [] as Universe[],
             multiverse: new Multiverse([]),
             selections: new Set<string>(),
@@ -49,7 +66,9 @@ export const globalConfigStore = defineStore('globalConfig', {
         previousComponentName: (state) => componentName(state.previousComponent)
     },
     actions: {
-        addUniverse(newUniverse: Universe): void {
+        addUniverse(newUniverse: Universe, rawData: unknown): void {
+            validateUniverseName(newUniverse.name)
+
             const matchingUniverse = this.universes.find(
                 (universe) => universe.name === newUniverse.name
             )
@@ -61,6 +80,7 @@ export const globalConfigStore = defineStore('globalConfig', {
             }
 
             this.universes.push(newUniverse)
+            this.rawData[newUniverse.name] = rawData
         },
         removeUniverse(universeName: string): void {
             const matchingUniverse = this.universes.find(
@@ -69,11 +89,18 @@ export const globalConfigStore = defineStore('globalConfig', {
             if (!matchingUniverse) return
             this.universes.splice(this.universes.indexOf(matchingUniverse), 1)
             this.toggleObservationByName(matchingUniverse.name)
+            if (!this.rawData[universeName]) return
+            delete this.rawData[universeName]
         },
         updateUniverseName(oldName: string, newName: string): void {
+            validateUniverseName(newName)
+
             const universe = this.universes.find((universe) => universe.name === oldName)
             if (!universe) return
             universe.name = newName
+            if (!this.rawData[oldName]) return
+            this.rawData[newName] = this.rawData[oldName]
+            delete this.rawData[oldName]
         },
         toggleObservationByName(universeName: string): void {
             const matchingUniverse = this.observedUniverses.find(
@@ -122,7 +149,7 @@ export const globalConfigStore = defineStore('globalConfig', {
 
             this.setHighlights(
                 new Set<string>(
-                    findNodesWithIdentifier(this.search, this.multiverse.root as Node).map(
+                    findNodeEqualingIdentifier(this.search, this.multiverse.root as Node).map(
                         (node: Node) => node.identifier
                     )
                 )
@@ -163,101 +190,21 @@ export const globalConfigStore = defineStore('globalConfig', {
                 this.activeFilters.push(matchingFilter)
             }
         },
-        toExportDict(): Record<string, unknown> {
+        toExportDict(): GlobalConfig {
             return {
-                universes: createConfigUniverses(this.universes as Universe[]),
-                selections: createConfigSelections(this.selections),
-                highlights: createConfigHighlights(this.highlights),
-                currentComponent: this.currentComponent,
+                observedUniverses: (this.observedUniverses as Universe[]).map(
+                    (universe: Universe) => universe.name
+                ),
+                selections: Array.from(this.selections),
+                highlights: Array.from(this.highlights),
+                currentLayer: serializerLayer(this.currentLayer),
+                colorScheme: this.colorScheme,
+                currentComponent: serializeComponent(this.currentComponent),
+                previousComponent: this.previousComponent
+                    ? serializeComponent(this.previousComponent)
+                    : '',
                 search: this.search
             }
-        }
-    }
-})
-
-export const vennConfigStore = defineStore('vennConfig', {
-    state: () => {
-        return {
-            sortingOrder: SortingOrder.NONE
-        }
-    },
-    getters: {
-        isSortingOrder: (state) => (option: string) => option === state.sortingOrder
-    },
-    actions: {
-        toExportDict(): Record<string, unknown> {
-            return {
-                sortingOrder: this.sortingOrder
-            }
-        },
-        setSortingOrder(order: SortingOrder) {
-            this.sortingOrder = order
-        }
-    }
-})
-
-export const sankeyTreeConfigStore = defineStore('sankeyTreeConfig', {
-    state: () => {
-        return {
-            diffingFilter: {
-                universes: new Set(['0', '1']),
-                showUnmodified: false
-            } as NodesDiffingFilter,
-            sortingFilter: {
-                option: SortingOption.NAME,
-                order: SortingOrder.ASCENDING
-            } as NodesSortingFilter
-        }
-    },
-    getters: {
-        nodesFilter: (state) =>
-            ({
-                diffing: state.diffingFilter,
-                sorting: state.sortingFilter
-            } as NodesFilter),
-        isUniverseFiltered: (state) => (universeId: string) =>
-            state.diffingFilter.universes.has(universeId),
-        isFilteredSortingOption: (state) => (option: string) =>
-            option === state.sortingFilter.option
-    },
-    actions: {
-        toExportDict(): Record<string, unknown> {
-            return {}
-        },
-        changeUniverseSelection(universeId: string) {
-            if (this.diffingFilter.universes.has(universeId)) {
-                this.diffingFilter.universes.delete(universeId)
-            } else {
-                this.diffingFilter.universes.add(universeId)
-            }
-        },
-        setSortingOption(option: string) {
-            const sortingOption = Object.values(SortingOption).find(
-                (item) => item.toString() === option
-            )
-            this.sortingFilter.option = sortingOption ? sortingOption : SortingOption.NAME
-        },
-        setSortingOrder(order: SortingOrder) {
-            this.sortingFilter.order = order
-        },
-        setShowUnmodified(show: boolean) {
-            this.diffingFilter.showUnmodified = show
-        }
-    }
-})
-
-export const treeLineConfigStore = defineStore('treeLineConfig', {
-    actions: {
-        toExportDict(): Record<string, unknown> {
-            return {}
-        }
-    }
-})
-
-export const causalityGraphConfigStore = defineStore('causalityGraphConfig', {
-    actions: {
-        toExportDict(): Record<string, unknown> {
-            return {}
         }
     }
 })

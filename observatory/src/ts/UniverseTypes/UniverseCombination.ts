@@ -7,5 +7,5 @@ export function indicesAsUniverseCombination(indices: UniverseIndex[]): Universe
 }
 
 export function universeCombinationAsIndices(combination: UniverseCombination): UniverseIndex[] {
-    return combination.split(',').map(parseInt)
+    return combination.split(',').map((index) => parseInt(index))
 }

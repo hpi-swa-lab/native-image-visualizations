@@ -1,6 +1,7 @@
 import { describe, expect, test } from '@jest/globals'
 import { HIERARCHY_NAME_SEPARATOR } from '../src/ts/globals'
-import { InitKind, Leaf } from '../src/ts/UniverseTypes/Leaf'
+import { Leaf } from '../src/ts/UniverseTypes/Leaf'
+import { InitKind } from '../src/ts/enums/InitKind'
 import { Node } from '../src/ts/UniverseTypes/Node'
 import { forest } from './data/forest'
 

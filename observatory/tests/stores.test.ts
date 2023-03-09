@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals'
 import { Universe } from '../src/ts/UniverseTypes/Universe'
 import { Node } from '../src/ts/UniverseTypes/Node'
-import { globalConfigStore } from '../src/ts/stores'
+import { useGlobalStore } from '../src/ts/stores/globalStore'
 import { setActivePinia, createPinia } from 'pinia'
 
 // Reason for disabling: Type Spec would require repeating entire config interface
@@ -11,7 +11,7 @@ let store: any
 describe('global store', () => {
     beforeEach(() => {
         setActivePinia(createPinia())
-        store = globalConfigStore()
+        store = useGlobalStore()
     })
 
     test('removing an observed universe removes it from the multiverse', () => {

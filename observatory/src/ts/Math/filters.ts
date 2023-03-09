@@ -21,7 +21,20 @@ export function findNodesWithName(name: string, root: Node): Node[] {
     )
 }
 
-export function findNodesWithIdentifier(identifier: string, root: Node): Node[] {
+export function findNodeEqualingIdentifier(identifier: string, root: Node): Node | undefined {
+    return (
+        applyFilters([new Filter('', (node: Node) => node.identifier === identifier)], root)[0] ??
+        undefined
+    )
+}
+
+export function findNodesEqualingAnyIdentifier(identifiers: string[], root: Node): Node[] {
+    return identifiers
+        .map((identifier: string) => findNodeEqualingIdentifier(identifier, root))
+        .filter((mapResult: Node | undefined) => mapResult !== undefined) as Node[]
+}
+
+export function findNodesIncludingIdentifier(identifier: string, root: Node): Node[] {
     return applyFilters(
         [
             new Filter('', (node: Node) =>
