@@ -1,19 +1,15 @@
 <script setup lang="ts">
-import { globalConfigStore } from '../../ts/stores'
+import { ref } from 'vue';
+import { useGlobalStore } from '../../ts/stores/globalStore'
 import ToggleSwitch from './ToggleSwitch.vue';
 
-let expanded = false
-const store = globalConfigStore()
+const expanded = ref(false)
+const store = useGlobalStore()
 
 function toggleDropdown() {
     const menu = document.querySelector('[role="menu"]') as HTMLDivElement
-    if (!expanded) {
-      menu.classList.remove('hidden')
-      expanded = true
-    } else {
-      menu.classList.add('hidden')
-      expanded = false
-    }
+    expanded.value = !expanded.value
+    menu.classList.toggle('hidden')
 }
 </script>
 

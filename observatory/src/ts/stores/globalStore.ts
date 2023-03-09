@@ -149,9 +149,10 @@ export const useGlobalStore = defineStore('globalConfig', {
 
             this.setHighlights(
                 new Set<string>(
-                    findNodesIncludingIdentifier(this.search, this.multiverse.root as Node).map(
-                        (node: Node) => node.identifier
-                    )
+                    findNodesIncludingIdentifier(
+                        toRaw(this.search),
+                        toRaw(this.multiverse.root) as Node
+                    ).map((node: Node) => node.identifier)
                 )
             )
         },
@@ -195,6 +196,8 @@ export const useGlobalStore = defineStore('globalConfig', {
                 observedUniverses: (this.observedUniverses as Universe[]).map(
                     (universe: Universe) => universe.name
                 ),
+                filters: this.filters.map((filter) => filter.serialize()),
+                activeFilters: this.activeFilters.map((filter) => filter.serialize()),
                 selections: Array.from(this.selections),
                 highlights: Array.from(this.highlights),
                 currentLayer: serializerLayer(this.currentLayer),
