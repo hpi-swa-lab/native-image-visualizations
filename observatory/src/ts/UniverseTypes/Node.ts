@@ -32,7 +32,6 @@ export class Node {
         return this._name
     }
 
-    // todo
     get isReflective(): boolean {
         return this.children.some((child) => child.isReflective)
     }

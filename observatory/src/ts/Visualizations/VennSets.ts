@@ -66,7 +66,6 @@ export class VennSets implements MultiverseVisualization {
 
     public setSelection(selection: Set<string>): void {
         this.selection = selection
-        // todo
         if (selection.size === 0) return
         this.applyStyleForChosen(this.selection, 'display', 'none', 'block')
     }

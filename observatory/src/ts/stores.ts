@@ -17,6 +17,7 @@ import { Universe } from './UniverseTypes/Universe'
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import tailwindConfig from '../../tailwind.config.cjs'
+import { toRaw } from 'vue'
 
 const cssConfig = resolveConfig(tailwindConfig)
 
@@ -65,17 +66,14 @@ export const globalConfigStore = defineStore('globalConfig', {
             const matchingUniverse = this.universes.find(
                 (universe) => universe.name === universeName
             )
-
-            if (matchingUniverse) {
-                this.universes.splice(this.universes.indexOf(matchingUniverse), 1)
-                this.toggleObservationByName(matchingUniverse.name)
-            }
+            if (!matchingUniverse) return
+            this.universes.splice(this.universes.indexOf(matchingUniverse), 1)
+            this.toggleObservationByName(matchingUniverse.name)
         },
         updateUniverseName(oldName: string, newName: string): void {
             const universe = this.universes.find((universe) => universe.name === oldName)
-            if (universe) {
-                universe.name = newName
-            }
+            if (!universe) return
+            universe.name = newName
         },
         toggleObservationByName(universeName: string): void {
             const matchingUniverse = this.observedUniverses.find(
@@ -91,7 +89,7 @@ export const globalConfigStore = defineStore('globalConfig', {
                 }
             }
 
-            this.multiverse = new Multiverse(this.observedUniverses as Universe[])
+            this.multiverse = new Multiverse(toRaw(this.observedUniverses) as Universe[])
         },
         setSelection(selections: Set<string>): void {
             this.selections = selections
@@ -118,7 +116,6 @@ export const globalConfigStore = defineStore('globalConfig', {
             this.search = newSearch
 
             if (newSearch.length === 0) {
-                // todo there needs to be a nothing set value
                 this.setHighlights(new Set())
                 return
             }
@@ -138,40 +135,32 @@ export const globalConfigStore = defineStore('globalConfig', {
             const matchingFilter = this.filters.find((existing) => existing.equals(filter))
             if (!matchingFilter) return
             this.filters.splice(this.filters.indexOf(matchingFilter), 1)
+            this.toggleFilter(matchingFilter, matchingFilter.applyComplement)
         },
         hasFilter(filter: Filter): boolean {
             return this.filters.find((existing) => existing.equals(filter)) != undefined
         },
         isFilterActive(filter: Filter, appliesComplement = false): boolean {
-            if (appliesComplement) {
-                return (
-                    this.activeFilters.find(
-                        (existing) => existing.equals(filter) && existing.applyComplement
-                    ) != undefined
-                )
-            } else {
-                return (
-                    this.activeFilters.find(
-                        (existing) => existing.equals(filter) && !existing.applyComplement
-                    ) != undefined
-                )
-            }
+            return (
+                this.activeFilters.find(
+                    (existing) =>
+                        existing.equals(filter) && existing.applyComplement === appliesComplement
+                ) != undefined
+            )
         },
         toggleFilter(filter: Filter, appliesComplement = false): void {
             const matchingActiveFilter = this.activeFilters.find((active) => active.equals(filter))
 
             if (matchingActiveFilter) {
                 this.activeFilters.splice(this.activeFilters.indexOf(matchingActiveFilter), 1)
-                if (appliesComplement != matchingActiveFilter.applyComplement) {
-                    matchingActiveFilter.applyComplement = appliesComplement
-                    this.activeFilters.push(matchingActiveFilter)
-                }
+                if (appliesComplement === matchingActiveFilter.applyComplement) return
+                matchingActiveFilter.applyComplement = appliesComplement
+                this.activeFilters.push(matchingActiveFilter)
             } else {
                 const matchingFilter = this.filters.find((existing) => existing.equals(filter))
-                if (matchingFilter) {
-                    matchingFilter.applyComplement = appliesComplement
-                    this.activeFilters.push(matchingFilter)
-                }
+                if (!matchingFilter) return
+                matchingFilter.applyComplement = appliesComplement
+                this.activeFilters.push(matchingFilter)
             }
         },
         toExportDict(): Record<string, unknown> {

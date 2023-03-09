@@ -2,11 +2,6 @@ import { Node } from '../UniverseTypes/Node'
 
 export type NodeValidator = (node: Node) => boolean
 
-export function filterEqual(one: Filter, another: Filter): boolean {
-    // Comparison validity https://stackoverflow.com/a/9817699
-    return '' + one == '' + another
-}
-
 export class Filter {
     public description: string
     public validator: NodeValidator
