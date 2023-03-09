@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import {cutToolConfigStore, globalConfigStore, sankeyTreeConfigStore} from '../../ts/stores'
+import { computed, onMounted, watch } from 'vue'
+import {cutToolConfigStore, globalConfigStore} from '../../ts/stores'
 import MainLayout from '../layouts/MainLayout.vue'
 import { CutTool } from '../../ts/Visualizations/CutTool'
 import { CausalityGraphUniverse } from '../../ts/UniverseTypes/CausalityGraphUniverse';
