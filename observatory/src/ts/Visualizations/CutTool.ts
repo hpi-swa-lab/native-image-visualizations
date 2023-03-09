@@ -3,11 +3,15 @@ import * as d3dag from 'd3-dag'
 import {RemoteCausalityGraph} from '../Causality/RemoteCausalityGraph';
 import {Remote} from 'comlink';
 import {
-    DetailedSimulationResult, IncrementalSimulationResult,
     PurgeTreeNode,
     ReachabilityHyperpathEdge
 } from '../Causality/CausalityGraph';
-import {CausalityGraphUniverse, FullyHierarchicalNode, ReachabilityJson} from '../UniverseTypes/CausalityGraphUniverse';
+import {CausalityGraphUniverse, FullyHierarchicalNode} from '../UniverseTypes/CausalityGraphUniverse';
+import {
+    AsyncCausalityGraph,
+    AsyncDetailedSimulationResult,
+    AsyncIncrementalSimulationResult
+} from '../Causality/AsyncCausalityGraph';
 
 function assert(cond: boolean): asserts cond {
     if(!cond)
@@ -206,13 +210,13 @@ class BatchPurgeScheduler {
     callback?: (node: FullyHierarchicalNode, data: ReachabilityVector) => void
     private purgedSizeBaseline: number | undefined
     private readonly codesizes: number[]
-    private readonly cg: Remote<RemoteCausalityGraph>
+    private readonly cg: AsyncCausalityGraph
     private readonly prepurgeNodes: FullyHierarchicalNode[]
     private waitlist: FullyHierarchicalNode[] = []
-    private runningBatch: Remote<IncrementalSimulationResult<number>> | undefined
+    private runningBatch: AsyncIncrementalSimulationResult | undefined
     private runningIndexToNode: (FullyHierarchicalNode | undefined)[] = []
 
-    constructor(cg: Remote<RemoteCausalityGraph>, codesizes: number[], purgedSizeBaseline: number | undefined, prepurgeNodes: FullyHierarchicalNode[] = []) {
+    constructor(cg: AsyncCausalityGraph, codesizes: number[], purgedSizeBaseline: number | undefined, prepurgeNodes: FullyHierarchicalNode[] = []) {
         this.cg = cg
         this.codesizes = codesizes
         this.purgedSizeBaseline = purgedSizeBaseline
@@ -263,7 +267,7 @@ class BatchPurgeScheduler {
             }
 
             this.runningIndexToNode = nodesByIndex
-            this.runningBatch = await this.cg.simulatePurgesBatched(tree, [...new Set(this.prepurgeNodes)].flatMap(collectCgNodesInSubtree)) as Remote<IncrementalSimulationResult<number>>
+            this.runningBatch = await this.cg.simulatePurgesBatched(tree, [...new Set(this.prepurgeNodes)].flatMap(collectCgNodesInSubtree))
             this.waitlist = []
             return true
         } else {
@@ -278,10 +282,10 @@ class PurgeScheduler {
     private _purgeSelectedMids: FullyHierarchicalNode[] = []
     private _detailSelectedMid: number | undefined
 
-    private selectedSimulationResult: DetailedSimulationResult | undefined
+    private selectedSimulationResult: AsyncDetailedSimulationResult | undefined
     private detailNeedsUpdate = false
 
-    private cg: Remote<RemoteCausalityGraph>
+    private cg: AsyncCausalityGraph
     private codesizes: number[]
     private all_reachable: Uint8Array
 
@@ -292,7 +296,7 @@ class PurgeScheduler {
 
     private processingRunning = false
 
-    constructor(cg: Remote<RemoteCausalityGraph>, codesizes: number[], all_reachable: Uint8Array) {
+    constructor(cg: AsyncCausalityGraph, codesizes: number[], all_reachable: Uint8Array) {
         this.cg = cg
         this.codesizes = codesizes
         this.all_reachable = all_reachable

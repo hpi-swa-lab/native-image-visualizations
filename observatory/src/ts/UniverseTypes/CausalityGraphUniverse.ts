@@ -1,16 +1,33 @@
 import { Node } from './Node'
 import { Universe } from './Universe'
 import * as Comlink from 'comlink'
-import {RemoteCausalityGraph} from '../Causality/RemoteCausalityGraph';
-
+import {UiAsyncCausalityGraph} from '../Causality/UiAsyncCausalityGraph';
+import {AsyncCausalityGraph} from '../Causality/AsyncCausalityGraph';
 
 function assert(cond: boolean): asserts cond {
     if(!cond)
         throw new Error('Assertion failed!')
 }
 
+let createCausalityGraph: (nMethods: number, nTypes: number, causalityData: CausalityGraphData) => Promise<AsyncCausalityGraph> | AsyncCausalityGraph
 
-const RemoteCausalityGraphWrapped = Comlink.wrap(new Worker('/src/ts/Causality/RemoteCausalityGraph', { type: 'module'})) as Comlink.Remote<RemoteCausalityGraph>
+{
+    let workerCreated = false;
+    const tester = {
+        get type(): 'module' {
+            workerCreated = true;
+            return 'module'
+        } // it's been called, it's supported
+    };
+    const worker = new Worker('/src/ts/Causality/RemoteCausalityGraph', tester);
+
+    if (workerCreated) {
+        const RemoteCausalityGraphWrapped = Comlink.wrap(worker) as unknown as { new(nMethods: number, nTypes: number, causalityData: CausalityGraphData): Promise<AsyncCausalityGraph> }
+        createCausalityGraph = (nMethods, nTypes, causalityData) => new RemoteCausalityGraphWrapped(nMethods, nTypes, causalityData)
+    } else {
+        createCausalityGraph = (nMethods, nTypes, causalityData) => new UiAsyncCausalityGraph(nMethods, nTypes, causalityData)
+    }
+}
 
 interface Method
 {
@@ -72,7 +89,7 @@ export class CausalityGraphUniverse extends Universe {
 
     public causalityRoot: FullyHierarchicalNode
 
-    private cgPromise: Promise<Comlink.Remote<RemoteCausalityGraph>>
+    private cgPromise: Promise<AsyncCausalityGraph> | AsyncCausalityGraph
 
     constructor(name: string, root: Node, causalityData: CausalityGraphData) {
         super(name, root)
@@ -86,8 +103,8 @@ export class CausalityGraphUniverse extends Universe {
         for(let i = 0; i < this.cgNodeLabels.length; i++) {
             this.codesizeByCgNodeLabels[i] = codesizesDict[this.cgNodeLabels[i]] ?? 0
         }
-
-        this.cgPromise = new RemoteCausalityGraphWrapped(causalityData.methodList.length, causalityData.typeList.length, causalityData)
+        
+        this.cgPromise = createCausalityGraph(causalityData.methodList.length, causalityData.typeList.length, causalityData)
     }
 
     async getCausalityGraph() {
