@@ -5,6 +5,7 @@ import MainLayout from '../layouts/MainLayout.vue'
 import { CutTool } from '../../ts/Visualizations/CutTool'
 import { CausalityGraphUniverse } from '../../ts/UniverseTypes/CausalityGraphUniverse';
 import ToggleSwitch from '../controls/ToggleSwitch.vue';
+import styleContent from './CutTool.css?inline'
 
 const store = globalConfigStore()
 const multiverse = computed(() => store.multiverse)
@@ -36,8 +37,6 @@ function changePrecomputeCutoffs(enable: boolean) {
 
 </script>
 
-<style src="./CutTool.css"/>
-
 <template>
     <MainLayout title="Cut Tool">
         <template #controls>
@@ -51,6 +50,9 @@ function changePrecomputeCutoffs(enable: boolean) {
             </form>
         </template>
         <div id="cut-tool-root">
+            <component is="style" scoped>
+                {{styleContent}}
+            </component>
             <div id="loading-panel" class="fullscreen" hidden>
                 <div class="center">
                     Causality Graph is being parsed...
@@ -64,11 +66,6 @@ function changePrecomputeCutoffs(enable: boolean) {
                 </div>
                 <div class="detail-div" hidden>
                     <svg id="detail-svg" width="100%" height="100%">
-                        <marker id="arrowhead" markerWidth="10" markerHeight="7"
-                                refX="10" refY="3.5" orient="auto">
-                            <polygon points="0 0, 10 3.5, 0 7"/>
-                        </marker>
-
                         <g id="chartpanel">
                             <rect id="zoom-opfer" fill="black" opacity="0" height="100%" width="100%"></rect>
                             <g id="chart"></g>
