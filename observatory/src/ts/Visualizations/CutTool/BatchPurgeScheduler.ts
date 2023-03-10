@@ -70,7 +70,8 @@ export class BatchPurgeScheduler {
             }
 
             this.runningIndexToNode = nodesByIndex
-            this.runningBatch = await this.cg.simulatePurgesBatched(tree, [...new Set(this.prepurgeNodes)].flatMap(collectCgNodesInSubtree))
+            this.runningBatch = await this.cg.simulatePurgesBatched(tree,
+                [...new Set(this.prepurgeNodes)].flatMap(collectCgNodesInSubtree))
             this.waitlist = []
             return true
         } else {
@@ -79,7 +80,10 @@ export class BatchPurgeScheduler {
     }
 }
 
-function createPurgeNodeTree(queriedNodes: Set<FullyHierarchicalNode>, prepurgeNodes = new Set<FullyHierarchicalNode>()): [ PurgeTreeNode<number> | undefined, (FullyHierarchicalNode | undefined)[] ] {
+function createPurgeNodeTree(
+    queriedNodes: Set<FullyHierarchicalNode>,
+    prepurgeNodes = new Set<FullyHierarchicalNode>()):
+        [ PurgeTreeNode<number> | undefined, (FullyHierarchicalNode | undefined)[] ] {
     if(queriedNodes.size === 0)
         return [undefined, []]
     const root = findRoot([...queriedNodes][0])
@@ -100,7 +104,10 @@ function createPurgeNodeTree(queriedNodes: Set<FullyHierarchicalNode>, prepurgeN
     }
 
     const indexToSrcNode: FullyHierarchicalNode[] = []
-    const tree = createPurgeNodeTreeRec(lca, indexToSrcNode, v => prepurgeNodes.has(v) ? undefined : interestingNodes.has(v))
+    const tree = createPurgeNodeTreeRec(
+        lca,
+        indexToSrcNode,
+        v => prepurgeNodes.has(v) ? undefined : interestingNodes.has(v))
     return [tree, indexToSrcNode.map(d => queriedNodes.has(d) ? d : undefined)]
 }
 
@@ -109,7 +116,6 @@ function findRoot(node: FullyHierarchicalNode) {
     for(cur = node; cur.parent; cur = cur.parent);
     return cur
 }
-
 
 function createPurgeNodeTreeRec(node: FullyHierarchicalNode,
                                 indexToSrcNode: FullyHierarchicalNode[],
@@ -120,8 +126,8 @@ function createPurgeNodeTreeRec(node: FullyHierarchicalNode,
     indexToSrcNode.push(node)
 
     const mids = []
-    if(node.exact_cg_node)
-        mids.push(node.exact_cg_node)
+        if(node.cgNode)
+            mids.push(node.cgNode)
     const children = []
     for(const child of node.children) {
         const decision = expandCallback(child)

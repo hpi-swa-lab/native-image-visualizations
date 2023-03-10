@@ -32,27 +32,10 @@ watch(multiverse, async (multiverse) => {
 
 const cutToolStore = cutToolConfigStore()
 
-function changePrecomputeCutoffs(enable: boolean) {
-    if (visualization) {
-        cutToolStore.changePrecomputeCutoffs(enable)
-        visualization.changePrecomputeCutoffs(enable)
-    }
-}
-
 </script>
 
 <template>
     <MainLayout title="Cut Tool">
-        <template #controls>
-            <form class="space-y-4 border rounded p-2">
-                <ToggleSwitch
-                        :checked="cutToolStore.doesPrecomputeCutoffs()"
-                        @input="changePrecomputeCutoffs($event.target.checked)"
-                >
-                    <label>Precompute Cutoffs</label>
-                </ToggleSwitch>
-            </form>
-        </template>
         <div id="cut-tool-root">
             <component is="style" scoped>
                 {{styleContent}}

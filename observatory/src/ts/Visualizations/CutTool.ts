@@ -1,5 +1,3 @@
-import {RemoteCausalityGraph} from '../Causality/RemoteCausalityGraph';
-import {Remote} from 'comlink';
 import {
     CausalityGraphUniverse,
     collectCgNodesInSubtree,
@@ -11,38 +9,34 @@ import {CutView} from './CutTool/CutView';
 import {ImageView} from './CutTool/ImageView';
 import {DetailView} from './CutTool/DetailView'
 import {ReachabilityVector} from './CutTool/BatchPurgeScheduler';
-import {PurgeScheduler} from './PurgeScheduler';
+import {PurgeScheduler} from './CutTool/PurgeScheduler';
+import {AsyncCausalityGraph} from '../Causality/AsyncCausalityGraph';
 
 
 export class CutTool {
-    domRoot: HTMLDivElement
-    ps: PurgeScheduler
-    cg: Remote<RemoteCausalityGraph>
-    cutview: CutView
-    imageview: ImageView
-    detailview: DetailView
+    readonly domRoot: HTMLDivElement
+    readonly ps: PurgeScheduler
+    readonly cg: AsyncCausalityGraph
+    readonly cutview: CutView
+    readonly imageview: ImageView
+    readonly detailview: DetailView
 
-    methodList: string[]
-    typeList: string[]
-    dataRoot: FullyHierarchicalNode
+    readonly dataRoot: FullyHierarchicalNode
+
+    readonly allReachable: Uint8Array
 
     readonly singleSimulationResultCache = new Map<FullyHierarchicalNode, ReachabilityVector>()
     readonly additionalSimulationResultCache = new Map<FullyHierarchicalNode, ReachabilityVector>()
 
-    constructor(domRoot: HTMLDivElement, universe: CausalityGraphUniverse, cg: any, allReachable: Uint8Array) {
+    constructor(domRoot: HTMLDivElement,
+                universe: CausalityGraphUniverse,
+                cg: AsyncCausalityGraph,
+                allReachable: Uint8Array) {
         this.domRoot = domRoot
-
-        this.methodList = universe.cgNodeLabels
-        this.typeList = universe.cgTypeLabels
         this.dataRoot = universe.causalityRoot
-
-        this.cutview = new CutView(domRoot.querySelector('#cut-overview-root')!, universe.causalityRoot)
-        this.imageview = new ImageView(domRoot.querySelector('#imageview-root')!, universe.causalityRoot, allReachable, universe.codesizeByCgNodeLabels, Math.max(...this.dataRoot.children.map(d => d.size)))
-        this.detailview = new DetailView(domRoot.querySelector('#detail-div')!, this.methodList, this.typeList)
-
         this.cg = cg
-        this.imageview.reachable_in_image_view = this.imageview.reachable_under_selection = this.imageview.all_reachable = allReachable
-        this.imageview.selectedNodeChange = (v) => this.ps.detailSelectedMid = v?.exact_cg_node
+        this.allReachable = allReachable
+
         this.ps = new PurgeScheduler(cg, universe.codesizeByCgNodeLabels, allReachable)
         this.ps.detailSelectedCallback = edges => this.detailview.renderGraphOnDetailView(edges)
 
@@ -55,85 +49,40 @@ export class CutTool {
             this.cutview.setAdditionalPurgeData(v, data.size)
         }
 
-        this.cutview.onHover = (v) => {
-            let changed
-            if(v) {
-                const maybe_reachable_in_image_view = this.cutview.selectedForPurging.size === 0 ? this.singleSimulationResultCache.get(v) : this.additionalSimulationResultCache.get(v)
-                changed = maybe_reachable_in_image_view !== undefined
-                if (maybe_reachable_in_image_view)
-                    this.imageview.reachable_in_image_view = maybe_reachable_in_image_view.arr
-            } else {
-                changed = this.imageview.reachable_in_image_view !== this.imageview.reachable_under_selection
-                this.imageview.reachable_in_image_view = this.imageview.reachable_under_selection
-            }
+        this.cutview = new CutView(
+            v => this.cutView_onExpanded(v),
+            v => this.cutView_onSelectionChanged(v),
+            v => this.cutView_onHover(v))
 
-            if (changed)
-                this.imageview.updatePurgeValues(this.dataRoot)
-            return changed
-        }
+        this.cutview.populate(
+            domRoot.querySelector('#cut-overview-root')!,
+            universe.causalityRoot)
 
-        this.cutview.onExpanded = (v) => {
-            this.ps.requestSinglePurgeInfo(v.children)
+        this.imageview = new ImageView(
+            allReachable,
+            universe.causalityRoot,
+            universe.codesizeByCgNodeLabels,
+            Math.max(...this.dataRoot.children.map(d => d.size)),
+            (v) => this.ps.detailSelectedNode = v)
 
-            if (this.cutview.precomputeCutoffs && this.cutview.selectedForPurging.size > 0) {
-                let containedInSelection = false
-                for (const u of [...this.cutview.selectedForPurging]) {
-                    forEachInSubtree(u, w => {
-                        if(w === v)
-                            containedInSelection = true
-                    })
-                }
+        this.imageview.populate(
+            domRoot.querySelector('#imageview-root')!)
 
-                if(!containedInSelection) {
-                    this.ps.requestAdditionalPurgeInfo(v.children)
-                }
-            }
-        }
+        this.detailview = new DetailView(
+            domRoot.querySelector('#detail-div')!,
+            universe.cgNodeLabels,
+            universe.cgTypeLabels)
 
-        this.cutview.selectionChanged = async (v) => {
-            this.ps.purgeSelectedMids = [...this.cutview.selectedForPurging]
-
-            let stillReachable
-
-            if(v !== undefined) {
-                const cache = this.cutview.selectedForPurging.size === 1 ? this.singleSimulationResultCache : this.additionalSimulationResultCache;
-                const data = cache.get(v)
-                if(data)
-                    stillReachable = data.arr
-            } else if(this.cutview.selectedForPurging.size === 0) {
-                stillReachable = allReachable
-            }
-
-            if(!stillReachable) {
-                // We have to simulate
-                const purgeSet = [...new Set([...this.cutview.selectedForPurging].flatMap(collectCgNodesInSubtree))]
-                stillReachable = await this.cg.simulatePurge(purgeSet)
-            }
-
-            this.imageview.reachable_under_selection = stillReachable
-            this.imageview.reachable_in_image_view = stillReachable
-
-            this.additionalSimulationResultCache.clear()
-            for(const v of this.cutview.cutviewData.keys())
-                this.cutview.setAdditionalPurgeData(v, undefined)
-
-            if(this.cutview.precomputeCutoffs && this.cutview.selectedForPurging.size > 0) {
-                this.ps.requestAdditionalPurgeInfo(Array.from(this.cutview.cutviewData.keys()))
-            }
-            this.imageview.updatePurgeValues(this.dataRoot)
-        }
 
         let mainMethod: FullyHierarchicalNode | undefined
         forEachInSubtree(this.dataRoot, v => {
             if(v.main)
                 mainMethod = v
         })
-
-        if(mainMethod) {
+        if(mainMethod)
             this.cutview.expandTo(mainMethod)
-        }
 
-        this.ps.requestSinglePurgeInfo([...this.cutview.cutviewData.keys()])
+        this.ps.paused = false
     }
 
     public static async create(domRoot: HTMLDivElement, universe: CausalityGraphUniverse) {
@@ -153,7 +102,84 @@ export class CutTool {
         this.domRoot.querySelector<HTMLDivElement>('#main-panel')!.hidden = true
     }
 
-    public changePrecomputeCutoffs(enable: boolean) {
-        this.cutview.precomputeCutoffs = enable
+    private cutView_onExpanded(v: FullyHierarchicalNode) {
+        for(const w of v.children) {
+            const cachedResult = this.singleSimulationResultCache.get(w)
+            if(cachedResult)
+                this.cutview.setSinglePurgeData(w, cachedResult.size)
+        }
+        this.ps.requestSinglePurgeInfo(
+            v.children.filter(w => !this.singleSimulationResultCache.has(w)))
+
+        if (this.cutview.selectedForPurging.size > 0) {
+            let containedInSelection = false
+            for (const u of [...this.cutview.selectedForPurging]) {
+                forEachInSubtree(u, w => {
+                    if (w === v)
+                        containedInSelection = true
+                })
+            }
+
+            if (!containedInSelection) {
+                for(const w of v.children) {
+                    const cachedResult = this.additionalSimulationResultCache.get(w)
+                    if(cachedResult)
+                        this.cutview.setAdditionalPurgeData(w, cachedResult.size)
+                }
+                this.ps.requestAdditionalPurgeInfo(
+                    v.children.filter(w => !this.additionalSimulationResultCache.has(w)))
+            }
+        }
+    }
+
+
+    private async cutView_onSelectionChanged(v: FullyHierarchicalNode | undefined) {
+        this.ps.purgeSelectedNodes = [...this.cutview.selectedForPurging]
+
+        let stillReachable
+
+        if (v !== undefined) {
+            const cache = this.cutview.selectedForPurging.size === 1
+                ? this.singleSimulationResultCache
+                : this.additionalSimulationResultCache;
+            const data = cache.get(v)
+            if (data)
+                stillReachable = data.arr
+        } else if (this.cutview.selectedForPurging.size === 0) {
+            stillReachable = this.allReachable
+        }
+
+        if (!stillReachable) {
+            // We have to simulate
+            const purgeSet =
+                [...new Set([...this.cutview.selectedForPurging].flatMap(collectCgNodesInSubtree))]
+            stillReachable = await this.cg.simulatePurge(purgeSet)
+        }
+
+        this.additionalSimulationResultCache.clear()
+        for (const v of this.cutview.visibleNodes)
+            this.cutview.setAdditionalPurgeData(v, undefined)
+
+        if (this.cutview.selectedForPurging.size > 0)
+            this.ps.requestAdditionalPurgeInfo(Array.from(this.cutview.visibleNodes))
+
+        this.imageview.updateReachableSets(stillReachable, stillReachable)
+    }
+
+    // Returns whether the hovering effect should be shown
+    private cutView_onHover(v: FullyHierarchicalNode | undefined): boolean {
+        let reachableOnHover: Uint8Array | undefined | null
+        if (v) {
+            const cache = this.cutview.selectedForPurging.size === 0
+                ? this.singleSimulationResultCache
+                : this.additionalSimulationResultCache;
+            reachableOnHover = cache.get(v)?.arr
+        } else {
+            reachableOnHover = null // Explicit command to reset the hover set
+        }
+
+        if(reachableOnHover !== undefined)
+            this.imageview.updateReachableSets(undefined, reachableOnHover)
+        return reachableOnHover !== undefined
     }
 }

@@ -3,7 +3,11 @@ import {formatByteSizeWithUnitPrefix} from '../../util/ByteSizeFormatter';
 
 
 
-function forEachInSubtreePostorder<TNode extends { children: TNode[] }, TResult>(node: TNode, expandCallback: (v: TNode) => boolean, callback: (v: TNode, childResults: (TResult | undefined)[]) => TResult): TResult | undefined {
+function forEachInSubtreePostorder
+    <TNode extends { children: TNode[] }, TResult>(
+        node: TNode, expandCallback: (v: TNode) => boolean,
+        callback: (v: TNode, childResults: (TResult | undefined)[]) => TResult)
+            : TResult | undefined {
     if(!expandCallback(node))
         return undefined
     const childrenResults: (TResult | undefined)[] = new Array(node.children.length)
@@ -12,43 +16,76 @@ function forEachInSubtreePostorder<TNode extends { children: TNode[] }, TResult>
     return callback(node, childrenResults)
 }
 
-function forEachInStrictSubtreePostorder<TNode extends { children: TNode[] }, TResult>(node: TNode, expandCallback: (v: TNode) => boolean, callback: (v: TNode, childResults: (TResult | undefined)[]) => TResult) {
+function forEachInStrictSubtreePostorder
+    <TNode extends { children: TNode[] }, TResult>(
+        node: TNode, expandCallback: (v: TNode) => boolean,
+        callback: (v: TNode, childResults: (TResult | undefined)[]) => TResult) {
 
     for(const c of node.children)
         forEachInSubtreePostorder(c, expandCallback, callback)
 }
 
-interface ImageViewData
+class ImageViewData
 {
     html: HTMLLIElement
-    exclusive_transitive_cg_nodes?: number[]
+    exclusiveTransitiveCgNodes: number[] | undefined
+
+    constructor(html: HTMLLIElement, exclusiveTransitiveCgNodes?: number[]) {
+        this.html = html
+        this.exclusiveTransitiveCgNodes = exclusiveTransitiveCgNodes
+    }
 }
 
 export class ImageView {
-    imageviewData : Map<FullyHierarchicalNode, ImageViewData> = new Map<FullyHierarchicalNode, ImageViewData>()
-    maxCodeSize: number
-    detailSelectedNode?: HTMLElement
-    selectedNodeChange?: (v: FullyHierarchicalNode | undefined) => void
+    private readonly root: FullyHierarchicalNode
+    private readonly codesizes: number[]
+    private readonly maxCodeSize: number
+    private readonly imageviewData = new Map<FullyHierarchicalNode, ImageViewData>()
+    private detailSelectedElement?: HTMLElement
+    private readonly selectedNodeChange: (v: FullyHierarchicalNode | undefined) => void
 
-    all_reachable: Uint8Array
-    reachable_under_selection?: Uint8Array
-    reachable_in_image_view?: Uint8Array
-    codesizes: number[]
+    private readonly allReachable: Uint8Array
+    private reachableWithSelectedPurged: Uint8Array
+    private reachableWithHoveredPurged: Uint8Array
 
-    constructor(domRoot: HTMLDivElement, root: FullyHierarchicalNode, all_reachable: Uint8Array, codesizes: number[], maxCodeSize: number) {
-        this.maxCodeSize = maxCodeSize;
-        this.all_reachable = all_reachable;
-        this.codesizes = codesizes;
+    constructor(allReachable: Uint8Array,
+                root: FullyHierarchicalNode,
+                codesizes: number[],
+                maxCodeSize: number,
+                selectedNodeChange: (v: FullyHierarchicalNode | undefined) => void) {
+        this.root = root
+        this.maxCodeSize = maxCodeSize
+        this.allReachable = allReachable
+        this.reachableWithSelectedPurged = allReachable
+        this.reachableWithHoveredPurged = allReachable
+        this.codesizes = codesizes
+        this.selectedNodeChange = selectedNodeChange
+    }
 
-        const list = this.generateHtmlImageview(root)
+    public populate(domRoot: HTMLDivElement) {
+        const list = this.generateHtmlImageview(this.root)
         domRoot.appendChild(list)
         list.classList.remove('nested')
         list.classList.add('unpadded')
         list.classList.add('active')
     }
 
-    public updatePurgeValues(root: FullyHierarchicalNode) {
-        forEachInStrictSubtreePostorder<FullyHierarchicalNode, [number, number, number] | undefined>(root, u => this.imageviewData.get(u) !== undefined, (u, childResults) => this.refreshPurgeValueForImageviewNode(u, childResults))
+    public updateReachableSets(
+        reachableWithSelectedPurged: Uint8Array | undefined | null,
+        reachableWithHoveredPurged: Uint8Array | undefined | null) {
+        if(reachableWithSelectedPurged !== undefined)
+            this.reachableWithSelectedPurged = reachableWithSelectedPurged ?? this.allReachable
+        if(reachableWithHoveredPurged !== undefined)
+            this.reachableWithHoveredPurged =
+                reachableWithHoveredPurged ?? this.reachableWithSelectedPurged
+        this.updatePurgeValues(this.root)
+    }
+
+    private updatePurgeValues(root: FullyHierarchicalNode) {
+        forEachInStrictSubtreePostorder<FullyHierarchicalNode, SizeInfo | undefined>(
+            root,
+            u => this.imageviewData.get(u) !== undefined,
+            (u, childResults) => this.refreshPurgeValueForImageviewNode(u, childResults))
     }
 
     private generateHtmlImageview(data: FullyHierarchicalNode) {
@@ -57,29 +94,31 @@ export class ImageView {
 
         const imageViewDataEntry = this.imageviewData.get(data)
         if (imageViewDataEntry)
-            delete imageViewDataEntry.exclusive_transitive_cg_nodes
+            delete imageViewDataEntry.exclusiveTransitiveCgNodes
 
         for(const d of data.children) {
-            if(d.cg_only)
+            if(d.cgOnly)
                 continue
             ul.appendChild(this.generateHtmlImageviewForNode(d))
         }
 
-        const child_sizes = data.children.filter(d => !d.cg_only).map(cn => cn.size)
+        const childSizes = data.children.filter(d => !d.cgOnly).map(cn => cn.size)
 
-        const order = new Array(child_sizes.length)
+        const order = new Array(childSizes.length)
         for(let i = 0; i < order.length; i++)
             order[i] = i
 
         const nodes = ul.children
-        order.sort((a, b) => child_sizes[b] - child_sizes[a]).map(i => nodes[i]).forEach(node => ul.appendChild(node))
+        order
+            .sort((a, b) => childSizes[b] - childSizes[a]).map(i => nodes[i])
+            .forEach(node => ul.appendChild(node))
 
         return ul
     }
 
     private generateHtmlImageviewForNode(d: FullyHierarchicalNode): HTMLLIElement {
         const li = document.createElement('li')
-        const viewData: ImageViewData = { exclusive_transitive_cg_nodes: collectCgNodesInSubtree(d), html: li }
+        const viewData = new ImageViewData(li, collectCgNodesInSubtree(d))
         this.imageviewData.set(d, viewData)
         li.className = 'image-row'
         const span = document.createElement('span')
@@ -121,14 +160,14 @@ export class ImageView {
 
         const node = d
         span.className = 'caret'
-        if (d.children && d.children.some(c => !c.cg_only)) {
+        if (d.children && d.children.some(c => !c.cgOnly)) {
             span.addEventListener('click', () => {
                 const expanded = span.classList.toggle('caret-down');
-                if(!span.parentElement!.querySelector('.nested') && expanded) {
+                if(!li.querySelector('.nested') && expanded) {
                     li.appendChild(this.generateHtmlImageview(node))
                     this.updatePurgeValues(node)
                 }
-                span.parentElement!.querySelector('.nested')!.classList.toggle('active');
+                li.querySelector('.nested')!.classList.toggle('active');
             });
         } else {
             span.style.visibility = 'hidden'
@@ -136,25 +175,30 @@ export class ImageView {
         li.appendChild(span)
 
         const nameSpan = document.createElement('span')
-        nameSpan.appendChild(document.createTextNode(d.name))
-        // nameSpan.title = d.fullname
-        nameSpan.className = 'node-text'
-        li.appendChild(nameSpan)
+        nameSpan.appendChild(document.createTextNode(d.name ?? ''))
+        if(d.fullname)
+            nameSpan.title = d.fullname
 
-        if (node.exact_cg_node) {
-            nameSpan.classList.add('selectable')
-            nameSpan.addEventListener('click', async () => {
-                const added = nameSpan.classList.toggle('selected-for-detail')
+        const selectableSpan = document.createElement('span')
+        selectableSpan.appendChild(nameSpan)
+        selectableSpan.classList.add('imageview-node')
+        li.appendChild(selectableSpan)
+
+        if (node.cgNode) {
+            selectableSpan.classList.add('selectable')
+            selectableSpan.addEventListener('click', async () => {
+                const added = selectableSpan.classList.toggle('selected-for-detail')
 
                 if (added) {
-                    if(this.detailSelectedNode)
-                        this.detailSelectedNode.querySelector<HTMLSpanElement>('.node-text')!.classList.remove('selected-for-detail')
-                    nameSpan.classList.add('selected-for-detail')
+                    if(this.detailSelectedElement)
+                        this.detailSelectedElement.querySelector<HTMLSpanElement>('.node-text')!
+                            .classList.remove('selected-for-detail')
+                    selectableSpan.classList.add('selected-for-detail')
                     if(this.selectedNodeChange)
                         this.selectedNodeChange(node)
-                    this.detailSelectedNode = this.imageviewData.get(node).html
+                    this.detailSelectedElement = this.imageviewData.get(node)!.html
                 } else {
-                    this.detailSelectedNode = undefined
+                    this.detailSelectedElement = undefined
                     if(this.selectedNodeChange)
                         this.selectedNodeChange(undefined)
                 }
@@ -164,48 +208,54 @@ export class ImageView {
         return li
     }
 
-    private sumPurged(reachable: Uint8Array | undefined, cg_nodes: number[]) {
+    private sumPurged(reachable: Uint8Array | undefined, cgNodes: number[]) {
         if(reachable === undefined)
             return 0
 
         let sum = 0
         if (reachable) {
-            for (const i of cg_nodes)
+            for (const i of cgNodes)
                 if (reachable[i] === 0xFF)
                     sum += this.codesizes[i]
         }
         return sum
     }
 
-    private refreshPurgeValueForImageviewNode(u: FullyHierarchicalNode, childResults: ([number, number, number] | undefined)[]): [number, number, number] | undefined {
-        const uImageviewData = this.imageviewData.get(u)
-        if(uImageviewData === undefined)
+    private refreshPurgeValueForImageviewNode(
+        u: FullyHierarchicalNode,
+        childResults: (SizeInfo | undefined)[]): SizeInfo | undefined {
+
+        const uData = this.imageviewData.get(u)
+        if(uData === undefined)
             return
 
-        let results
+        let results: SizeInfo
         const reachableArrs = [
-            this.all_reachable,
-            this.reachable_under_selection,
-            this.reachable_in_image_view
+            this.allReachable,
+            this.reachableWithSelectedPurged,
+            this.reachableWithHoveredPurged
         ]
 
-        if(uImageviewData.exclusive_transitive_cg_nodes) {
+        if(uData.exclusiveTransitiveCgNodes) {
             results = reachableArrs
-                .map(reachable => this.sumPurged(reachable, uImageviewData.exclusive_transitive_cg_nodes!))
+                .map(reachable => this.sumPurged(reachable, uData.exclusiveTransitiveCgNodes!)
+            ) as SizeInfo
         } else {
-            results = reachableArrs.map(reachable => this.sumPurged(reachable, u.exact_cg_node ? [u.exact_cg_node] : []))
+            results = reachableArrs.map(
+                reachable => this.sumPurged(reachable, u.cgNode ? [u.cgNode] : [])
+            ) as SizeInfo
             for(const cr of childResults)
                 if(cr)
                     for(let i = 0; i < 3; i++)
                         results[i] += cr[i]
         }
-        const html = uImageviewData.html
+        const html = uData.html
 
-        const [purgedBaseline, purgedWithSelection, purgedWithSelectionAndHoverPreview] = results
+        const [purgedBaseline, purgedWithSelection, purgedWithHover] = results
 
         const purgedPercentage0 = 100 * purgedBaseline / u.size
         const purgedPercentage1 = 100 * (purgedWithSelection - purgedBaseline) / u.size
-        const purgedPercentage2 = 100 * (purgedWithSelectionAndHoverPreview - purgedWithSelection) / u.size
+        const purgedPercentage2 = 100 * (purgedWithHover - purgedWithSelection) / u.size
         const purgedPercentageTotal = purgedPercentage1 + purgedPercentage2
         let barWidth0 = '0'
         let barWidth1 = '0'
@@ -224,13 +274,15 @@ export class ImageView {
         html.querySelector<HTMLDivElement>('.size-bar-inner-0')!.style.width = barWidth0
         html.querySelector<HTMLDivElement>('.size-bar-inner-1')!.style.width = barWidth1
         html.querySelector<HTMLDivElement>('.size-bar-inner-2')!.style.width = barWidth2
-        const cl = html.querySelector<HTMLDivElement>('.node-text')!.classList
+        const cl = html.querySelector<HTMLDivElement>('.imageview-node')!.classList
         if(purgedWithSelection >= u.size && purgedWithSelection > 0) {
             cl.add('purged')
         } else {
             cl.remove('purged')
         }
 
-        return results as [number, number, number]
+        return results
     }
 }
+
+type SizeInfo = [purgedBaseline: number, purgedWithSelection: number, purgedWithHover: number]

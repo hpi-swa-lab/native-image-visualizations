@@ -178,8 +178,8 @@ export interface FullyHierarchicalNode
     main?: boolean
     synthetic?: boolean
 
-    cg_only?: boolean
-    exact_cg_node?: number
+    cgOnly?: boolean
+    cgNode?: number
 }
 
 
@@ -197,8 +197,8 @@ export function forEachInSubtree<TNode extends { children?: TNode[] }>(node: TNo
 export function collectCgNodesInSubtree(node: FullyHierarchicalNode): number[] {
     const group: number[] = []
     forEachInSubtree(node, u => {
-        if(u.exact_cg_node)
-            group.push(u.exact_cg_node)
+        if(u.cgNode)
+            group.push(u.cgNode)
     })
     return group
 }
@@ -306,8 +306,10 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json: ReachabilityJs
         const node = trie.find(cgNodeName)
         if (node) {
             if (node.fullname === cgNodeName) {
-                // assert(node.exact_cg_node === undefined)
-                node.exact_cg_node = i
+                // Methods that only differ in return type break this.
+                // Pretending this won't happen...
+                // assert(node.cgNode === undefined)
+                node.cgNode = i
             } else {
                 let curNode = node
                 let offset = node.fullname.length
@@ -318,15 +320,23 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json: ReachabilityJs
                 }
                 while(true) {
                     const dotIndex = name.indexOf('.')
-                    const semanticChangingSymbols = ['(', '[', '/']
-                    const semanticChangingIndexes = semanticChangingSymbols.map(s => name.indexOf(s))
+                    if(dotIndex === -1)
+                        break;
 
-                    if(dotIndex !== -1 && semanticChangingIndexes.every(i => i === -1 || i > dotIndex)) {
-                    } else {
+                    const semanticBreakoutSymbols = ['(', '[', '/']
+                    const semanticBreakoutIndexes =
+                        semanticBreakoutSymbols.map(s => name.indexOf(s))
+                    if(semanticBreakoutIndexes.some(i => i !== -1 && i < dotIndex))
                         break
-                    }
 
-                    const newNode = { cg_only: true, fullname: cgNodeName.substring(0, offset + dotIndex), name: name.substring(0, dotIndex), children: [], size: 0, parent: curNode }
+                    const newNode = {
+                        cg_only: true,
+                        fullname: cgNodeName.substring(0, offset + dotIndex),
+                        name: name.substring(0, dotIndex),
+                        children: [],
+                        size: 0,
+                        parent: curNode
+                    }
                     curNode.children.push(newNode)
                     trie.add(newNode.fullname, newNode)
 
@@ -341,7 +351,15 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json: ReachabilityJs
                     name = name.substring(pathSepIndex+1)
                 }
 
-                const newNode = { cg_only: true, fullname: cgNodeName, name: name, exact_cg_node: i, children: [], size: 0, parent: curNode }
+                const newNode = {
+                    cg_only: true,
+                    fullname: cgNodeName,
+                    name: name,
+                    cgNode: i,
+                    children: [],
+                    size: 0,
+                    parent: curNode
+                }
                 curNode.children.push(newNode)
                 trie.add(newNode.fullname, newNode)
             }

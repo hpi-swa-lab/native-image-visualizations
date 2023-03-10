@@ -35,7 +35,7 @@ export class DetailView {
 
             nodesSet.add(e.src);
             nodesSet.add(e.dst);
-            const newObj: { source: number, target: number, via_type?: number } = { source: e.src, target: e.dst }
+            const newObj: VisGraphLink = { source: e.src, target: e.dst }
             if (e.via_type)
                 newObj.via_type = e.via_type
             links.push(newObj);
@@ -49,51 +49,8 @@ export class DetailView {
             links[i].target = nodeIds.indexOf(links[i].target);
         });
 
-        const nodes: VisGraphNode[] = nodeIds.map((d, i) => { return { index: i, mid: d, name: this.methodList[d] ?? '<root>', adj: [], in_deg: 0, depth: 0 }})
+        const nodes: VisGraphNode[] = nodeIds.map((d, i) => { return { index: i, mid: d, name: this.methodList[d] ?? '<root>', adj: [] }})
 
-        links.forEach(l => {
-            nodes[l.source].adj.push(l)
-            nodes[l.target].in_deg += 1
-        })
-
-        let order: number[] = []
-
-        for(let v = 0; v < nodes.length; v++)
-            if(nodes[v].in_deg === 0)
-                order.push(v)
-        for(let i = 0; i < order.length; i++)
-            for(const e of nodes[order[i]].adj) {
-                const v = e.target
-                nodes[v].in_deg -= 1
-                if(nodes[v].in_deg === 0)
-                    order.push(v)
-            }
-
-        order = order.reverse()
-
-        let maxDepth = 0
-
-        for(const u of order) {
-            let depth = 0
-            for(const e of nodes[u].adj) {
-                const v = e.target
-                if(nodes[v].depth + 1 > depth)
-                    depth = nodes[v].depth + 1
-            }
-            nodes[u].depth = depth
-            if(depth > maxDepth)
-                maxDepth = depth
-        }
-
-        function applyLayering<TNode extends { data: VisGraphNode, value?: number, dataChildren: { child: TNode | undefined }[] }>(n: undefined | TNode) {
-            if(!n)
-                return
-            n.value = n.data.depth
-            if(n.dataChildren)
-                for(const c of n.dataChildren) {
-                    applyLayering(c.child)
-                }
-        }
 
         const dag: d3dag.Dag<VisGraphNode, VisGraphLink> = d3dag.dagStratify()
             .id((arg: {index: number}) => arg.index.toString())
@@ -102,14 +59,9 @@ export class DetailView {
         const nodeRadius = 20;
         const layout = d3dag
             .sugiyama() // base layout
-            // .layering(applyLayering)
             .decross(d3dag.decrossTwoLayer()) // minimize number of crossings
-            .nodeSize((node) => [(node ? 3.6 : 0.25) * nodeRadius, 3 * nodeRadius]); // set node size instead of constraining to fit
-        const { width, height } = layout(dag);
-        const x0 = 0;
-        const x1 = width;
-        const y0 = 0;
-        const y1 = height;
+            .nodeSize((node) => [(node ? 3.6 : 0.25) * nodeRadius, 3 * nodeRadius]);
+        const { width, height } = layout(dag as any);
 
         const d3Root = d3.select(this.domRoot)
 
@@ -200,7 +152,7 @@ export class DetailView {
             }
 
             nodesSelection
-                .attr('transform', ({x, y}) => `translate(${transX(x)}, ${transY(y)})`)
+                .attr('transform', ({x, y}) => `translate(${transX(x!)}, ${transY(y!)})`)
             nodeCircles
                 .attr('r', transform.k * nodeRadius)
 
@@ -223,9 +175,7 @@ interface VisGraphNode
     index: number
     name: string
     adj: VisGraphLink[]
-    in_deg: number
-    mid: number,
-    depth: number
+    mid: number
 }
 
 interface VisGraphLink

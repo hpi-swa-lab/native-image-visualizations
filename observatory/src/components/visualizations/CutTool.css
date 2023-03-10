@@ -26,12 +26,20 @@ ul {
     grid-column-start: 1;
 }
 
-.node-text {
+.cutview-node {
     user-select: none;
     text-overflow: ellipsis;
     white-space: nowrap;
+    overflow: hidden;
+}
+
+.imageview-node {
     grid-row-start: 1;
     grid-column-start: 2;
+
+    user-select: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     overflow: hidden;
 }
 
@@ -165,6 +173,10 @@ ul {
     /*display: grid;*/
     /*grid-template-columns: 20% 1fr max-content;*/
     /*grid-template-rows: 100%;*/
+}
+
+.deprecated {
+    opacity: 50%;
 }
 
 #overview-div {
