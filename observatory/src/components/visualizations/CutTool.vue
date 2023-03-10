@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue'
-import {cutToolConfigStore, globalConfigStore} from '../../ts/stores'
 import MainLayout from '../layouts/MainLayout.vue'
 import { CutTool } from '../../ts/Visualizations/CutTool'
 import { CausalityGraphUniverse } from '../../ts/UniverseTypes/CausalityGraphUniverse';
 import ToggleSwitch from '../controls/ToggleSwitch.vue';
-import styleContent from './CutTool.css?inline'
+import {useGlobalStore} from '../../ts/stores/globalStore';
 
-const store = globalConfigStore()
+const store = useGlobalStore()
 const multiverse = computed(() => store.multiverse)
 
 let visualization: CutTool | undefined = undefined
@@ -29,8 +28,6 @@ watch(multiverse, async (multiverse) => {
     if(multiverse.sources.length === 1 && multiverse.sources[0] instanceof CausalityGraphUniverse)
         visualization = await CutTool.create(cutToolRoot(), multiverse.sources[0])
 })
-
-const cutToolStore = cutToolConfigStore()
 
 </script>
 

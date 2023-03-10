@@ -93,58 +93,35 @@ export class InvalidReachabilityFormatError extends Error {
     }
 }
 
-export function createConfigSelections(
-    selections: Record<string, Node[]>
-): Record<string, Record<string, unknown>> {
-    const result: Record<string, Record<string, unknown>> = {}
+export async function loadCgZip(file: File): Promise<CausalityGraphData> {
+    const entries = await (new zip.ZipReader(new zip.BlobReader(file))).getEntries({ filenameEncoding: 'utf-8' })
 
-    Object.keys(selections).forEach((name: string) => {
-        result[name] = createConfigSelection(name, selections[name])
-    })
+    function getZipEntry(path: string) {
+        const entry = entries.find(e => e.filename === path)
+        if(!entry)
+            throw new Error(`Missing zip entry: ${path}`)
+        return entry
+    }
 
-    return result
-}
+    const cgData: any = {}
+    cgData.reachabilityData = JSON.parse(await getZipEntry('reachability.json').getData(new zip.TextWriter()))
+    const methods = await getZipEntry('methods.txt').getData(new zip.TextWriter())
+    cgData.methodList = methods.split('\n')
+    if(cgData.methodList[cgData.methodList.length-1].length === 0) {
+        cgData.methodList.pop()
+    }
+    const types = await getZipEntry('types.txt').getData(new zip.TextWriter())
+    cgData.typeList = types.split('\n')
+    if(cgData.typeList[cgData.typeList.length-1].length === 0)
+        cgData.typeList.pop()
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function createConfigSelection(name: string, nodes: Node[]): Record<string, unknown> {
-    // TODO: implement this, corresponding issue: [#85](https://github.com/hpi-swa-lab/MPWS2022RH1/issues/85)
-    return {}
-}
+    const parameterFiles = ['typestates.bin', 'interflows.bin', 'direct_invokes.bin', 'typeflow_methods.bin', 'typeflow_filters.bin']
 
-export function createConfigHighlights(
-    highlights: Record<string, Node[]>
-): Record<string, Record<string, unknown>> {
-    const result: Record<string, Record<string, unknown>> = {}
+    for(const path of parameterFiles) {
+        cgData[path] = await getZipEntry(path).getData(new zip.Uint8ArrayWriter())
+    }
 
-    Object.keys(highlights).forEach((name: string) => {
-        result[name] = createConfigSelection(name, highlights[name])
-    })
-
-    return result
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function createConfigHighlight(name: string, nodes: Node[]): Record<string, unknown> {
-    // TODO: implement this, corresponding issue: [#85](https://github.com/hpi-swa-lab/MPWS2022RH1/issues/85)
-    return {}
-}
-
-export function createConfigUniverses(
-    universes: Universe[]
-): Record<string, Record<string, unknown>> {
-    const result: Record<string, Record<string, unknown>> = {}
-
-    universes.forEach((universe) => {
-        result[universe.name] = createConfigUniverse(universe)
-    })
-
-    return result
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function createConfigUniverse(universe: Universe): Record<string, unknown> {
-    // TODO: implement this, corresponding issue: [#85](https://github.com/hpi-swa-lab/MPWS2022RH1/issues/85v)
-    return {}
+    return cgData
 }
 
 export async function loadJson(file: File): Promise<object> {
