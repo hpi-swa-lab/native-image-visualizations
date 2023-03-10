@@ -58,7 +58,7 @@ function toggleSidebarCollapse(): void {
             </TabLayout>
         </div>
         <button
-            class="transition-[left] absolute top-0 z-10 btn bg-gray-50 mt-2 ml-2 hover:bg-gray-200 shadow-md"
+            class="transition-[left] absolute bottom-[10px] z-10 btn bg-gray-50 mt-2 ml-2 hover:bg-gray-200 shadow-md"
             :class="collapsed ? 'left-0' : 'left-[300px]'"
             @click="toggleSidebarCollapse"
         >
