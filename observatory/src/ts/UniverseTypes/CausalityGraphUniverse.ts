@@ -3,11 +3,7 @@ import { Universe } from './Universe'
 import * as Comlink from 'comlink'
 import {UiAsyncCausalityGraph} from '../Causality/UiAsyncCausalityGraph';
 import {AsyncCausalityGraph} from '../Causality/AsyncCausalityGraph';
-
-function assert(cond: boolean): asserts cond {
-    if(!cond)
-        throw new Error('Assertion failed!')
-}
+import {assert} from '../util/assert';
 
 let createCausalityGraph: (nMethods: number, nTypes: number, causalityData: CausalityGraphData) => Promise<AsyncCausalityGraph> | AsyncCausalityGraph
 
@@ -184,7 +180,27 @@ export interface FullyHierarchicalNode
 
     cg_only?: boolean
     exact_cg_node?: number
-    cg_nodes: number[]
+}
+
+
+export function forEachInSubtree<TNode extends { children?: TNode[] }>(node: TNode, callback: (v: TNode) => unknown) {
+    const stack: TNode[] = []
+    stack.push(node)
+    while (stack.length > 0) {
+        const u = stack.pop()!
+        const handled = callback(u)
+        if (u.children && !handled)
+            stack.push(...u.children)
+    }
+}
+
+export function collectCgNodesInSubtree(node: FullyHierarchicalNode): number[] {
+    const group: number[] = []
+    forEachInSubtree(node, u => {
+        if(u.exact_cg_node)
+            group.push(u.exact_cg_node)
+    })
+    return group
 }
 
 function computeCodesizePartialSum(root: FullyHierarchicalNode) {
@@ -195,10 +211,10 @@ function computeCodesizePartialSum(root: FullyHierarchicalNode) {
 }
 
 function generateHierarchyFromReachabilityJsonAndMethodList(json: ReachabilityJson, cgNodes: string[]) {
-    const dict: FullyHierarchicalNode = { children: [], cg_nodes: [], size: 0, name: '', parent: undefined }
-    const system: FullyHierarchicalNode = { children: [], cg_nodes: [], name: 'system', size: 0, parent: dict }
-    const user: FullyHierarchicalNode = { children: [], cg_nodes: [], name: 'user', size: 0, parent: dict }
-    const main: FullyHierarchicalNode = { children: [], cg_nodes: [], name: 'main', size: 0, parent: dict}
+    const dict: FullyHierarchicalNode = { children: [], size: 0, name: '', parent: undefined }
+    const system: FullyHierarchicalNode = { children: [], name: 'system', size: 0, parent: dict }
+    const user: FullyHierarchicalNode = { children: [], name: 'user', size: 0, parent: dict }
+    const main: FullyHierarchicalNode = { children: [], name: 'main', size: 0, parent: dict}
 
     const prefixToNode: { [prefix: string]: FullyHierarchicalNode & { fullname: string } } = {}
 
@@ -227,7 +243,7 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json: ReachabilityJs
             l1fullname = toplevel.module
         }
 
-        const l1: FullyHierarchicalNode & {fullname: string} = { children: [], name: l1name, fullname: l1fullname, cg_nodes: [], size: 0, parent: undefined }
+        const l1: FullyHierarchicalNode & {fullname: string} = { children: [], name: l1name, fullname: l1fullname, size: 0, parent: undefined }
         if (toplevel.path) {
             prefixToNode[toplevel.path] = l1
         }
@@ -241,7 +257,7 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json: ReachabilityJs
                     prefix += subPackageName + '.'
                     let next = l2.children.find(n => n.name === subPackageName)
                     if(!next) {
-                        const newNode = { children: [], fullname: prefix, name: subPackageName, cg_nodes: [], parent: l2, size: 0 }
+                        const newNode = { children: [], fullname: prefix, name: subPackageName, parent: l2, size: 0 }
                         /* Eigentlich sollten keine Causality-Graph-Knoten direkt in einem Package hängen.
                          * Es gibt jedoch Knoten für Klassen, die nicht reachable sind (z.B. Build-Time-Features).
                          * Diese müssen unbedingt in die Abschneide-Berechnung miteinbezogen werden.
@@ -256,14 +272,14 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json: ReachabilityJs
             }
 
             for (const [typeName, type] of Object.entries(pkg.types)) {
-                const l3: FullyHierarchicalNode & { fullname: string } = { fullname: prefix + typeName, name: typeName, cg_nodes: [], children: [], size: 0, parent: l2 }
+                const l3: FullyHierarchicalNode & { fullname: string } = { fullname: prefix + typeName, name: typeName, children: [], size: 0, parent: l2 }
                 if(type.flags?.includes('synthetic'))
                     l3.synthetic = true
                 prefixToNode[l3.fullname] = l3
                 l2.children.push(l3)
 
                 for (const [methodName, method] of Object.entries(type.methods)) {
-                    const l4: FullyHierarchicalNode & { fullname: string } = { fullname: l3.fullname + '.' + methodName, name: methodName, cg_nodes: [], children: [], size: method.size, parent: l3 }
+                    const l4: FullyHierarchicalNode & { fullname: string } = { fullname: l3.fullname + '.' + methodName, name: methodName, children: [], size: method.size, parent: l3 }
                     if(method.flags?.includes('synthetic'))
                         l4.synthetic = true
                     prefixToNode[l4.fullname] = l4
@@ -290,8 +306,8 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json: ReachabilityJs
         const node = trie.find(cgNodeName)
         if (node) {
             if (node.fullname === cgNodeName) {
+                // assert(node.exact_cg_node === undefined)
                 node.exact_cg_node = i
-                node.cg_nodes.push(i)
             } else {
                 let curNode = node
                 let offset = node.fullname.length
@@ -310,7 +326,7 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json: ReachabilityJs
                         break
                     }
 
-                    const newNode = { cg_only: true, fullname: cgNodeName.substring(0, offset + dotIndex), name: name.substring(0, dotIndex), cg_nodes: [], children: [], size: 0, parent: curNode }
+                    const newNode = { cg_only: true, fullname: cgNodeName.substring(0, offset + dotIndex), name: name.substring(0, dotIndex), children: [], size: 0, parent: curNode }
                     curNode.children.push(newNode)
                     trie.add(newNode.fullname, newNode)
 
@@ -325,7 +341,7 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json: ReachabilityJs
                     name = name.substring(pathSepIndex+1)
                 }
 
-                const newNode = { cg_only: true, fullname: cgNodeName, name: name, cg_nodes: [i], exact_cg_node: i, children: [], size: 0, parent: curNode }
+                const newNode = { cg_only: true, fullname: cgNodeName, name: name, exact_cg_node: i, children: [], size: 0, parent: curNode }
                 curNode.children.push(newNode)
                 trie.add(newNode.fullname, newNode)
             }

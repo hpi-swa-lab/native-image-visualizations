@@ -89,13 +89,8 @@ ul {
     height: 17px;
     grid-row-start: 1;
     grid-column-start: 2;
-    grid-template-columns: 1fr;
-    grid-template-rows: 16px;
     background-color: #A0A0A080;
-}
-.size-bar-outer > * {
-    grid-row-start: 1;
-    grid-column-start: 1;
+    max-height: 17px;
 }
 
 .size-bar-inner-0 {
@@ -103,20 +98,23 @@ ul {
     height: 100%;
     width: 0;
     background-color: #FFFFFF80;
+    margin-left: -1px; /* Weird hack to prevent wrap */
 }
 
 .size-bar-inner-1 {
     float: left;
     height: 100%;
     width: 0;
-    background-color: #FF202060;
+    background-color: #FF7070;
 }
 
 .size-bar-inner-2 {
     float: left;
     height: 100%;
     width: 0;
-    background-color: #FFA02060;
+    margin-right: 0;
+    background-color: #FFB070;
+    margin-right: -1px; /* Weird hack to prevent wrap */
 }
 
 .purge-percentage-bar-outer {
@@ -169,7 +167,7 @@ ul {
     /*grid-template-rows: 100%;*/
 }
 
-.overview-div {
+#overview-div {
     float: left;
     width: 20%;
     height: 100%;
@@ -178,7 +176,7 @@ ul {
     resize: horizontal;
 }
 
-.imageview-div {
+#imageview-div {
     float: none;
     overflow-x: hidden;
     width: 1fr;
@@ -187,7 +185,7 @@ ul {
     /*resize: horizontal;*/
 }
 
-.detail-div {
+#detail-div {
     float: right;
     width: 50%;
     height: 100%;
