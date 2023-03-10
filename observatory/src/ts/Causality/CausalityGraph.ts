@@ -1,7 +1,7 @@
+// This module wraps the causality graph querying functionality provided by a native WASM module.
+
 import loadWASM from './lib/causality_graph.js'
-
 const Module: any = await loadWASM()
-
 
 export interface CausalityGraphBinaryData {
     'interflows.bin': Uint8Array
@@ -11,31 +11,39 @@ export interface CausalityGraphBinaryData {
     'typeflow_methods.bin': Uint8Array
 }
 
+
+// Describes a hierarchy of nodes that should be queried in a batch
 export interface PurgeTreeNode<Token> {
+    // node ids in the causality graph, belonging directly to this node
+    // The same ID must not be contained in the subtree
     mids?: number[]
     children?: PurgeTreeNode<Token>[]
+    // User-defined data to identify the result
     token?: Token
 }
 
-function calcPurgeNodesCount(purge_root: PurgeTreeNode<unknown>) {
+// Calculates the amount of needed space for purge nodes in the native buffer
+function calcPurgeNodesCount(purgeRoot: PurgeTreeNode<unknown>) {
     let cnt = 1
-    if(purge_root.mids && purge_root.children)
+    if(purgeRoot.mids && purgeRoot.children)
         cnt += 1
-    if(purge_root.children)
-        for(const child of purge_root.children)
+    if(purgeRoot.children)
+        for(const child of purgeRoot.children)
             cnt += calcPurgeNodesCount(child)
     return cnt
 }
 
-function calcMidsCount(purge_root: PurgeTreeNode<unknown>) {
+// Calculates the total space needed for causality node IDs in the native buffer
+function calcMidsCount(purgeRoot: PurgeTreeNode<unknown>) {
     let cnt = 0
-    if(purge_root.mids)
-        cnt += purge_root.mids.length
-    if(purge_root.children)
-        for(const child of purge_root.children)
+    if(purgeRoot.mids)
+        cnt += purgeRoot.mids.length
+    if(purgeRoot.children)
+        for(const child of purgeRoot.children)
             cnt += calcMidsCount(child)
     return cnt
 }
+
 
 type WasmLiteral = 'number' | 'string' | 'void'
 type TypeFromLiteral<T extends WasmLiteral> = T extends 'number' ? number : T extends 'string' ? string : void
@@ -79,7 +87,7 @@ class NativeBuffer
 class WasmObjectWrapper
 {
     private static readonly _delete = Module.cwrap('Deletable_delete', 'void', ['number'])
-    private static readonly finReg = new FinalizationRegistry<number>(wasmObject => WasmObjectWrapper._delete(wasmObject))
+    private static readonly finReg = new FinalizationRegistry<number>(WasmObjectWrapper._delete)
 
     private wasmObject: number
 
@@ -126,7 +134,8 @@ export class CausalityGraph extends WasmObjectWrapper {
 
         const wasmObject = CausalityGraph._init(nTypes,
             nMethods,
-            ...filesAsNativeByteArrays.flatMap(buffer => [buffer.viewU8.byteOffset, buffer.viewU8.byteLength]))
+            ...filesAsNativeByteArrays.flatMap(
+                buffer => [buffer.viewU8.byteOffset, buffer.viewU8.byteLength]))
 
         for (const buffer of Object.values(filesAsNativeByteArrays))
             buffer.delete()
@@ -163,14 +172,14 @@ export class CausalityGraph extends WasmObjectWrapper {
         return new DetailedSimulationResult(this.nMethods, simulationResultPtr)
     }
 
-    public simulatePurgesBatched<Token>(purge_root: PurgeTreeNode<Token>, prepurgeMids: number[] = []): IncrementalSimulationResult<Token> {
-        const purgeNodesCount = calcPurgeNodesCount(purge_root)
+    public simulatePurgesBatched<Token>(purgeRoot: PurgeTreeNode<Token>, prepurgeMids: number[] = []): IncrementalSimulationResult<Token> {
+        const purgeNodesCount = calcPurgeNodesCount(purgeRoot)
 
         const subsetsArrLen = (purgeNodesCount) * 4 /* {{ptr, len}, {child_ptr, child_len}} */
         const subsetsArrBuffer = new NativeBuffer(subsetsArrLen * 4 /* (4 byte ptr/len) */)
         const subsetsArr = subsetsArrBuffer.viewU32
 
-        const midsCount = calcMidsCount(purge_root) + prepurgeMids.length
+        const midsCount = calcMidsCount(purgeRoot) + prepurgeMids.length
         const midsBuffer = new NativeBuffer(midsCount * 4)
         const midsPtr = midsBuffer.viewU8.byteOffset
 
@@ -180,21 +189,21 @@ export class CausalityGraph extends WasmObjectWrapper {
         {
             let i = 1
 
-            function layoutChildren(purge_root: PurgeTreeNode<Token>, offset: number) {
-                indexToInputToken[offset] = purge_root.token
+            function layoutChildren(purgeRoot: PurgeTreeNode<Token>, offset: number) {
+                indexToInputToken[offset] = purgeRoot.token
                 const midsPos_start = midsPos
 
                 const i_start = i
 
-                if (purge_root.mids) {
-                    if (purge_root.children) {
+                if (purgeRoot.mids) {
+                    if (purgeRoot.children) {
                         subsetsArr[i*4] /* ptr */ = midsPos * 4
-                        subsetsArr[i*4 + 1] /* len */ = purge_root.mids.length
+                        subsetsArr[i*4 + 1] /* len */ = purgeRoot.mids.length
                         subsetsArr[i*4 + 2] = 0 // no children
                         subsetsArr[i*4 + 3] = 0 // no children
                         i +=1
                     }
-                    for(const mid of purge_root.mids) {
+                    for(const mid of purgeRoot.mids) {
                         Module.HEAPU32[midsPos] = mid + 1
                         midsPos += 1
                     }
@@ -202,11 +211,11 @@ export class CausalityGraph extends WasmObjectWrapper {
 
                 let i_end = i
 
-                if (purge_root.children) {
+                if (purgeRoot.children) {
                     let local_i = i
-                    i += purge_root.children.length
+                    i += purgeRoot.children.length
                     i_end = i
-                    for (const child of purge_root.children) {
+                    for (const child of purgeRoot.children) {
                         layoutChildren(child, local_i)
                         local_i += 1
                     }
@@ -225,7 +234,7 @@ export class CausalityGraph extends WasmObjectWrapper {
                 Module.HEAPU32[midsPos] = mid + 1
                 midsPos += 1
             }
-            layoutChildren(purge_root, 0)
+            layoutChildren(purgeRoot, 0)
             // Also include prepurgeMids
             subsetsArr[0] = midsPtr
             subsetsArr[1] += prepurgeMids.length

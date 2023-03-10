@@ -77,8 +77,6 @@ export interface CausalityGraphData {
 }
 
 export class CausalityGraphUniverse extends Universe {
-    // Object structure of "reachability.json"
-    public reachabilityData: ReachabilityJson
     public cgNodeLabels: string[]
     public cgTypeLabels: string[]
     public codesizeByCgNodeLabels: number[]
@@ -89,7 +87,6 @@ export class CausalityGraphUniverse extends Universe {
 
     constructor(name: string, root: Node, causalityData: CausalityGraphData) {
         super(name, root)
-        this.reachabilityData = causalityData.reachabilityData
         this.cgNodeLabels = causalityData.methodList
         this.cgTypeLabels = causalityData.typeList
         this.causalityRoot = generateHierarchyFromReachabilityJsonAndMethodList(causalityData.reachabilityData, causalityData.methodList)
@@ -224,19 +221,19 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json: ReachabilityJs
         const isSystem = toplevel.flags && toplevel.flags.includes('system')
         let containsMain = false
 
-        let display_path = toplevel.path
-        if (display_path && display_path.endsWith('.jar')) {
-            const index = display_path.lastIndexOf('/')
+        let displayPath = toplevel.path
+        if (displayPath && displayPath.endsWith('.jar')) {
+            const index = displayPath.lastIndexOf('/')
             if (index !== -1) {
-                display_path = display_path.substring(index+1)
+                displayPath = displayPath.substring(index+1)
             }
         }
 
         if (toplevel.path && toplevel.module) {
-            l1name = display_path + ':' + toplevel.module
+            l1name = displayPath + ':' + toplevel.module
             l1fullname = toplevel.path + ':' + toplevel.module
-        } else if(display_path && toplevel.path) {
-            l1name = display_path
+        } else if(displayPath && toplevel.path) {
+            l1name = displayPath
             l1fullname = toplevel.path
         } else if(toplevel.module) {
             l1name = toplevel.module
@@ -272,14 +269,27 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json: ReachabilityJs
             }
 
             for (const [typeName, type] of Object.entries(pkg.types)) {
-                const l3: FullyHierarchicalNode & { fullname: string } = { fullname: prefix + typeName, name: typeName, children: [], size: 0, parent: l2 }
+                const l3: FullyHierarchicalNode & { fullname: string } = {
+                    fullname: prefix + typeName,
+                    name: typeName,
+                    children: [],
+                    size: 0,
+                    parent: l2
+                }
+
                 if(type.flags?.includes('synthetic'))
                     l3.synthetic = true
                 prefixToNode[l3.fullname] = l3
                 l2.children.push(l3)
 
                 for (const [methodName, method] of Object.entries(type.methods)) {
-                    const l4: FullyHierarchicalNode & { fullname: string } = { fullname: l3.fullname + '.' + methodName, name: methodName, children: [], size: method.size, parent: l3 }
+                    const l4: FullyHierarchicalNode & { fullname: string } = {
+                        fullname: l3.fullname + '.' + methodName,
+                        name: methodName,
+                        children: [],
+                        size: method.size,
+                        parent: l3
+                    }
                     if(method.flags?.includes('synthetic'))
                         l4.synthetic = true
                     prefixToNode[l4.fullname] = l4
