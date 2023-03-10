@@ -3,7 +3,16 @@ export enum SortingOption {
     SIZE = 'size'
 }
 
+export function sortingOptionForExport(option: SortingOption): string {
+    return option.toString()
+}
+
 export enum SortingOrder {
+    NONE = 'none',
     ASCENDING = 'ascending',
     DESCENDING = 'descending'
+}
+
+export function sortingOrderForExport(order: SortingOrder): string {
+    return order.toString()
 }

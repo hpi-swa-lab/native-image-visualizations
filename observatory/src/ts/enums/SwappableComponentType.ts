@@ -8,7 +8,7 @@ export enum SwappableComponentType {
     CutTool
 }
 
-export function componentName(component: SwappableComponentType | undefined) {
+export function componentName(component: SwappableComponentType | undefined): string {
     switch (component) {
         case SwappableComponentType.VennSets:
             return 'Venn Sets'
@@ -25,4 +25,8 @@ export function componentName(component: SwappableComponentType | undefined) {
         default:
             return '<Error>'
     }
+}
+
+export function serializeComponent(component: SwappableComponentType): string {
+    return component.toString()
 }

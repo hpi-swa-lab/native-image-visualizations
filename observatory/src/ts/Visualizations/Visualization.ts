@@ -1,16 +1,18 @@
-import { Node } from '../UniverseTypes/Node'
+import { ColorScheme } from '../SharedTypes/Colors'
 
 /**
  * Side Notes:
  *
- * - You are expected to get the initial data via the constructor.
+ * - You are expected to get the initial data and colorScheme via the constructor.
  *   This cannot be modelled with interfaces.
  * - You are also expected to do the visualization setup in the constructor.
- * - The selection and highlight always contain nodes of the merged multiverse.
+ * - The selection and highlight always contain identifiers of the nodes of the merged multiverse.
  */
 export interface Visualization {
-    selection: Node[]
+    colorScheme: ColorScheme
+    selection: Set<string>
+    highlights: Set<string>
 
-    setSelection(selection: Node[]): void
-    setHighlights(highlights: Node[]): void
+    setSelection(selection: Set<string>): void
+    setHighlights(highlights: Set<string>): void
 }

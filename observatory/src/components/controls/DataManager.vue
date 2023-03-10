@@ -3,49 +3,56 @@ import { ref } from 'vue'
 import { Universe } from '../../ts/UniverseTypes/Universe'
 import { CausalityGraphUniverse } from '../../ts/UniverseTypes/CausalityGraphUniverse'
 import { loadJson, loadCgZip, parseReachabilityExport } from '../../ts/parsing'
-import {
-    globalConfigStore,
-    vennConfigStore,
-    treeLineConfigStore,
-    sankeyTreeConfigStore,
-    causalityGraphConfigStore
-} from '../../ts/stores'
+import { useGlobalStore, CONFIG_NAME } from '../../ts/stores/globalStore'
+import { useVennStore } from '../../ts/stores/vennStore'
+import { useSankeyStore } from '../../ts/stores/sankeyTreeStore'
+import { useTreeLineStore } from '../../ts/stores/treeLineStore'
+import { useCausalityGraphStore } from '../../ts/stores/causalityGraphStore'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import InlineEditableField from './InlineEditableField.vue'
+import JSZip from 'jszip'
+import FileSaver from 'file-saver'
+import { InvalidInputError } from '../../ts/errors'
+import { ExportConfig } from '../../ts/stores/ExportConfig'
 
-const store = globalConfigStore()
+const globalStore = useGlobalStore()
+const vennStore = useVennStore()
+const treeLineStore = useTreeLineStore()
+const causalityGraphStore = useCausalityGraphStore()
+const sankeyStore = useSankeyStore()
+
 const uploadError = ref<Error | undefined>(undefined)
 
-function validateFileAndAddUniverseOnSuccess(file: File, universeName: string): void {
+const nameFields = ref<InstanceType<typeof InlineEditableField>[]>()
 
-    if(file.name.endsWith('.cg.zip')) {
-        loadCgZip(file)
-                .then((parsedCG) => {
-                    const newUniverse = new CausalityGraphUniverse(
-                            universeName,
-                            parseReachabilityExport(parsedCG.reachabilityData, universeName),
-                            parsedCG)
-                    store.addUniverse(newUniverse)
-                    uploadError.value = undefined
-                })
-                .catch((error) => {
-                    uploadError.value = error
-                })
-    } else if(file.name.endsWith('.json')) {
-        loadJson(file)
-                .then((parsedJSON) => {
-                    const newUniverse = new Universe(
-                            universeName,
-                            parseReachabilityExport(parsedJSON, universeName)
-                    )
-                    store.addUniverse(newUniverse)
-                    uploadError.value = undefined
-                })
-                .catch((error) => {
-                    uploadError.value = error
-                })
-    } else {
-        throw new Error('You stupid bastard shall not upload junk!')
+async function validateFileAndAddUniverseOnSuccess(
+    file: File,
+    universeName: string
+): Promise<void> {
+    try {
+        let newUniverse: Universe
+
+        if(file.name.endsWith('.cg.zip')) {
+            const parsedCG = await loadCgZip(file)
+            newUniverse = new CausalityGraphUniverse(
+                    universeName,
+                    parseReachabilityExport(parsedCG.reachabilityData, universeName),
+                    parsedCG)
+        } else if(file.name.endsWith('.json')) {
+            const parsedJSON = await loadJson(file)
+            newUniverse = new Universe(
+                    universeName,
+                    parseReachabilityExport(parsedJSON, universeName)
+            )
+        } else {
+            throw new Error('You stupid bastard shall not upload junk!')
+        }
+        globalStore.addUniverse(newUniverse)
+        uploadError.value = undefined
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            uploadError.value = error
+        }
     }
 }
 
@@ -61,23 +68,40 @@ function addUniverses(event: Event) {
 }
 
 function exportConfig() {
-    const data = {
-        global: store.toExportDict(),
-        venn: vennConfigStore().toExportDict(),
-        sankey: treeLineConfigStore().toExportDict(),
-        treeLine: sankeyTreeConfigStore().toExportDict(),
-        causalityGraph: causalityGraphConfigStore().toExportDict()
+    const rawData = globalStore.rawData
+
+    const configData: Record<string, ExportConfig> = {
+        global: globalStore.toExportDict(),
+        venn: vennStore.toExportDict(),
+        sankey: sankeyStore.toExportDict(),
+        treeLine: treeLineStore.toExportDict(),
+        causalityGraph: causalityGraphStore.toExportDict()
     }
 
-    const dataString = `data:text/json;charset=utf-8, ${encodeURIComponent(JSON.stringify(data))}`
+    const zip = new JSZip()
+    zip.file(`${CONFIG_NAME}.json`, JSON.stringify(configData))
+    Object.entries(rawData).forEach(([universeName, data]) => {
+        zip.file(`${universeName}.json`, JSON.stringify(data))
+    })
 
-    const anchor = document.createElement('a')
-    anchor.setAttribute('href', dataString)
-    anchor.setAttribute('download', 'data-config.json')
+    zip.generateAsync({ type: 'blob' }).then((content) => {
+        FileSaver.saveAs(content, Object.keys(rawData).join('-') + 'observatory-config.zip')
+    })
+}
 
-    document.body.appendChild(anchor)
-    anchor.click()
-    document.body.removeChild(anchor)
+function changeUniverseName(oldName: string, newName: string, inputIndex: number) {
+    try {
+        globalStore.updateUniverseName(oldName, newName)
+    } catch (error: unknown) {
+        if (nameFields.value && nameFields.value[inputIndex]) {
+            nameFields.value[inputIndex].reset()
+        }
+        if (error instanceof InvalidInputError) {
+            alert(error.message)
+        } else {
+            alert('An unknown error happened')
+        }
+    }
 }
 </script>
 
@@ -102,24 +126,26 @@ function exportConfig() {
 
         <div>
             <label for="container-universes" class="block">Current Universes:</label>
-            <p v-if="store.universes.length === 0" class="ml-2">None</p>
+            <p v-if="globalStore.universes.length === 0" class="ml-2">None</p>
             <div id="container-universes" class="space-y-2">
                 <div
-                    v-for="(universe, index) in store.universes"
+                    v-for="(universe, index) in globalStore.universes"
                     :key="index"
                     class="flex items-center justify-between space-x-2"
                 >
                     <InlineEditableField
+                        ref="nameFields"
                         :label="universe.name"
                         class="flex-auto"
                         @change.self="
-                            (newUniverseName) =>
-                                store.updateUniverseName(universe.name, newUniverseName)
+                            (newName) => {
+                                changeUniverseName(universe.name, newName, index)
+                            }
                         "
                     />
                     <button
                         class="btn-sm btn-danger"
-                        @click="() => store.removeUniverse(universe.name)"
+                        @click="() => globalStore.removeUniverse(universe.name)"
                     >
                         <font-awesome-icon icon="xmark" />
                     </button>

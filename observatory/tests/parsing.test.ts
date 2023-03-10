@@ -6,7 +6,8 @@ import {
     InvalidReachabilityFormatError,
     TopLevelOrigin
 } from '../src/ts/parsing'
-import { InitKind, Leaf } from '../src/ts/UniverseTypes/Leaf'
+import { Leaf } from '../src/ts/UniverseTypes/Leaf'
+import { InitKind } from '../src/ts/enums/InitKind'
 import { Node } from '../src/ts/UniverseTypes/Node'
 
 describe('parsing', () => {

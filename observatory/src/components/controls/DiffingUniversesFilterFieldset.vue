@@ -7,13 +7,13 @@ import {
 import { UniverseProps } from '../../ts/interfaces/UniverseProps'
 import ColorLabel from './ColorLabel.vue'
 import ToggleSwitch from './ToggleSwitch.vue'
-import { sankeyTreeConfigStore } from '../../ts/stores'
+import { useSankeyStore } from '../../ts/stores/sankeyTreeStore'
 
 defineProps<{
     universesMetadata: Record<string, UniverseProps>
 }>()
 
-const sankeyTreeStore = sankeyTreeConfigStore()
+const sankeyTreeStore = useSankeyStore()
 </script>
 
 <template>

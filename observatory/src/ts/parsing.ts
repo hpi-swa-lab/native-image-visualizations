@@ -8,8 +8,8 @@
  * accessing them.
  */
 import { Bytes } from './SharedTypes/Size'
-import { Leaf, InitKind } from './UniverseTypes/Leaf'
-import { Universe } from './UniverseTypes/Universe'
+import { Leaf } from './UniverseTypes/Leaf'
+import { InitKind } from './enums/InitKind'
 import { Node } from './UniverseTypes/Node'
 import * as zip from '@zip.js/zip.js';
 import {CausalityGraphData, CausalityGraphUniverse} from './UniverseTypes/CausalityGraphUniverse';
@@ -145,37 +145,6 @@ export function createConfigUniverses(
 function createConfigUniverse(universe: Universe): Record<string, unknown> {
     // TODO: implement this, corresponding issue: [#85](https://github.com/hpi-swa-lab/MPWS2022RH1/issues/85v)
     return {}
-}
-
-export async function loadCgZip(file: File): Promise<CausalityGraphData> {
-    const entries = await (new zip.ZipReader(new zip.BlobReader(file))).getEntries({ filenameEncoding: 'utf-8' })
-
-    function getZipEntry(path: string) {
-        const entry = entries.find(e => e.filename === path)
-        if(!entry)
-            throw new Error(`Missing zip entry: ${path}`)
-        return entry
-    }
-
-    const cgData: any = {}
-    cgData.reachabilityData = JSON.parse(await getZipEntry('reachability.json').getData(new zip.TextWriter()))
-    const methods = await getZipEntry('methods.txt').getData(new zip.TextWriter())
-    cgData.methodList = methods.split('\n')
-    if(cgData.methodList[cgData.methodList.length-1].length === 0) {
-        cgData.methodList.pop()
-    }
-    const types = await getZipEntry('types.txt').getData(new zip.TextWriter())
-    cgData.typeList = types.split('\n')
-    if(cgData.typeList[cgData.typeList.length-1].length === 0)
-        cgData.typeList.pop()
-
-    const parameterFiles = ['typestates.bin', 'interflows.bin', 'direct_invokes.bin', 'typeflow_methods.bin', 'typeflow_filters.bin']
-
-    for(const path of parameterFiles) {
-        cgData[path] = await getZipEntry(path).getData(new zip.Uint8ArrayWriter())
-    }
-
-    return cgData
 }
 
 export async function loadJson(file: File): Promise<object> {

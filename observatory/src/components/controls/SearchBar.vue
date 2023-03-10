@@ -1,15 +1,16 @@
 <script setup lang="ts">
-import { globalConfigStore } from '../../ts/stores'
+import { useGlobalStore } from '../../ts/stores/globalStore'
 
-const store = globalConfigStore()
+const store = useGlobalStore()
 let typingTimer: string | number | NodeJS.Timeout | undefined
 
 function searchChanged(event: Event): void {
     if (!event.target) return
-
     const input = event.target as HTMLInputElement
     clearTimeout(typingTimer)
-    typingTimer = setTimeout(() => store.changeSearch(input.value), 500)
+    typingTimer = setTimeout(() => {
+        store.changeSearch(input.value)
+    }, 1000)
 }
 </script>
 

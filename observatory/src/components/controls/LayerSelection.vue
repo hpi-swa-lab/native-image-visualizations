@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Layers, layerName } from '../../ts/enums/Layers'
-import { globalConfigStore } from '../../ts/stores'
+import { useGlobalStore } from '../../ts/stores/globalStore'
 
-const store = globalConfigStore()
+const store = useGlobalStore()
 
 function applyLayer(event: Event) {
     const currentLayer = parseInt((event.target as HTMLSelectElement).value)
@@ -19,10 +19,10 @@ function applyLayer(event: Event) {
         <div class="slider">
             <input
                 id="layer-selection"
-                v-model="store.currentLayer"
                 name="Layer"
                 type="range"
                 class="block w-full"
+                :value="store.currentLayer"
                 :min="Layers.MODULES"
                 :max="Layers.METHODS"
                 :step="1"

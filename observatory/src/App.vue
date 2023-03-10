@@ -5,10 +5,10 @@ import SankeyTree from './components/visualizations/SankeyTree.vue'
 import { SwappableComponentType } from './ts/enums/SwappableComponentType'
 import TreeLine from './components/visualizations/TreeLine.vue'
 import Venn from './components/visualizations/VennSets.vue'
-import { globalConfigStore } from './ts/stores'
+import { useGlobalStore } from './ts/stores/globalStore'
 import CutTool from './components/visualizations/CutTool.vue';
 
-const store = globalConfigStore()
+const store = useGlobalStore()
 </script>
 
 <template>

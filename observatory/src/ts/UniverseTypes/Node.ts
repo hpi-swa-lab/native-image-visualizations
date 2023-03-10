@@ -1,4 +1,5 @@
 import { HIERARCHY_NAME_SEPARATOR } from '../globals'
+import { mapEquals } from '../Math/Maps'
 import { UniverseIndex } from '../SharedTypes/Indices'
 import { Bytes } from '../SharedTypes/Size'
 
@@ -10,6 +11,7 @@ export class Node {
     protected _children: Node[]
     protected _codeSize: Bytes = INVALID_SIZE
     protected _sources: Map<UniverseIndex, Node> = new Map()
+    protected _identifier: string | undefined
 
     constructor(
         name: string,
@@ -31,13 +33,13 @@ export class Node {
     }
 
     get identifier(): string {
-        let path = this.name
-        let parent: Node | undefined = this.parent
-        while (parent != undefined) {
-            path = parent.name + HIERARCHY_NAME_SEPARATOR + path
-            parent = parent.parent
+        if (this._identifier) return this._identifier
+
+        this._identifier = this.name
+        if (this.parent) {
+            this._identifier = this.parent.identifier + HIERARCHY_NAME_SEPARATOR + this.name
         }
-        return path
+        return this._identifier
     }
 
     get parent(): Node | undefined {
@@ -130,10 +132,7 @@ export class Node {
             this.children.every((child: Node, index: number) =>
                 child.equalsIgnoringParents(another.children[index])
             ) &&
-            Array.from(this.sources.entries()).every(([id, node]) => {
-                const other = another.sources.get(id)
-                return other && node.equals(other)
-            })
+            mapEquals(this.sources, another.sources, (a, b) => a.equals(b))
         )
     }
 

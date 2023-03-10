@@ -1,6 +1,6 @@
+import { UniverseIndex } from '../SharedTypes/Indices'
 import { Node } from './Node'
 import { Universe } from './Universe'
-import { UniverseIndex } from '../SharedTypes/Indices'
 
 export class Multiverse {
     private _root: Node
