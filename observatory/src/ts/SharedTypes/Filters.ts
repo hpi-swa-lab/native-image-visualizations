@@ -6,17 +6,25 @@ type serializedFilter = {
     description: string
     appliesComplement: boolean
     validator: string
+    isUserAdded: boolean
 }
 
 export class Filter {
     public description: string
     public validator: NodeValidator
     public applyComplement: boolean
+    public isUserAdded: boolean
 
-    constructor(description: string, validator: NodeValidator, applyComplement = false) {
+    constructor(
+        description: string,
+        validator: NodeValidator,
+        applyComplement = false,
+        isUserAdded = false
+    ) {
         this.description = description
         this.validator = validator
         this.applyComplement = applyComplement
+        this.isUserAdded = isUserAdded
     }
 
     static applyAll(filters: Filter[], node: Node): boolean {
@@ -28,7 +36,17 @@ export class Filter {
         return new Filter(
             serialized.description,
             new Function('return ' + serialized.validator)(),
-            serialized.appliesComplement
+            serialized.appliesComplement,
+            serialized.isUserAdded
+        )
+    }
+
+    static fromSearchTerm(term: string): Filter {
+        return new Filter(
+            `${term}`,
+            (node) => node.identifier.toLowerCase().includes(term.toLowerCase()),
+            false,
+            true
         )
     }
 
@@ -47,6 +65,6 @@ export class Filter {
     public serialize(): string {
         return `{"description":"${this.description}","applyComplement":${
             this.applyComplement
-        }, "validator":"${this.validator.toString()}"}`
+        }, "validator":"${this.validator.toString()}", "isUserAdded":${this.isUserAdded},}`
     }
 }
