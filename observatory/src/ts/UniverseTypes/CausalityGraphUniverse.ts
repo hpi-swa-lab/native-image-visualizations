@@ -5,10 +5,13 @@ import {UiAsyncCausalityGraph} from '../Causality/UiAsyncCausalityGraph';
 import {AsyncCausalityGraph} from '../Causality/AsyncCausalityGraph';
 import {ReachabilityJson} from '../parsing';
 
-let createCausalityGraph: (nMethods: number, nTypes: number, causalityData: CausalityGraphData)
-    => Promise<AsyncCausalityGraph> | AsyncCausalityGraph
-
-{
+/*
+ * Depending on whether the browser supports "module" script workers, Causality queries
+ * are executed in a background worker or on the UI thread.
+ */
+function loadCausalityGraphConstructor():
+    (nMethods: number, nTypes: number, causalityData: CausalityGraphData) =>
+        Promise<AsyncCausalityGraph> {
     let workerCreated = false;
     const tester = {
         get type(): 'module' {
@@ -25,22 +28,24 @@ let createCausalityGraph: (nMethods: number, nTypes: number, causalityData: Caus
                 nTypes: number,
                 causalityData: CausalityGraphData): Promise<AsyncCausalityGraph>
         }
-        createCausalityGraph = (nMethods, nTypes, causalityData) =>
+        return (nMethods, nTypes, causalityData) =>
             new RemoteCausalityGraphWrapped(nMethods, nTypes, causalityData)
     } else {
-        createCausalityGraph = (nMethods, nTypes, causalityData) =>
-            new UiAsyncCausalityGraph(nMethods, nTypes, causalityData)
+        return (nMethods, nTypes, causalityData) =>
+            new Promise((resolve) =>
+                resolve(new UiAsyncCausalityGraph(nMethods, nTypes, causalityData)))
     }
 }
+
+const createCausalityGraph = loadCausalityGraphConstructor()
+
 
 export interface CausalityGraphData {
     // Object structure of "reachability.json"
     reachabilityData: ReachabilityJson
 
-    // Should be renamed to something like "nodeLabels", since it describes all kinds of events
-    // Currently keeps this name for consistency with all other causality-processing code
-    methodList: string[]
-    typeList: string[]
+    nodeLabels: string[]
+    typeLabels: string[]
 
     // These binary blobs are handed to the wasm module
     'interflows.bin': Uint8Array
@@ -51,21 +56,21 @@ export interface CausalityGraphData {
 }
 
 export class CausalityGraphUniverse extends Universe {
-    public cgNodeLabels: string[]
-    public cgTypeLabels: string[]
-    public codesizeByCgNodeLabels: number[]
+    public readonly cgNodeLabels: string[]
+    public readonly cgTypeLabels: string[]
+    public readonly codesizeByCgNodeLabels: number[]
 
-    public causalityRoot: FullyHierarchicalNode
+    public readonly causalityRoot: FullyHierarchicalNode
 
     private cgPromise: Promise<AsyncCausalityGraph> | AsyncCausalityGraph
 
     constructor(name: string, root: Node, causalityData: CausalityGraphData) {
         super(name, root)
-        this.cgNodeLabels = causalityData.methodList
-        this.cgTypeLabels = causalityData.typeList
+        this.cgNodeLabels = causalityData.nodeLabels
+        this.cgTypeLabels = causalityData.typeLabels
         this.causalityRoot = generateHierarchyFromReachabilityJsonAndMethodList(
             causalityData.reachabilityData,
-            causalityData.methodList)
+            causalityData.nodeLabels)
 
         const codesizesDict = getMethodCodesizeDictFromReachabilityJson(
             causalityData.reachabilityData)
@@ -75,12 +80,14 @@ export class CausalityGraphUniverse extends Universe {
         }
         
         this.cgPromise = createCausalityGraph(
-            causalityData.methodList.length,
-            causalityData.typeList.length, causalityData)
+            causalityData.nodeLabels.length,
+            causalityData.typeLabels.length, causalityData)
     }
 
     async getCausalityGraph() {
-        return await this.cgPromise
+        // The promise may reference CausalityGraphData used for construction
+        // Therefore we want to get rid of it ASAP
+        return this.cgPromise = await this.cgPromise
     }
 }
 
@@ -112,11 +119,6 @@ class TrieNode<Value>
 class Trie<Value> {
     root = new TrieNode<Value>()
 
-    constructor(dict: { [name: string]: Value }) {
-        for (const [k, v] of Object.entries(dict))
-            this.add(k, v)
-    }
-
     add(key: string, value: Value) {
         let node: TrieNode<Value> = this.root
         for (const c of key) {
@@ -141,12 +143,12 @@ class Trie<Value> {
 
 export interface FullyHierarchicalNode
 {
-    name: string
+    name: string // Displayed for this node
     parent: FullyHierarchicalNode | undefined
     children: FullyHierarchicalNode[]
     size: number // transitive size of subtree
 
-    fullname?: string
+    fullname?: string // Displayed on hover. Does not contain the module/JAR/classpath name.
 
     main?: boolean
     synthetic?: boolean
@@ -185,15 +187,45 @@ function computeCodesizePartialSum(root: FullyHierarchicalNode) {
     }
 }
 
+/*
+ * The reachability.json and the causality export are loosely coupled:
+ * While the reachability.json contains more information about code hierarchy, especially
+ * Modules/JARs, and propeprties like whether a Module/JAR belongs to the "system" (JDK, Graal),
+ * the causality export describes each causality graph node with a string label.
+ *
+ * The syntax of these labels depends on what event they describe:
+ * Class got reachable:                  "<Package>.<Class>"
+ * Class got instantiated:               "<Package>.<Class> [Instantiated]"
+ * Class got registered for reflection:  "<Package>.<Class> [Reflection registration]"
+ * Class got registered for JNI:         "<Package>.<Class> [JNI registration]"
+ * Build-Time class initializer run:     "<Package>.<Class>.<clinit> [Build-Time]"
+ * where '<clinit>' is meant literally
+ * Unknown heap object of type found:    "<Package>.<Class> [Unknown Heap Object]"
+ * Reachability callback ran:            "<Package>.<Class>@<hashCode> [Reachability Callback]"
+ * Method got reachable:                 "<Package>.<Class>.<Method>(<Parameters>)"
+ * Method got registered for reflection: "<Package>.<Class>.<Method>(<Parameters>) [Reflection registration]"
+ * Method got registered for JNI:        "<Package>.<Class>.<Method>(<Parameters>) [JNI registration]"
+ * Configuration file applied:           "<Path> [Configuration File]"
+ *
+ *
+ * In particular, some of these events describe methods/classes that do not appear in the image
+ * and therefore are not contained in the reachability.json.
+ * To correlate these flat labels with our reachability.json-Hierarchy,
+ * a trie is used that finds
+ * - the method node for Method-related events,
+ * - the class node for Class-related events,
+ * - the longest common subpackage prefix for classes and methods not contained in the image,
+ * - the top-level-source for configuration files by their path.
+ */
 function generateHierarchyFromReachabilityJsonAndMethodList(
         json: ReachabilityJson,
         cgNodeLabels: string[]) {
-    const dict: FullyHierarchicalNode = { children: [], size: 0, name: '', parent: undefined }
-    const system: FullyHierarchicalNode = { children: [], name: 'system', size: 0, parent: dict }
-    const user: FullyHierarchicalNode = { children: [], name: 'user', size: 0, parent: dict }
-    const main: FullyHierarchicalNode = { children: [], name: 'main', size: 0, parent: dict}
+    const root: FullyHierarchicalNode = { children: [], size: 0, name: '', parent: undefined }
+    const system: FullyHierarchicalNode = { children: [], name: 'system', size: 0, parent: root }
+    const user: FullyHierarchicalNode = { children: [], name: 'user', size: 0, parent: root }
+    const main: FullyHierarchicalNode = { children: [], name: 'main', size: 0, parent: root}
 
-    const prefixToNode: { [prefix: string]: FullyHierarchicalNode & { fullname: string } } = {}
+    const trie = new Trie<FullyHierarchicalNode & { fullname: string }>()
 
     for (const toplevel of json) {
         let l1name = 'ϵ'
@@ -229,7 +261,7 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
         }
 
         if (toplevel.path) {
-            prefixToNode[toplevel.path] = l1
+            trie.add(toplevel.path, l1)
         }
 
         for (const [packageName, pkg] of Object.entries(toplevel.packages)) {
@@ -254,7 +286,7 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
                          * Diese müssen unbedingt in die Abschneide-Berechnung miteinbezogen werden.
                          * Idealerweise sollten sie auch in der Baumstruktur auftauchen.
                          * Das ist aber gerade noch zu kompliziert umzusetzen... */
-                        prefixToNode[newNode.fullname] = newNode
+                        trie.add(newNode.fullname, newNode)
                         l2.children.push(newNode)
                         next = newNode
                     }
@@ -273,7 +305,7 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
 
                 if(type.flags?.includes('synthetic'))
                     l3.synthetic = true
-                prefixToNode[l3.fullname] = l3
+                trie.add(l3.fullname, l3)
                 l2.children.push(l3)
 
                 for (const [methodName, method] of Object.entries(type.methods)) {
@@ -286,7 +318,7 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
                     }
                     if(method.flags?.includes('synthetic'))
                         l4.synthetic = true
-                    prefixToNode[l4.fullname] = l4
+                    trie.add(l4.fullname, l4)
                     l3.children.push(l4)
 
                     const flags = method.flags
@@ -302,8 +334,6 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
         l0.children.push(l1)
         l1.parent = l0
     }
-
-    const trie = new Trie<FullyHierarchicalNode & { fullname: string }>(prefixToNode)
 
     for (let i = 0; i < cgNodeLabels.length; i++) {
         const cgNodeName = cgNodeLabels[i]
@@ -371,13 +401,13 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
     }
 
     if(user.children.length)
-        dict.children.push(user)
+        root.children.push(user)
     if(system.children.length)
-        dict.children.push(system)
+        root.children.push(system)
     if(main.children.length)
-        dict.children.push(main)
+        root.children.push(main)
 
-    computeCodesizePartialSum(dict)
+    computeCodesizePartialSum(root)
 
-    return dict
+    return root
 }

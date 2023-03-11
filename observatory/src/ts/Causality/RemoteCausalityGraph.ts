@@ -1,6 +1,9 @@
 import * as original from './CausalityGraph';
 import * as Comlink from 'comlink'
 
+// For execution of causality queries on background worker thread,
+// this class wraps the object model in Comlink-Proxies.
+
 export class RemoteCausalityGraph {
     wrapped: original.CausalityGraph
 

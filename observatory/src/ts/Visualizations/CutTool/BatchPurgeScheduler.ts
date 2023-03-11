@@ -1,11 +1,21 @@
 import {collectCgNodesInSubtree, FullyHierarchicalNode} from '../../UniverseTypes/CausalityGraphUniverse';
 import {AsyncCausalityGraph, AsyncIncrementalSimulationResult} from '../../Causality/AsyncCausalityGraph';
-import {PurgeTreeNode} from '../../Causality/CausalityGraph';
+import {PurgeTreeNode, Unreachable} from '../../Causality/CausalityGraph';
 import {assert} from '../../util/assert';
+
+/*
+ * The native WASM module expects a hierachical plan of nodes
+ * for which we want the purge-info calculated.
+ *
+ * With this class, we can simply request the calculation for individual nodes,
+ * and the BatchPurgeScheduler cares for combining multiple nodes to a request.
+ */
 
 export interface ReachabilityVector
 {
+    // Indexed by cg nodes, contains 0xFF iff the node is not reachable
     arr: Uint8Array
+    // Precomputed sum of the codesizes of all reachable nodes
     size: number
 }
 
@@ -19,7 +29,10 @@ export class BatchPurgeScheduler {
     private runningBatch: AsyncIncrementalSimulationResult | undefined
     private runningIndexToNode: (FullyHierarchicalNode | undefined)[] = []
 
-    constructor(cg: AsyncCausalityGraph, codesizes: number[], purgedSizeBaseline: number | undefined, prepurgeNodes: FullyHierarchicalNode[] = []) {
+    constructor(cg: AsyncCausalityGraph,
+                codesizes: number[],
+                purgedSizeBaseline: number | undefined,
+                prepurgeNodes: FullyHierarchicalNode[] = []) {
         this.cg = cg
         this.codesizes = codesizes
         this.purgedSizeBaseline = purgedSizeBaseline
@@ -42,7 +55,7 @@ export class BatchPurgeScheduler {
                 const stillReachable = await this.runningBatch.getReachableArray()
                 let purgedSize = 0
                 for (let i = 0; i < this.codesizes.length; i++)
-                    if (stillReachable[i] === 0xFF)
+                    if (stillReachable[i] === Unreachable)
                         purgedSize += this.codesizes[i]
                 this.purgedSizeBaseline = purgedSize
             } else {
@@ -53,7 +66,7 @@ export class BatchPurgeScheduler {
                         const stillReachable = await this.runningBatch.getReachableArray()
                         let purgedSize = -this.purgedSizeBaseline
                         for (let i = 0; i < this.codesizes.length; i++)
-                            if (stillReachable[i] === 0xFF)
+                            if (stillReachable[i] === Unreachable)
                                 purgedSize += this.codesizes[i]
                         this.callback(node, {arr: stillReachable, size: purgedSize})
                     }
@@ -61,7 +74,9 @@ export class BatchPurgeScheduler {
             }
             return true
         } else if (this.waitlist.length > 0) {
-            const [tree, nodesByIndex] = createPurgeNodeTree(new Set(this.waitlist), new Set(this.prepurgeNodes))
+            const [tree, nodesByIndex] = createPurgeNodeTree(
+                new Set(this.waitlist),
+                new Set(this.prepurgeNodes))
             assert(tree !== undefined)
             if (this.purgedSizeBaseline === undefined) {
                 // We need to insert an empty purge node for calculating the baseline

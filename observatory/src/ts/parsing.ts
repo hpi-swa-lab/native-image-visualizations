@@ -117,19 +117,29 @@ export async function loadCgZip(file: File): Promise<CausalityGraphData> {
         return entry
     }
 
-    const cgData: any = {}
-    cgData.reachabilityData = JSON.parse(await getZipEntry('reachability.json').getData(new zip.TextWriter()))
+    const reachabilityData = await getZipEntry('reachability.json')
+        .getData(new zip.TextWriter())
     const methods = await getZipEntry('methods.txt').getData(new zip.TextWriter())
-    cgData.methodList = methods.split('\n')
-    if(cgData.methodList[cgData.methodList.length-1].length === 0) {
-        cgData.methodList.pop()
-    }
+    const methodList = methods.split('\n')
+    methodList.pop() // Pop line that doesn't end with '\n'
     const types = await getZipEntry('types.txt').getData(new zip.TextWriter())
-    cgData.typeList = types.split('\n')
-    if(cgData.typeList[cgData.typeList.length-1].length === 0)
-        cgData.typeList.pop()
+    const typeList = types.split('\n')
+    typeList.pop() // Pop line that doesn't end with '\n'
 
-    const parameterFiles = ['typestates.bin', 'interflows.bin', 'direct_invokes.bin', 'typeflow_methods.bin', 'typeflow_filters.bin']
+    const cgData = {
+        reachabilityData: JSON.parse(await getZipEntry('reachability.json').getData(new zip.TextWriter())),
+        nodeLabels: methodList,
+        typeLabels: typeList,
+        'typestates.bin': new Uint8Array(),
+        'interflows.bin': new Uint8Array(),
+        'direct_invokes.bin': new Uint8Array(),
+        'typeflow_methods.bin': new Uint8Array(),
+        'typeflow_filters.bin': new Uint8Array(),
+    }
+
+    const parameterFiles
+        : ['typestates.bin', 'interflows.bin', 'direct_invokes.bin', 'typeflow_methods.bin', 'typeflow_filters.bin']
+        = ['typestates.bin', 'interflows.bin', 'direct_invokes.bin', 'typeflow_methods.bin', 'typeflow_filters.bin']
 
     for(const path of parameterFiles) {
         cgData[path] = await getZipEntry(path).getData(new zip.Uint8ArrayWriter())

@@ -1,8 +1,22 @@
-import {ReachabilityHyperpathEdge} from '../../Causality/CausalityGraph';
+import {ReachabilityHyperpathEdge, Unreachable} from '../../Causality/CausalityGraph';
 import {collectCgNodesInSubtree, FullyHierarchicalNode} from '../../UniverseTypes/CausalityGraphUniverse';
 import {AsyncCausalityGraph, AsyncDetailedSimulationResult} from '../../Causality/AsyncCausalityGraph';
 import {BatchPurgeScheduler, ReachabilityVector} from './BatchPurgeScheduler';
 import {assert} from '../../util/assert';
+
+/*
+ * It would be possible to directly invoke the causality querying backend.
+ * In order to not starve the backend in enqueued work that is long-running, this scheduler is
+ * employed.
+ *
+ * It prioritizes the requests, in the order
+ * 1. Path-to request:
+ *          Fastest operation with highest UI latency requirements
+ * 2. Reachable-after-only-purging-this:
+ *          Background operation, yet necessary for determining order of nodes
+ * 3. Reachable-after-additionally-purging-this:
+ *          Background operation, gets invalidated after selection change
+ */
 
 export class PurgeScheduler {
     detailSelectedCallback: ((edges: ReachabilityHyperpathEdge[] | undefined, targetMid: number | undefined) => void) | undefined
@@ -33,7 +47,7 @@ export class PurgeScheduler {
 
         let baseline = 0
         for (let i = 0; i < this.codesizes.length; i++)
-            if (allReachable[i] === 0xFF)
+            if (allReachable[i] === Unreachable)
                 baseline += this.codesizes[i]
         this.singleBatchScheduler = new BatchPurgeScheduler(cg, codesizes, baseline)
     }
@@ -118,7 +132,7 @@ export class PurgeScheduler {
             const mids = collectCgNodesInSubtree(this._detailSelectedNode)
             const dists = await this.selectedSimulationResult.getReachableArray()
 
-            let bestDist = 0xFF // Not reachable
+            let bestDist = Unreachable
             for(const candidateMid of mids) {
                 const candidateDist = dists[candidateMid]
                 if(candidateDist < bestDist) {
@@ -127,7 +141,7 @@ export class PurgeScheduler {
                 }
             }
 
-            if(bestDist === 0xFF) {
+            if(bestDist === Unreachable) {
                 if(this.detailSelectedCallback)
                     this.detailSelectedCallback([], undefined)
                 return true

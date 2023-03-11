@@ -13,7 +13,8 @@ export class DetailView {
         this.typeList = typeList;
     }
 
-    public renderGraphOnDetailView(edges: ReachabilityHyperpathEdge[] | undefined, targetMid: number | undefined) {
+    public renderGraphOnDetailView(edges: ReachabilityHyperpathEdge[] | undefined,
+                                   targetMid: number | undefined) {
         const htmlSvg = this.domRoot.querySelector('#chart')!
         htmlSvg.textContent = ''
 
@@ -209,7 +210,7 @@ function getColorAccordingToCausalityGraphNodeType(fullyQualifiedName: string): 
         return '#505050'
     if(fullyQualifiedName.endsWith('[Initial Registrations]'))
         return '#C0C0C0'
-    if(fullyQualifiedName.endsWith('[User-Requrested Feature Registration'))
+    if(fullyQualifiedName.endsWith('[User-Requested Feature Registration'))
         return '#808080'
     if(fullyQualifiedName.endsWith('[Automatic Feature Registration]'))
         return '#A0A0A0'

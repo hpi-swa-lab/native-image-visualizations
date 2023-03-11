@@ -12,6 +12,9 @@ export interface CausalityGraphBinaryData {
 }
 
 
+export const Unreachable = 0xFF
+
+
 // Describes a hierarchy of nodes that should be queried in a batch
 export interface PurgeTreeNode<Token> {
     // node ids in the causality graph, belonging directly to this node

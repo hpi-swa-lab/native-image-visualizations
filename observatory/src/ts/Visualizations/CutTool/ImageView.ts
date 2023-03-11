@@ -1,5 +1,6 @@
 import {collectCgNodesInSubtree, FullyHierarchicalNode} from '../../UniverseTypes/CausalityGraphUniverse';
 import {formatByteSizeWithUnitPrefix} from '../../util/ByteSizeFormatter';
+import {Unreachable} from '../../Causality/CausalityGraph';
 
 
 
@@ -213,7 +214,7 @@ export class ImageView {
         let sum = 0
         if (reachable) {
             for (const i of cgNodes)
-                if (reachable[i] === 0xFF)
+                if (reachable[i] === Unreachable)
                     sum += this.codesizes[i]
         }
         return sum

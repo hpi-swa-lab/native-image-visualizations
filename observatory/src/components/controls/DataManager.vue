@@ -31,6 +31,7 @@ async function validateFileAndAddUniverseOnSuccess(
 ): Promise<void> {
     try {
         let newUniverse: Universe
+        let rawData
 
         if(file.name.endsWith('.cg.zip')) {
             const parsedCG = await loadCgZip(file)
@@ -38,16 +39,18 @@ async function validateFileAndAddUniverseOnSuccess(
                     universeName,
                     parseReachabilityExport(parsedCG.reachabilityData, universeName),
                     parsedCG)
+            rawData = parsedCG.reachabilityData
         } else if(file.name.endsWith('.json')) {
             const parsedJSON = await loadJson(file)
             newUniverse = new Universe(
                     universeName,
                     parseReachabilityExport(parsedJSON, universeName)
             )
+            rawData = parsedJSON
         } else {
             throw new Error('You stupid bastard shall not upload junk!')
         }
-        globalStore.addUniverse(newUniverse)
+        globalStore.addUniverse(newUniverse, rawData)
         uploadError.value = undefined
     } catch (error: unknown) {
         if (error instanceof Error) {
