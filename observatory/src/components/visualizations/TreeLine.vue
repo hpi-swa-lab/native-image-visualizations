@@ -15,7 +15,7 @@ import { Filter } from '../../ts/SharedTypes/Filters'
 const store = useGlobalStore()
 const multiverse = computed(() => store.multiverse)
 const colorScheme = computed(() => store.colorScheme)
-const filters = computed(() => store.filters)
+const activeFilters = computed(() => store.activeFilters)
 const highlights = computed(() => store.highlights)
 
 const tooltip = reactive(new TooltipModel())
@@ -29,7 +29,7 @@ onMounted(() => {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const theContainer = container.value!
 
-    visualization = new TreeLine(theContainer, colorScheme.value, store.filters)
+    visualization = new TreeLine(theContainer, colorScheme.value, activeFilters.value)
     visualization.setMultiverse(multiverse.value as Multiverse)
 
     theContainer.addEventListener('mousemove', (event) => {
@@ -86,7 +86,7 @@ watch(colorScheme, (newColorScheme) => {
 })
 
 watch(
-    filters,
+    activeFilters,
     (newFilters) => {
         visualization.setFilters(newFilters as Filter[])
     },
