@@ -1,1 +1,0 @@
-./ni.sh -H:+PrintCausalityGraph --debug-attach -H:+ExitAfterAnalysis

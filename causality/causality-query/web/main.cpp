@@ -6,11 +6,10 @@
 #include <span>
 #include <utility>
 #include <vector>
-#include "model.h"
-#include "input.h"
-#include "analysis.h"
-#include "reachability.h"
-#include <emscripten/bind.h>
+#include "../shared/model.h"
+#include "../shared/input.h"
+#include "../shared/analysis.h"
+#include "../shared/reachability.h"
 
 class ProcessingStage
 {

@@ -1,1 +1,0 @@
-emcc -std=c++20 main.cpp -o main.js -O3 -I /home/christoph/include/boost/ -s ALLOW_MEMORY_GROWTH=1 -I. -s EXPORTED_RUNTIME_METHODS='["cwrap", "allocateUTF8", "_free"]' -s EXPORTED_FUNCTIONS='["_free"]'

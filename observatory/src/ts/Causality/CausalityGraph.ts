@@ -1,6 +1,6 @@
 // This module wraps the causality graph querying functionality provided by a native WASM module.
 
-import loadWASM from './lib/causality_graph.js'
+import loadWASM from './lib/causality-query.js'
 const Module: any = await loadWASM()
 
 export interface CausalityGraphBinaryData {

@@ -8,10 +8,10 @@
 #include <unordered_map>
 #include <cstring>
 #include <thread>
-#include "model.h"
-#include "input.h"
-#include "analysis.h"
-#include "reachability.h"
+#include "../shared/model.h"
+#include "../shared/input.h"
+#include "../shared/analysis.h"
+#include "../shared/reachability.h"
 
 using namespace std;
 

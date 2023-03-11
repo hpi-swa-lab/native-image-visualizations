@@ -1,7 +1,7 @@
 #ifndef CAUSALITY_GRAPH_BITSET_H
 #define CAUSALITY_GRAPH_BITSET_H
 
-#include <boost/dynamic_bitset.hpp>
+#include "boost/dynamic_bitset.hpp"
 #include <vector>
 #include <iostream>
 
