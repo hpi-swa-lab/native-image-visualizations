@@ -39,40 +39,47 @@ function toggleDropdown() {
                 </svg>
             </button>
             <div
-                class="absolute right-0 z-10 mt-2 w-full origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none hidden"
+                class="overflow-x-scroll w-full absolute right-0 z-10 mt-2 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none hidden"
                 role="menu"
-                aria-orientation="vertical"
                 aria-labelledby="menu-button"
             >
                 <div
                     v-for="(filter, index) in store.filters"
                     :key="index"
-                    class="py-2 px-2 w-full"
+                    class="py-2 px-2"
                     role="none"
                 >
-                    <ToggleSwitch
-                        :id="filter.description"
-                        :value="false"
-                        :checked="store.isFilterActive(filter, false)"
-                        role="menuitem"
-                        @change.self="store.toggleFilter(filter, $event)"
-                    >
-                        <label class="text-sm" :for="filter.description">
-                            {{ filter.description }}
+                    <div class="flex flex-nowrap">
+                        <ToggleSwitch
+                            :id="filter.description"
+                            :value="false"
+                            :checked="store.isFilterActive(filter, false)"
+                            role="menuitem"
+                            @change.self="store.toggleFilter(filter, $event)"
+                        />   
+                        <label class="text-sm whitespace-nowrap" :for="filter.description">{{ filter.description }}</label>
+                        <button
+                            v-if="filter.isUserAdded"
+                            class="btn-xs px-1 my-1 text-xs ml-5 btn-danger"
+                            @click="() => store.removeFilter(filter)"
+                        >
+                            <font-awesome-icon icon="xmark" />
+                        </button>
+                    </div>
+                    <div class="flex flex-nowrap">
+                        <ToggleSwitch
+                            :id="filter.description"
+                            :value="true"
+                            :checked="store.isFilterActive(filter, true)"
+                            class="text-xs"
+                            role="menuitem"
+                            @change.self="store.toggleFilter(filter, $event)"
+                        >
+                        </ToggleSwitch>
+                        <label class="text-gray-500 text-xs whitespace-nowrap" :for="filter.description">
+                                {{ 'All but ' + filter.description }}
                         </label>
-                    </ToggleSwitch>
-                    <ToggleSwitch
-                        :id="filter.description"
-                        :value="true"
-                        :checked="store.isFilterActive(filter, true)"
-                        class="text-xs"
-                        role="menuitem"
-                        @change.self="store.toggleFilter(filter, $event)"
-                    >
-                        <label class="text-gray-500 text-xs" :for="filter.description">
-                            {{ 'All but ' + filter.description }}
-                        </label>
-                    </ToggleSwitch>
+                    </div>
                 </div>
             </div>
         </div>
