@@ -56,8 +56,10 @@ function toggleDropdown() {
                             :checked="store.isFilterActive(filter, false)"
                             role="menuitem"
                             @change.self="store.toggleFilter(filter, $event)"
-                        />   
-                        <label class="text-sm whitespace-nowrap" :for="filter.description">{{ filter.description }}</label>
+                        />
+                        <label class="text-sm whitespace-nowrap" :for="filter.description">{{
+                            filter.description
+                        }}</label>
                         <button
                             v-if="filter.isUserAdded"
                             class="btn-xs px-1 my-1 text-xs ml-5 btn-danger"
@@ -76,8 +78,11 @@ function toggleDropdown() {
                             @change.self="store.toggleFilter(filter, $event)"
                         >
                         </ToggleSwitch>
-                        <label class="text-gray-500 text-xs whitespace-nowrap" :for="filter.description">
-                                {{ 'All but ' + filter.description }}
+                        <label
+                            class="text-gray-500 text-xs whitespace-nowrap"
+                            :for="filter.description"
+                        >
+                            {{ 'All but ' + filter.description }}
                         </label>
                     </div>
                 </div>
