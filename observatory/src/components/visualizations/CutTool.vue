@@ -10,24 +10,35 @@ import styleContent from './CutTool.css?inline'
 const store = useGlobalStore()
 const multiverse = computed(() => store.multiverse)
 
-let visualization: CutTool | undefined = undefined
+let visualization: Promise<CutTool | undefined> | undefined
 
 function cutToolRoot() {
     return document.getElementById('cut-tool-root') as HTMLDivElement
 }
 
-onMounted(async () => {
-    if(multiverse.value.sources.length === 1 && multiverse.value.sources[0] instanceof CausalityGraphUniverse)
-        visualization = await CutTool.create(cutToolRoot(), multiverse.value.sources[0])
+async function destroyAndCreate(universe: CausalityGraphUniverse | undefined) {
+    const oldVis = await visualization
+    oldVis?.dispose()
+    return universe ? await CutTool.create(cutToolRoot(), universe) : undefined
+}
+
+function onUniverseChanged(universe: CausalityGraphUniverse | undefined) {
+    visualization = destroyAndCreate(universe)
+}
+
+onMounted(() => {
+    const universe =
+            multiverse.value.sources.length === 1
+            && multiverse.value.sources[0] instanceof CausalityGraphUniverse
+                ? multiverse.value.sources[0] : undefined
+    onUniverseChanged(universe)
 })
 
-watch(multiverse, async (multiverse) => {
-    if(visualization)
-        visualization.dispose()
-    visualization = undefined
-
-    if(multiverse.sources.length === 1 && multiverse.sources[0] instanceof CausalityGraphUniverse)
-        visualization = await CutTool.create(cutToolRoot(), multiverse.sources[0])
+watch(multiverse, (multiverse) => {
+    const universe = multiverse.sources.length === 1
+            && multiverse.sources[0] instanceof CausalityGraphUniverse
+                ? multiverse.sources[0] : undefined
+    onUniverseChanged(universe)
 })
 
 </script>

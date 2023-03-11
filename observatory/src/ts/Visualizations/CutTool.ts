@@ -122,6 +122,7 @@ export class CutTool {
         this.domRoot.querySelector('#imageview-root')!.textContent = ''
         this.domRoot.querySelector('#cut-overview-root')!.textContent = ''
         this.domRoot.querySelector<HTMLDivElement>('#main-panel')!.hidden = true
+        this.ps.paused = true // Don't do any more work in the background!
     }
 
     private cutView_onExpanded(v: FullyHierarchicalNode) {
