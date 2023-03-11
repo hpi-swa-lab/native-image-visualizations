@@ -3,6 +3,7 @@ import { Universe } from './Universe'
 import * as Comlink from 'comlink'
 import {UiAsyncCausalityGraph} from '../Causality/UiAsyncCausalityGraph';
 import {AsyncCausalityGraph} from '../Causality/AsyncCausalityGraph';
+import {ReachabilityJson} from '../parsing';
 
 let createCausalityGraph: (nMethods: number, nTypes: number, causalityData: CausalityGraphData)
     => Promise<AsyncCausalityGraph> | AsyncCausalityGraph
@@ -31,40 +32,6 @@ let createCausalityGraph: (nMethods: number, nTypes: number, causalityData: Caus
             new UiAsyncCausalityGraph(nMethods, nTypes, causalityData)
     }
 }
-
-interface Method
-{
-    flags?: ('jni' | 'reflection' | 'main' | 'synthetic')[]
-    size: number
-}
-
-interface Field
-{
-    flags?: ('jni' | 'reflection' | 'synthetic')[]
-}
-
-interface Type
-{
-    methods: { [name: string]: Method }
-    fields: { [name: string]: Field }
-    flags?: ['synthetic']
-    'init-kind'?: ('build-time' | 'run-time')[]
-}
-
-interface Package
-{
-    types: { [name: string]: Type }
-}
-
-interface CodeSource
-{
-    path?: string
-    module?: string
-    flags?: ['system']
-    packages: { [name: string]: Package }
-}
-
-export type ReachabilityJson = [CodeSource]
 
 export interface CausalityGraphData {
     // Object structure of "reachability.json"

@@ -4,7 +4,7 @@ import { describe, expect, test } from '@jest/globals'
 import {
     parseReachabilityExport,
     InvalidReachabilityFormatError,
-    TopLevelOrigin
+    ReachabilityJson
 } from '../src/ts/parsing'
 import { Leaf } from '../src/ts/UniverseTypes/Leaf'
 import { InitKind } from '../src/ts/enums/InitKind'
@@ -21,7 +21,7 @@ describe('parsing', () => {
          * which may seem redundant.
          */
         describe('error thrown on invalid format', () => {
-            let expectedJSONObject: Array<TopLevelOrigin>
+            let expectedJSONObject: ReachabilityJson
             let brokenJSON: any
             beforeEach(() => {
                 expectedJSONObject = [

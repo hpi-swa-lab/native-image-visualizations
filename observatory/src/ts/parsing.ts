@@ -12,10 +12,15 @@ import { Leaf } from './UniverseTypes/Leaf'
 import { InitKind } from './enums/InitKind'
 import { Node } from './UniverseTypes/Node'
 import * as zip from '@zip.js/zip.js';
-import {CausalityGraphData, CausalityGraphUniverse} from './UniverseTypes/CausalityGraphUniverse';
+import {CausalityGraphData} from './UniverseTypes/CausalityGraphUniverse';
 
-type Methods = {
-    [methodName: string]: { size: Bytes; flags?: string[] }
+interface Method {
+    flags?: ('jni' | 'reflection' | 'main' | 'synthetic')[]
+    size: Bytes
+}
+
+interface Methods {
+    [methodName: string]: Method
 }
 
 function validateMethodData(object: any, name: string): void {
@@ -33,8 +38,15 @@ function validateMethodData(object: any, name: string): void {
     }
 }
 
-type Types = {
-    [typeName: string]: { methods: Methods; 'init-kind'?: string[] }
+interface Type
+{
+    methods: Methods
+    flags?: ['synthetic']
+    'init-kind'?: ('build-time' | 'run-time')[]
+}
+
+interface Types {
+    [typeName: string]: Type
 }
 
 function validateTypeData(object: any, name: string): void {
@@ -51,7 +63,7 @@ function validateTypeData(object: any, name: string): void {
     }
 }
 
-type Packages = {
+interface Packages {
     [packageName: string]: { types: Types }
 }
 
@@ -63,12 +75,14 @@ function validatePackageData(object: any, name: string): void {
     }
 }
 
-export type TopLevelOrigin = {
+interface TopLevelOrigin {
     path?: string
     module?: string
-
+    flags?: ['system']
     packages: Packages
 }
+
+export type ReachabilityJson = [TopLevelOrigin]
 
 function getNameForParsedTopLevelOrigin(object: any): string {
     let name = ''
