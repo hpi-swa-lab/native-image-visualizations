@@ -5,6 +5,7 @@ import { CutTool } from '../../ts/Visualizations/CutTool'
 import { CausalityGraphUniverse } from '../../ts/UniverseTypes/CausalityGraphUniverse';
 import ToggleSwitch from '../controls/ToggleSwitch.vue';
 import {useGlobalStore} from '../../ts/stores/globalStore';
+import styleContent from './CutTool.css?inline'
 
 const store = useGlobalStore()
 const multiverse = computed(() => store.multiverse)

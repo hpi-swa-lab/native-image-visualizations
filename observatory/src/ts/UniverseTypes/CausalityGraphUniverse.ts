@@ -3,9 +3,9 @@ import { Universe } from './Universe'
 import * as Comlink from 'comlink'
 import {UiAsyncCausalityGraph} from '../Causality/UiAsyncCausalityGraph';
 import {AsyncCausalityGraph} from '../Causality/AsyncCausalityGraph';
-import {assert} from '../util/assert';
 
-let createCausalityGraph: (nMethods: number, nTypes: number, causalityData: CausalityGraphData) => Promise<AsyncCausalityGraph> | AsyncCausalityGraph
+let createCausalityGraph: (nMethods: number, nTypes: number, causalityData: CausalityGraphData)
+    => Promise<AsyncCausalityGraph> | AsyncCausalityGraph
 
 {
     let workerCreated = false;
@@ -18,10 +18,17 @@ let createCausalityGraph: (nMethods: number, nTypes: number, causalityData: Caus
     const worker = new Worker('/src/ts/Causality/RemoteCausalityGraph', tester);
 
     if (workerCreated) {
-        const RemoteCausalityGraphWrapped = Comlink.wrap(worker) as unknown as { new(nMethods: number, nTypes: number, causalityData: CausalityGraphData): Promise<AsyncCausalityGraph> }
-        createCausalityGraph = (nMethods, nTypes, causalityData) => new RemoteCausalityGraphWrapped(nMethods, nTypes, causalityData)
+        const RemoteCausalityGraphWrapped = Comlink.wrap(worker) as unknown as {
+            new(
+                nMethods: number,
+                nTypes: number,
+                causalityData: CausalityGraphData): Promise<AsyncCausalityGraph>
+        }
+        createCausalityGraph = (nMethods, nTypes, causalityData) =>
+            new RemoteCausalityGraphWrapped(nMethods, nTypes, causalityData)
     } else {
-        createCausalityGraph = (nMethods, nTypes, causalityData) => new UiAsyncCausalityGraph(nMethods, nTypes, causalityData)
+        createCausalityGraph = (nMethods, nTypes, causalityData) =>
+            new UiAsyncCausalityGraph(nMethods, nTypes, causalityData)
     }
 }
 
@@ -89,15 +96,20 @@ export class CausalityGraphUniverse extends Universe {
         super(name, root)
         this.cgNodeLabels = causalityData.methodList
         this.cgTypeLabels = causalityData.typeList
-        this.causalityRoot = generateHierarchyFromReachabilityJsonAndMethodList(causalityData.reachabilityData, causalityData.methodList)
+        this.causalityRoot = generateHierarchyFromReachabilityJsonAndMethodList(
+            causalityData.reachabilityData,
+            causalityData.methodList)
 
-        const codesizesDict = getMethodCodesizeDictFromReachabilityJson(causalityData.reachabilityData)
+        const codesizesDict = getMethodCodesizeDictFromReachabilityJson(
+            causalityData.reachabilityData)
         this.codesizeByCgNodeLabels = new Array(this.cgNodeLabels.length)
         for(let i = 0; i < this.cgNodeLabels.length; i++) {
             this.codesizeByCgNodeLabels[i] = codesizesDict[this.cgNodeLabels[i]] ?? 0
         }
         
-        this.cgPromise = createCausalityGraph(causalityData.methodList.length, causalityData.typeList.length, causalityData)
+        this.cgPromise = createCausalityGraph(
+            causalityData.methodList.length,
+            causalityData.typeList.length, causalityData)
     }
 
     async getCausalityGraph() {
@@ -124,14 +136,14 @@ function getMethodCodesizeDictFromReachabilityJson(data: ReachabilityJson) {
     return dict
 }
 
-interface TrieNode<Value>
+class TrieNode<Value>
 {
     val?: Value
-    next: { [c: string]: TrieNode<Value> }
+    next: { [c: string]: TrieNode<Value> } = {}
 }
 
 class Trie<Value> {
-    root: TrieNode<Value> = { next: {} }
+    root = new TrieNode<Value>()
 
     constructor(dict: { [name: string]: Value }) {
         for (const [k, v] of Object.entries(dict))
@@ -141,10 +153,7 @@ class Trie<Value> {
     add(key: string, value: Value) {
         let node: TrieNode<Value> = this.root
         for (const c of key) {
-            if (!node.next[c]) {
-                node.next[c] = { next: {} }
-            }
-            node = node.next[c]
+            node = node.next[c] ??= new TrieNode<Value>()
         }
         node.val = value
     }
@@ -153,9 +162,9 @@ class Trie<Value> {
         let node = this.root
         let val = undefined
         for (const c of str) {
-            if (!node.next[c])
-                return val
             node = node.next[c]
+            if (!node)
+                return val
             if (node.val)
                 val = node.val
         }
@@ -180,7 +189,9 @@ export interface FullyHierarchicalNode
 }
 
 
-export function forEachInSubtree<TNode extends { children?: TNode[] }>(node: TNode, callback: (v: TNode) => unknown) {
+export function forEachInSubtree
+        <TNode extends { children?: TNode[] }>
+        (node: TNode, callback: (v: TNode) => unknown) {
     const stack: TNode[] = []
     stack.push(node)
     while (stack.length > 0) {
@@ -207,7 +218,9 @@ function computeCodesizePartialSum(root: FullyHierarchicalNode) {
     }
 }
 
-function generateHierarchyFromReachabilityJsonAndMethodList(json: ReachabilityJson, cgNodes: string[]) {
+function generateHierarchyFromReachabilityJsonAndMethodList(
+        json: ReachabilityJson,
+        cgNodeLabels: string[]) {
     const dict: FullyHierarchicalNode = { children: [], size: 0, name: '', parent: undefined }
     const system: FullyHierarchicalNode = { children: [], name: 'system', size: 0, parent: dict }
     const user: FullyHierarchicalNode = { children: [], name: 'user', size: 0, parent: dict }
@@ -240,7 +253,14 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json: ReachabilityJs
             l1fullname = toplevel.module
         }
 
-        const l1: FullyHierarchicalNode & {fullname: string} = { children: [], name: l1name, fullname: l1fullname, size: 0, parent: undefined }
+        const l1: FullyHierarchicalNode & {fullname: string} = {
+            children: [],
+            name: l1name,
+            fullname: l1fullname,
+            size: 0,
+            parent: undefined
+        }
+
         if (toplevel.path) {
             prefixToNode[toplevel.path] = l1
         }
@@ -254,9 +274,16 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json: ReachabilityJs
                     prefix += subPackageName + '.'
                     let next = l2.children.find(n => n.name === subPackageName)
                     if(!next) {
-                        const newNode = { children: [], fullname: prefix, name: subPackageName, parent: l2, size: 0 }
-                        /* Eigentlich sollten keine Causality-Graph-Knoten direkt in einem Package hängen.
-                         * Es gibt jedoch Knoten für Klassen, die nicht reachable sind (z.B. Build-Time-Features).
+                        const newNode = {
+                            children: [],
+                            fullname: prefix,
+                            name: subPackageName,
+                            parent: l2,
+                            size: 0
+                        }
+                        /* Eigentlich sollten keine Causality-Graph-Knoten direkt in einem Package
+                         * Es gibt jedoch Knoten für Klassen, die nicht reachable sind
+                         * (z.B. Build-Time-Features).
                          * Diese müssen unbedingt in die Abschneide-Berechnung miteinbezogen werden.
                          * Idealerweise sollten sie auch in der Baumstruktur auftauchen.
                          * Das ist aber gerade noch zu kompliziert umzusetzen... */
@@ -311,8 +338,8 @@ function generateHierarchyFromReachabilityJsonAndMethodList(json: ReachabilityJs
 
     const trie = new Trie<FullyHierarchicalNode & { fullname: string }>(prefixToNode)
 
-    for (let i = 0; i < cgNodes.length; i++) {
-        const cgNodeName = cgNodes[i]
+    for (let i = 0; i < cgNodeLabels.length; i++) {
+        const cgNodeName = cgNodeLabels[i]
         const node = trie.find(cgNodeName)
         if (node) {
             if (node.fullname === cgNodeName) {
