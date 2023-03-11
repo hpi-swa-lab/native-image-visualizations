@@ -13,7 +13,7 @@ export class DetailView {
         this.typeList = typeList;
     }
 
-    public renderGraphOnDetailView(edges: ReachabilityHyperpathEdge[] | undefined) {
+    public renderGraphOnDetailView(edges: ReachabilityHyperpathEdge[] | undefined, targetMid: number | undefined) {
         const htmlSvg = this.domRoot.querySelector('#chart')!
         htmlSvg.textContent = ''
 
@@ -22,11 +22,16 @@ export class DetailView {
         if(nothingSelected)
             return
 
-        if(edges.length === 0)
+        if(edges.length === 0 && !targetMid)
             return
 
         // Graph construction
         const nodesSet: Set<number> = new Set()
+
+        // Ensure that at least one node is shown
+        if(targetMid)
+            nodesSet.add(targetMid)
+
         const links: VisGraphLink[] = []
 
         edges.forEach(e => {
@@ -50,7 +55,7 @@ export class DetailView {
         });
 
         const nodes: VisGraphNode[] = nodeIds.map((d, i) => { return { index: i, mid: d, name: this.methodList[d] ?? '<root>', adj: [] }})
-
+        links.forEach(l => nodes[l.source].adj.push(l))
 
         const dag: d3dag.Dag<VisGraphNode, VisGraphLink> = d3dag.dagStratify()
             .id((arg: {index: number}) => arg.index.toString())
@@ -188,8 +193,9 @@ interface VisGraphLink
 function getUnqualifiedCausalityGraphNodeName(fullyQualifiedName: string): string {
     const parenIndex = fullyQualifiedName.lastIndexOf('/')
     if (parenIndex !== -1)
-        fullyQualifiedName = fullyQualifiedName.substring(parenIndex + 1)
-    return fullyQualifiedName.replaceAll(/(?<![A-Za-z0-9])([a-z]\w+\.)+/g, '')
+        return fullyQualifiedName.substring(parenIndex + 1)
+    else
+        return fullyQualifiedName.replaceAll(/(?<![A-Za-z0-9])([a-z]\w+\.)+/g, '')
 }
 
 function getColorAccordingToCausalityGraphNodeType(fullyQualifiedName: string): string {

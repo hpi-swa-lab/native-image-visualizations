@@ -5,10 +5,10 @@ import {BatchPurgeScheduler, ReachabilityVector} from './BatchPurgeScheduler';
 import {assert} from '../../util/assert';
 
 export class PurgeScheduler {
-    detailSelectedCallback: ((edges: ReachabilityHyperpathEdge[] | undefined) => void) | undefined
+    detailSelectedCallback: ((edges: ReachabilityHyperpathEdge[] | undefined, targetMid: number | undefined) => void) | undefined
 
     private _purgeSelectedNodes: FullyHierarchicalNode[] = []
-    private _detailSelectedCgNode: number | undefined
+    private _detailSelectedNode: FullyHierarchicalNode | undefined
 
     private selectedSimulationResult: AsyncDetailedSimulationResult | undefined
     private detailNeedsUpdate = false
@@ -58,22 +58,22 @@ export class PurgeScheduler {
 
     set purgeSelectedNodes(nodes: FullyHierarchicalNode[]) {
         this._purgeSelectedNodes = nodes
-        if (this._detailSelectedCgNode) {
-            if (this.selectedSimulationResult) {
-                this.selectedSimulationResult.delete()
-                this.selectedSimulationResult = undefined
-            }
-            this.detailNeedsUpdate = true
+        if (this.selectedSimulationResult) {
+            this.selectedSimulationResult.delete()
+            this.selectedSimulationResult = undefined
+
+            if (this._detailSelectedNode)
+                this.detailNeedsUpdate = true
         }
         this.additionalBatchScheduler = undefined
         this.ensureProcessing()
     }
 
     set detailSelectedNode(v: FullyHierarchicalNode | undefined) {
-        this._detailSelectedCgNode = v?.cgNode
-        if (!this._detailSelectedCgNode) {
+        this._detailSelectedNode = v
+        if (!this._detailSelectedNode) {
             if (this.detailSelectedCallback)
-                this.detailSelectedCallback(undefined)
+                this.detailSelectedCallback(undefined, undefined)
         } else {
             this.detailNeedsUpdate = true
             this.ensureProcessing()
@@ -104,16 +104,41 @@ export class PurgeScheduler {
             return false
         this.detailNeedsUpdate = false
 
-        assert(this._detailSelectedCgNode !== undefined)
+        assert(this._detailSelectedNode !== undefined)
         if (!this.selectedSimulationResult) {
             const purgeMids = this._purgeSelectedNodes
                 .flatMap(v => [...new Set(collectCgNodesInSubtree(v))])
             this.selectedSimulationResult = await this.cg.simulatePurgeDetailed(purgeMids)
         }
+
+        let mid = this._detailSelectedNode.cgNode
+
+        if(mid === undefined) {
+            // Take the cg node referenced in the subtree that first got reachable
+            const mids = collectCgNodesInSubtree(this._detailSelectedNode)
+            const dists = await this.selectedSimulationResult.getReachableArray()
+
+            let bestDist = 0xFF // Not reachable
+            for(const candidateMid of mids) {
+                const candidateDist = dists[candidateMid]
+                if(candidateDist < bestDist) {
+                    bestDist = candidateDist
+                    mid = candidateMid
+                }
+            }
+
+            if(bestDist === 0xFF) {
+                if(this.detailSelectedCallback)
+                    this.detailSelectedCallback([], undefined)
+                return true
+            }
+            assert(mid !== undefined)
+        }
+
         const edges = await this.selectedSimulationResult
-            .getReachabilityHyperpath(this._detailSelectedCgNode)
+            .getReachabilityHyperpath(mid)
         if (this.detailSelectedCallback)
-            this.detailSelectedCallback(edges)
+            this.detailSelectedCallback(edges, mid)
         return true
     }
 

@@ -38,7 +38,7 @@ export class CutTool {
         this.allReachable = allReachable
 
         this.ps = new PurgeScheduler(cg, universe.codesizeByCgNodeLabels, allReachable)
-        this.ps.detailSelectedCallback = edges => this.detailview.renderGraphOnDetailView(edges)
+        this.ps.detailSelectedCallback = (edges, targetMid) => this.detailview.renderGraphOnDetailView(edges, targetMid)
 
         this.ps.singlePurgeCallback = (v, data) => {
             this.singleSimulationResultCache.set(v, data)

@@ -184,26 +184,24 @@ export class ImageView {
         selectableSpan.classList.add('imageview-node')
         li.appendChild(selectableSpan)
 
-        if (node.cgNode) {
-            selectableSpan.classList.add('selectable')
-            selectableSpan.addEventListener('click', async () => {
-                const added = selectableSpan.classList.toggle('selected-for-detail')
+        selectableSpan.classList.add('selectable')
+        selectableSpan.addEventListener('click', () => {
+            const added = selectableSpan.classList.toggle('selected-for-detail')
 
-                if (added) {
-                    if(this.detailSelectedElement)
-                        this.detailSelectedElement.querySelector<HTMLSpanElement>('.node-text')!
-                            .classList.remove('selected-for-detail')
-                    selectableSpan.classList.add('selected-for-detail')
-                    if(this.selectedNodeChange)
-                        this.selectedNodeChange(node)
-                    this.detailSelectedElement = this.imageviewData.get(node)!.html
-                } else {
-                    this.detailSelectedElement = undefined
-                    if(this.selectedNodeChange)
-                        this.selectedNodeChange(undefined)
-                }
-            })
-        }
+            if (added) {
+                if(this.detailSelectedElement)
+                    this.detailSelectedElement.querySelector<HTMLSpanElement>('.imageview-node')!
+                        .classList.remove('selected-for-detail')
+                selectableSpan.classList.add('selected-for-detail')
+                if(this.selectedNodeChange)
+                    this.selectedNodeChange(node)
+                this.detailSelectedElement = this.imageviewData.get(node)!.html
+            } else {
+                this.detailSelectedElement = undefined
+                if(this.selectedNodeChange)
+                    this.selectedNodeChange(undefined)
+            }
+        })
 
         return li
     }
