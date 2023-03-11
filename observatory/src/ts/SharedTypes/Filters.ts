@@ -65,6 +65,6 @@ export class Filter {
     public serialize(): string {
         return `{"description":"${this.description}","applyComplement":${
             this.applyComplement
-        }, "validator":"${this.validator.toString()}", "isUserAdded":${this.isUserAdded},}`
+        }, "validator":"${this.validator.toString()}", "isUserAdded":${this.isUserAdded}}`
     }
 }
