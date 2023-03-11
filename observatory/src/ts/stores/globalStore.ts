@@ -139,6 +139,9 @@ export const useGlobalStore = defineStore('globalConfig', {
                 this.switchToComponent(this.previousComponent)
             }
         },
+        basicChangeSearchTerm(newSearch: string): void {
+            this.search = newSearch
+        },
         changeSearch(newSearch: string): void {
             this.search = newSearch
 
@@ -156,8 +159,11 @@ export const useGlobalStore = defineStore('globalConfig', {
                 )
             )
         },
-        addFilter(filter: Filter): void {
+        addFilter(filter: Filter): boolean {
+            const matchingFilter = this.filters.find((existing) => existing.equals(filter))
+            if (matchingFilter) return false
             this.filters.push(filter)
+            return true
         },
         removeFilter(filter: Filter): void {
             const matchingFilter = this.filters.find((existing) => existing.equals(filter))
