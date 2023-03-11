@@ -146,7 +146,8 @@ export interface FullyHierarchicalNode
     name: string // Displayed for this node
     parent: FullyHierarchicalNode | undefined
     children: FullyHierarchicalNode[]
-    size: number // transitive size of subtree
+    size: number
+    accumulatedSize: number // transitive size of subtree
 
     fullname?: string // Displayed on hover. Does not contain the module/JAR/classpath name.
 
@@ -171,6 +172,14 @@ export function forEachInSubtree
     }
 }
 
+export function collectSubtree(v: FullyHierarchicalNode): FullyHierarchicalNode[] {
+    const group: FullyHierarchicalNode[] = []
+    forEachInSubtree(v, w => {
+        group.push(w)
+    })
+    return group
+}
+
 export function collectCgNodesInSubtree(node: FullyHierarchicalNode): number[] {
     const group: number[] = []
     forEachInSubtree(node, u => {
@@ -180,11 +189,12 @@ export function collectCgNodesInSubtree(node: FullyHierarchicalNode): number[] {
     return group
 }
 
-function computeCodesizePartialSum(root: FullyHierarchicalNode) {
-    for(const child of root.children) {
-        computeCodesizePartialSum(child)
-        root.size += child.size
-    }
+function computeCodesizePartialSum(root: FullyHierarchicalNode): number {
+    let size = root.size
+    for(const child of root.children)
+        size += computeCodesizePartialSum(child)
+    root.accumulatedSize = size
+    return size
 }
 
 /*
@@ -199,7 +209,9 @@ function computeCodesizePartialSum(root: FullyHierarchicalNode) {
  * Class got registered for reflection:  "<Package>.<Class> [Reflection registration]"
  * Class got registered for JNI:         "<Package>.<Class> [JNI registration]"
  * Build-Time class initializer run:     "<Package>.<Class>.<clinit> [Build-Time]"
- * where '<clinit>' is meant literally
+ *                                                          ^^^^^^^^
+ *                                                          literally
+ *
  * Unknown heap object of type found:    "<Package>.<Class> [Unknown Heap Object]"
  * Reachability callback ran:            "<Package>.<Class>@<hashCode> [Reachability Callback]"
  * Method got reachable:                 "<Package>.<Class>.<Method>(<Parameters>)"
@@ -220,10 +232,10 @@ function computeCodesizePartialSum(root: FullyHierarchicalNode) {
 function generateHierarchyFromReachabilityJsonAndMethodList(
         json: ReachabilityJson,
         cgNodeLabels: string[]) {
-    const root: FullyHierarchicalNode = { children: [], size: 0, name: '', parent: undefined }
-    const system: FullyHierarchicalNode = { children: [], name: 'system', size: 0, parent: root }
-    const user: FullyHierarchicalNode = { children: [], name: 'user', size: 0, parent: root }
-    const main: FullyHierarchicalNode = { children: [], name: 'main', size: 0, parent: root}
+    const root: FullyHierarchicalNode = { children: [], size: 0, name: '', parent: undefined, accumulatedSize: 0 }
+    const system: FullyHierarchicalNode = { children: [], name: 'system', size: 0, parent: root, accumulatedSize: 0 }
+    const user: FullyHierarchicalNode = { children: [], name: 'user', size: 0, parent: root, accumulatedSize: 0 }
+    const main: FullyHierarchicalNode = { children: [], name: 'main', size: 0, parent: root, accumulatedSize: 0 }
 
     const trie = new Trie<FullyHierarchicalNode & { fullname: string }>()
 
@@ -257,7 +269,8 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
             name: l1name,
             fullname: l1fullname,
             size: 0,
-            parent: undefined
+            parent: undefined,
+            accumulatedSize: 0,
         }
 
         if (toplevel.path) {
@@ -278,7 +291,8 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
                             fullname: prefix,
                             name: subPackageName,
                             parent: l2,
-                            size: 0
+                            size: 0,
+                            accumulatedSize: 0
                         }
                         /* Eigentlich sollten keine Causality-Graph-Knoten direkt in einem Package
                          * Es gibt jedoch Knoten für Klassen, die nicht reachable sind
@@ -300,7 +314,8 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
                     name: typeName,
                     children: [],
                     size: 0,
-                    parent: l2
+                    parent: l2,
+                    accumulatedSize: 0
                 }
 
                 if(type.flags?.includes('synthetic'))
@@ -314,7 +329,8 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
                         name: methodName,
                         children: [],
                         size: method.size,
-                        parent: l3
+                        parent: l3,
+                        accumulatedSize: 0
                     }
                     if(method.flags?.includes('synthetic'))
                         l4.synthetic = true
@@ -369,7 +385,8 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
                         name: name.substring(0, dotIndex),
                         children: [],
                         size: 0,
-                        parent: curNode
+                        parent: curNode,
+                        accumulatedSize: 0
                     }
                     curNode.children.push(newNode)
                     trie.add(newNode.fullname, newNode)
@@ -392,7 +409,8 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
                     cgNode: i,
                     children: [],
                     size: 0,
-                    parent: curNode
+                    parent: curNode,
+                    accumulatedSize: 0
                 }
                 curNode.children.push(newNode)
                 trie.add(newNode.fullname, newNode)

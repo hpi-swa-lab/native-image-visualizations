@@ -126,10 +126,10 @@ export class CutView {
         return ul
     }
 
-    private generateHtmlListItem(d: FullyHierarchicalNode) {
+    private generateHtmlListItem(v: FullyHierarchicalNode) {
         const li = document.createElement('li')
         const cutData = new NodeData(li)
-        this.data.set(d, cutData)
+        this.data.set(v, cutData)
         li.className = 'cut-row'
 
         const cutSizeColumn = document.createElement('span')
@@ -140,10 +140,10 @@ export class CutView {
         cutSizeBar.className = 'cut-size-bar'
         li.appendChild(cutSizeBar)
 
-        const node = d
+        const node = v
         const span = document.createElement('span')
         span.className = 'caret'
-        if (d.children.length) {
+        if (v.children.length) {
             span.addEventListener('click', () => {
                 const expanded = span.classList.toggle('caret-down');
                 if(expanded) {
@@ -171,9 +171,9 @@ export class CutView {
 
 
         const nameSpan = document.createElement('span')
-        nameSpan.appendChild(document.createTextNode(d.name ?? ''))
-        if(d.fullname)
-            nameSpan.title = d.fullname
+        nameSpan.appendChild(document.createTextNode(v.name ?? ''))
+        if(v.fullname)
+            nameSpan.title = v.fullname
 
         const selectableSpan = document.createElement('span')
         selectableSpan.appendChild(nameSpan)
@@ -188,7 +188,7 @@ export class CutView {
             if(this.selectedForPurging.has(node))
                 return;
 
-            if(this.onHover && this.onHover(d)) {
+            if(this.onHover && this.onHover(v)) {
                 selectableSpan.classList.add('hovered-for-purge')
             }
         })
@@ -213,7 +213,7 @@ export class CutView {
             }
 
             if(this.selectionChanged)
-                return this.selectionChanged(selected ? d : undefined)
+                return this.selectionChanged(selected ? v : undefined)
         })
 
         return li

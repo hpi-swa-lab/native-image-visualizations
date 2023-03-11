@@ -1,6 +1,9 @@
-import {collectCgNodesInSubtree, FullyHierarchicalNode} from '../../UniverseTypes/CausalityGraphUniverse';
+import {
+    collectSubtree,
+    FullyHierarchicalNode
+} from '../../UniverseTypes/CausalityGraphUniverse';
 import {formatByteSizeWithUnitPrefix} from '../../util/ByteSizeFormatter';
-import {Unreachable} from '../../Causality/CausalityGraph';
+import {NodeSet, PurgeResults} from './BatchPurgeScheduler';
 
 
 
@@ -29,11 +32,11 @@ function forEachInStrictSubtreePostorder
 class ImageViewData
 {
     html: HTMLLIElement
-    exclusiveTransitiveCgNodes: number[] | undefined
+    collapsedChildren: NodeSet | undefined
 
-    constructor(html: HTMLLIElement, exclusiveTransitiveCgNodes?: number[]) {
+    constructor(html: HTMLLIElement, collapsedChildNodes?: NodeSet) {
         this.html = html
-        this.exclusiveTransitiveCgNodes = exclusiveTransitiveCgNodes
+        this.collapsedChildren = collapsedChildNodes
     }
 }
 
@@ -45,11 +48,11 @@ export class ImageView {
     private detailSelectedElement?: HTMLElement
     private readonly selectedNodeChange: (v: FullyHierarchicalNode | undefined) => void
 
-    private readonly allReachable: Uint8Array
-    private reachableWithSelectedPurged: Uint8Array
-    private reachableWithHoveredPurged: Uint8Array
+    private readonly allReachable: PurgeResults
+    private reachableWithSelectedPurged: PurgeResults
+    private reachableWithHoveredPurged: PurgeResults
 
-    constructor(allReachable: Uint8Array,
+    constructor(allReachable: PurgeResults,
                 root: FullyHierarchicalNode,
                 codesizes: number[],
                 maxCodeSize: number,
@@ -72,8 +75,8 @@ export class ImageView {
     }
 
     public updateReachableSets(
-        reachableWithSelectedPurged: Uint8Array | undefined | null,
-        reachableWithHoveredPurged: Uint8Array | undefined | null) {
+        reachableWithSelectedPurged: PurgeResults | undefined | null,
+        reachableWithHoveredPurged: PurgeResults | undefined | null) {
         if(reachableWithSelectedPurged !== undefined)
             this.reachableWithSelectedPurged = reachableWithSelectedPurged ?? this.allReachable
         if(reachableWithHoveredPurged !== undefined)
@@ -89,21 +92,21 @@ export class ImageView {
             (u, childResults) => this.refreshPurgeValueForImageviewNode(u, childResults))
     }
 
-    private generateHtmlImageview(data: FullyHierarchicalNode) {
+    private generateHtmlImageview(u: FullyHierarchicalNode) {
         const ul = document.createElement('ul')
         ul.className = 'nested'
 
-        const imageViewDataEntry = this.imageviewData.get(data)
+        const imageViewDataEntry = this.imageviewData.get(u)
         if (imageViewDataEntry)
-            delete imageViewDataEntry.exclusiveTransitiveCgNodes
+            delete imageViewDataEntry.collapsedChildren
 
-        for(const d of data.children) {
-            if(d.cgOnly)
+        for(const v of u.children) {
+            if(v.cgOnly)
                 continue
-            ul.appendChild(this.generateHtmlImageviewForNode(d))
+            ul.appendChild(this.generateHtmlImageviewForNode(v))
         }
 
-        const childSizes = data.children.filter(d => !d.cgOnly).map(cn => cn.size)
+        const childSizes = u.children.filter(d => !d.cgOnly).map(cn => cn.accumulatedSize)
 
         const order = new Array(childSizes.length)
         for(let i = 0; i < order.length; i++)
@@ -117,10 +120,12 @@ export class ImageView {
         return ul
     }
 
-    private generateHtmlImageviewForNode(d: FullyHierarchicalNode): HTMLLIElement {
+    private generateHtmlImageviewForNode(v: FullyHierarchicalNode): HTMLLIElement {
         const li = document.createElement('li')
-        const viewData = new ImageViewData(li, collectCgNodesInSubtree(d))
-        this.imageviewData.set(d, viewData)
+        const viewData = new ImageViewData(
+            li,
+            new NodeSet(collectSubtree(v)))
+        this.imageviewData.set(v, viewData)
         li.className = 'image-row'
         const span = document.createElement('span')
         li.appendChild(span)
@@ -128,14 +133,14 @@ export class ImageView {
         {
             const totalSizeColumn = document.createElement('span')
             totalSizeColumn.className = 'total-size-column'
-            totalSizeColumn.textContent = formatByteSizeWithUnitPrefix(d.size)
+            totalSizeColumn.textContent = formatByteSizeWithUnitPrefix(v.accumulatedSize)
             li.appendChild(totalSizeColumn)
         }
 
         {
             const sizeBarOuter = document.createElement('div')
             sizeBarOuter.className = 'size-bar-outer'
-            sizeBarOuter.style.width = (d.size / this.maxCodeSize * 100) + '%'
+            sizeBarOuter.style.width = (v.accumulatedSize / this.maxCodeSize * 100) + '%'
             li.appendChild(sizeBarOuter)
 
             for(let i = 0; i < 3; i++) {
@@ -159,9 +164,9 @@ export class ImageView {
             purgePercentageBarOuter.appendChild(purgePercentageBarText)
         }
 
-        const node = d
+        const node = v
         span.className = 'caret'
-        if (d.children && d.children.some(c => !c.cgOnly)) {
+        if (v.children && v.children.some(c => !c.cgOnly)) {
             span.addEventListener('click', () => {
                 const expanded = span.classList.toggle('caret-down');
                 if(!li.querySelector('.nested') && expanded) {
@@ -176,9 +181,9 @@ export class ImageView {
         li.appendChild(span)
 
         const nameSpan = document.createElement('span')
-        nameSpan.appendChild(document.createTextNode(d.name ?? ''))
-        if(d.fullname)
-            nameSpan.title = d.fullname
+        nameSpan.appendChild(document.createTextNode(v.name ?? ''))
+        if(v.fullname)
+            nameSpan.title = v.fullname
 
         const selectableSpan = document.createElement('span')
         selectableSpan.appendChild(nameSpan)
@@ -207,15 +212,12 @@ export class ImageView {
         return li
     }
 
-    private sumPurged(reachable: Uint8Array | undefined, cgNodes: number[]) {
-        if(reachable === undefined)
-            return 0
-
+    private sumPurged(reachable: PurgeResults | undefined, vs: FullyHierarchicalNode[]) {
         let sum = 0
         if (reachable) {
-            for (const i of cgNodes)
-                if (reachable[i] === Unreachable)
-                    sum += this.codesizes[i]
+            for (const v of vs)
+                if (reachable.isPurged(v))
+                    sum += v.size
         }
         return sum
     }
@@ -235,33 +237,32 @@ export class ImageView {
             this.reachableWithHoveredPurged
         ]
 
-        if(uData.exclusiveTransitiveCgNodes) {
+        if(uData.collapsedChildren) {
             results = reachableArrs
-                .map(reachable => this.sumPurged(reachable, uData.exclusiveTransitiveCgNodes!)
-            ) as SizeInfo
+                .map(reachable => reachable.accumulatedSizeOfPurgedNodes(
+                    uData.collapsedChildren!)) as SizeInfo
         } else {
             results = reachableArrs.map(
-                reachable => this.sumPurged(reachable, u.cgNode ? [u.cgNode] : [])
-            ) as SizeInfo
+                reachable => reachable.isPurged(u) ? u.size : 0) as SizeInfo
             for(const cr of childResults)
                 if(cr)
-                    for(let i = 0; i < 3; i++)
+                    for(let i = 0; i < results.length; i++)
                         results[i] += cr[i]
         }
         const html = uData.html
 
         const [purgedBaseline, purgedWithSelection, purgedWithHover] = results
 
-        const purgedPercentage0 = 100 * purgedBaseline / u.size
-        const purgedPercentage1 = 100 * (purgedWithSelection - purgedBaseline) / u.size
-        const purgedPercentage2 = 100 * (purgedWithHover - purgedWithSelection) / u.size
+        const purgedPercentage0 = 100 * purgedBaseline / u.accumulatedSize
+        const purgedPercentage1 = 100 * (purgedWithSelection - purgedBaseline) / u.accumulatedSize
+        const purgedPercentage2 = 100 * (purgedWithHover - purgedWithSelection) / u.accumulatedSize
         const purgedPercentageTotal = purgedPercentage1 + purgedPercentage2
         let barWidth0 = '0'
         let barWidth1 = '0'
         let barWidth2 = '0'
         let barWidthTotal = '0'
         let percentageText = ''
-        if (u.size !== 0) {
+        if (u.accumulatedSize !== 0) {
             barWidth0 = purgedPercentage0.toFixed(1) + '%'
             barWidth1 = purgedPercentage1.toFixed(1) + '%'
             barWidth2 = purgedPercentage2.toFixed(1) + '%'
@@ -274,7 +275,7 @@ export class ImageView {
         html.querySelector<HTMLDivElement>('.size-bar-inner-1')!.style.width = barWidth1
         html.querySelector<HTMLDivElement>('.size-bar-inner-2')!.style.width = barWidth2
         const cl = html.querySelector<HTMLDivElement>('.imageview-node')!.classList
-        if(purgedWithSelection >= u.size && purgedWithSelection > 0) {
+        if(purgedWithSelection >= u.accumulatedSize && purgedWithSelection > 0) {
             cl.add('purged')
         } else {
             cl.remove('purged')

@@ -11,32 +11,93 @@ import {assert} from '../../util/assert';
  * and the BatchPurgeScheduler cares for combining multiple nodes to a request.
  */
 
-export interface ReachabilityVector
-{
+
+export class PurgeResults {
     // Indexed by cg nodes, contains 0xFF iff the node is not reachable
-    arr: Uint8Array
+    private readonly reachableArr: Uint8Array
+
+    constructor(reachableArr: Uint8Array) {
+        this.reachableArr = reachableArr
+    }
+
+    isPurged(v: FullyHierarchicalNode): boolean {
+        return v.cgNode !== undefined && this.reachableArr[v.cgNode] === Unreachable
+    }
+
+    scalarProduct(codesizes: number[]): number {
+        let sum = 0
+        assert(this.reachableArr.length == codesizes.length)
+        for (let i = 0; i < codesizes.length; i++)
+            if (this.reachableArr[i] === Unreachable)
+                sum += codesizes[i]
+        return sum
+    }
+
+    accumulatedSizeOfPurgedNodes(vs: NodeSet) {
+        const cgNodes = vs.cgNodes
+        const sizes = vs.sizes
+        assert(cgNodes.length === sizes.length)
+        let sum = 0
+        for(let i = 0; i < cgNodes.length; i++) {
+            if (this.reachableArr[cgNodes[i]] === Unreachable)
+                sum += sizes[i]
+        }
+        return sum
+    }
+}
+
+export class ReachabilityVector {
+    public readonly results: PurgeResults
     // Precomputed sum of the codesizes of all reachable nodes
-    size: number
+    public readonly size: number
+
+    constructor(results: PurgeResults, codesizes: number[]) {
+        this.results = results
+        this.size = results.scalarProduct(codesizes)
+    }
+}
+
+export class NodeSet {
+    /*
+     * This is performance-critical as it directly affects the responsibility of the hover-purge
+     * effect.
+     *
+     * Splitting the information into two homogeneous arrays makes the operation really fast
+     * (x10 performance on chrome). It might be the layout that enables the JIT to recognize
+     * the operation as the primitive thing it is and generate similar-to-native code.
+     */
+    public readonly cgNodes: number[]
+    public readonly sizes: number[]
+
+    constructor(vs: FullyHierarchicalNode[]) {
+        const set = vs.filter(v => v.cgNode !== undefined && v.size) as
+            (FullyHierarchicalNode & { cgNode: number })[]
+        this.cgNodes = new Array(set.length)
+        this.sizes = new Array(set.length)
+
+        for(let i = 0; i < set.length; i++) {
+            this.cgNodes[i] = set[i].cgNode
+            this.sizes[i] = set[i].size
+        }
+    }
 }
 
 export class BatchPurgeScheduler {
-    callback?: (node: FullyHierarchicalNode, data: ReachabilityVector) => void
-    private purgedSizeBaseline: number | undefined
-    private readonly codesizes: number[]
+    callback?: (node: FullyHierarchicalNode | undefined, data: PurgeResults) => void
+
     private readonly cg: AsyncCausalityGraph
     private readonly prepurgeNodes: FullyHierarchicalNode[]
     private waitlist: FullyHierarchicalNode[] = []
     private runningBatch: AsyncIncrementalSimulationResult | undefined
     private runningIndexToNode: (FullyHierarchicalNode | undefined)[] = []
 
+    private calcBaselineFirst: boolean
+
     constructor(cg: AsyncCausalityGraph,
-                codesizes: number[],
-                purgedSizeBaseline: number | undefined,
                 prepurgeNodes: FullyHierarchicalNode[] = []) {
         this.cg = cg
-        this.codesizes = codesizes
-        this.purgedSizeBaseline = purgedSizeBaseline
         this.prepurgeNodes = prepurgeNodes
+        this.calcBaselineFirst = prepurgeNodes.length > 0
     }
 
     request(nodes: FullyHierarchicalNode[]) {
@@ -51,25 +112,27 @@ export class BatchPurgeScheduler {
                 this.runningBatch = undefined
                 return this.waitlist.length > 0
             } else if (token === -1) /* empty purge */ {
-                assert(this.purgedSizeBaseline === undefined)
+                assert(this.calcBaselineFirst)
                 const stillReachable = await this.runningBatch.getReachableArray()
-                let purgedSize = 0
-                for (let i = 0; i < this.codesizes.length; i++)
-                    if (stillReachable[i] === Unreachable)
-                        purgedSize += this.codesizes[i]
-                this.purgedSizeBaseline = purgedSize
+                this.calcBaselineFirst = false
+                if (this.callback)
+                    this.callback(undefined, new PurgeResults(stillReachable))
             } else {
-                const node = this.runningIndexToNode[token]
-                if (node) {
-                    assert(this.purgedSizeBaseline !== undefined)
-                    if (this.callback) {
-                        const stillReachable = await this.runningBatch.getReachableArray()
-                        let purgedSize = -this.purgedSizeBaseline
-                        for (let i = 0; i < this.codesizes.length; i++)
-                            if (stillReachable[i] === Unreachable)
-                                purgedSize += this.codesizes[i]
-                        this.callback(node, {arr: stillReachable, size: purgedSize})
-                    }
+                let node: FullyHierarchicalNode | undefined
+                if (token === -1) {
+                    assert(this.calcBaselineFirst)
+                    this.calcBaselineFirst = false
+                    node = undefined
+                } else {
+                    assert(!this.calcBaselineFirst)
+                    node = this.runningIndexToNode[token]
+                    if(node === undefined)
+                        return true
+                }
+
+                if (this.callback) {
+                    const stillReachable = await this.runningBatch.getReachableArray()
+                    this.callback(node, new PurgeResults(stillReachable))
                 }
             }
             return true
@@ -78,7 +141,7 @@ export class BatchPurgeScheduler {
                 new Set(this.waitlist),
                 new Set(this.prepurgeNodes))
             assert(tree !== undefined)
-            if (this.purgedSizeBaseline === undefined) {
+            if (this.calcBaselineFirst) {
                 // We need to insert an empty purge node for calculating the baseline
                 assert(tree.children !== undefined)
                 tree.children.unshift({token: -1, mids: []})

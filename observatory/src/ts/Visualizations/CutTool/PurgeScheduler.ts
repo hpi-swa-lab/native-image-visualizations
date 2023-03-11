@@ -1,7 +1,7 @@
 import {ReachabilityHyperpathEdge, Unreachable} from '../../Causality/CausalityGraph';
 import {collectCgNodesInSubtree, FullyHierarchicalNode} from '../../UniverseTypes/CausalityGraphUniverse';
 import {AsyncCausalityGraph, AsyncDetailedSimulationResult} from '../../Causality/AsyncCausalityGraph';
-import {BatchPurgeScheduler, ReachabilityVector} from './BatchPurgeScheduler';
+import {BatchPurgeScheduler, PurgeResults} from './BatchPurgeScheduler';
 import {assert} from '../../util/assert';
 
 /*
@@ -28,28 +28,21 @@ export class PurgeScheduler {
     private detailNeedsUpdate = false
 
     private cg: AsyncCausalityGraph
-    private codesizes: number[]
-    private allReachable: Uint8Array
+    private allReachable: PurgeResults
 
     private singleBatchScheduler: BatchPurgeScheduler
     private additionalBatchScheduler?: BatchPurgeScheduler
 
     private _additionalPurgeCallback?:
-        (node: FullyHierarchicalNode, data: ReachabilityVector) => void
+        (node: FullyHierarchicalNode | undefined, data: PurgeResults) => void
 
     private processingRunning = false
     private _paused = true
 
-    constructor(cg: AsyncCausalityGraph, codesizes: number[], allReachable: Uint8Array) {
+    constructor(cg: AsyncCausalityGraph, allReachable: PurgeResults) {
         this.cg = cg
-        this.codesizes = codesizes
         this.allReachable = allReachable
-
-        let baseline = 0
-        for (let i = 0; i < this.codesizes.length; i++)
-            if (allReachable[i] === Unreachable)
-                baseline += this.codesizes[i]
-        this.singleBatchScheduler = new BatchPurgeScheduler(cg, codesizes, baseline)
+        this.singleBatchScheduler = new BatchPurgeScheduler(cg)
     }
 
     set paused(val: boolean) {
@@ -59,12 +52,12 @@ export class PurgeScheduler {
     }
 
     set singlePurgeCallback(
-        callback: (node: FullyHierarchicalNode, data: ReachabilityVector) => void) {
+        callback: (node: FullyHierarchicalNode | undefined, data: PurgeResults) => void) {
         this.singleBatchScheduler.callback = callback
     }
 
     set additionalPurgeCallback(
-        callback: (node: FullyHierarchicalNode, data: ReachabilityVector) => void) {
+        callback: (node: FullyHierarchicalNode | undefined, data: PurgeResults) => void) {
         this._additionalPurgeCallback = callback
         if (this.additionalBatchScheduler)
             this.additionalBatchScheduler.callback = callback
@@ -104,8 +97,7 @@ export class PurgeScheduler {
             return
         if (!this.additionalBatchScheduler) {
             this.additionalBatchScheduler = new BatchPurgeScheduler(
-                this.cg, this.codesizes,
-                undefined,
+                this.cg,
                 this._purgeSelectedNodes)
             this.additionalBatchScheduler.callback = this._additionalPurgeCallback
         }

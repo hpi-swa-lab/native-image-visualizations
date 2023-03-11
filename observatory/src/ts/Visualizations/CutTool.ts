@@ -8,10 +8,10 @@ import {toRaw} from 'vue';
 import {CutView} from './CutTool/CutView';
 import {ImageView} from './CutTool/ImageView';
 import {DetailView} from './CutTool/DetailView'
-import {ReachabilityVector} from './CutTool/BatchPurgeScheduler';
+import {PurgeResults, ReachabilityVector} from './CutTool/BatchPurgeScheduler';
 import {PurgeScheduler} from './CutTool/PurgeScheduler';
 import {AsyncCausalityGraph} from '../Causality/AsyncCausalityGraph';
-
+import {assert} from '../util/assert';
 
 export class CutTool {
     readonly domRoot: HTMLDivElement
@@ -23,30 +23,50 @@ export class CutTool {
 
     readonly dataRoot: FullyHierarchicalNode
 
-    readonly allReachable: Uint8Array
+    readonly allReachable: ReachabilityVector
+    readonly codesizes: number[]
 
     readonly singleSimulationResultCache = new Map<FullyHierarchicalNode, ReachabilityVector>()
-    readonly additionalSimulationResultCache = new Map<FullyHierarchicalNode, ReachabilityVector>()
+    additionalSimulationResults: undefined | {
+        cache: Map<FullyHierarchicalNode, ReachabilityVector>,
+        onlySelected: ReachabilityVector }
 
     constructor(domRoot: HTMLDivElement,
                 universe: CausalityGraphUniverse,
                 cg: AsyncCausalityGraph,
-                allReachable: Uint8Array) {
+                allReachable: ReachabilityVector) {
         this.domRoot = domRoot
         this.dataRoot = universe.causalityRoot
         this.cg = cg
         this.allReachable = allReachable
+        this.codesizes = universe.codesizeByCgNodeLabels
 
-        this.ps = new PurgeScheduler(cg, universe.codesizeByCgNodeLabels, allReachable)
-        this.ps.detailSelectedCallback = (edges, targetMid) => this.detailview.renderGraphOnDetailView(edges, targetMid)
+        this.ps = new PurgeScheduler(cg, allReachable.results)
+        this.ps.detailSelectedCallback = (edges, targetMid) =>
+            this.detailview.renderGraphOnDetailView(edges, targetMid)
 
         this.ps.singlePurgeCallback = (v, data) => {
-            this.singleSimulationResultCache.set(v, data)
-            this.cutview.setSinglePurgeData(v, data.size)
+            if(!v)
+                return
+            const dataAndSize = new ReachabilityVector(data, this.codesizes)
+            this.singleSimulationResultCache.set(v, dataAndSize)
+            this.cutview.setSinglePurgeData(v, dataAndSize.size - this.allReachable.size)
         }
         this.ps.additionalPurgeCallback = (v, data) => {
-            this.additionalSimulationResultCache.set(v, data)
-            this.cutview.setAdditionalPurgeData(v, data.size)
+            const dataAndSize = new ReachabilityVector(data, this.codesizes)
+
+            if(v === undefined) {
+                assert(this.additionalSimulationResults === undefined)
+                this.additionalSimulationResults = {
+                    cache: new Map<FullyHierarchicalNode, ReachabilityVector>(),
+                    onlySelected: dataAndSize
+                }
+            } else {
+                assert(this.additionalSimulationResults !== undefined)
+                this.additionalSimulationResults.cache.set(v, dataAndSize)
+                this.cutview.setAdditionalPurgeData(v,
+                    dataAndSize.size - this.additionalSimulationResults.onlySelected.size)
+            }
         }
 
         this.cutview = new CutView(
@@ -59,10 +79,10 @@ export class CutTool {
             universe.causalityRoot)
 
         this.imageview = new ImageView(
-            allReachable,
+            allReachable.results,
             universe.causalityRoot,
             universe.codesizeByCgNodeLabels,
-            Math.max(...this.dataRoot.children.map(d => d.size)),
+            Math.max(...this.dataRoot.children.map(d => d.accumulatedSize)),
             (v) => this.ps.detailSelectedNode = v)
 
         this.imageview.populate(
@@ -90,7 +110,9 @@ export class CutTool {
         domRoot.querySelector<HTMLDivElement>('#loading-panel')!.hidden = false
         const universeRaw = toRaw(universe)
         const cg = await universeRaw.getCausalityGraph()
-        const allReachable = await cg.simulatePurge()
+        const allReachable = new ReachabilityVector(
+            new PurgeResults(await cg.simulatePurge()),
+            universe.codesizeByCgNodeLabels)
         domRoot.querySelector<HTMLDivElement>('#loading-panel')!.hidden = true
         domRoot.querySelector<HTMLDivElement>('#main-panel')!.hidden = false
         return new CutTool(domRoot, universeRaw, cg, allReachable)
@@ -121,13 +143,20 @@ export class CutTool {
             }
 
             if (!containedInSelection) {
-                for(const w of v.children) {
-                    const cachedResult = this.additionalSimulationResultCache.get(w)
-                    if(cachedResult)
-                        this.cutview.setAdditionalPurgeData(w, cachedResult.size)
+                if(this.additionalSimulationResults === undefined) {
+                    this.ps.requestAdditionalPurgeInfo(v.children)
+                } else {
+                    for(const w of v.children) {
+                        const cachedResult = this.additionalSimulationResults.cache.get(w)
+                        if(cachedResult) {
+                            this.cutview.setAdditionalPurgeData(w,
+                                cachedResult.size -
+                                this.additionalSimulationResults.onlySelected.size)
+                        }
+                    }
+                    this.ps.requestAdditionalPurgeInfo(
+                        v.children.filter(w => !this.additionalSimulationResults!.cache.has(w)))
                 }
-                this.ps.requestAdditionalPurgeInfo(
-                    v.children.filter(w => !this.additionalSimulationResultCache.has(w)))
             }
         }
     }
@@ -136,27 +165,27 @@ export class CutTool {
     private async cutView_onSelectionChanged(v: FullyHierarchicalNode | undefined) {
         this.ps.purgeSelectedNodes = [...this.cutview.selectedForPurging]
 
-        let stillReachable
+        let stillReachable: PurgeResults | undefined
 
         if (v !== undefined) {
             const cache = this.cutview.selectedForPurging.size === 1
                 ? this.singleSimulationResultCache
-                : this.additionalSimulationResultCache;
-            const data = cache.get(v)
+                : this.additionalSimulationResults?.cache;
+            const data = cache?.get(v)
             if (data)
-                stillReachable = data.arr
+                stillReachable = data.results
         } else if (this.cutview.selectedForPurging.size === 0) {
-            stillReachable = this.allReachable
+            stillReachable = this.allReachable.results
         }
 
         if (!stillReachable) {
             // We have to simulate
             const purgeSet =
                 [...new Set([...this.cutview.selectedForPurging].flatMap(collectCgNodesInSubtree))]
-            stillReachable = await this.cg.simulatePurge(purgeSet)
+            stillReachable = new PurgeResults(await this.cg.simulatePurge(purgeSet))
         }
 
-        this.additionalSimulationResultCache.clear()
+        this.additionalSimulationResults = undefined
         for (const v of this.cutview.visibleNodes)
             this.cutview.setAdditionalPurgeData(v, undefined)
 
@@ -168,12 +197,12 @@ export class CutTool {
 
     // Returns whether the hovering effect should be shown
     private cutView_onHover(v: FullyHierarchicalNode | undefined): boolean {
-        let reachableOnHover: Uint8Array | undefined | null
+        let reachableOnHover: PurgeResults | undefined | null
         if (v) {
             const cache = this.cutview.selectedForPurging.size === 0
                 ? this.singleSimulationResultCache
-                : this.additionalSimulationResultCache;
-            reachableOnHover = cache.get(v)?.arr
+                : this.additionalSimulationResults?.cache;
+            reachableOnHover = cache?.get(v)?.results
         } else {
             reachableOnHover = null // Explicit command to reset the hover set
         }
