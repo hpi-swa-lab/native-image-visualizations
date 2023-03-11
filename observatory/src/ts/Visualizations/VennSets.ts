@@ -13,6 +13,7 @@ import { formatBytes } from '../SharedTypes/Size'
 import { TooltipModel } from './TooltipModel'
 import { SortingOrder } from '../enums/Sorting'
 import { Filter } from '../SharedTypes/Filters'
+import { HIERARCHY_NAME_SEPARATOR } from '../globals'
 
 type Group = d3.InternMap<string, d3.InternMap<Node, number>>
 type NodeData = [string, d3.InternMap<Node, number>]
@@ -166,7 +167,13 @@ export class VennSets implements MultiverseVisualization {
         const parent = leaf.parent as unknown as PackedHierarchyNode
         return `<b>Exclusive in</b>: ${parent.data[0]}
                 <b>Name</b>: ${node.name}
+                <b>Path</b>: ${this.pathToNode(node)}
                 <b>Code Size</b>: ${formatBytes(node.codeSize)}`
+    }
+
+    private pathToNode(node: Node): string {
+        if (this.layer <= Layers.MODULES) return '/'
+        return node.identifier.substring(0, node.identifier.lastIndexOf(HIERARCHY_NAME_SEPARATOR))
     }
 
     private asCombinationPartitionedHierarchy(nodes: Node[]): HierarchyNode<Group> {
