@@ -197,6 +197,7 @@ function computeCodesizePartialSum(root: FullyHierarchicalNode): number {
     return size
 }
 
+/* eslint-disable vue/max-len */
 /*
  * The reachability.json and the causality export are loosely coupled:
  * While the reachability.json contains more information about code hierarchy, especially
