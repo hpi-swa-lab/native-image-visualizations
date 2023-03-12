@@ -1,4 +1,6 @@
-# subuniverse-reachability
+# Subuniverse-Reachability
+
+Dieses Dokument beschreibt das theoretische Problem, dass wir mit dem Causality-Export angehen möchten.
 
 ## Problem:
 
