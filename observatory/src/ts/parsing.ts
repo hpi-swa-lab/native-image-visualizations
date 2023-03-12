@@ -15,7 +15,7 @@ import * as zip from '@zip.js/zip.js';
 import {CausalityGraphData} from './UniverseTypes/CausalityGraphUniverse';
 
 interface Method {
-    flags?: ('jni' | 'reflection' | 'main' | 'synthetic')[]
+    flags?: string[]
     size: Bytes
 }
 
@@ -38,11 +38,10 @@ function validateMethodData(object: any, name: string): void {
     }
 }
 
-interface Type
-{
+interface Type {
     methods: Methods
-    flags?: ['synthetic']
-    'init-kind'?: ('build-time' | 'run-time')[]
+    flags?: string[]
+    'init-kind'?: string[]
 }
 
 interface Types {
