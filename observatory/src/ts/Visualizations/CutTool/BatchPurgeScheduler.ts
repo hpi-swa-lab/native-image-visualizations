@@ -126,9 +126,9 @@ export class BatchPurgeScheduler {
                     this.calcBaselineFirst = false
                     node = undefined
                 } else {
-                    assert(!this.calcBaselineFirst)
                     node = this.runningIndexToNode[token]
                     if (node === undefined) return true
+                    assert(!this.calcBaselineFirst)
                 }
 
                 if (this.callback) {
