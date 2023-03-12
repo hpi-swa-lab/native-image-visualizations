@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { globalConfigStore } from '../../ts/stores'
+import { useGlobalStore } from '../../ts/stores/globalStore'
 import ToggleSwitch from './ToggleSwitch.vue'
 
 const MAX_OBSERVABLE_UNIVERSES = 2
 
-const store = globalConfigStore()
+const store = useGlobalStore()
 
 function isChecked(universeName: string) {
     return store.observedUniverses.some((universe) => universe.name == universeName)

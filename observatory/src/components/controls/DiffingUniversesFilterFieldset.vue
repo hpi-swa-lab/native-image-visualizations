@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import ColorLabel from './ColorLabel.vue'
 import ToggleSwitch from './ToggleSwitch.vue'
-import { globalConfigStore, sankeyTreeConfigStore } from '../../ts/stores'
+import { useSankeyStore } from '../../ts/stores/sankeyTreeStore'
+import { useGlobalStore } from '../../ts/stores/globalStore'
 import { UNMODIFIED } from '../../ts/Visualizations/SankeyTree'
 import { UniverseMetadata } from '../../ts/SharedTypes/SankeyTree'
 import { computed } from 'vue'
@@ -10,8 +11,8 @@ defineProps<{
     universesMetadata: UniverseMetadata
 }>()
 
-const globalStore = globalConfigStore()
-const sankeyStore = sankeyTreeConfigStore()
+const globalStore = useGlobalStore()
+const sankeyStore = useSankeyStore()
 
 const isTheOnlyCheckedOption = computed(
     () => (key: string) => onlyShowUnmodifiedChecked(key) || onlyOneUniverseChecked(key)
