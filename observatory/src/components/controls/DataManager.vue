@@ -48,7 +48,7 @@ async function validateFileAndAddUniverseOnSuccess(
             )
             rawData = parsedJSON
         } else {
-            throw new Error('You stupid bastard shall not upload junk!')
+            throw new Error('Unknown file ending')
         }
         globalStore.addUniverse(newUniverse, rawData)
         uploadError.value = undefined
