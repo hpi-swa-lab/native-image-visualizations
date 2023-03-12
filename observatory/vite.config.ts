@@ -11,5 +11,8 @@ export default defineConfig({
     plugins: [vue(), commonjs()],
     resolve: {
         extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json', '.cjs']
+    },
+    build: {
+        target: 'es2022'
     }
 })
