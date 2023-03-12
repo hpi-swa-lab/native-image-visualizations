@@ -11,13 +11,17 @@ It can either be run as a native CLI application or integrated in a web-based vi
 
 ### native
 
-1. Build the cmake project
+This is only useful for manual testing!
+
+1. Install cmake (e.g. `apt install cmake`)
+2. Install C compiler toolchain (e.g. `apt install gcc`)
+3. Build the cmake project
 ```bash
 mkdir native/build
 cd native/build
 cmake .. && make
 ```
-2. launch. E.g.
+4. launch. E.g.
 ```bash
 cd <path to directory with causality export files>
 <path to causality-query executable>/causality-query benchmark
@@ -26,15 +30,16 @@ cd <path to directory with causality export files>
 
 ### web
 
-1. Install the [emsdk](https://github.com/emscripten-core/emsdk)
-2. Build the cmake project
+1. Make sure cmake is installed (e.g. `apt install cmake`)
+2. Install the [emsdk](https://github.com/emscripten-core/emsdk)
+3. Build the cmake project
 
 ```bash
 mkdir web/build
 cd web/build
 emcmake cmake .. -DCMAKE_BUILD_TYPE=Release && make
 ```
-3. Copy the resulting files
+4. Copy the resulting files
 ```
 causality-query.js
 causality-query.wasm
