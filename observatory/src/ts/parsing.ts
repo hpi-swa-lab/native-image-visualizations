@@ -116,8 +116,8 @@ export async function loadCgZip(file: File): Promise<CausalityGraphData> {
         return entry
     }
 
-    const reachabilityData = await getZipEntry('reachability.json')
-        .getData(new zip.TextWriter())
+    const reachabilityData = JSON.parse(await getZipEntry('reachability.json')
+        .getData(new zip.TextWriter()))
     const methods = await getZipEntry('methods.txt').getData(new zip.TextWriter())
     const methodList = methods.split('\n')
     methodList.pop() // Pop line that doesn't end with '\n'
@@ -126,7 +126,7 @@ export async function loadCgZip(file: File): Promise<CausalityGraphData> {
     typeList.pop() // Pop line that doesn't end with '\n'
 
     const cgData = {
-        reachabilityData: JSON.parse(await getZipEntry('reachability.json').getData(new zip.TextWriter())),
+        reachabilityData: reachabilityData,
         nodeLabels: methodList,
         typeLabels: typeList,
         'typestates.bin': new Uint8Array(),

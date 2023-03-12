@@ -247,8 +247,15 @@ export class CausalityGraph extends WasmObjectWrapper {
             subsetsArr[1] += prepurgeMids.length
         }
 
-        const wasmObject = CausalityGraph._simulatePurgesBatched(this, subsetsArrBuffer.viewU8.byteOffset)
-        return new IncrementalSimulationResult(this.nMethods, wasmObject, midsBuffer, subsetsArrBuffer, indexToInputToken)
+        const wasmObject = CausalityGraph._simulatePurgesBatched(
+            this,
+            subsetsArrBuffer.viewU8.byteOffset)
+        return new IncrementalSimulationResult(
+            this.nMethods,
+            wasmObject,
+            midsBuffer,
+            subsetsArrBuffer,
+            indexToInputToken)
     }
 }
 
