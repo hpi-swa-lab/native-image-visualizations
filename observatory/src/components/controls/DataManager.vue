@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { Universe } from '../../ts/UniverseTypes/Universe'
-import { CausalityGraphUniverse } from '../../ts/UniverseTypes/CausalityGraphUniverse'
-import { loadJson, loadCgZip, parseReachabilityExport } from '../../ts/parsing'
+import { loadJson, parseReachabilityExport } from '../../ts/parsing'
 import { useGlobalStore, CONFIG_NAME } from '../../ts/stores/globalStore'
 import { useVennStore } from '../../ts/stores/vennStore'
 import { useSankeyStore } from '../../ts/stores/sankeyTreeStore'
@@ -30,27 +29,13 @@ async function validateFileAndAddUniverseOnSuccess(
     universeName: string
 ): Promise<void> {
     try {
-        let newUniverse: Universe
-        let rawData
+        const parsedJSON = await loadJson(file)
+        const newUniverse = new Universe(
+            universeName,
+            parseReachabilityExport(parsedJSON, universeName)
+        )
 
-        if(file.name.endsWith('.cg.zip')) {
-            const parsedCG = await loadCgZip(file)
-            newUniverse = new CausalityGraphUniverse(
-                    universeName,
-                    parseReachabilityExport(parsedCG.reachabilityData, universeName),
-                    parsedCG)
-            rawData = parsedCG.reachabilityData
-        } else if(file.name.endsWith('.json')) {
-            const parsedJSON = await loadJson(file)
-            newUniverse = new Universe(
-                    universeName,
-                    parseReachabilityExport(parsedJSON, universeName)
-            )
-            rawData = parsedJSON
-        } else {
-            throw new Error('You stupid bastard shall not upload junk!')
-        }
-        globalStore.addUniverse(newUniverse, rawData)
+        globalStore.addUniverse(newUniverse, parsedJSON)
         uploadError.value = undefined
     } catch (error: unknown) {
         if (error instanceof Error) {
@@ -116,7 +101,7 @@ function changeUniverseName(oldName: string, newName: string, inputIndex: number
                 id="input-report-data"
                 class="w-full space-y-4"
                 type="file"
-                accept="application/json,.cg.zip"
+                accept="application/json"
                 required
                 multiple
                 @change="addUniverses"

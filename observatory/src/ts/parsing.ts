@@ -11,16 +11,9 @@ import { Bytes } from './SharedTypes/Size'
 import { Leaf } from './UniverseTypes/Leaf'
 import { InitKind } from './enums/InitKind'
 import { Node } from './UniverseTypes/Node'
-import * as zip from '@zip.js/zip.js';
-import {CausalityGraphData} from './UniverseTypes/CausalityGraphUniverse';
 
-interface Method {
-    flags?: ('jni' | 'reflection' | 'main' | 'synthetic')[]
-    size: Bytes
-}
-
-interface Methods {
-    [methodName: string]: Method
+type Methods = {
+    [methodName: string]: { size: Bytes; flags?: string[] }
 }
 
 function validateMethodData(object: any, name: string): void {
@@ -38,15 +31,8 @@ function validateMethodData(object: any, name: string): void {
     }
 }
 
-interface Type
-{
-    methods: Methods
-    flags?: ['synthetic']
-    'init-kind'?: ('build-time' | 'run-time')[]
-}
-
-interface Types {
-    [typeName: string]: Type
+type Types = {
+    [typeName: string]: { methods: Methods; 'init-kind'?: string[] }
 }
 
 function validateTypeData(object: any, name: string): void {
@@ -63,7 +49,7 @@ function validateTypeData(object: any, name: string): void {
     }
 }
 
-interface Packages {
+type Packages = {
     [packageName: string]: { types: Types }
 }
 
@@ -75,14 +61,12 @@ function validatePackageData(object: any, name: string): void {
     }
 }
 
-interface TopLevelOrigin {
+export type TopLevelOrigin = {
     path?: string
     module?: string
-    flags?: ['system']
+
     packages: Packages
 }
-
-export type ReachabilityJson = [TopLevelOrigin]
 
 function getNameForParsedTopLevelOrigin(object: any): string {
     let name = ''
@@ -105,47 +89,6 @@ export class InvalidReachabilityFormatError extends Error {
 
         Object.setPrototypeOf(this, InvalidReachabilityFormatError.prototype)
     }
-}
-
-export async function loadCgZip(file: File): Promise<CausalityGraphData> {
-    const entries = await (new zip.ZipReader(new zip.BlobReader(file))).getEntries({ filenameEncoding: 'utf-8' })
-
-    function getZipEntry(path: string) {
-        const entry = entries.find(e => e.filename === path)
-        if(!entry)
-            throw new Error(`Missing zip entry: ${path}`)
-        return entry
-    }
-
-    const reachabilityData = await getZipEntry('reachability.json')
-        .getData(new zip.TextWriter())
-    const methods = await getZipEntry('methods.txt').getData(new zip.TextWriter())
-    const methodList = methods.split('\n')
-    methodList.pop() // Pop line that doesn't end with '\n'
-    const types = await getZipEntry('types.txt').getData(new zip.TextWriter())
-    const typeList = types.split('\n')
-    typeList.pop() // Pop line that doesn't end with '\n'
-
-    const cgData = {
-        reachabilityData: JSON.parse(await getZipEntry('reachability.json').getData(new zip.TextWriter())),
-        nodeLabels: methodList,
-        typeLabels: typeList,
-        'typestates.bin': new Uint8Array(),
-        'interflows.bin': new Uint8Array(),
-        'direct_invokes.bin': new Uint8Array(),
-        'typeflow_methods.bin': new Uint8Array(),
-        'typeflow_filters.bin': new Uint8Array(),
-    }
-
-    const parameterFiles
-        : ['typestates.bin', 'interflows.bin', 'direct_invokes.bin', 'typeflow_methods.bin', 'typeflow_filters.bin']
-        = ['typestates.bin', 'interflows.bin', 'direct_invokes.bin', 'typeflow_methods.bin', 'typeflow_filters.bin']
-
-    for(const path of parameterFiles) {
-        cgData[path] = await getZipEntry(path).getData(new zip.Uint8ArrayWriter())
-    }
-
-    return cgData
 }
 
 export async function loadJson(file: File): Promise<object> {
