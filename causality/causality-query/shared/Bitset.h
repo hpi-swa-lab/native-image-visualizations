@@ -1,62 +1,52 @@
 #ifndef CAUSALITY_GRAPH_BITSET_H
 #define CAUSALITY_GRAPH_BITSET_H
 
-#include "boost/dynamic_bitset.hpp"
 #include <vector>
 #include <iostream>
+#include <bit>
 
 class Bitset
 {
-    boost::dynamic_bitset<> bitset;
+    using block_t = uint64_t;
+    static constexpr size_t bits_per_block = sizeof(block_t) * 8;
+
+    std::vector<block_t> blocks;
+    size_t len;
     size_t _count;
 
-    Bitset(boost::dynamic_bitset<>&& bitset) : bitset(std::move(bitset)), _count(this->bitset.count()) {}
-
 public:
-    Bitset(size_t len) : bitset(len)
-    {
-
-    }
+    Bitset(size_t len) : len(len), blocks((len + (bits_per_block - 1)) / bits_per_block)
+    {}
 
     void fill(std::istream& src)
     {
-        size_t len = bitset.size();
-        bitset.clear();
-        std::vector<boost::dynamic_bitset<>::block_type> data((len + boost::dynamic_bitset<>::bits_per_block - 1) / boost::dynamic_bitset<>::bits_per_block);
-        src.read((char*)data.data(), (len + 7) / 8);
-        bitset.init_from_block_range(data.begin(), data.end());
-        bitset.resize(len);
-        _count = bitset.count();
+        src.read((char*)blocks.data(), (len + 7) / 8);
+
+        _count = 0;
+        for(block_t block : blocks)
+            _count += std::popcount(block);
     }
 
     bool operator[](size_t i) const
     {
-        return bitset[i];
+        return (blocks[i / bits_per_block] & (block_t(1) << (i % bits_per_block))) != 0;
     }
 
     [[nodiscard]] bool is_superset(const Bitset& other) const
     {
-        return other.bitset.is_subset_of(bitset);
-    }
+        if(other.len != this->len)
+            exit(1);
 
-    [[nodiscard]] bool are_disjoint(const Bitset& other) const
-    {
-        return !bitset.intersects(other.bitset);
-    }
+        bool res = true;
+        for(size_t i = 0; i < blocks.size(); i++)
+        {
+            bool block_is_superset = (~blocks[i] & other.blocks[i]) == 0;
+            res &= block_is_superset;
+            // Not returning eagerly so that the compiler can assume the memory
+            // referenced in all future iterations as valid.
+        }
 
-    Bitset operator&(const Bitset& other) const
-    {
-        return bitset & other.bitset;
-    }
-
-    [[nodiscard]] bool any() const
-    {
-        return bitset.any();
-    }
-
-    Bitset operator~() const
-    {
-        return ~bitset;
+        return res;
     }
 
     [[nodiscard]] size_t count() const
@@ -66,22 +56,37 @@ public:
 
     [[nodiscard]] size_t first() const
     {
-        return bitset.find_first();
+        for(size_t i = 0; i < blocks.size(); i++)
+            if(blocks[i] != 0)
+                return i * bits_per_block + std::countr_zero(blocks[i]);
+
+        return std::numeric_limits<size_t>::max();
     }
 
     [[nodiscard]] size_t next(size_t pos) const
     {
-        return bitset.find_next(pos);
+        block_t already_started = blocks[pos / bits_per_block];
+        already_started >>= (pos % bits_per_block) + 1;
+
+        if(already_started)
+            return pos + 1 + std::countr_zero(already_started);
+
+        for(size_t i = pos / bits_per_block + 1; i < blocks.size(); i++)
+            if(blocks[i] != 0)
+                return i * bits_per_block + std::countr_zero(blocks[i]);
+
+        return std::numeric_limits<size_t>::max();
     }
 
     size_t size() const
     {
-        return bitset.size();
+        return len;
     }
 
     bool operator==(const Bitset& other) const
     {
-        return bitset == other.bitset;
+        // Based on the assumption that the unused leftmost bits are always zero
+        return blocks == other.blocks;
     }
 };
 

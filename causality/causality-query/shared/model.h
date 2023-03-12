@@ -10,6 +10,7 @@
 #include "Bitset.h"
 #include <span>
 #include <queue>
+#include <cassert>
 
 using namespace std;
 

@@ -5,6 +5,7 @@
 #include "model.h"
 #include <array>
 #include <stack>
+#include <functional>
 
 using namespace std;
 
@@ -169,7 +170,7 @@ public:
     vector<TypeflowHistory> typeflow_visited;
     vector<DefaultMethodHistory> method_history;
     vector<bool> method_inhibited;
-    boost::dynamic_bitset<> allInstantiated;
+    vector<bool> allInstantiated;
     vector<vector<typeflow_id>> saturation_uses_by_filter;
     vector<bool> included_in_saturation_uses;
 
@@ -216,7 +217,7 @@ public:
         vector<bool> method_inhibited(std::move(this->method_inhibited));
         vector<DefaultMethodHistory> method_history(std::move(this->method_history));
         vector<TypeflowHistory> typeflow_visited(std::move(this->typeflow_visited));
-        boost::dynamic_bitset<> allInstantiated(std::move(this->allInstantiated));
+        vector<bool> allInstantiated(std::move(this->allInstantiated));
         vector<vector<typeflow_id>> saturation_uses_by_filter(std::move(this->saturation_uses_by_filter));
         vector<bool> included_in_saturation_uses(std::move(this->included_in_saturation_uses));
 
