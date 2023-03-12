@@ -20,7 +20,6 @@
         "@fortawesome/free-solid-svg-icons": "^6.3.0",
         "@fortawesome/vue-fontawesome": "^3.0.3",
         "@jest/globals": "^29.3.1",
-        "@zip.js/zip.js": "^2.6.75",
         "comlink": "^4.4.1",
         "d3": "^7.8.1",
         "d3-dag": "^0.11.5",

@@ -11,7 +11,7 @@ import { Bytes } from './SharedTypes/Size'
 import { Leaf } from './UniverseTypes/Leaf'
 import { InitKind } from './enums/InitKind'
 import { Node } from './UniverseTypes/Node'
-import * as zip from '@zip.js/zip.js'
+import JSZip from 'jszip'
 import { CausalityGraphData } from './UniverseTypes/CausalityGraphUniverse'
 
 interface Method {
@@ -107,23 +107,19 @@ export class InvalidReachabilityFormatError extends Error {
 }
 
 export async function loadCgZip(file: File): Promise<CausalityGraphData> {
-    const entries = await new zip.ZipReader(new zip.BlobReader(file)).getEntries({
-        filenameEncoding: 'utf-8'
-    })
+    const zip = await new JSZip().loadAsync(file)
 
     function getZipEntry(path: string) {
-        const entry = entries.find((e) => e.filename === path)
+        const entry = zip.files[path]
         if (!entry) throw new Error(`Missing zip entry: ${path}`)
         return entry
     }
 
-    const reachabilityData = JSON.parse(
-        await getZipEntry('reachability.json').getData(new zip.TextWriter())
-    )
-    const methods = await getZipEntry('methods.txt').getData(new zip.TextWriter())
+    const reachabilityData = JSON.parse(await getZipEntry('reachability.json').async('string'))
+    const methods = await getZipEntry('methods.txt').async('string')
     const methodList = methods.split('\n')
     methodList.pop() // Pop line that doesn't end with '\n'
-    const types = await getZipEntry('types.txt').getData(new zip.TextWriter())
+    const types = await getZipEntry('types.txt').async('string')
     const typeList = types.split('\n')
     typeList.pop() // Pop line that doesn't end with '\n'
 
@@ -153,7 +149,7 @@ export async function loadCgZip(file: File): Promise<CausalityGraphData> {
     ]
 
     for (const path of parameterFiles) {
-        cgData[path] = await getZipEntry(path).getData(new zip.Uint8ArrayWriter())
+        cgData[path] = await getZipEntry(path).async('uint8array')
     }
 
     return cgData
