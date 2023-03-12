@@ -47,9 +47,11 @@ watch(multiverse, (multiverse) => {
 <template>
     <MainLayout title="Cut Tool">
         <div id="cut-tool-root">
+            <!-- eslint-disable -->
             <component is="style" scoped>
                 {{ styleContent }}
             </component>
+            <!-- eslint-enable -->
             <div id="loading-panel" class="fullscreen" hidden>
                 <div class="center">Causality Graph is being parsed...</div>
             </div>
