@@ -6,7 +6,7 @@ import { SwappableComponentType } from './ts/enums/SwappableComponentType'
 import TreeLine from './components/visualizations/TreeLine.vue'
 import Venn from './components/visualizations/VennSets.vue'
 import { useGlobalStore } from './ts/stores/globalStore'
-import CutTool from './components/visualizations/CutTool.vue';
+import CutTool from './components/visualizations/CutTool.vue'
 
 const store = useGlobalStore()
 </script>

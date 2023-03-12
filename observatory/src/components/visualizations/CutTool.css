@@ -45,7 +45,7 @@ ul {
 
 /* Create the caret/arrow with a unicode, and style it */
 .caret::before {
-    content: "\25B6";
+    content: '\25B6';
     color: black;
     display: inline-block;
     margin-right: 6px;
@@ -85,7 +85,7 @@ ul {
     float: right;
     margin-right: 5px;
     margin-left: 5px;
-    color: #CF8020;
+    color: #cf8020;
     grid-row-start: 1;
     grid-column-start: 3;
     text-align: right;
@@ -97,7 +97,7 @@ ul {
     height: 17px;
     grid-row-start: 1;
     grid-column-start: 2;
-    background-color: #A0A0A080;
+    background-color: #a0a0a080;
     max-height: 17px;
 }
 
@@ -105,7 +105,7 @@ ul {
     float: right;
     height: 100%;
     width: 0;
-    background-color: #FFFFFF80;
+    background-color: #ffffff80;
     margin-left: -1px; /* Weird hack to prevent wrap */
 }
 
@@ -113,7 +113,7 @@ ul {
     float: left;
     height: 100%;
     width: 0;
-    background-color: #FF7070;
+    background-color: #ff7070;
 }
 
 .size-bar-inner-2 {
@@ -121,14 +121,14 @@ ul {
     height: 100%;
     width: 0;
     margin-right: 0;
-    background-color: #EFA070;
+    background-color: #efa070;
     margin-right: -1px; /* Weird hack to prevent wrap */
 }
 
 .purge-percentage-bar-outer {
     margin-top: 1px;
     margin-bottom: 1px;
-    border: 1px solid #F0F0F0;
+    border: 1px solid #f0f0f0;
     margin-left: 10px;
     margin-right: 10px;
     width: 60px;
@@ -145,7 +145,7 @@ ul {
     width: 0;
     grid-row-start: 1;
     grid-column-start: 1;
-    background-color: #FF000020;
+    background-color: #ff000020;
 }
 
 .purge-percentage-bar-text {
@@ -205,20 +205,20 @@ ul {
 
 .hovered-for-purge {
     margin: -1px;
-    border: 1px solid #CF900080;
-    background-color: #CF900010;
+    border: 1px solid #cf900080;
+    background-color: #cf900010;
 }
 
 .selected-for-purge {
     margin: -1px;
-    border: 1px solid #DF0000;
-    background-color: #FF000040;
+    border: 1px solid #df0000;
+    background-color: #ff000040;
 }
 
 .selected-for-detail {
     margin: -1px;
-    border: 1px solid #80FF80;
-    background-color: #00FF0020;
+    border: 1px solid #80ff80;
+    background-color: #00ff0020;
 }
 
 .selectable {
@@ -238,7 +238,7 @@ ul {
 }
 
 .cut-size-bar {
-    background-color: #CF9000;
+    background-color: #cf9000;
     height: 2px;
     width: 0;
     margin-top: -2px;
@@ -277,7 +277,7 @@ ul {
 
 /* For detail view: */
 .support-edge {
-    stroke: #A0A0A0;
+    stroke: #a0a0a0;
     stroke-dasharray: 0 0.5% 0;
 }
 
