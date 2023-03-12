@@ -1,2 +1,0 @@
-SetBreakpoint(...) sorgt für eine Änderung des Bytecodes, die einen Seiteneffekt auf die Analyse in native-image hat!
-Wenn wir ArrayList.class instrumentieren/verändern, werden mehr Heap Writes (ins Array) gefunden, vermutlich weil eine interne Implementation deaktiviert wurde. (Token$CharToken)
