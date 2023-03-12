@@ -1,45 +1,10 @@
 import { Node } from './Node'
 import { Universe } from './Universe'
-import * as Comlink from 'comlink'
-import { UiAsyncCausalityGraph } from '../Causality/UiAsyncCausalityGraph'
-import { AsyncCausalityGraph } from '../Causality/AsyncCausalityGraph'
+import {
+    AsyncCausalityGraph,
+    loadCausalityGraphConstructor
+} from '../Causality/AsyncCausalityGraph'
 import { ReachabilityJson } from '../parsing'
-
-/*
- * Depending on whether the browser supports "module" script workers, Causality queries
- * are executed in a background worker or on the UI thread.
- */
-function loadCausalityGraphConstructor(): (
-    nMethods: number,
-    nTypes: number,
-    causalityData: CausalityGraphData
-) => Promise<AsyncCausalityGraph> {
-    let workerCreated = false
-    const tester = {
-        get type(): 'module' {
-            workerCreated = true
-            return 'module'
-        } // it's been called, it's supported
-    }
-    const worker = new Worker('/src/ts/Causality/RemoteCausalityGraph', tester)
-
-    if (workerCreated) {
-        const RemoteCausalityGraphWrapped = Comlink.wrap(worker) as unknown as {
-            new (
-                nMethods: number,
-                nTypes: number,
-                causalityData: CausalityGraphData
-            ): Promise<AsyncCausalityGraph>
-        }
-        return (nMethods, nTypes, causalityData) =>
-            new RemoteCausalityGraphWrapped(nMethods, nTypes, causalityData)
-    } else {
-        return (nMethods, nTypes, causalityData) =>
-            new Promise((resolve) =>
-                resolve(new UiAsyncCausalityGraph(nMethods, nTypes, causalityData))
-            )
-    }
-}
 
 const createCausalityGraph = loadCausalityGraphConstructor()
 
