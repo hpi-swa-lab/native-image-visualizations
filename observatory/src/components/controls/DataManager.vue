@@ -33,18 +33,19 @@ async function validateFileAndAddUniverseOnSuccess(
         let newUniverse: Universe
         let rawData
 
-        if(file.name.endsWith('.cg.zip')) {
+        if (file.name.endsWith('.cg.zip')) {
             const parsedCG = await loadCgZip(file)
             newUniverse = new CausalityGraphUniverse(
-                    universeName,
-                    parseReachabilityExport(parsedCG.reachabilityData, universeName),
-                    parsedCG)
+                universeName,
+                parseReachabilityExport(parsedCG.reachabilityData, universeName),
+                parsedCG
+            )
             rawData = parsedCG.reachabilityData
-        } else if(file.name.endsWith('.json')) {
+        } else if (file.name.endsWith('.json')) {
             const parsedJSON = await loadJson(file)
             newUniverse = new Universe(
-                    universeName,
-                    parseReachabilityExport(parsedJSON, universeName)
+                universeName,
+                parseReachabilityExport(parsedJSON, universeName)
             )
             rawData = parsedJSON
         } else {

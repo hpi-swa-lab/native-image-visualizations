@@ -11,8 +11,8 @@ import { Bytes } from './SharedTypes/Size'
 import { Leaf } from './UniverseTypes/Leaf'
 import { InitKind } from './enums/InitKind'
 import { Node } from './UniverseTypes/Node'
-import * as zip from '@zip.js/zip.js';
-import {CausalityGraphData} from './UniverseTypes/CausalityGraphUniverse';
+import * as zip from '@zip.js/zip.js'
+import { CausalityGraphData } from './UniverseTypes/CausalityGraphUniverse'
 
 interface Method {
     flags?: string[]
@@ -107,17 +107,19 @@ export class InvalidReachabilityFormatError extends Error {
 }
 
 export async function loadCgZip(file: File): Promise<CausalityGraphData> {
-    const entries = await (new zip.ZipReader(new zip.BlobReader(file))).getEntries({ filenameEncoding: 'utf-8' })
+    const entries = await new zip.ZipReader(new zip.BlobReader(file)).getEntries({
+        filenameEncoding: 'utf-8'
+    })
 
     function getZipEntry(path: string) {
-        const entry = entries.find(e => e.filename === path)
-        if(!entry)
-            throw new Error(`Missing zip entry: ${path}`)
+        const entry = entries.find((e) => e.filename === path)
+        if (!entry) throw new Error(`Missing zip entry: ${path}`)
         return entry
     }
 
-    const reachabilityData = JSON.parse(await getZipEntry('reachability.json')
-        .getData(new zip.TextWriter()))
+    const reachabilityData = JSON.parse(
+        await getZipEntry('reachability.json').getData(new zip.TextWriter())
+    )
     const methods = await getZipEntry('methods.txt').getData(new zip.TextWriter())
     const methodList = methods.split('\n')
     methodList.pop() // Pop line that doesn't end with '\n'
@@ -133,14 +135,24 @@ export async function loadCgZip(file: File): Promise<CausalityGraphData> {
         'interflows.bin': new Uint8Array(),
         'direct_invokes.bin': new Uint8Array(),
         'typeflow_methods.bin': new Uint8Array(),
-        'typeflow_filters.bin': new Uint8Array(),
+        'typeflow_filters.bin': new Uint8Array()
     }
 
-    const parameterFiles
-        : ['typestates.bin', 'interflows.bin', 'direct_invokes.bin', 'typeflow_methods.bin', 'typeflow_filters.bin']
-        = ['typestates.bin', 'interflows.bin', 'direct_invokes.bin', 'typeflow_methods.bin', 'typeflow_filters.bin']
+    const parameterFiles: [
+        'typestates.bin',
+        'interflows.bin',
+        'direct_invokes.bin',
+        'typeflow_methods.bin',
+        'typeflow_filters.bin'
+    ] = [
+        'typestates.bin',
+        'interflows.bin',
+        'direct_invokes.bin',
+        'typeflow_methods.bin',
+        'typeflow_filters.bin'
+    ]
 
-    for(const path of parameterFiles) {
+    for (const path of parameterFiles) {
         cgData[path] = await getZipEntry(path).getData(new zip.Uint8ArrayWriter())
     }
 

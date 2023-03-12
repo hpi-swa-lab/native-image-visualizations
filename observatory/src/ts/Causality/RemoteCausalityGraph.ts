@@ -1,4 +1,4 @@
-import * as original from './CausalityGraph';
+import * as original from './CausalityGraph'
 import * as Comlink from 'comlink'
 
 // For execution of causality queries on background worker thread,
@@ -15,12 +15,16 @@ export class RemoteCausalityGraph {
         return this.wrapped.simulatePurge(nodesToBePurged)
     }
 
-    public simulatePurgeDetailed(nodesToBePurged: number[] = []): original.DetailedSimulationResult {
+    public simulatePurgeDetailed(
+        nodesToBePurged: number[] = []
+    ): original.DetailedSimulationResult {
         return Comlink.proxy(this.wrapped.simulatePurgeDetailed(nodesToBePurged))
     }
 
-    public simulatePurgesBatched(purgeRoot: original.PurgeTreeNode<number>,
-                                 prepurgeMids: number[] = []): original.IncrementalSimulationResult<number> {
+    public simulatePurgesBatched(
+        purgeRoot: original.PurgeTreeNode<number>,
+        prepurgeMids: number[] = []
+    ): original.IncrementalSimulationResult<number> {
         return Comlink.proxy(this.wrapped.simulatePurgesBatched(purgeRoot, prepurgeMids))
     }
 }

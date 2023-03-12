@@ -1,44 +1,47 @@
 import { Node } from './Node'
 import { Universe } from './Universe'
 import * as Comlink from 'comlink'
-import {UiAsyncCausalityGraph} from '../Causality/UiAsyncCausalityGraph';
-import {AsyncCausalityGraph} from '../Causality/AsyncCausalityGraph';
-import {ReachabilityJson} from '../parsing';
+import { UiAsyncCausalityGraph } from '../Causality/UiAsyncCausalityGraph'
+import { AsyncCausalityGraph } from '../Causality/AsyncCausalityGraph'
+import { ReachabilityJson } from '../parsing'
 
 /*
  * Depending on whether the browser supports "module" script workers, Causality queries
  * are executed in a background worker or on the UI thread.
  */
-function loadCausalityGraphConstructor():
-    (nMethods: number, nTypes: number, causalityData: CausalityGraphData) =>
-        Promise<AsyncCausalityGraph> {
-    let workerCreated = false;
+function loadCausalityGraphConstructor(): (
+    nMethods: number,
+    nTypes: number,
+    causalityData: CausalityGraphData
+) => Promise<AsyncCausalityGraph> {
+    let workerCreated = false
     const tester = {
         get type(): 'module' {
-            workerCreated = true;
+            workerCreated = true
             return 'module'
         } // it's been called, it's supported
-    };
-    const worker = new Worker('/src/ts/Causality/RemoteCausalityGraph', tester);
+    }
+    const worker = new Worker('/src/ts/Causality/RemoteCausalityGraph', tester)
 
     if (workerCreated) {
         const RemoteCausalityGraphWrapped = Comlink.wrap(worker) as unknown as {
-            new(
+            new (
                 nMethods: number,
                 nTypes: number,
-                causalityData: CausalityGraphData): Promise<AsyncCausalityGraph>
+                causalityData: CausalityGraphData
+            ): Promise<AsyncCausalityGraph>
         }
         return (nMethods, nTypes, causalityData) =>
             new RemoteCausalityGraphWrapped(nMethods, nTypes, causalityData)
     } else {
         return (nMethods, nTypes, causalityData) =>
             new Promise((resolve) =>
-                resolve(new UiAsyncCausalityGraph(nMethods, nTypes, causalityData)))
+                resolve(new UiAsyncCausalityGraph(nMethods, nTypes, causalityData))
+            )
     }
 }
 
 const createCausalityGraph = loadCausalityGraphConstructor()
-
 
 export interface CausalityGraphData {
     // Object structure of "reachability.json"
@@ -70,28 +73,30 @@ export class CausalityGraphUniverse extends Universe {
         this.cgTypeLabels = causalityData.typeLabels
         this.causalityRoot = generateHierarchyFromReachabilityJsonAndMethodList(
             causalityData.reachabilityData,
-            causalityData.nodeLabels)
+            causalityData.nodeLabels
+        )
 
         const codesizesDict = getMethodCodesizeDictFromReachabilityJson(
-            causalityData.reachabilityData)
+            causalityData.reachabilityData
+        )
         this.codesizeByCgNodeLabels = new Array(this.cgNodeLabels.length)
-        for(let i = 0; i < this.cgNodeLabels.length; i++) {
+        for (let i = 0; i < this.cgNodeLabels.length; i++) {
             this.codesizeByCgNodeLabels[i] = codesizesDict[this.cgNodeLabels[i]] ?? 0
         }
-        
+
         this.cgPromise = createCausalityGraph(
             causalityData.nodeLabels.length,
-            causalityData.typeLabels.length, causalityData)
+            causalityData.typeLabels.length,
+            causalityData
+        )
     }
 
     async getCausalityGraph() {
         // The promise may reference CausalityGraphData used for construction
         // Therefore we want to get rid of it ASAP
-        return this.cgPromise = await this.cgPromise
+        return (this.cgPromise = await this.cgPromise)
     }
 }
-
-
 
 function getMethodCodesizeDictFromReachabilityJson(data: ReachabilityJson) {
     const dict: { [fullyQualifiedName: string]: number } = {}
@@ -110,8 +115,7 @@ function getMethodCodesizeDictFromReachabilityJson(data: ReachabilityJson) {
     return dict
 }
 
-class TrieNode<Value>
-{
+class TrieNode<Value> {
     val?: Value
     next: { [c: string]: TrieNode<Value> } = {}
 }
@@ -132,17 +136,14 @@ class Trie<Value> {
         let val = undefined
         for (const c of str) {
             node = node.next[c]
-            if (!node)
-                return val
-            if (node.val)
-                val = node.val
+            if (!node) return val
+            if (node.val) val = node.val
         }
         return val
     }
 }
 
-export interface FullyHierarchicalNode
-{
+export interface FullyHierarchicalNode {
     name: string // Displayed for this node
     parent: FullyHierarchicalNode | undefined
     children: FullyHierarchicalNode[]
@@ -158,23 +159,22 @@ export interface FullyHierarchicalNode
     cgNode?: number
 }
 
-
-export function forEachInSubtree
-        <TNode extends { children?: TNode[] }>
-        (node: TNode, callback: (v: TNode) => unknown) {
+export function forEachInSubtree<TNode extends { children?: TNode[] }>(
+    node: TNode,
+    callback: (v: TNode) => unknown
+) {
     const stack: TNode[] = []
     stack.push(node)
     while (stack.length > 0) {
         const u = stack.pop()!
         const handled = callback(u)
-        if (u.children && !handled)
-            stack.push(...u.children)
+        if (u.children && !handled) stack.push(...u.children)
     }
 }
 
 export function collectSubtree(v: FullyHierarchicalNode): FullyHierarchicalNode[] {
     const group: FullyHierarchicalNode[] = []
-    forEachInSubtree(v, w => {
+    forEachInSubtree(v, (w) => {
         group.push(w)
     })
     return group
@@ -182,17 +182,15 @@ export function collectSubtree(v: FullyHierarchicalNode): FullyHierarchicalNode[
 
 export function collectCgNodesInSubtree(node: FullyHierarchicalNode): number[] {
     const group: number[] = []
-    forEachInSubtree(node, u => {
-        if(u.cgNode)
-            group.push(u.cgNode)
+    forEachInSubtree(node, (u) => {
+        if (u.cgNode) group.push(u.cgNode)
     })
     return group
 }
 
 function computeCodesizePartialSum(root: FullyHierarchicalNode): number {
     let size = root.size
-    for(const child of root.children)
-        size += computeCodesizePartialSum(child)
+    for (const child of root.children) size += computeCodesizePartialSum(child)
     root.accumulatedSize = size
     return size
 }
@@ -231,12 +229,37 @@ function computeCodesizePartialSum(root: FullyHierarchicalNode): number {
  * - the top-level-source for configuration files by their path.
  */
 function generateHierarchyFromReachabilityJsonAndMethodList(
-        json: ReachabilityJson,
-        cgNodeLabels: string[]) {
-    const root: FullyHierarchicalNode = { children: [], size: 0, name: '', parent: undefined, accumulatedSize: 0 }
-    const system: FullyHierarchicalNode = { children: [], name: 'system', size: 0, parent: root, accumulatedSize: 0 }
-    const user: FullyHierarchicalNode = { children: [], name: 'user', size: 0, parent: root, accumulatedSize: 0 }
-    const main: FullyHierarchicalNode = { children: [], name: 'main', size: 0, parent: root, accumulatedSize: 0 }
+    json: ReachabilityJson,
+    cgNodeLabels: string[]
+) {
+    const root: FullyHierarchicalNode = {
+        children: [],
+        size: 0,
+        name: '',
+        parent: undefined,
+        accumulatedSize: 0
+    }
+    const system: FullyHierarchicalNode = {
+        children: [],
+        name: 'system',
+        size: 0,
+        parent: root,
+        accumulatedSize: 0
+    }
+    const user: FullyHierarchicalNode = {
+        children: [],
+        name: 'user',
+        size: 0,
+        parent: root,
+        accumulatedSize: 0
+    }
+    const main: FullyHierarchicalNode = {
+        children: [],
+        name: 'main',
+        size: 0,
+        parent: root,
+        accumulatedSize: 0
+    }
 
     const trie = new Trie<FullyHierarchicalNode & { fullname: string }>()
 
@@ -250,28 +273,28 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
         if (displayPath && displayPath.endsWith('.jar')) {
             const index = displayPath.lastIndexOf('/')
             if (index !== -1) {
-                displayPath = displayPath.substring(index+1)
+                displayPath = displayPath.substring(index + 1)
             }
         }
 
         if (toplevel.path && toplevel.module) {
             l1name = displayPath + ':' + toplevel.module
             l1fullname = toplevel.path + ':' + toplevel.module
-        } else if(displayPath && toplevel.path) {
+        } else if (displayPath && toplevel.path) {
             l1name = displayPath
             l1fullname = toplevel.path
-        } else if(toplevel.module) {
+        } else if (toplevel.module) {
             l1name = toplevel.module
             l1fullname = toplevel.module
         }
 
-        const l1: FullyHierarchicalNode & {fullname: string} = {
+        const l1: FullyHierarchicalNode & { fullname: string } = {
             children: [],
             name: l1name,
             fullname: l1fullname,
             size: 0,
             parent: undefined,
-            accumulatedSize: 0,
+            accumulatedSize: 0
         }
 
         if (toplevel.path) {
@@ -282,11 +305,11 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
             let prefix = ''
             let l2: FullyHierarchicalNode = l1
 
-            if(packageName.length !== 0) {
+            if (packageName.length !== 0) {
                 for (const subPackageName of packageName.split('.')) {
                     prefix += subPackageName + '.'
-                    let next = l2.children.find(n => n.name === subPackageName)
-                    if(!next) {
+                    let next = l2.children.find((n) => n.name === subPackageName)
+                    if (!next) {
                         const newNode = {
                             children: [],
                             fullname: prefix,
@@ -319,8 +342,7 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
                     accumulatedSize: 0
                 }
 
-                if(type.flags?.includes('synthetic'))
-                    l3.synthetic = true
+                if (type.flags?.includes('synthetic')) l3.synthetic = true
                 trie.add(l3.fullname, l3)
                 l2.children.push(l3)
 
@@ -333,13 +355,12 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
                         parent: l3,
                         accumulatedSize: 0
                     }
-                    if(method.flags?.includes('synthetic'))
-                        l4.synthetic = true
+                    if (method.flags?.includes('synthetic')) l4.synthetic = true
                     trie.add(l4.fullname, l4)
                     l3.children.push(l4)
 
                     const flags = method.flags
-                    if(flags && flags.includes('main')) {
+                    if (flags && flags.includes('main')) {
                         l4.main = true
                         containsMain = true
                     }
@@ -369,16 +390,15 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
                     offset += 1
                     name = name.substring(1)
                 }
-                while(true) {
+                while (true) {
                     const dotIndex = name.indexOf('.')
-                    if(dotIndex === -1)
-                        break;
+                    if (dotIndex === -1) break
 
                     const semanticBreakoutSymbols = ['(', '[', '/']
-                    const semanticBreakoutIndexes =
-                        semanticBreakoutSymbols.map(s => name.indexOf(s))
-                    if(semanticBreakoutIndexes.some(i => i !== -1 && i < dotIndex))
-                        break
+                    const semanticBreakoutIndexes = semanticBreakoutSymbols.map((s) =>
+                        name.indexOf(s)
+                    )
+                    if (semanticBreakoutIndexes.some((i) => i !== -1 && i < dotIndex)) break
 
                     const newNode = {
                         cg_only: true,
@@ -400,7 +420,7 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
                 // Handle ".../reflect-config.json"
                 const pathSepIndex = name.lastIndexOf('/')
                 if (pathSepIndex !== -1) {
-                    name = name.substring(pathSepIndex+1)
+                    name = name.substring(pathSepIndex + 1)
                 }
 
                 const newNode = {
@@ -419,12 +439,9 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
         }
     }
 
-    if(user.children.length)
-        root.children.push(user)
-    if(system.children.length)
-        root.children.push(system)
-    if(main.children.length)
-        root.children.push(main)
+    if (user.children.length) root.children.push(user)
+    if (system.children.length) root.children.push(system)
+    if (main.children.length) root.children.push(main)
 
     computeCodesizePartialSum(root)
 

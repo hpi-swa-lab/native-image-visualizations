@@ -1,4 +1,4 @@
-import * as original from './CausalityGraph';
+import * as original from './CausalityGraph'
 
 // Provides a common interface for querying causality data.
 // This either happens on the UI thread, or via Comlink on a background worker.
@@ -6,8 +6,10 @@ import * as original from './CausalityGraph';
 export interface AsyncCausalityGraph {
     simulatePurge(nodesToBePurged?: number[]): Promise<Uint8Array>
     simulatePurgeDetailed(nodesToBePurged?: number[]): Promise<AsyncDetailedSimulationResult>
-    simulatePurgesBatched(purgeRoot: original.PurgeTreeNode<number>, prepurgeMids: number[]):
-        Promise<AsyncIncrementalSimulationResult>
+    simulatePurgesBatched(
+        purgeRoot: original.PurgeTreeNode<number>,
+        prepurgeMids: number[]
+    ): Promise<AsyncIncrementalSimulationResult>
     delete(): void
 }
 
