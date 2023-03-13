@@ -16,7 +16,6 @@ import { Layers } from '../enums/Layers'
 import { NodesFilter } from '../SharedTypes/NodesFilter'
 import {
     ContainerSelections,
-    CustomEventName,
     NodeTextPositionOffset, SankeyHierarchyPointNode,
     Tree,
     UniverseMetadata
@@ -25,13 +24,14 @@ import { getNodesOnLevel } from '../Math/filters'
 import { Bytes, inMB } from '../SharedTypes/Size'
 import {
     asHTML,
-    createApplyFilterEvent,
+    newApplyFilterEvent, createHierarchyFromPackages,
     filterDiffingUniverses, getWithoutRoot,
     sortPrivateChildren,
     toggleChildren
 } from './utils/SankeyTreeUtils'
 import { TooltipModel } from './TooltipModel'
 import {useSankeyStore} from '../stores/sankeyTreeStore';
+import {EventType} from '../enums/EventType';
 
 export const UNMODIFIED = 'UNMODIFIED'
 export const MAX_OBSERVED_UNIVERSES_FOR_SANKEY_TREE = 2
@@ -41,6 +41,7 @@ const d3NodeHeight = 20
 let d3NodeWidth = 0
 
 const TRANSITION_DURATION = 500
+const ROOT_NODE_NAME = 'root'
 
 export class SankeyTree implements MultiverseVisualization {
     colorScheme: ColorScheme = []
@@ -51,16 +52,15 @@ export class SankeyTree implements MultiverseVisualization {
     private layer = Layers.PACKAGES
     private tooltip: TooltipModel
 
-    private readonly containerSelections: ContainerSelections
     private tree: Tree = {
         layout: d3.tree(),
         root: hierarchy(new Node('empty tree', [])) as SankeyHierarchyPointNode,
         leaves: [],
         rootNode: new Node('empty tree', [])
     }
-
     private modifiedNodes: Node[] = []
     private filteredNodes: Node[] = []
+    private readonly containerSelections: ContainerSelections
 
     private sankeyStore = useSankeyStore()
 
@@ -75,9 +75,6 @@ export class SankeyTree implements MultiverseVisualization {
         this.containerSelections = this.initializeContainerSelections(containerSelector)
     }
 
-    setMetadata(metadata: UniverseMetadata): void {
-        this.metadata = metadata
-    }
     setMultiverse(multiverse: Multiverse): void {
         // todo show loading screen while computing everything
         if (multiverse.sources.length <= MAX_OBSERVED_UNIVERSES_FOR_SANKEY_TREE) {
@@ -96,10 +93,19 @@ export class SankeyTree implements MultiverseVisualization {
         this.applyStyleForChosen(this.selection, 'display', 'none', 'block')
     }
 
+    public setLayer(layer: Layers): void {
+        this.layer = layer
+        this.rebuildAndDrawTree(this.multiverse, layer)
+    }
+
+    setMetadata(metadata: UniverseMetadata): void {
+        this.metadata = metadata
+    }
+
     handleNodesFilterChanged(): void {
         this.filterNodesFromLeaves(this.tree.leaves, this.sankeyStore.nodesFilter)
         this.redraw(
-            createApplyFilterEvent(this.sankeyStore.nodesFilter),
+            newApplyFilterEvent(this.sankeyStore.nodesFilter),
             this.tree.root,
             this.tree ?? ({} as Tree),
             this.containerSelections,
@@ -107,10 +113,9 @@ export class SankeyTree implements MultiverseVisualization {
         )
     }
 
-    public setLayer(layer: Layers): void {
-        this.layer = layer
-        this.rebuildAndDrawTree(this.multiverse, layer)
-    }
+    // #############################################################################################
+    // ### SETUP SVG & SELECTIONS ##################################################################
+    // #############################################################################################
 
     private initializeContainerSelections(containerSelector: string): ContainerSelections {
         const bounds = (d3.select(containerSelector) as any).node().getBoundingClientRect() ?? {
@@ -168,16 +173,16 @@ export class SankeyTree implements MultiverseVisualization {
         this.tree.root.descendants().forEach((d: SankeyHierarchyPointNode, i: number) => {
             d.id = i.toString()
             d._children = d.children
-            // FIXME ? only expand first level of children
-            if (d.depth > 0) d.children = undefined; // only expand the first level of children
+            // only expand the first level of children
+            if (d.depth > 0) d.children = undefined;
         })
 
-        // clear the selections, to redraw the change in color and nodeSize of a node
+        // clear the selections, to redraw the change in a node's color and nodeSize
         this.containerSelections.gNode.selectAll('g > *').remove()
         this.containerSelections.gLink.selectAll('g > *').remove()
 
         this.redraw(
-            createApplyFilterEvent(this.sankeyStore.nodesFilter),
+            newApplyFilterEvent(this.sankeyStore.nodesFilter),
             this.tree.root,
             this.tree ?? ({} as Tree),
             this.containerSelections,
@@ -186,20 +191,19 @@ export class SankeyTree implements MultiverseVisualization {
     }
 
     private buildTree(multiverse: Multiverse, layer: Layers): Tree {
-        this.modifiedNodes = []
-        this.filteredNodes = []
-
-        const nodeTree: Node = new Node('root', [])
+        const nodeTree: Node = new Node(ROOT_NODE_NAME, [])
 
         const leaves: Set<Node> = new Set()
 
+        // create hierarchy of Node based on selected Layer
         for (let i = Layers.MODULES.valueOf(); i <= layer.valueOf(); i++) {
             const nodes: Node[] = getNodesOnLevel(i, multiverse.root)
             nodes.forEach((node, i) => {
-                this.createHierarchyFromPackages(node, nodeTree, leaves)
+                createHierarchyFromPackages(node, nodeTree, leaves)
             })
         }
 
+        // set codeSize of root node
         nodeTree.codeSize = nodeTree.children.reduce(
             (sum: number, child: Node) => sum + child.codeSize,
             0
@@ -220,32 +224,9 @@ export class SankeyTree implements MultiverseVisualization {
         return tree
     }
 
-    private createHierarchyFromPackages(node: Node, dataTree: Node, leaves: Set<Node>) {
-        let current = dataTree
-        const pathSegments = node.identifier.substring(1).split('.')
-        for (let i = 0; i < pathSegments.length; i++) {
-            let child = current.children.find((child) => child.name === pathSegments[i])
-            if (child) {
-                child.sources.set(
-                    node.sources.keys().next().value,
-                    node.sources.values().next().value
-                )
-                child.codeSize = child.codeSize + node.codeSize
-
-                // FIXME set correct codeSize in child
-                //  (right now only node A's codesize is stored in the merged node)
-            } else {
-                child = new Node(pathSegments[i], [], current, node.codeSize)
-                child.sources = node.sources
-                current.children.push(child)
-            }
-
-            current = child
-            if (i === pathSegments.length - 1) leaves.add(child)
-        }
-    }
-
     private markNodesModifiedFromLeaves(leaves: Node[]) {
+        this.modifiedNodes = []
+
         for (const leave of leaves) {
             if (leave.sources.size !== 1) continue
             this.markNodeModified(leave)
@@ -287,6 +268,10 @@ export class SankeyTree implements MultiverseVisualization {
         if (node.parent !== undefined) this.markNodeFiltered(node.parent)
     }
 
+    // #############################################################################################
+    // ### VISUALIZATION ###########################################################################
+    // #############################################################################################
+
     private redraw(
         event: any | null,
         sourceNode: SankeyHierarchyPointNode,
@@ -297,8 +282,8 @@ export class SankeyTree implements MultiverseVisualization {
         let duration = 0
 
         if (event) {
-            if (Object.values(CustomEventName).includes(event.type)) {
-                this.handleCustomTreeEvent(event, tree)
+            if (Object.values(EventType).includes(event.type)) {
+                this.handleCustomEvent(event, tree)
             } else {
                 // if you press alt / option key, then the collapse/extend animation is much slower
                 duration = event && event.altKey ? 2500 : 250
@@ -371,10 +356,6 @@ export class SankeyTree implements MultiverseVisualization {
 
         this.exitLink(link, linkGenerator, sourceNode, transition)
     }
-
-    // #############################################################################################
-    // ##### VISUALIZATION UTILS ###################################################################
-    // #############################################################################################
 
     private enterNode(
         node: Selection<BaseType, any, SVGGElement, unknown>,
@@ -535,6 +516,13 @@ export class SankeyTree implements MultiverseVisualization {
             })
     }
 
+    private getNodeTextPositionOffset(): NodeTextPositionOffset {
+        return {
+            start: -6,
+            end: 26
+        }
+    }
+
     private getNodeSeparation(
         a: any,
         b: any,
@@ -544,13 +532,6 @@ export class SankeyTree implements MultiverseVisualization {
         separation += a.parent === b.parent ? 1.2 : 2
 
         return Math.max(1, separation)
-    }
-
-    private getNodeTextPositionOffset(): NodeTextPositionOffset {
-        return {
-            start: -6,
-            end: 26
-        }
     }
 
     private applyStyleForChosen(
@@ -571,11 +552,11 @@ export class SankeyTree implements MultiverseVisualization {
     }
 
     // #############################################################################################
-    // ##### HELPER UTILS ##########################################################################
+    // ##### EVENT UTILS - not extractable #########################################################
     // #############################################################################################
 
-    private handleCustomTreeEvent(event: any, tree: Tree) {
-        if (event.detail.name === CustomEventName.APPLY_FILTER) {
+    private handleCustomEvent(event: any, tree: Tree) {
+        if (event.detail.name === EventType.APPLY_FILTER) {
             // @ts-ignore expects HierarchyPointNode<T> but it's actually SankeyHierarchyPointNode
             tree.root.eachBefore((node: SankeyHierarchyPointNode) => {
                 if (!node._children) return

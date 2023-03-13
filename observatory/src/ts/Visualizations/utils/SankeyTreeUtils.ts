@@ -1,24 +1,47 @@
 import {
-    CustomEventDetails,
-    CustomEventName, SankeyHierarchyPointNode,
+    FilterEventDetails,
+    SankeyHierarchyPointNode,
     UniverseMetadata
 } from '../../SharedTypes/SankeyTree'
 import { NodesFilter, NodesSortingFilter } from '../../SharedTypes/NodesFilter'
 import { SortingOption, SortingOrder } from '../../enums/Sorting'
 import { Node } from '../../UniverseTypes/Node'
 import { formatBytes } from '../../SharedTypes/Size'
+import {EventType} from '../../enums/EventType';
 
 // #################################################################################################
-// ##### (PRE-)PROCESSING UTILS ####################################################################
+// ##### (PRE-)PROCESSING ##########################################################################
 // #################################################################################################
-export function createApplyFilterEvent(filter: NodesFilter) {
-    return createCustomEventWithDetails(CustomEventName.APPLY_FILTER, filter)
+
+export function createHierarchyFromPackages(node: Node, dataTree: Node, leaves: Set<Node>) {
+    let current = dataTree
+    const pathSegments = node.identifier.substring(1).split('.')
+    for (let i = 0; i < pathSegments.length; i++) {
+        let child = current.children.find((child) => child.name === pathSegments[i])
+        if (child) {
+            child.sources.set(
+                node.sources.keys().next().value,
+                node.sources.values().next().value
+            )
+            child.codeSize = child.codeSize + node.codeSize
+
+            // FIXME #39 set correct codeSize in child
+            //  (right now only node A's codesize is stored in the merged node)
+        } else {
+            child = new Node(pathSegments[i], [], current, node.codeSize)
+            child.sources = node.sources
+            current.children.push(child)
+        }
+
+        current = child
+        if (i === pathSegments.length - 1) leaves.add(child)
+    }
 }
 
-export function createCustomEventWithDetails(name: string, filter: NodesFilter) {
-    return new CustomEvent<CustomEventDetails>(name, {
+export function newApplyFilterEvent(filter: NodesFilter) {
+    return new CustomEvent<FilterEventDetails>(EventType.APPLY_FILTER, {
         detail: {
-            name: name,
+            name: EventType.APPLY_FILTER,
             filter: filter
         }
     })
@@ -33,7 +56,7 @@ export function getCodeSizeFromLeaves(node: SankeyHierarchyPointNode): number {
 }
 
 // #################################################################################################
-// ##### EVENT UTILS ###############################################################################
+// ##### EVENTS ####################################################################################
 // #################################################################################################
 
 export function toggleChildren(
@@ -62,15 +85,9 @@ export function collapseChildren(d: SankeyHierarchyPointNode) {
     d.children = undefined
 }
 
-export function countCurrentPrivateLeaves(node: SankeyHierarchyPointNode): number {
-    if (!node._children) {
-        return 1
-    }
-    return node._children.reduce(
-        (sum: number, child: SankeyHierarchyPointNode) => sum + countCurrentPrivateLeaves(child),
-        0
-    )
-}
+// #################################################################################################
+// ##### FILTERING #################################################################################
+// #################################################################################################
 
 export function filterDiffingUniverses(node: SankeyHierarchyPointNode, filteredNodes: Node[]) {
     if (!node._children) return
@@ -79,8 +96,7 @@ export function filterDiffingUniverses(node: SankeyHierarchyPointNode, filteredN
 }
 
 export function sortPrivateChildren(node: SankeyHierarchyPointNode, filter: NodesSortingFilter) {
-    // problem "'boolean' is not assignable to 'number'" is caused with the fix for Chrome
-    // @ts-ignore
+    // @ts-ignore problem "'boolean' is not assignable to 'number'" is caused with the fix for Chrome
     return node._children?.sort((a: SankeyHierarchyPointNode, b: SankeyHierarchyPointNode) => {
         const valueA = getSortingValue(a, filter)
         const valueB = getSortingValue(b, filter)
@@ -103,7 +119,7 @@ function getSortingValue(node: SankeyHierarchyPointNode, filter: NodesSortingFil
 }
 
 // #################################################################################################
-// ##### HELPER UTILS ##############################################################################
+// ##### OTHER #####################################################################################
 // #################################################################################################
 
 export function asHTML(d: SankeyHierarchyPointNode, metadata: UniverseMetadata) {
