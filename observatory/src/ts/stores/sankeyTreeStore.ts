@@ -7,6 +7,7 @@ import {
     NodesSortingFilter,
     serializeNodesSortingFilter
 } from '../SharedTypes/NodesFilter'
+import {useGlobalStore} from './globalStore';
 
 export type SankeyStoreConfig = Record<
     string,
@@ -17,7 +18,7 @@ export const useSankeyStore = defineStore('sankeyTreeConfig', {
     state: () => {
         return {
             diffingFilter: {
-                universes: new Set(['0', '1']),
+                universes: new Set([0, 1]),
                 showUnmodified: false
             } as NodesDiffingFilter,
             sortingFilter: {
@@ -32,10 +33,12 @@ export const useSankeyStore = defineStore('sankeyTreeConfig', {
                 diffing: state.diffingFilter,
                 sorting: state.sortingFilter
             } as NodesFilter),
-        isUniverseFiltered: (state) => (universeId: string) =>
+        isUniverseFiltered: (state) => (universeId: number) =>
             state.diffingFilter.universes.has(universeId),
         isFilteredSortingOption: (state) => (option: string) =>
-            option === state.sortingFilter.option
+            option === state.sortingFilter.option,
+        colorModified: () => useGlobalStore().colorScheme[6],
+        colorUnmodified: () => useGlobalStore().colorScheme[9]
     },
     actions: {
         toExportDict(): SankeyStoreConfig {
@@ -44,7 +47,7 @@ export const useSankeyStore = defineStore('sankeyTreeConfig', {
                 sorting: serializeNodesSortingFilter(this.sortingFilter)
             }
         },
-        changeUniverseSelection(universeId: string) {
+        changeUniverseSelection(universeId: number) {
             if (this.diffingFilter.universes.has(universeId)) {
                 this.diffingFilter.universes.delete(universeId)
             } else {

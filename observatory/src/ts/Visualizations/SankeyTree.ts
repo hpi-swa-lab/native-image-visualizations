@@ -5,7 +5,6 @@ import { MultiverseVisualization } from './MultiverseVisualization'
 import { ColorScheme } from '../SharedTypes/Colors'
 import { Multiverse } from '../UniverseTypes/Multiverse'
 import { Layers } from '../enums/Layers'
-import { sankeyTreeConfigStore } from '../stores'
 import { NodesFilter } from '../SharedTypes/NodesFilter'
 import {
     ContainerSelections,
@@ -24,6 +23,7 @@ import {
     toggleChildren
 } from './utils/SankeyTreeUtils'
 import { TooltipModel } from './TooltipModel'
+import {useSankeyStore} from "../stores/sankeyTreeStore";
 
 export const UNMODIFIED = 'UNMODIFIED'
 
@@ -53,7 +53,7 @@ export class SankeyTree implements MultiverseVisualization {
     private modifiedNodes: Node[] = []
     private filteredNodes: Node[] = []
 
-    private sankeyStore = sankeyTreeConfigStore()
+    private sankeyStore = useSankeyStore()
 
     constructor(
         containerSelector: string,
