@@ -43,11 +43,7 @@ function toggleDropdown() {
                 role="menu"
                 aria-labelledby="menu-button"
             >
-                <div
-                    v-for="(filter, index) in store.filters"
-                    :key="index"
-                    class="py-2 px-2"
-                >
+                <div v-for="(filter, index) in store.filters" :key="index" class="py-2 px-2">
                     <div class="flex flex-nowrap">
                         <ToggleSwitch
                             :id="filter.description"
