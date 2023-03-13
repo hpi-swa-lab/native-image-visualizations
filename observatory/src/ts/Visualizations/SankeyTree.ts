@@ -98,7 +98,7 @@ export class SankeyTree implements MultiverseVisualization {
 
     handleNodesFilterChanged(): void {
         this.filterNodesFromLeaves(this.tree.leaves, this.sankeyStore.nodesFilter)
-        this.redrawTree(
+        this.redraw(
             createApplyFilterEvent(this.sankeyStore.nodesFilter),
             this.tree.root,
             this.tree ?? ({} as Tree),
@@ -176,7 +176,7 @@ export class SankeyTree implements MultiverseVisualization {
         this.containerSelections.gNode.selectAll('g > *').remove()
         this.containerSelections.gLink.selectAll('g > *').remove()
 
-        this.redrawTree(
+        this.redraw(
             createApplyFilterEvent(this.sankeyStore.nodesFilter),
             this.tree.root,
             this.tree ?? ({} as Tree),
@@ -287,7 +287,7 @@ export class SankeyTree implements MultiverseVisualization {
         if (node.parent !== undefined) this.markNodeFiltered(node.parent)
     }
 
-    private redrawTree(
+    private redraw(
         event: any | null,
         sourceNode: SankeyHierarchyPointNode,
         tree: Tree,
@@ -337,7 +337,7 @@ export class SankeyTree implements MultiverseVisualization {
         const nodeEnter = this.enterNode(node, sourceNode,
             (evt: MouseEvent, d: SankeyHierarchyPointNode) => {
             toggleChildren(d, evt.shiftKey, this.filteredNodes)
-            this.redrawTree(evt, d, tree, containerSelections, universeMetadata)
+            this.redraw(evt, d, tree, containerSelections, universeMetadata)
         })
         const nodeEnterShape = this.appendShapeToNode(nodeEnter, universeMetadata)
         nodeEnterShape

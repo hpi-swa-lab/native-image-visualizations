@@ -24,12 +24,12 @@ export function createCustomEventWithDetails(name: string, filter: NodesFilter) 
     })
 }
 
-export function getCodeSizefromLeaves(node: SankeyHierarchyPointNode): number {
+export function getCodeSizeFromLeaves(node: SankeyHierarchyPointNode): number {
     if (!node._children) {
         return node.data.codeSize
     }
     return node._children.reduce((sum: number, child: SankeyHierarchyPointNode) =>
-        sum + getCodeSizefromLeaves(child), 0)
+        sum + getCodeSizeFromLeaves(child), 0)
 }
 
 // #################################################################################################
