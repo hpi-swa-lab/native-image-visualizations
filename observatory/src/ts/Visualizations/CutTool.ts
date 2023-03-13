@@ -132,7 +132,7 @@ export class CutTool {
     private cutView_onExpanded(v: FullyHierarchicalNode) {
         for (const w of v.children) {
             const cachedResult = this.singleSimulationResultCache.get(w)
-            if (cachedResult) this.cutview.setSinglePurgeData(w, cachedResult.size)
+            if (cachedResult) this.cutview.setSinglePurgeData(w, cachedResult.size - this.allReachable.size)
         }
         this.ps.requestSinglePurgeInfo(
             v.children.filter((w) => !this.singleSimulationResultCache.has(w))
