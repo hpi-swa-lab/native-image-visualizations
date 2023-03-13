@@ -34,6 +34,7 @@ import { TooltipModel } from './TooltipModel'
 import {useSankeyStore} from '../stores/sankeyTreeStore';
 
 export const UNMODIFIED = 'UNMODIFIED'
+export const MAX_OBSERVED_UNIVERSES_FOR_SANKEY_TREE = 2
 
 // constants
 const d3NodeHeight = 20
@@ -79,7 +80,7 @@ export class SankeyTree implements MultiverseVisualization {
     }
     setMultiverse(multiverse: Multiverse): void {
         // todo show loading screen while computing everything
-        if (multiverse.sources.length < 3) {
+        if (multiverse.sources.length <= MAX_OBSERVED_UNIVERSES_FOR_SANKEY_TREE) {
             this.multiverse = multiverse
             this.rebuildAndDrawTree(multiverse, this.layer)
         }
