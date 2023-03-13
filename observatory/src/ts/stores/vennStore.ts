@@ -18,7 +18,7 @@ export const useVennStore = defineStore('vennConfig', {
                 const sortingOrder = deserializeSortingOrder(config['sortingOrder'])
 
                 if (sortingOrder) {
-                    this.sortingOrder = sortingOrder
+                    this.setSortingOrder(sortingOrder)
                 }
             }
         },

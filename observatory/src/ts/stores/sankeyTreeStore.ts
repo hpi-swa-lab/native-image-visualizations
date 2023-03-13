@@ -47,12 +47,16 @@ export const useSankeyStore = defineStore('sankeyTreeConfig', {
 
             const diffing = deserializeNodesDiffingFilter(config['diffing'])
             if (diffing) {
-                this.diffingFilter = diffing
+                diffing.universes.forEach((universeId: string) => {
+                    this.changeUniverseSelection(universeId)
+                })
+                this.setShowUnmodified(diffing.showUnmodified)
             }
 
             const sorting = deserializeNodesSortingFilter(config['sorting'])
             if (sorting) {
-                this.sortingFilter = sorting
+                this.setSortingOrder(sorting.order)
+                this.setSortingOption(sorting.option)
             }
         },
         toExportDict(): SankeyStoreConfig {
