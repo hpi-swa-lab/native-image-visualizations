@@ -144,10 +144,14 @@ export class SankeyTree implements MultiverseVisualization {
             .translate((bounds.width * 1) / 5, bounds.height * 0.5)
             .scale(0.5)
 
-        // @ts-ignore because of typing error
+        // Reason: because of typing weird error
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         svg.call(zoom.transform, transform)
         // call(zoom) again to make it panable & zoomable
-        // @ts-ignore because of typing error
+        // Reason: because of typing weird error
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         svg.call(zoom)
 
         return {
@@ -169,7 +173,9 @@ export class SankeyTree implements MultiverseVisualization {
     private rebuildAndDrawTree(multiverse: Multiverse, layer: Layers) {
         this.tree = this.buildTree(multiverse, layer)
 
-        // @ts-ignore expects HierarchyPointNode<T> but it's actually SankeyHierarchyPointNode
+        // Reason: expects HierarchyPointNode<T> but it's actually SankeyHierarchyPointNode
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         this.tree.root.descendants().forEach((d: SankeyHierarchyPointNode, i: number) => {
             d.id = i.toString()
             d._children = d.children
@@ -198,7 +204,7 @@ export class SankeyTree implements MultiverseVisualization {
         // create hierarchy of Node based on selected Layer
         for (let i = Layers.MODULES.valueOf(); i <= layer.valueOf(); i++) {
             const nodes: Node[] = getNodesOnLevel(i, multiverse.root)
-            nodes.forEach(node => {
+            nodes.forEach((node) => {
                 createHierarchyFromPackages(node, nodeTree, leaves)
             })
         }
@@ -302,7 +308,9 @@ export class SankeyTree implements MultiverseVisualization {
 
         // Stash the old positions for transition
 
-        // @ts-ignore expects HierarchyPointNode<T> but it's actually SankeyHierarchyPointNode
+        // Reason: expects HierarchyPointNode<T> but it's actually SankeyHierarchyPointNode
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         tree.root.eachBefore((d: SankeyHierarchyPointNode) => {
             d.x0 = d.x
             d.y0 = d.y
@@ -568,7 +576,9 @@ export class SankeyTree implements MultiverseVisualization {
 
     private handleCustomEvent(event: any, tree: Tree) {
         if (event.detail.name === EventType.APPLY_FILTER) {
-            // @ts-ignore expects HierarchyPointNode<T> but it's actually SankeyHierarchyPointNode
+            // Reason: expects HierarchyPointNode<T> but it's actually SankeyHierarchyPointNode
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore
             tree.root.eachBefore((node: SankeyHierarchyPointNode) => {
                 if (!node._children) return
                 sortPrivateChildren(node, event.detail.filter.sorting)

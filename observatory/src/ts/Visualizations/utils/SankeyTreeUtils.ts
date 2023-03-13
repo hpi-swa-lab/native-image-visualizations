@@ -98,7 +98,10 @@ export function filterDiffingUniverses(node: SankeyHierarchyPointNode, filteredN
 }
 
 export function sortPrivateChildren(node: SankeyHierarchyPointNode, filter: NodesSortingFilter) {
-    // @ts-ignore problem "'boolean' is not assignable to 'number'" is caused with the fix for Chrome
+    // Reason: the problem "'boolean' is not assignable to 'number'" is caused by
+    // the fix for Chrome
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
     return node._children?.sort((a: SankeyHierarchyPointNode, b: SankeyHierarchyPointNode) => {
         const valueA = getSortingValue(a, filter)
         const valueB = getSortingValue(b, filter)
