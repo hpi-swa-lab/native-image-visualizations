@@ -124,7 +124,10 @@ function changeUniverseName(oldName: string, newName: string, inputIndex: number
 }
 
 async function loadData(zip: JSZip): Promise<string[]> {
+    globalStore.$reset()
+
     const errors: string[] = []
+
     await Promise.all(
         Object.keys(zip.files)
             .filter((filename: string) => filename !== `${CONFIG_NAME}.json`)
@@ -143,6 +146,7 @@ async function loadData(zip: JSZip): Promise<string[]> {
                 }
             })
     )
+
     return errors
 }
 
