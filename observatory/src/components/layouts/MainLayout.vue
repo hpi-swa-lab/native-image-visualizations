@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import VisualizationNavigation from '../navigation/VisualizationNagivation.vue'
+import VisualizationNavigation from '../controls/VisualizationNagivation.vue'
 import UniverseSelectionList from '../controls/UniverseSelectionList.vue'
 import SearchBar from '../controls/SearchBar.vue'
 import TabLayout from './TabLayout.vue'
@@ -7,6 +7,8 @@ import DataManager from '../controls/DataManager.vue'
 import LayerSelection from '../controls/LayerSelection.vue'
 import FilteringOptions from '../controls/FilteringOptions.vue'
 import { ref } from 'vue'
+import { useGlobalStore } from '../../ts/stores/globalStore'
+import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
 
 withDefaults(
     defineProps<{
@@ -33,7 +35,9 @@ function toggleSidebarCollapse(): void {
             <h2 class="text-center">{{ title }}</h2>
 
             <TabLayout
-                :selected-index="0"
+                :selected-index="
+                    useGlobalStore().currentComponent === SwappableComponentType.Home ? 1 : 0
+                "
                 :tab-names="['controls', 'data-manager']"
                 :button-names="['Controls', 'Data Manager']"
             >

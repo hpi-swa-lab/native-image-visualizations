@@ -9,9 +9,14 @@ export class Node {
     protected _name: string
     protected _parent: Node | undefined
     protected _children: Node[]
+
     protected _codeSize: Bytes = INVALID_SIZE
     protected _sources: Map<UniverseIndex, Node> = new Map()
     protected _identifier: string | undefined
+
+    protected _isReflective: boolean | undefined
+    protected _isJni: boolean | undefined
+    protected _isSynthetic: boolean | undefined
 
     constructor(
         name: string,
@@ -32,16 +37,29 @@ export class Node {
         return this._name
     }
 
+    get isInline(): boolean {
+        return this.codeSize <= 0
+    }
+
     get isReflective(): boolean {
-        return this.children.some((child) => child.isReflective)
+        if (this._isReflective) return this._isReflective
+
+        this._isReflective = this.children.some((child) => child.isReflective)
+        return this._isReflective
     }
 
     get isJni(): boolean {
-        return this.children.some((child) => child.isJni)
+        if (this._isJni) return this._isJni
+
+        this._isJni = this.children.some((child) => child.isJni)
+        return this._isJni
     }
 
     get isSynthetic(): boolean {
-        return this.children.some((child) => child.isSynthetic)
+        if (this._isSynthetic) return this._isSynthetic
+
+        this._isSynthetic = this.children.some((child) => child.isSynthetic)
+        return this._isSynthetic
     }
 
     get identifier(): string {
@@ -155,5 +173,11 @@ export class Node {
             this.parent.name == another.parent.name &&
             this.parent.equalsComparingOnlyParents(another.parent)
         )
+    }
+
+    protected updateFlags(): void {
+        this._isJni = this.children.some((child) => child.isJni)
+        this._isReflective = this.children.some((child) => child.isReflective)
+        this._isSynthetic = this.children.some((child) => child.isSynthetic)
     }
 }
