@@ -7,7 +7,7 @@ import {
     NodesSortingFilter,
     serializeNodesSortingFilter
 } from '../SharedTypes/NodesFilter'
-import {useGlobalStore} from './globalStore';
+import { useGlobalStore } from './globalStore'
 
 export type SankeyStoreConfig = Record<
     string,

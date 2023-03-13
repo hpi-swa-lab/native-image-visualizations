@@ -2,7 +2,10 @@
 import MainLayout from '../layouts/MainLayout.vue'
 import COLORS from '../../ts/constants/ColorPalette'
 import SankeyTreeControls from '../controls/SankeyTreeControls.vue'
-import {MAX_OBSERVED_UNIVERSES_FOR_SANKEY_TREE, SankeyTree} from '../../ts/Visualizations/SankeyTree'
+import {
+    MAX_OBSERVED_UNIVERSES_FOR_SANKEY_TREE,
+    SankeyTree
+} from '../../ts/Visualizations/SankeyTree'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { Multiverse } from '../../ts/UniverseTypes/Multiverse'
 import { EventType } from '../../ts/enums/EventType'
@@ -11,9 +14,9 @@ import { ColorScheme } from '../../ts/SharedTypes/Colors'
 import { UniverseMetadata } from '../../ts/SharedTypes/SankeyTree'
 import { TooltipModel } from '../../ts/Visualizations/TooltipModel'
 import Tooltip from '../controls/Tooltip.vue'
-import {useGlobalStore} from '../../ts/stores/globalStore';
-import {useSankeyStore} from '../../ts/stores/sankeyTreeStore';
-import AlertBox from '../controls/AlertBox.vue';
+import { useGlobalStore } from '../../ts/stores/globalStore'
+import { useSankeyStore } from '../../ts/stores/sankeyTreeStore'
+import AlertBox from '../controls/AlertBox.vue'
 
 const emit = defineEmits([EventType.CHANGE])
 const globalStore = useGlobalStore()
@@ -29,10 +32,13 @@ const highlights = computed(() => globalStore.highlights)
 const selection = computed(() => globalStore.selections)
 const nodesFilter = computed(() => sankeyStore.nodesFilter)
 
-const infoText = ['Visualization is only displayed if exactly 1 or 2 universes to observe are selected.']
-const displayInfo = computed(() =>
-    multiverse.value.sources.length === 0
-    || multiverse.value.sources.length > MAX_OBSERVED_UNIVERSES_FOR_SANKEY_TREE
+const infoText = [
+    'Visualization is only displayed if exactly 1 or 2 universes to observe are selected.'
+]
+const displayInfo = computed(
+    () =>
+        multiverse.value.sources.length === 0 ||
+        multiverse.value.sources.length > MAX_OBSERVED_UNIVERSES_FOR_SANKEY_TREE
 )
 
 const metadata = ref<UniverseMetadata>(
@@ -106,12 +112,13 @@ function createUniverseMetadata(multiverse: Multiverse, colorScheme: ColorScheme
             <SankeyTreeControls :universes-metadata="metadata"></SankeyTreeControls>
         </template>
 
-        <div id="viz-container" ref="container" class="w-full h-full" >
+        <div id="viz-container" ref="container" class="w-full h-full">
             <div v-if="displayInfo" class="flex w-full h-full">
                 <AlertBox
                     title="Note"
                     :alert-infos="infoText"
-                    class="w-[30%] h-fit m-auto align-middle" />
+                    class="w-[30%] h-fit m-auto align-middle"
+                />
             </div>
         </div>
     </MainLayout>

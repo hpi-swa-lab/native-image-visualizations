@@ -7,7 +7,7 @@ import { NodesFilter, NodesSortingFilter } from '../../SharedTypes/NodesFilter'
 import { SortingOption, SortingOrder } from '../../enums/Sorting'
 import { Node } from '../../UniverseTypes/Node'
 import { formatBytes } from '../../SharedTypes/Size'
-import {EventType} from '../../enums/EventType';
+import { EventType } from '../../enums/EventType'
 
 // #################################################################################################
 // ##### (PRE-)PROCESSING ##########################################################################
@@ -19,10 +19,7 @@ export function createHierarchyFromPackages(node: Node, dataTree: Node, leaves: 
     for (let i = 0; i < pathSegments.length; i++) {
         let child = current.children.find((child) => child.name === pathSegments[i])
         if (child) {
-            child.sources.set(
-                node.sources.keys().next().value,
-                node.sources.values().next().value
-            )
+            child.sources.set(node.sources.keys().next().value, node.sources.values().next().value)
             child.codeSize = child.codeSize + node.codeSize
 
             // FIXME set correct codeSize in child
@@ -52,8 +49,10 @@ export function getCodeSizeFromLeaves(node: SankeyHierarchyPointNode): number {
     if (!node._children) {
         return node.data.codeSize
     }
-    return node._children.reduce((sum: number, child: SankeyHierarchyPointNode) =>
-        sum + getCodeSizeFromLeaves(child), 0)
+    return node._children.reduce(
+        (sum: number, child: SankeyHierarchyPointNode) => sum + getCodeSizeFromLeaves(child),
+        0
+    )
 }
 
 // #################################################################################################
@@ -70,7 +69,8 @@ export function toggleChildren(
     d.children
         ? collapseChildren(d)
         : (d.children = d._children.filter((child: SankeyHierarchyPointNode) =>
-            filteredNodes.includes(child.data)))
+              filteredNodes.includes(child.data)
+          ))
 
     if (d.children && doToggleBranch) {
         for (const child of d.children) {
@@ -93,7 +93,8 @@ export function collapseChildren(d: SankeyHierarchyPointNode) {
 export function filterDiffingUniverses(node: SankeyHierarchyPointNode, filteredNodes: Node[]) {
     if (!node._children) return
     return node._children.filter((child: SankeyHierarchyPointNode) =>
-        filteredNodes.includes(child.data))
+        filteredNodes.includes(child.data)
+    )
 }
 
 export function sortPrivateChildren(node: SankeyHierarchyPointNode, filter: NodesSortingFilter) {
