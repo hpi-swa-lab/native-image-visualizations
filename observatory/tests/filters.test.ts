@@ -12,7 +12,7 @@ import { Filter } from '../src/ts/SharedTypes/Filters'
 describe('filters', () => {
     describe('Filters class', () => {
         test('Parsed serialization equals original filter', () => {
-            const original = new Filter('some filter', (node) => node.isJni, false)
+            const original = new Filter('some filter', (node) => node.isJni)
             const parsed = Filter.parse(original.serialize())
             expect(original.equals(parsed)).toBeTruthy
         })
