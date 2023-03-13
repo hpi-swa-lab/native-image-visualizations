@@ -44,12 +44,7 @@ function toggleDropdown() {
                 aria-orientation="vertical"
                 aria-labelledby="menu-button"
             >
-                <div
-                    v-for="(filter, index) in store.filters"
-                    :key="index"
-                    class="py-2 px-2 w-full"
-                    role="none"
-                >
+                <div v-for="(filter, index) in store.filters" :key="index" class="py-2 px-2 w-full">
                     <ToggleSwitch
                         :id="filter.description"
                         :value="false"

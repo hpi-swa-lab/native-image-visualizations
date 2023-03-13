@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch, toRaw } from 'vue'
 import { ColorScheme } from '../../ts/SharedTypes/Colors'
 import { formatBytes } from '../../ts/SharedTypes/Size'
 import { useGlobalStore } from '../../ts/stores/globalStore'
@@ -29,8 +29,8 @@ onMounted(() => {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const theContainer = container.value!
 
-    visualization = new TreeLine(theContainer, colorScheme.value, activeFilters.value)
-    visualization.setMultiverse(multiverse.value as Multiverse)
+    visualization = new TreeLine(theContainer, toRaw(colorScheme.value), toRaw(activeFilters.value))
+    visualization.setMultiverse(toRaw(multiverse.value) as Multiverse)
 
     theContainer.addEventListener('mousemove', (event) => {
         const containerRect = theContainer.getBoundingClientRect()
@@ -79,23 +79,23 @@ function tooltipContentForNode(node: Node): string {
 }
 
 watch(multiverse, (newMultiverse) => {
-    visualization.setMultiverse(newMultiverse as Multiverse)
+    visualization.setMultiverse(toRaw(newMultiverse) as Multiverse)
 })
 watch(colorScheme, (newColorScheme) => {
-    visualization.setColorScheme(newColorScheme as ColorScheme)
+    visualization.setColorScheme(toRaw(newColorScheme) as ColorScheme)
 })
 
 watch(
     activeFilters,
     (newFilters) => {
-        visualization.setFilters(newFilters as Filter[])
+        visualization.setFilters(toRaw(newFilters) as Filter[])
     },
     { deep: true }
 )
 watch(
     highlights,
     (newHighlights) => {
-        visualization.setHighlights(newHighlights as Set<string>)
+        visualization.setHighlights(toRaw(newHighlights) as Set<string>)
     },
     { deep: true }
 )
