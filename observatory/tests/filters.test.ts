@@ -1,43 +1,55 @@
 import { describe, expect, test } from '@jest/globals'
-import { findNodesWithName, getNodesOnLevel, findNodesWithIdentifier } from '../src/ts/Math/filters'
+import {
+    findNodesWithName,
+    getNodesOnLevel,
+    findNodesIncludingIdentifier
+} from '../src/ts/Math/filters'
 import { Layers } from '../src/ts/enums/Layers'
 import { forest } from './data/forest'
 import { Node } from '../src/ts/UniverseTypes/Node'
+import { Filter } from '../src/ts/SharedTypes/Filters'
 
 describe('filters', () => {
-    describe('findNodesWithName', () => {
-        test('returns empty array when none found', () => {
-            expect(findNodesWithName('something', forest.overlappingImageA)).toEqual([])
+    describe('Filters class', () => {
+        test('Parsed serialization equals original filter', () => {
+            const original = new Filter('some filter', (node) => node.isJni, false)
+            const parsed = Filter.parse(original.serialize())
+            expect(original.equals(parsed)).toBeTruthy
         })
+    }),
+        describe('findNodesWithName', () => {
+            test('returns empty array when none found', () => {
+                expect(findNodesWithName('something', forest.overlappingImageA)).toEqual([])
+            })
 
-        test('returns array with single found element', () => {
-            const actual = findNodesWithName('ClassAA', forest.layeredTree)
-            const expected = [forest.layeredTree.children[0].children[0]]
+            test('returns array with single found element', () => {
+                const actual = findNodesWithName('ClassAA', forest.layeredTree)
+                const expected = [forest.layeredTree.children[0].children[0]]
 
-            expect(actual.length).toBe(expected.length)
-            expected.forEach((value, index) => expect(actual[index].equals(value)).toBeTruthy())
+                expect(actual.length).toBe(expected.length)
+                expected.forEach((value, index) => expect(actual[index].equals(value)).toBeTruthy())
+            })
+
+            test('returns array with multiple elements corresponding to name', () => {
+                const actual = findNodesWithName('methodA', forest.duplicatedNames)
+                const expected = [
+                    forest.duplicatedNames.children[0].children[0].children[0],
+                    forest.duplicatedNames.children[0].children[1].children[0],
+                    forest.duplicatedNames.children[1].children[0].children[0]
+                ]
+
+                expect(actual.length).toBe(expected.length)
+                expected.forEach((value, index) => expect(actual[index].equals(value)).toBeTruthy())
+            })
         })
-
-        test('returns array with multiple elements corresponding to name', () => {
-            const actual = findNodesWithName('methodA', forest.duplicatedNames)
-            const expected = [
-                forest.duplicatedNames.children[0].children[0].children[0],
-                forest.duplicatedNames.children[0].children[1].children[0],
-                forest.duplicatedNames.children[1].children[0].children[0]
-            ]
-
-            expect(actual.length).toBe(expected.length)
-            expected.forEach((value, index) => expect(actual[index].equals(value)).toBeTruthy())
-        })
-    })
 
     describe('findNodesWithIdentifier', () => {
         test('returns empty array when none found', () => {
-            expect(findNodesWithIdentifier('something', forest.overlappingImageA)).toEqual([])
+            expect(findNodesIncludingIdentifier('something', forest.overlappingImageA)).toEqual([])
         })
 
         test('returns array with single found element', () => {
-            const actual = findNodesWithIdentifier('ClassAA', forest.layeredTree)
+            const actual = findNodesIncludingIdentifier('ClassAA', forest.layeredTree)
             const expected = [
                 findNodesWithName('ClassAA', forest.layeredTree)[0],
                 findNodesWithName('methodAAA', forest.layeredTree)[0]
@@ -48,7 +60,7 @@ describe('filters', () => {
         })
 
         test('returns array with multiple elements corresponding to name', () => {
-            const actual = findNodesWithIdentifier('methodA', forest.duplicatedNames)
+            const actual = findNodesIncludingIdentifier('methodA', forest.duplicatedNames)
             const expected = findNodesWithName('methodA', forest.duplicatedNames)
 
             expect(actual.length).toBe(expected.length)

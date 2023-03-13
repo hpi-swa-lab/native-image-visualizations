@@ -10,7 +10,8 @@ import { serializerLayer, Layers } from '../enums/Layers'
 import { Multiverse } from '../UniverseTypes/Multiverse'
 import { InvalidInputError } from '../errors'
 import { ColorScheme } from '../SharedTypes/Colors'
-import { findNodesWithIdentifier } from '../Math/filters'
+import { findNodesIncludingIdentifier } from '../Math/filters'
+import { toRaw } from 'vue'
 
 // Reason: Vite does not support commonJS out of box. In the vite.config, the commonjs plugin
 // transpiles the cjs to ts, but the transpilation and mapping happens during run time.
@@ -19,6 +20,7 @@ import { findNodesWithIdentifier } from '../Math/filters'
 // @ts-ignore
 import tailwindConfig from '../../../tailwind.config.cjs'
 import resolveConfig from 'tailwindcss/resolveConfig'
+import { Filter } from '../SharedTypes/Filters'
 
 const cssConfig = resolveConfig(tailwindConfig)
 
@@ -44,6 +46,12 @@ export const useGlobalStore = defineStore('globalConfig', {
             multiverse: new Multiverse([]),
             selections: new Set<string>(),
             highlights: new Set<string>(),
+            filters: [
+                new Filter('Java Native Interface', (node: Node) => node.isJni),
+                new Filter('Synthetic', (node: Node) => node.isSynthetic),
+                new Filter('Reflective', (node: Node) => node.isReflective)
+            ],
+            activeFilters: [] as Filter[],
             currentLayer: Layers.PACKAGES,
             currentComponent: SwappableComponentType.Home as SwappableComponentType,
             previousComponent: undefined as SwappableComponentType | undefined,
@@ -78,28 +86,21 @@ export const useGlobalStore = defineStore('globalConfig', {
             const matchingUniverse = this.universes.find(
                 (universe) => universe.name === universeName
             )
-
-            if (matchingUniverse) {
-                this.universes.splice(this.universes.indexOf(matchingUniverse), 1)
-                this.toggleObservationByName(matchingUniverse.name)
-            }
-
-            if (this.rawData[universeName]) {
-                delete this.rawData[universeName]
-            }
+            if (!matchingUniverse) return
+            this.universes.splice(this.universes.indexOf(matchingUniverse), 1)
+            this.toggleObservationByName(matchingUniverse.name)
+            if (!this.rawData[universeName]) return
+            delete this.rawData[universeName]
         },
         updateUniverseName(oldName: string, newName: string): void {
             validateUniverseName(newName)
 
             const universe = this.universes.find((universe) => universe.name === oldName)
-            if (universe) {
-                universe.name = newName
-            }
-
-            if (this.rawData[oldName]) {
-                this.rawData[newName] = this.rawData[oldName]
-                delete this.rawData[oldName]
-            }
+            if (!universe) return
+            universe.name = newName
+            if (!this.rawData[oldName]) return
+            this.rawData[newName] = this.rawData[oldName]
+            delete this.rawData[oldName]
         },
         toggleObservationByName(universeName: string): void {
             const matchingUniverse = this.observedUniverses.find(
@@ -115,7 +116,7 @@ export const useGlobalStore = defineStore('globalConfig', {
                 }
             }
 
-            this.multiverse = new Multiverse(this.observedUniverses as Universe[])
+            this.multiverse = new Multiverse(toRaw(this.observedUniverses) as Universe[])
         },
         setSelection(selections: Set<string>): void {
             this.selections = selections
@@ -140,19 +141,63 @@ export const useGlobalStore = defineStore('globalConfig', {
         },
         changeSearch(newSearch: string): void {
             this.search = newSearch
+
+            if (newSearch.length === 0) {
+                this.setHighlights(new Set())
+                return
+            }
+
             this.setHighlights(
                 new Set<string>(
-                    findNodesWithIdentifier(this.search, this.multiverse.root as Node).map(
-                        (node: Node) => node.identifier
-                    )
+                    findNodesIncludingIdentifier(
+                        toRaw(this.search),
+                        toRaw(this.multiverse.root) as Node
+                    ).map((node: Node) => node.identifier)
                 )
             )
+        },
+        addFilter(filter: Filter): void {
+            this.filters.push(filter)
+        },
+        removeFilter(filter: Filter): void {
+            const matchingFilter = this.filters.find((existing) => existing.equals(filter))
+            if (!matchingFilter) return
+            this.filters.splice(this.filters.indexOf(matchingFilter), 1)
+            this.toggleFilter(matchingFilter, matchingFilter.applyComplement)
+        },
+        hasFilter(filter: Filter): boolean {
+            return this.filters.find((existing) => existing.equals(filter)) != undefined
+        },
+        isFilterActive(filter: Filter, appliesComplement = false): boolean {
+            return (
+                this.activeFilters.find(
+                    (existing) =>
+                        existing.equals(filter) && existing.applyComplement === appliesComplement
+                ) != undefined
+            )
+        },
+        toggleFilter(filter: Filter, appliesComplement = false): void {
+            const matchingActiveFilter = this.activeFilters.find((active) => active.equals(filter))
+
+            if (matchingActiveFilter) {
+                this.activeFilters.splice(this.activeFilters.indexOf(matchingActiveFilter), 1)
+                if (appliesComplement === matchingActiveFilter.applyComplement) return
+                matchingActiveFilter.applyComplement = appliesComplement
+                this.activeFilters.push(matchingActiveFilter)
+            } else {
+                const matchingFilter = this.filters.find((existing) => existing.equals(filter))
+                if (!matchingFilter) return
+                matchingFilter.applyComplement = appliesComplement
+                this.activeFilters.push(matchingFilter)
+            }
         },
         toExportDict(): GlobalConfig {
             return {
                 observedUniverses: (this.observedUniverses as Universe[]).map(
                     (universe: Universe) => universe.name
                 ),
+                filters: this.filters.map((filter) => filter.serialize()),
+                activeFilters: this.activeFilters.map((filter) => filter.serialize()),
                 selections: Array.from(this.selections),
                 highlights: Array.from(this.highlights),
                 currentLayer: serializerLayer(this.currentLayer),
