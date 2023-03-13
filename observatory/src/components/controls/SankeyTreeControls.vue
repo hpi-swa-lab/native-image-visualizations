@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import AlertBox from './AlertBox.vue'
 import SortingFilterFieldset from './SortingFilterFieldset.vue'
-import { EventType } from '../../ts/enums/EventType.js'
 import DiffingUniversesFilterFieldset from './DiffingUniversesFilterFieldset.vue'
 import { UniverseMetadata } from '../../ts/SharedTypes/SankeyTree'
 
@@ -15,8 +14,6 @@ withDefaults(
         universesMetadata: () => ({})
     }
 )
-
-const emit = defineEmits([EventType.EXPAND_TREE])
 </script>
 
 <template>
