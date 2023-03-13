@@ -13,6 +13,9 @@ import JSZip from 'jszip'
 import FileSaver from 'file-saver'
 import { InvalidInputError } from '../../ts/errors'
 import { ExportConfig } from '../../ts/stores/ExportConfig'
+import { EventType } from '../../ts/enums/EventType'
+
+const emit = defineEmits([EventType.CONFIG_LOADED])
 
 const globalStore = useGlobalStore()
 const vennStore = useVennStore()
@@ -105,6 +108,7 @@ async function loadConfigAndData(event: Event) {
         configLoadError.value = Error(errors.join('\n'))
     } else {
         configLoadError.value = undefined
+        emit(EventType.CONFIG_LOADED)
     }
 }
 

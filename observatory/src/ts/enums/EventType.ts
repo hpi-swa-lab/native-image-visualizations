@@ -1,4 +1,5 @@
 export enum EventType {
     EXPAND_TREE = 'expand-tree',
-    CHANGE = 'change'
+    CHANGE = 'change',
+    CONFIG_LOADED = 'config-loaded'
 }

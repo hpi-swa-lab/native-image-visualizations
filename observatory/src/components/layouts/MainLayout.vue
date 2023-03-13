@@ -19,6 +19,7 @@ withDefaults(
 )
 
 const collapsed = ref(false)
+const selectedIndex = ref(useGlobalStore().currentComponent === SwappableComponentType.Home ? 1 : 0)
 
 function toggleSidebarCollapse(): void {
     collapsed.value = !collapsed.value
@@ -34,9 +35,7 @@ function toggleSidebarCollapse(): void {
             <h2 class="text-center">{{ title }}</h2>
 
             <TabLayout
-                :selected-index="
-                    useGlobalStore().currentComponent === SwappableComponentType.Home ? 1 : 0
-                "
+                :selected-index="selectedIndex"
                 :tab-names="['controls', 'data-manager']"
                 :button-names="['Controls', 'Data Manager']"
             >
@@ -57,7 +56,10 @@ function toggleSidebarCollapse(): void {
                     </div>
                 </template>
                 <template #tab-content-data-manager>
-                    <DataManager class="px-3 py-4 h-full w-full" />
+                    <DataManager
+                        class="px-3 py-4 h-full w-full"
+                        @config-loaded="() => (selectedIndex = 0)"
+                    />
                 </template>
             </TabLayout>
         </div>
