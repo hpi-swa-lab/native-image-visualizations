@@ -56,8 +56,8 @@ function toggleDropdown() {
                             filter.description
                         }}</label>
                         <button
-                            v-if="filter.isUserAdded"
-                            class="btn-xs px-1 my-1 text-xs ml-5 btn-danger"
+                            v-if="filter.isCustom"
+                            class="btn-xs rounded px-2 my-1 text-xs ml-5 btn-danger"
                             @click="() => store.removeFilter(filter)"
                         >
                             <font-awesome-icon icon="xmark" />
