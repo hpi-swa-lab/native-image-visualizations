@@ -3,7 +3,6 @@ import MainLayout from '../layouts/MainLayout.vue'
 import COLORS from '../../ts/constants/ColorPalette'
 import SankeyTreeControls from '../controls/SankeyTreeControls.vue'
 import { SankeyTree } from '../../ts/Visualizations/SankeyTree'
-import { globalConfigStore, sankeyTreeConfigStore } from '../../ts/stores'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { Multiverse } from '../../ts/UniverseTypes/Multiverse'
 import { EventType } from '../../ts/enums/EventType'
@@ -12,24 +11,26 @@ import { ColorScheme } from '../../ts/SharedTypes/Colors'
 import { UniverseMetadata } from '../../ts/SharedTypes/SankeyTree'
 import { TooltipModel } from '../../ts/Visualizations/TooltipModel'
 import Tooltip from '../controls/Tooltip.vue'
+import {useGlobalStore} from "../../ts/stores/globalStore";
+import {useSankeyStore} from "../../ts/stores/sankeyTreeStore";
 
 const emit = defineEmits([EventType.CHANGE])
-const store = globalConfigStore()
-const sankeyStore = sankeyTreeConfigStore()
+const globalStore = useGlobalStore()
+const sankeyStore = useSankeyStore()
 
 const container = ref<HTMLDivElement>()
 
 const tooltipModel = reactive(new TooltipModel())
 
-const multiverse = computed(() => store.multiverse)
-const currentLayer = computed(() => store.currentLayer)
-const highlights = computed(() => store.highlights)
-const selection = computed(() => store.selections)
+const multiverse = computed(() => globalStore.multiverse)
+const currentLayer = computed(() => globalStore.currentLayer)
+const highlights = computed(() => globalStore.highlights)
+const selection = computed(() => globalStore.selections)
 
 const nodesFilter = computed(() => sankeyStore.nodesFilter)
 
 const metadata = ref<UniverseMetadata>(
-    createUniverseMetadata(store.multiverse as Multiverse, store.colorScheme)
+    createUniverseMetadata(globalStore.multiverse as Multiverse, globalStore.colorScheme)
 )
 let visualization: SankeyTree
 
@@ -37,16 +38,16 @@ onMounted(() => {
     // todo
     visualization = new SankeyTree(
         '#viz-container',
-        store.currentLayer,
-        store.colorScheme,
+        globalStore.currentLayer,
+        globalStore.colorScheme,
         tooltipModel
     )
     visualization.setMetadata(metadata.value)
-    visualization.setMultiverse(store.multiverse as Multiverse)
+    visualization.setMultiverse(globalStore.multiverse as Multiverse)
 })
 
 watch(multiverse, (newMultiverse) => {
-    metadata.value = createUniverseMetadata(newMultiverse as Multiverse, store.colorScheme)
+    metadata.value = createUniverseMetadata(newMultiverse as Multiverse, globalStore.colorScheme)
     visualization.setMetadata(metadata.value)
     visualization.setMultiverse(newMultiverse as Multiverse)
 })
