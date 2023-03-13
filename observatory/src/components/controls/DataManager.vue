@@ -13,7 +13,6 @@ import JSZip from 'jszip'
 import FileSaver from 'file-saver'
 import { InvalidInputError } from '../../ts/errors'
 import { ExportConfig } from '../../ts/stores/ExportConfig'
-import { map } from 'd3-array'
 
 const globalStore = useGlobalStore()
 const vennStore = useVennStore()
