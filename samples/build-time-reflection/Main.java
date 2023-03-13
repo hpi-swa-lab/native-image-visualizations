@@ -36,7 +36,7 @@ public class Main {
         }
     }
 
-    private static final Consumer<String> lambda = createLambdaForMethod("print");
+    public static Consumer<String> lambda = createLambdaForMethod("print");
     
     public static void print(String arg) {
         System.err.println("I've got to print \"" + arg + "\"");
