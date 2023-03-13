@@ -155,10 +155,15 @@ export const useGlobalStore = defineStore('globalConfig', {
                 Array.isArray(config['observedUniverses']) &&
                 config['observedUniverses'].every((name) => typeof name === 'string')
             ) {
-                const universeNames: string[] = config['observedUniverses']
-                this.observedUniverses = (this.universes as Universe[]).filter(
-                    (universe: Universe) => universeNames.includes(universe.name)
-                )
+                const observedUniverseNames: string[] = config['observedUniverses']
+                const universes = this.universes as Universe[]
+
+                universes
+                    .map((universe: Universe) => universe.name)
+                    .filter((name: string) => observedUniverseNames.includes(name))
+                    .forEach((name: string) => {
+                        this.toggleObservationByName(name)
+                    })
             }
 
             if (
@@ -166,7 +171,7 @@ export const useGlobalStore = defineStore('globalConfig', {
                 Array.isArray(config['selections']) &&
                 config['selections'].every((selection) => typeof selection === 'string')
             ) {
-                this.selections = new Set(config['selections'])
+                this.setSelection(new Set(config['selections']))
             }
 
             if (
@@ -174,15 +179,13 @@ export const useGlobalStore = defineStore('globalConfig', {
                 Array.isArray(config['highlights']) &&
                 config['highlights'].every((highlight) => typeof highlight === 'string')
             ) {
-                this.highlights = new Set(config['highlights'])
+                this.setHighlights(new Set(config['highlights']))
             }
 
             if ('currentLayer' in config && typeof config['currentLayer'] === 'string') {
                 const layer = deserializeLayer(config['currentLayer'])
 
-                if (layer) {
-                    this.currentLayer = layer
-                }
+                if (layer) this.switchToLayer(layer)
             }
 
             if (
@@ -190,15 +193,13 @@ export const useGlobalStore = defineStore('globalConfig', {
                 Array.isArray(config['colorScheme']) &&
                 config['colorScheme'].every((color) => typeof color === 'string')
             ) {
-                this.colorScheme = config['colorScheme']
+                this.switchColorScheme(config['colorScheme'])
             }
 
             if ('currentComponent' in config && typeof config['currentComponent'] === 'string') {
                 const component = deserializeComponent(config['currentComponent'])
 
-                if (component) {
-                    this.currentComponent = component
-                }
+                if (component) this.switchToComponent(component)
             }
 
             if ('previousComponent' in config && typeof config['previousComponent'] === 'string') {
