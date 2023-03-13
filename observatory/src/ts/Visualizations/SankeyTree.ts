@@ -209,7 +209,7 @@ export class SankeyTree implements MultiverseVisualization {
                 .tree()
                 .nodeSize([d3NodeHeight, d3NodeWidth])
                 .separation((a, b) => this.getNodeSeparation(a, b)),
-            root: hierarchy(nodeTree) as HierarchyPointNode<Node>,
+            root: hierarchy(nodeTree) as SankeyHierarchyPointNode,
             leaves: Array.from(leaves),
             rootNode: nodeTree
         }
