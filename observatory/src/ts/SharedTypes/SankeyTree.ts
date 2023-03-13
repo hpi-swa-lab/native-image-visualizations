@@ -17,9 +17,16 @@ export type CustomEventDetails = {
 
 export type UniverseMetadata = Record<number, UniverseProps>
 
+export interface SankeyHierarchyPointNode extends HierarchyPointNode<Node> {
+    id: string | undefined // override to remove readonly
+    _children: SankeyHierarchyPointNode[] | undefined // backed up children
+    x0: number // initial position
+    y0: number // initial position
+}
+
 export type Tree = {
     layout: d3.TreeLayout<unknown>
-    root: HierarchyPointNode<Node>
+    root: SankeyHierarchyPointNode
     leaves: Node[]
     rootNode: Node
 }

@@ -54,6 +54,9 @@ export const useSankeyStore = defineStore('sankeyTreeConfig', {
                 this.diffingFilter.universes.add(universeId)
             }
         },
+        addSelectedUniverse(universe: number) {
+            this.diffingFilter.universes.add(universe)
+        },
         setSortingOption(option: string) {
             const sortingOption = Object.values(SortingOption).find(
                 (item) => item.toString() === option
