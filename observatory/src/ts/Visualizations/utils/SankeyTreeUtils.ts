@@ -71,7 +71,7 @@ export function toggleChildren(
         : (d.children = d._children.filter((child: SankeyHierarchyPointNode) =>
             filteredNodes.includes(child.data)))
 
-    if (doToggleBranch) {
+    if (d.children && doToggleBranch) {
         for (const child of d.children) {
             toggleChildren(child, doToggleBranch, filteredNodes)
         }
