@@ -76,7 +76,6 @@ export class SankeyTree implements MultiverseVisualization {
     }
 
     setMultiverse(multiverse: Multiverse): void {
-        // todo show loading screen while computing everything
         if (multiverse.sources.length <= MAX_OBSERVED_UNIVERSES_FOR_SANKEY_TREE) {
             this.multiverse = multiverse
             this.rebuildAndDrawTree(multiverse, this.layer)

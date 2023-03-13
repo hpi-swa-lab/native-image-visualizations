@@ -25,8 +25,9 @@ export function createHierarchyFromPackages(node: Node, dataTree: Node, leaves: 
             )
             child.codeSize = child.codeSize + node.codeSize
 
-            // FIXME #39 set correct codeSize in child
-            //  (right now only node A's codesize is stored in the merged node)
+            // FIXME set correct codeSize in child
+            //  (right now its the sum of A+B in the merged node)
+            //  #153 https://github.com/hpi-swa-lab/MPWS2022RH1/issues/153
         } else {
             child = new Node(pathSegments[i], [], current, node.codeSize)
             child.sources = node.sources
