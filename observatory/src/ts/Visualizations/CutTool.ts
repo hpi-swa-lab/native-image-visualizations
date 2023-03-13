@@ -4,7 +4,6 @@ import {
     forEachInSubtree,
     FullyHierarchicalNode
 } from '../UniverseTypes/CausalityGraphUniverse'
-import { toRaw } from 'vue'
 import { CutView } from './CutTool/CutView'
 import { ImageView } from './CutTool/ImageView'
 import { DetailView } from './CutTool/DetailView'
@@ -12,8 +11,11 @@ import { PurgeResults, ReachabilityVector } from './CutTool/BatchPurgeScheduler'
 import { PurgeScheduler } from './CutTool/PurgeScheduler'
 import { AsyncCausalityGraph } from '../Causality/AsyncCausalityGraph'
 import { assert } from '../util/assert'
+import { UniverseVisualization } from './UniverseVisualization'
+import { Universe } from '../UniverseTypes/Universe'
+import { ColorScheme } from '../SharedTypes/Colors'
 
-export class CutTool {
+class CutTool {
     readonly domRoot: HTMLDivElement
     readonly ps: PurgeScheduler
     readonly cg: AsyncCausalityGraph
@@ -111,15 +113,14 @@ export class CutTool {
     public static async create(domRoot: HTMLDivElement, universe: CausalityGraphUniverse) {
         domRoot.querySelector<HTMLDivElement>('#main-panel')!.hidden = true
         domRoot.querySelector<HTMLDivElement>('#loading-panel')!.hidden = false
-        const universeRaw = toRaw(universe)
-        const cg = await universeRaw.getCausalityGraph()
+        const cg = await universe.getCausalityGraph()
         const allReachable = new ReachabilityVector(
             new PurgeResults(await cg.simulatePurge()),
             universe.codesizeByCgNodeLabels
         )
         domRoot.querySelector<HTMLDivElement>('#loading-panel')!.hidden = true
         domRoot.querySelector<HTMLDivElement>('#main-panel')!.hidden = false
-        return new CutTool(domRoot, universeRaw, cg, allReachable)
+        return new CutTool(domRoot, universe, cg, allReachable)
     }
 
     public dispose() {
@@ -132,7 +133,8 @@ export class CutTool {
     private cutView_onExpanded(v: FullyHierarchicalNode) {
         for (const w of v.children) {
             const cachedResult = this.singleSimulationResultCache.get(w)
-            if (cachedResult) this.cutview.setSinglePurgeData(w, cachedResult.size - this.allReachable.size)
+            if (cachedResult)
+                this.cutview.setSinglePurgeData(w, cachedResult.size - this.allReachable.size)
         }
         this.ps.requestSinglePurgeInfo(
             v.children.filter((w) => !this.singleSimulationResultCache.has(w))
@@ -217,5 +219,42 @@ export class CutTool {
         if (reachableOnHover !== undefined)
             this.imageview.updateReachableSets(undefined, reachableOnHover)
         return reachableOnHover !== undefined
+    }
+}
+
+// Wrapper around the mostly immutable CutTool
+export class CutToolVis implements UniverseVisualization {
+    colorScheme: ColorScheme = []
+    highlights = new Set<string>()
+    selection = new Set<string>()
+
+    private universeSpecificCutTool: Promise<CutTool | undefined> | undefined
+    private readonly domRoot: HTMLDivElement
+
+    constructor(domRoot: HTMLDivElement) {
+        this.domRoot = domRoot
+    }
+
+    setUniverse(universe: Universe): void {
+        this.onUniverseChanged(universe instanceof CausalityGraphUniverse ? universe : undefined)
+    }
+
+    setHighlights(_: Set<string>): void {
+        // Needs to be implemented reasonably
+    }
+
+    setSelection(_: Set<string>): void {
+        // Needs to be implemented reasonably
+    }
+
+    private async destroyAndCreate(universe: CausalityGraphUniverse | undefined) {
+        // Ensures sequential execution by waiting on the previous destroyAndCreate(...)
+        const oldVis = await this.universeSpecificCutTool
+        oldVis?.dispose()
+        return universe ? await CutTool.create(this.domRoot, universe) : undefined
+    }
+
+    private onUniverseChanged(universe: CausalityGraphUniverse | undefined) {
+        this.universeSpecificCutTool = this.destroyAndCreate(universe)
     }
 }

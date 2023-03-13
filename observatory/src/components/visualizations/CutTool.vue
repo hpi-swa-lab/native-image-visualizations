@@ -1,52 +1,35 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, ref, toRaw, watch } from 'vue'
 import MainLayout from '../layouts/MainLayout.vue'
-import { CutTool } from '../../ts/Visualizations/CutTool'
-import { CausalityGraphUniverse } from '../../ts/UniverseTypes/CausalityGraphUniverse'
-import ToggleSwitch from '../controls/ToggleSwitch.vue'
+import { CutToolVis } from '../../ts/Visualizations/CutTool'
 import { useGlobalStore } from '../../ts/stores/globalStore'
 import styleContent from './CutTool.css?inline'
 
 const store = useGlobalStore()
 const multiverse = computed(() => store.multiverse)
 
-let visualization: Promise<CutTool | undefined> | undefined
+let visualization: CutToolVis | undefined
 
-function cutToolRoot() {
-    return document.getElementById('cut-tool-root') as HTMLDivElement
-}
-
-async function destroyAndCreate(universe: CausalityGraphUniverse | undefined) {
-    const oldVis = await visualization
-    oldVis?.dispose()
-    return universe ? await CutTool.create(cutToolRoot(), universe) : undefined
-}
-
-function onUniverseChanged(universe: CausalityGraphUniverse | undefined) {
-    visualization = destroyAndCreate(universe)
-}
+const container = ref<HTMLDivElement>()
 
 onMounted(() => {
-    const universe =
-        multiverse.value.sources.length === 1 &&
-        multiverse.value.sources[0] instanceof CausalityGraphUniverse
-            ? multiverse.value.sources[0]
-            : undefined
-    onUniverseChanged(universe)
+    // We know this is never null because an element with the corresponding
+    // `ref` exists below and this code is executed after mounting.
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    visualization = new CutToolVis(container.value!)
+    const universes = multiverse.value.sources
+    if (universes.length === 1) visualization.setUniverse(toRaw(universes[0]))
 })
 
-watch(multiverse, (multiverse) => {
-    const universe =
-        multiverse.sources.length === 1 && multiverse.sources[0] instanceof CausalityGraphUniverse
-            ? multiverse.sources[0]
-            : undefined
-    onUniverseChanged(universe)
+watch(multiverse, (newMultiverse) => {
+    const universes = newMultiverse.sources
+    if (universes.length === 1) visualization?.setUniverse(toRaw(universes[0]))
 })
 </script>
 
 <template>
     <MainLayout title="Cut Tool">
-        <div id="cut-tool-root">
+        <div id="cut-tool-root" ref="container">
             <!-- eslint-disable -->
             <component is="style" scoped>
                 {{ styleContent }}
@@ -62,15 +45,9 @@ watch(multiverse, (multiverse) => {
                     <div id="cut-overview-root"></div>
                 </div>
                 <div id="detail-div" hidden>
-                    <svg id="detail-svg" width="100%" height="100%">
+                    <svg id="detail-svg" class="h-full w-full">
                         <g id="chartpanel">
-                            <rect
-                                id="zoom-opfer"
-                                fill="black"
-                                opacity="0"
-                                height="100%"
-                                width="100%"
-                            ></rect>
+                            <rect class="h-full w-full opacity-0" />
                             <g id="chart"></g>
                         </g>
                     </svg>
