@@ -14,6 +14,8 @@ import { assert } from '../util/assert'
 import { UniverseVisualization } from './UniverseVisualization'
 import { Universe } from '../UniverseTypes/Universe'
 import { ColorScheme } from '../SharedTypes/Colors'
+import { Node } from '../UniverseTypes/Node'
+import {useGlobalStore} from '../stores/globalStore';
 
 class CutTool {
     readonly domRoot: HTMLDivElement
@@ -27,6 +29,8 @@ class CutTool {
 
     readonly allReachable: ReachabilityVector
     readonly codesizes: number[]
+    readonly legacyRoot: Node
+    readonly legacyNodesByCgNodes: (Node | undefined)[]
 
     readonly singleSimulationResultCache = new Map<FullyHierarchicalNode, ReachabilityVector>()
     additionalSimulationResults:
@@ -46,7 +50,9 @@ class CutTool {
         this.dataRoot = universe.causalityRoot
         this.cg = cg
         this.allReachable = allReachable
-        this.codesizes = universe.codesizeByCgNodeLabels
+        this.codesizes = universe.codesizesByCgNodes
+        this.legacyNodesByCgNodes = universe.legacyNodesByCgNodes
+        this.legacyRoot = universe.root
 
         this.ps = new PurgeScheduler(cg, allReachable.results)
         this.ps.detailSelectedCallback = (edges, targetMid) =>
@@ -88,7 +94,7 @@ class CutTool {
         this.imageview = new ImageView(
             allReachable.results,
             universe.causalityRoot,
-            universe.codesizeByCgNodeLabels,
+            universe.codesizesByCgNodes,
             Math.max(...this.dataRoot.children.map((d) => d.accumulatedSize)),
             (v) => (this.ps.detailSelectedNode = v)
         )
@@ -116,7 +122,7 @@ class CutTool {
         const cg = await universe.getCausalityGraph()
         const allReachable = new ReachabilityVector(
             new PurgeResults(await cg.simulatePurge()),
-            universe.codesizeByCgNodeLabels
+            universe.codesizesByCgNodes
         )
         domRoot.querySelector<HTMLDivElement>('#loading-panel')!.hidden = true
         domRoot.querySelector<HTMLDivElement>('#main-panel')!.hidden = false
@@ -201,6 +207,35 @@ class CutTool {
             this.ps.requestAdditionalPurgeInfo(Array.from(this.cutview.visibleNodes))
 
         this.imageview.updateReachableSets(stillReachable, stillReachable)
+
+        const purgedLegacyNodes = new Set(stillReachable.purgedCgNodes().map(cgNode => this.legacyNodesByCgNodes[cgNode]).filter(n => n))
+
+        const newRoot = new Node(this.legacyRoot.name + ' [purged]')
+
+        for(const module of this.legacyRoot.children) {
+            const newModule = module.clonePrimitive()
+            for(const pkg of module.children) {
+                const newPkg = pkg.clonePrimitive()
+                for (const type of pkg.children) {
+                    const newType = type.clonePrimitive()
+                    for (const method of type.children) {
+                        if (purgedLegacyNodes.has(method)) {
+                            const newMethod = method.clonePrimitive()
+                            newType.push(newMethod)
+                        }
+                    }
+                    if(newType.children.length > 0 || type.children.length === 0)
+                        newPkg.push(newType)
+                }
+                if(newPkg.children.length > 0)
+                    newModule.push(newPkg)
+            }
+            if(newModule.children.length > 0)
+                newRoot.push(newModule)
+        }
+
+        const globalStore = useGlobalStore()
+        globalStore.addUniverse(new Universe(this.legacyRoot.name + ' [purged]', newRoot), undefined)
     }
 
     // Returns whether the hovering effect should be shown

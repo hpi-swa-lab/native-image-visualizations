@@ -26,7 +26,8 @@ export interface CausalityGraphData {
 export class CausalityGraphUniverse extends Universe {
     public readonly cgNodeLabels: string[]
     public readonly cgTypeLabels: string[]
-    public readonly codesizeByCgNodeLabels: number[]
+    public readonly codesizesByCgNodes: number[]
+    public readonly legacyNodesByCgNodes: (Node | undefined)[]
 
     public readonly causalityRoot: FullyHierarchicalNode
 
@@ -44,10 +45,12 @@ export class CausalityGraphUniverse extends Universe {
         const codesizesDict = getMethodCodesizeDictFromReachabilityJson(
             causalityData.reachabilityData
         )
-        this.codesizeByCgNodeLabels = new Array(this.cgNodeLabels.length)
+        this.codesizesByCgNodes = new Array(this.cgNodeLabels.length)
         for (let i = 0; i < this.cgNodeLabels.length; i++) {
-            this.codesizeByCgNodeLabels[i] = codesizesDict[this.cgNodeLabels[i]] ?? 0
+            this.codesizesByCgNodes[i] = codesizesDict[this.cgNodeLabels[i]] ?? 0
         }
+
+        this.legacyNodesByCgNodes = mapCgNodesToLegacyTree(root, this.cgNodeLabels)
 
         this.cgPromise = createCausalityGraph(
             causalityData.nodeLabels.length,
@@ -411,4 +414,19 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
     computeCodesizePartialSum(root)
 
     return root
+}
+
+function mapCgNodesToLegacyTree(
+    legacyRoot: Node,
+    cgNodeLabels: string[]) {
+
+    const methodNameToLegacyNode = new Map<string, Node>()
+
+    for(const module of legacyRoot.children)
+        for(const pkg of module.children)
+            for(const type of pkg.children)
+                for(const method of type.children)
+                    methodNameToLegacyNode.set(`${pkg.name}.${type.name}.${method.name}`, method)
+
+    return cgNodeLabels.map(name => methodNameToLegacyNode.get(name))
 }

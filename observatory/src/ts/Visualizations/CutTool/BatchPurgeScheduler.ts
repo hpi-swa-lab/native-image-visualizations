@@ -25,6 +25,15 @@ export class PurgeResults {
         this.reachableArr = reachableArr
     }
 
+    // Slow!
+    purgedCgNodes(): number[] {
+        const result = []
+        for(let i = 0; i < this.reachableArr.length; i++)
+            if(this.reachableArr[i] === Unreachable)
+                result.push(i)
+        return result
+    }
+
     isPurged(v: FullyHierarchicalNode): boolean {
         return v.cgNode !== undefined && this.reachableArr[v.cgNode] === Unreachable
     }
