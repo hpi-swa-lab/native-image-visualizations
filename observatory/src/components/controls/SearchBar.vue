@@ -60,7 +60,7 @@ function addFilter() {
                 />
                 <button
                     title="Add as Filter"
-                    class="btn-sm bg-transparent hover:bg-gray-500 text-gray-500 font-semibold hover:text-white p-2 border border-gray-300 hover:border-transparent rounded-full"
+                    class="btn-sm bg-transparent hover:bg-gray-500 text-gray-500 font-semibold hover:text-white py-2 border border-gray-300 hover:border-transparent rounded-full mx-1"
                     @click="addFilter"
                 >
                     <font-awesome-icon icon="plus" />
