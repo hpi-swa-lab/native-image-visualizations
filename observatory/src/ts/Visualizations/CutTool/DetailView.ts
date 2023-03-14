@@ -66,15 +66,13 @@ export class DetailView {
             .sugiyama() // base layout
             .decross(d3dag.decrossTwoLayer()) // minimize number of crossings
             .nodeSize((node) => [(node ? 3.6 : 0.25) * nodeRadius, 3 * nodeRadius])
-        const { width, height } = layout(dag as any)
+        layout(dag as any)
 
         const d3Root = d3.select(this.domRoot)
 
         // --------------------------------
         // This code only handles rendering
         // --------------------------------
-        const outerSvg = d3Root.select('#detail-svg')
-        outerSvg.attr('viewBox', [0, 0, width, height].join(' '))
         const svgSelection = d3Root.select('#chart')
 
         // How to draw edges
@@ -121,10 +119,11 @@ export class DetailView {
         nodeCircles
             .attr('r', nodeRadius)
             .attr('fill', (d) => getColorAccordingToCausalityGraphNodeType(d.data.name))
+            .attr('class', (d) =>
+                d && d.data.mid === targetMid ? 'detail-node-target' : 'detail-node'
+            )
 
         nodesSelection.append('title').text((d) => d.data.name)
-
-        const textSize = 20
 
         // Add text to nodes
         const nodeLabels = nodesSelection.append('text')
@@ -132,47 +131,53 @@ export class DetailView {
         nodeLabels
             .text((d) => getUnqualifiedCausalityGraphNodeName(d.data.name))
             .attr('font-family', 'sans-serif')
-            .attr('text-anchor', 'left')
             .attr('fill', 'black')
             .attr('dominant-baseline', 'middle')
-            .attr('x', nodeRadius * 1.2)
-            .attr('font-size', textSize)
+            .attr('x', (d) => {
+                const side = getSide(d.x, d.y)
+                if (side === true) return 1.2 * nodeRadius
+                else if (side === false) return -1.2 * nodeRadius
+                else return 0
+            })
+            .attr('class', (d) => {
+                const side = getSide(d.x, d.y)
+                if (side === true) return 'detail-text-left'
+                else if (side === false) return 'detail-text-right'
+                else return 'detail-text-middle'
+            })
 
-        function onZoom() {
-            const transform = d3.zoomTransform(d3Root.select<Element>('#chartpanel').node()!)
+        function getSide(x: number, y: number): boolean | undefined {
+            const dagNodes = dag.descendants() as { x: number; y: number }[]
+            const relevantNodes = dagNodes.filter((d) => d.y >= y - 10 && d.y <= y + 10)
 
-            function transX(num: number) {
-                return num * transform.k + transform.x
-            }
-
-            function transY(num: number) {
-                return num * transform.k + transform.y
-            }
-
-            nodesSelection.attr(
-                'transform',
-                ({ x, y }) => `translate(${transX(x!)}, ${transY(y!)})`
-            )
-            nodeCircles.attr('r', transform.k * nodeRadius)
-
-            linksSelection
-                .attr('d', ({ points }) =>
-                    line(
-                        points.map(({ x, y }) => {
-                            return [transX(x), transY(y)]
-                        })
-                    )
-                )
-                .attr('stroke-width', transform.k * 3)
-
-            nodeLabels
-                .attr('font-size', transform.k * textSize)
-                .attr('x', transform.k * nodeRadius * 1.2)
+            if (relevantNodes.every((d) => d.x <= x)) return true
+            else if (relevantNodes.every((d) => d.x >= x)) return false
+            else return undefined
         }
 
-        const zoom = d3.zoom().on('zoom', onZoom)
-        d3Root.select<Element>('#chartpanel').call(zoom.transform, d3.zoomIdentity)
-        d3Root.select<Element>('#chartpanel').call(zoom)
+        const zoom = d3
+            .zoom()
+            .on('zoom', ({ transform }) =>
+                d3Root.select<Element>('#chartpanel').attr('transform', transform)
+            )
+        d3Root.select<Element>('#detail-svg').call(zoom.transform, d3.zoomIdentity)
+        d3Root.select<Element>('#detail-svg').call(zoom)
+
+        const outerSvg = this.domRoot.querySelector<SVGGraphicsElement>('#detail-svg')!
+        const bbox = outerSvg.getBBox()
+        d3.select(outerSvg).attr(
+            'viewBox',
+            [
+                bbox.x - bbox.width * 0.05,
+                bbox.y - bbox.height * 0.05,
+                bbox.width * 1.1,
+                bbox.height * 1.1
+            ].join(' ')
+        )
+    }
+
+    public dispose() {
+        this.renderGraphOnDetailView(undefined, undefined)
     }
 }
 

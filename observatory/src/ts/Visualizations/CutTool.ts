@@ -127,7 +127,12 @@ class CutTool {
         this.domRoot.querySelector('#imageview-root')!.textContent = ''
         this.domRoot.querySelector('#cut-overview-root')!.textContent = ''
         this.domRoot.querySelector<HTMLDivElement>('#main-panel')!.hidden = true
+        this.detailview.dispose()
         this.ps.paused = true // Don't do any more work in the background!
+    }
+
+    closeDetailView(): void {
+        this.imageview.clearDetailSelection()
     }
 
     private cutView_onExpanded(v: FullyHierarchicalNode) {
@@ -245,6 +250,10 @@ export class CutToolVis implements UniverseVisualization {
 
     setSelection(_: Set<string>): void {
         // TODO: https://github.com/hpi-swa-lab/MPWS2022RH1/issues/156
+    }
+
+    async closeDetailView() {
+        ;(await this.universeSpecificCutTool)?.closeDetailView()
     }
 
     private async destroyAndCreate(universe: CausalityGraphUniverse | undefined) {

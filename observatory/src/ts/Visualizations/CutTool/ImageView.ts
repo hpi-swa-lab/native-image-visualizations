@@ -80,6 +80,15 @@ export class ImageView {
         this.updatePurgeValues(this.root)
     }
 
+    public clearDetailSelection() {
+        if (!this.detailSelectedElement) return
+        this.detailSelectedElement
+            .querySelector<HTMLSpanElement>('.imageview-node')!
+            .classList.remove('selected-for-detail')
+        this.detailSelectedElement = undefined
+        if (this.selectedNodeChange) this.selectedNodeChange(undefined)
+    }
+
     private updatePurgeValues(root: FullyHierarchicalNode) {
         forEachInStrictSubtreePostorder<FullyHierarchicalNode, SizeInfo | undefined>(
             root,
