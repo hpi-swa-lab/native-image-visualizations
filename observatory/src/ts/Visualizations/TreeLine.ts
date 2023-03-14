@@ -328,7 +328,7 @@ export class TreeLine implements MultiverseVisualization {
         const boxWidth = textWidth + 2 * TEXT_HORIZONTAL_PADDING
 
         const isFaded = this.highlights.size > 0 && !this.highlights.has(node.identifier)
-        const isBordered = this.selection.size > 0 && this.selection.has(node.identifier)
+        const isBordered = this.selection.has(node.identifier)
 
         if (isBordered) {
             this.context.lineWidth = HIERARCHY_GAPS * 2
