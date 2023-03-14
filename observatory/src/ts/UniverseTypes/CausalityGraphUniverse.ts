@@ -5,7 +5,7 @@ import {
     loadCausalityGraphConstructor
 } from '../Causality/AsyncCausalityGraph'
 import { ReachabilityJson } from '../parsing'
-import { CausalityGraphBinaryData } from '../Causality/CausalityGraph'
+import { CausalityGraphBinaryData } from '../Causality/CausalityGraphBinaryData'
 
 const createCausalityGraph = loadCausalityGraphConstructor()
 

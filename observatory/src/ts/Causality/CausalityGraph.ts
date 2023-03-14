@@ -4,6 +4,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import loadWASM from './lib/causality-query.js'
+import { CausalityGraphBinaryData } from './CausalityGraphBinaryData'
 const Module: any = await loadWASM()
 
 export const Unreachable = 0xff

@@ -28,7 +28,7 @@ const nameFields = ref<InstanceType<typeof InlineEditableField>[]>()
 async function createUniverseFromCausalityExport(
     file: File,
     universeName: string
-): Promise<[Universe, ReachabilityJson]> {
+): Promise<[Universe, unknown]> {
     const parsedCG = await loadCgZip(file)
     const newUniverse = new CausalityGraphUniverse(
         universeName,
@@ -42,7 +42,7 @@ async function createUniverseFromCausalityExport(
 async function createUniverseFromReachabilityJson(
     file: File,
     universeName: string
-): Promise<[Universe, ReachabilityJson]> {
+): Promise<[Universe, unknown]> {
     const parsedJSON = await loadJson(file)
 
     const newUniverse = new Universe(
