@@ -58,16 +58,34 @@ class CutTool {
             this.singleSimulationResultCache.set(v, dataAndSize)
             this.cutview.setSinglePurgeData(v, dataAndSize.size - this.allReachable.size)
         }
-        this.ps.additionalPurgeCallback = (v, data) => {
+        this.ps.additionalPurgeCallback = async (v, data) => {
             const dataAndSize = new ReachabilityVector(data, this.codesizes)
 
             if (v === undefined) {
+                const dataAndSizeRecalculated = new ReachabilityVector(
+                    new PurgeResults(
+                        await this.cg.simulatePurge([
+                            ...new Set(
+                                [...this.cutview.selectedForPurging].flatMap((v) =>
+                                    collectCgNodesInSubtree(v)
+                                )
+                            )
+                        ])
+                    ),
+                    this.codesizes
+                )
+
+                // TODO: Investigate when that fails, or remove combined purging
+                assert(dataAndSizeRecalculated.results.equals(dataAndSize.results))
+                assert(dataAndSizeRecalculated.size === dataAndSize.size)
+
                 assert(this.additionalSimulationResults === undefined)
                 this.additionalSimulationResults = {
                     cache: new Map<FullyHierarchicalNode, ReachabilityVector>(),
-                    onlySelected: dataAndSize
+                    onlySelected: dataAndSizeRecalculated
                 }
             } else {
+                // TODO: Investigate when that fails, or remove combined purging
                 assert(this.additionalSimulationResults !== undefined)
                 this.additionalSimulationResults.cache.set(v, dataAndSize)
                 this.cutview.setAdditionalPurgeData(

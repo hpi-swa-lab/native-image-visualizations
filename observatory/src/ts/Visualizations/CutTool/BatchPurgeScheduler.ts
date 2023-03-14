@@ -47,6 +47,14 @@ export class PurgeResults {
         }
         return sum
     }
+
+    equals(other: PurgeResults): boolean {
+        if (this.reachableArr.length != other.reachableArr.length) return false
+        for (let i = 0; i < this.reachableArr.length; i++)
+            if ((this.reachableArr[i] === Unreachable) !== (other.reachableArr[i] === Unreachable))
+                return false
+        return true
+    }
 }
 
 export class ReachabilityVector {
