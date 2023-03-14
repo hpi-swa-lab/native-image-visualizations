@@ -240,11 +240,11 @@ export class CutToolVis implements UniverseVisualization {
     }
 
     setHighlights(_: Set<string>): void {
-        // Needs to be implemented reasonably
+        // TODO: https://github.com/hpi-swa-lab/MPWS2022RH1/issues/156
     }
 
     setSelection(_: Set<string>): void {
-        // Needs to be implemented reasonably
+        // TODO: https://github.com/hpi-swa-lab/MPWS2022RH1/issues/156
     }
 
     private async destroyAndCreate(universe: CausalityGraphUniverse | undefined) {
