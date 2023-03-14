@@ -142,18 +142,20 @@ export class BatchPurgeScheduler {
                 new Set(this.waitlist),
                 new Set(this.prepurgeNodes)
             )
-            assert(tree !== undefined)
-            if (this.calcBaselineFirst) {
-                // We need to insert an empty purge node for calculating the baseline
-                assert(tree.children !== undefined)
-                tree.children.unshift({ token: -1, mids: [] })
-            }
 
-            this.runningIndexToNode = nodesByIndex
-            this.runningBatch = await this.cg.simulatePurgesBatched(
-                tree,
-                [...new Set(this.prepurgeNodes)].flatMap(collectCgNodesInSubtree)
-            )
+            if (tree) {
+                if (this.calcBaselineFirst) {
+                    // We need to insert an empty purge node for calculating the baseline
+                    assert(tree.children !== undefined)
+                    tree.children.unshift({ token: -1, mids: [] })
+                }
+
+                this.runningIndexToNode = nodesByIndex
+                this.runningBatch = await this.cg.simulatePurgesBatched(
+                    tree,
+                    [...new Set(this.prepurgeNodes)].flatMap(collectCgNodesInSubtree)
+                )
+            }
             this.waitlist = []
             return true
         } else {
