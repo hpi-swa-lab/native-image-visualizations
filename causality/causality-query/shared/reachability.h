@@ -463,7 +463,7 @@ static void get_reachability_of_method(unordered_map<pair<method_id, method_id>,
 
                             if(searching_for_invoker)
                             {
-                                inserted.second = numeric_limits<uint32_t>::max();
+                                inserted.first->second = numeric_limits<uint32_t>::max();
                                 searching_for_invoker = false;
                             }
 
