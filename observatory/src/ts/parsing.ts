@@ -13,6 +13,7 @@ import { InitKind } from './enums/InitKind'
 import { Node } from './UniverseTypes/Node'
 import JSZip from 'jszip'
 import { CausalityGraphData } from './UniverseTypes/CausalityGraphUniverse'
+import { causalityBinaryFileNames } from './Causality/CausalityGraphBinaryData'
 
 interface Method {
     flags?: string[]
@@ -115,18 +116,17 @@ export async function loadCgZip(file: File): Promise<CausalityGraphData> {
         return entry
     }
 
-    const reachabilityData = JSON.parse(await getZipEntry('reachability.json').async('string'))
-    const methods = await getZipEntry('methods.txt').async('string')
-    const methodList = methods.split('\n')
-    methodList.pop() // Pop line that doesn't end with '\n'
-    const types = await getZipEntry('types.txt').async('string')
-    const typeList = types.split('\n')
-    typeList.pop() // Pop line that doesn't end with '\n'
+    const reachabilityData = (await loadJson(
+        await getZipEntry('reachability.json').async('blob')
+    )) as ReachabilityJson
 
     const cgData = {
         reachabilityData: reachabilityData,
-        nodeLabels: methodList,
-        typeLabels: typeList,
+        nodeLabels: (await getZipEntry('methods.txt').async('string')).split('\n').slice(0, -1),
+        typeLabels: (await getZipEntry('types.txt').async('string')).split('\n').slice(0, -1),
+
+        // Only initializing this because the loop below cannot infer
+        // that every of these properties will be set
         'typestates.bin': new Uint8Array(),
         'interflows.bin': new Uint8Array(),
         'direct_invokes.bin': new Uint8Array(),
@@ -134,28 +134,14 @@ export async function loadCgZip(file: File): Promise<CausalityGraphData> {
         'typeflow_filters.bin': new Uint8Array()
     }
 
-    const parameterFiles: [
-        'typestates.bin',
-        'interflows.bin',
-        'direct_invokes.bin',
-        'typeflow_methods.bin',
-        'typeflow_filters.bin'
-    ] = [
-        'typestates.bin',
-        'interflows.bin',
-        'direct_invokes.bin',
-        'typeflow_methods.bin',
-        'typeflow_filters.bin'
-    ]
-
-    for (const path of parameterFiles) {
+    for (const path of causalityBinaryFileNames) {
         cgData[path] = await getZipEntry(path).async('uint8array')
     }
 
     return cgData
 }
 
-export async function loadJson(file: File): Promise<object> {
+export async function loadJson(file: Blob): Promise<object> {
     return new Promise<object>((resolve, reject) => {
         const reader = new FileReader()
         reader.readAsText(file)
