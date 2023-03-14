@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { useVennStore } from '../../ts/stores/vennStore'
 import { SortingOrder } from '../../ts/enums/Sorting'
+import LayerSelection from './LayerSelection.vue'
 
 const vennStore = useVennStore()
 </script>
 
 <template>
     <div id="venn-controls" class="input-container settings-container space-y-4">
+        <LayerSelection />
         <label class="ml-1"> Sorting: </label>
         <template v-for="(order, index) in Object.values(SortingOrder)" :key="index">
             <div class="relative block">

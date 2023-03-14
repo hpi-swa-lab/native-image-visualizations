@@ -17,6 +17,7 @@ const multiverse = computed(() => store.multiverse)
 const colorScheme = computed(() => store.colorScheme)
 const activeFilters = computed(() => store.activeFilters)
 const highlights = computed(() => store.highlights)
+const selections = computed(() => store.selections)
 
 const tooltip = reactive(new TooltipModel())
 
@@ -29,7 +30,13 @@ onMounted(() => {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const theContainer = container.value!
 
-    visualization = new TreeLine(theContainer, toRaw(colorScheme.value), toRaw(activeFilters.value))
+    visualization = new TreeLine(
+        theContainer,
+        toRaw(colorScheme.value),
+        toRaw(highlights.value),
+        selections.value,
+        toRaw(activeFilters.value)
+    )
     visualization.setMultiverse(toRaw(multiverse.value) as Multiverse)
 
     theContainer.addEventListener('mousemove', (event) => {
@@ -48,6 +55,18 @@ onMounted(() => {
     })
     theContainer.addEventListener('mouseout', () => {
         tooltip.hide()
+    })
+    theContainer.addEventListener('click', (event) => {
+        const containerRect = theContainer.getBoundingClientRect()
+        const info = visualization.getInfoAtPosition(
+            event.x - containerRect.x,
+            event.y - containerRect.y
+        )
+        if (!info || !(info instanceof Node)) return
+
+        selections.value.has(info.identifier)
+            ? selections.value.delete(info.identifier)
+            : selections.value.add(info.identifier)
     })
 })
 
@@ -96,6 +115,13 @@ watch(
     highlights,
     (newHighlights) => {
         visualization.setHighlights(toRaw(newHighlights) as Set<string>)
+    },
+    { deep: true }
+)
+watch(
+    selections,
+    (newSelection) => {
+        visualization.setSelection(newSelection as Set<string>)
     },
     { deep: true }
 )
