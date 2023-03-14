@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import MainLayout from '../layouts/MainLayout.vue'
-import COLORS from '../../ts/constants/ColorPalette'
 import SankeyTreeControls from '../controls/SankeyTreeControls.vue'
 import {
     MAX_OBSERVED_UNIVERSES_FOR_SANKEY_TREE,
@@ -93,7 +92,7 @@ function createUniverseMetadata(multiverse: Multiverse, colorScheme: ColorScheme
     multiverse.sources.forEach((universe, index) => {
         metadata[index] = {
             name: universe.name,
-            color: colorScheme[index] ?? COLORS.white
+            color: colorScheme[index] ?? 'black'
         }
         sankeyStore.addSelectedUniverse(index)
     })
