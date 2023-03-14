@@ -4,8 +4,8 @@ import UniverseSelectionList from '../controls/UniverseSelectionList.vue'
 import SearchBar from '../controls/SearchBar.vue'
 import TabLayout from './TabLayout.vue'
 import DataManager from '../controls/DataManager.vue'
-import LayerSelection from '../controls/LayerSelection.vue'
 import FilteringOptions from '../controls/FilteringOptions.vue'
+import SelectionList from '../controls/SelectionList.vue'
 import { ref } from 'vue'
 import { useGlobalStore } from '../../ts/stores/globalStore'
 import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
@@ -50,7 +50,7 @@ function toggleSidebarCollapse(): void {
                         <hr />
 
                         <SearchBar />
-                        <LayerSelection />
+                        <SelectionList />
                         <FilteringOptions />
 
                         <ul class="space-y-2">

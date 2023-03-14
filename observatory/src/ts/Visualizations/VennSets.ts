@@ -67,14 +67,25 @@ export class VennSets implements MultiverseVisualization {
 
     public setSelection(selection: Set<string>): void {
         this.selection = selection
-        if (selection.size === 0) return
-        this.applyStyleForChosen(this.selection, 'display', 'none', 'block')
+        this.applyStyleForChosen(this.selection, 'stroke-width', '0', '5', false)
+    }
+
+    public toggleSelection(event: any, node: Node, selection: Set<string>): void {
+        // as our selection is the toRaw variant of what's in store,
+        // the responding vue won't get an update that selection has changed
+        // which is perfect for us. contrary to higlighting, we aren't changing multiple
+        // nodes, but one at a time. and therefore only need to change the style of one
+        if (selection.has(node.identifier)) {
+            selection.delete(node.identifier)
+        } else {
+            selection.add(node.identifier)
+        }
     }
 
     public setHighlights(highlights: Set<string>): void {
         this.highlights = highlights
         const defaultOpacity = highlights.size == 0 ? 1 : 0.1
-        this.applyStyleForChosen(this.highlights, 'opacity', defaultOpacity, 1)
+        this.applyStyleForChosen(this.highlights, 'opacity', defaultOpacity, 1, true)
     }
 
     public setFilters(filters: Filter[]): void {
@@ -133,6 +144,7 @@ export class VennSets implements MultiverseVisualization {
             .attr('cx', (leaf: PackedHierarchyLeaf) => leaf.x)
             .attr('cy', (leaf: PackedHierarchyLeaf) => leaf.y)
             .attr('r', (leaf: PackedHierarchyLeaf) => leaf.r)
+            .attr('stroke', 'black')
             .attr('fill', (leaf: PackedHierarchyLeaf) =>
                 this.colorsByName.get((leaf.parent as unknown as PackedHierarchyNode).data[0])
             )
@@ -142,6 +154,9 @@ export class VennSets implements MultiverseVisualization {
             })
             .on('mousemove', (event: any) => this.tooltip.updatePosition(event.pageX, event.pageY))
             .on('mouseout', () => this.tooltip.hide())
+            .on('click', (event: any, data: PackedHierarchyLeaf) => {
+                this.toggleSelection(event, data.data[0], this.selection)
+            })
     }
 
     private drawLabels(root: HierarchyNode<Group>) {
@@ -247,7 +262,8 @@ export class VennSets implements MultiverseVisualization {
         selection: Set<string>,
         style: string,
         unselected: unknown,
-        selected: unknown
+        selected: unknown,
+        enableTransition: boolean
     ) {
         const circles = this.container.selectAll('circle')
 
@@ -258,7 +274,7 @@ export class VennSets implements MultiverseVisualization {
         circles
             .filter((circle: PackedHierarchyLeaf) => selection.has(circle.data[0].identifier))
             .transition()
-            .duration(TRANSITION_DURATION)
+            .duration(enableTransition ? TRANSITION_DURATION : 0)
             .style(style, selected)
     }
 

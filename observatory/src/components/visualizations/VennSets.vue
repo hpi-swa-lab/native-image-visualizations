@@ -34,13 +34,13 @@ let visualization: VennSets
 onMounted(() => {
     visualization = new VennSets(
         '#viz-container',
-        globalStore.currentLayer,
-        globalStore.colorScheme,
+        toRaw(globalStore.currentLayer),
+        toRaw(globalStore.colorScheme),
         tooltipModel,
-        vennStore.sortingOrder,
-        globalStore.highlights,
+        toRaw(vennStore.sortingOrder),
+        toRaw(globalStore.highlights),
         globalStore.selections,
-        globalStore.activeFilters
+        toRaw(globalStore.activeFilters)
     )
     visualization.setMultiverse(toRaw(globalStore.multiverse) as Multiverse)
 })
@@ -61,7 +61,7 @@ watch(
 watch(
     selection,
     (newSelection) => {
-        visualization.setSelection(toRaw(newSelection) as Set<string>)
+        visualization.setSelection(newSelection as Set<string>)
     },
     { deep: true }
 )
