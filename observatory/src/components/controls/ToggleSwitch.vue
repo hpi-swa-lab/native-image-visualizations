@@ -4,13 +4,12 @@ import { EventType } from '../../ts/enums/EventType'
 withDefaults(
     defineProps<{
         id: string
-        value: string
+        value: unknown
         checked?: boolean
         disabled?: boolean
     }>(),
     {
         id: '',
-        value: '',
         checked: false,
         disabled: false
     }
@@ -23,7 +22,7 @@ withDefaults(
             :id="id"
             :value="value"
             type="checkbox"
-            class="mr-1"
+            class="mr-1 scale-75"
             :checked="checked"
             :disabled="disabled"
             @change="$emit(EventType.CHANGE, value)"

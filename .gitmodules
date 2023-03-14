@@ -1,3 +1,6 @@
+[submodule "graal"]
+	path = graal
+	url = git@github.com:hpi-swa-lab/MPWS2022RH1-graalvm.git
 [submodule "samples/spring-petclinic"]
 	path = samples/spring-petclinic
 	url = https://github.com/spring-projects/spring-petclinic

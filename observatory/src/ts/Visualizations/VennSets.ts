@@ -12,6 +12,8 @@ import { ColorScheme } from '../SharedTypes/Colors'
 import { formatBytes } from '../SharedTypes/Size'
 import { TooltipModel } from './TooltipModel'
 import { SortingOrder } from '../enums/Sorting'
+import { Filter } from '../SharedTypes/Filters'
+import { HIERARCHY_NAME_SEPARATOR } from '../globals'
 
 type Group = d3.InternMap<string, d3.InternMap<Node, number>>
 type NodeData = [string, d3.InternMap<Node, number>]
@@ -25,10 +27,12 @@ export class VennSets implements MultiverseVisualization {
     colorScheme: ColorScheme = []
     selection: Set<string> = new Set<string>()
     highlights: Set<string> = new Set<string>()
+    filters: Filter[] = []
 
     private multiverse: Multiverse = new Multiverse([])
     private layer = Layers.PACKAGES
     private nodeHierarchy: HierarchyNode<Group> = d3.hierarchy([] as unknown as Group)
+    private colorsByName: Map<string, string> = new Map()
 
     private container: any
     private tooltip: TooltipModel
@@ -39,12 +43,18 @@ export class VennSets implements MultiverseVisualization {
         layer: Layers,
         colorScheme: ColorScheme,
         tooltip: TooltipModel,
-        sortingOrder: SortingOrder
+        sortingOrder: SortingOrder,
+        highlights: Set<string>,
+        selection: Set<string>,
+        filters: Filter[]
     ) {
         this.layer = layer
         this.colorScheme = colorScheme
         this.tooltip = tooltip
         this.sortingOrder = sortingOrder
+        this.filters = filters
+        this.highlights = highlights
+        this.selection = selection
 
         this.initializeContainer(containerSelector)
         this.initializeZoom()
@@ -57,12 +67,19 @@ export class VennSets implements MultiverseVisualization {
 
     public setSelection(selection: Set<string>): void {
         this.selection = selection
+        if (selection.size === 0) return
         this.applyStyleForChosen(this.selection, 'display', 'none', 'block')
     }
 
     public setHighlights(highlights: Set<string>): void {
         this.highlights = highlights
-        this.applyStyleForChosen(this.highlights, 'opacity', 0.4, 1)
+        const defaultOpacity = highlights.size == 0 ? 1 : 0.1
+        this.applyStyleForChosen(this.highlights, 'opacity', defaultOpacity, 1)
+    }
+
+    public setFilters(filters: Filter[]): void {
+        this.filters = filters
+        this.redraw()
     }
 
     public setLayer(layer: Layers): void {
@@ -92,9 +109,10 @@ export class VennSets implements MultiverseVisualization {
     private redraw() {
         this.cleanContainer()
 
-        const nodesOnLevel: Node[] = getNodesOnLevel(this.layer, this.multiverse.root)
+        const nodesOnLevel: Node[] = getNodesOnLevel(this.layer, this.multiverse.root).filter(
+            (nodeOnLevel) => Filter.applyAll(this.filters, nodeOnLevel)
+        )
         const root = this.asCombinationPartitionedHierarchy(nodesOnLevel)
-
         if (!root.children) return
 
         this.circlePack(root)
@@ -104,13 +122,6 @@ export class VennSets implements MultiverseVisualization {
     }
 
     private drawCircles(root: HierarchyNode<Group>) {
-        const colorsByName: Map<string, string> = new Map(
-            root.children?.map((node: HierarchyNode<Group>, index: number) => [
-                (node as unknown as HierarchyNode<NodeData>).data[0],
-                this.colorScheme[index]
-            ])
-        )
-
         this.container
             .append('g')
             .attr('class', 'nodes')
@@ -123,7 +134,7 @@ export class VennSets implements MultiverseVisualization {
             .attr('cy', (leaf: PackedHierarchyLeaf) => leaf.y)
             .attr('r', (leaf: PackedHierarchyLeaf) => leaf.r)
             .attr('fill', (leaf: PackedHierarchyLeaf) =>
-                colorsByName.get((leaf.parent as unknown as PackedHierarchyNode).data[0])
+                this.colorsByName.get((leaf.parent as unknown as PackedHierarchyNode).data[0])
             )
             .on('mouseenter', (_event: any, data: PackedHierarchyLeaf) => {
                 this.tooltip.display()
@@ -156,7 +167,13 @@ export class VennSets implements MultiverseVisualization {
         const parent = leaf.parent as unknown as PackedHierarchyNode
         return `<b>Exclusive in</b>: ${parent.data[0]}
                 <b>Name</b>: ${node.name}
+                <b>Path</b>: ${this.pathToNode(node)}
                 <b>Code Size</b>: ${formatBytes(node.codeSize)}`
+    }
+
+    private pathToNode(node: Node): string {
+        if (this.layer <= Layers.MODULES) return '/'
+        return node.identifier.substring(0, node.identifier.lastIndexOf(HIERARCHY_NAME_SEPARATOR))
     }
 
     private asCombinationPartitionedHierarchy(nodes: Node[]): HierarchyNode<Group> {
@@ -170,6 +187,13 @@ export class VennSets implements MultiverseVisualization {
             (group: Node[]) => d3.sum(group, (node: Node) => node.codeSize),
             indicesToNames,
             (node: Node) => node
+        )
+
+        this.colorsByName = new Map(
+            [...groups.entries()]
+                .map((group: Array<unknown>) => group[0] as string)
+                .sort()
+                .map((group: string, index: number) => [group, this.colorScheme[index]])
         )
 
         this.nodeHierarchy = d3
@@ -209,7 +233,7 @@ export class VennSets implements MultiverseVisualization {
     private initializeZoom() {
         const zoom = d3
             .zoom()
-            .scaleExtent([0.5, 4])
+            .scaleExtent([0.5, 6])
             .on('zoom', ({ transform }) => this.container.select('g').attr('transform', transform))
         this.container.call(zoom)
     }
@@ -227,9 +251,10 @@ export class VennSets implements MultiverseVisualization {
     ) {
         const circles = this.container.selectAll('circle')
 
+        circles.style(style, unselected)
+
         if (selection.size === 0) return
 
-        circles.style(style, unselected)
         circles
             .filter((circle: PackedHierarchyLeaf) => selection.has(circle.data[0].identifier))
             .transition()

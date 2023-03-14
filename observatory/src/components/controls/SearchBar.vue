@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useGlobalStore } from '../../ts/stores/globalStore'
+import { Filter } from '../../ts/SharedTypes/Filters'
 
 const store = useGlobalStore()
 let typingTimer: string | number | NodeJS.Timeout | undefined
@@ -8,9 +9,22 @@ function searchChanged(event: Event): void {
     if (!event.target) return
     const input = event.target as HTMLInputElement
     clearTimeout(typingTimer)
+    // Updating the basic search term immediately for being able to e.g. add filters without wait.
+    // The wait before calculating a new highlights selection is more important in order
+    // to avoid constant compute heavy operations like updating the visualizations
+    store.basicChangeSearchTerm(input.value)
     typingTimer = setTimeout(() => {
         store.changeSearch(input.value)
     }, 1000)
+}
+
+function addFilter() {
+    if (store.search.length === 0) return
+    const newFilter = Filter.fromSearchTerm(store.search)
+    if (store.addFilter(newFilter)) {
+        store.toggleFilter(newFilter)
+        store.changeSearch('')
+    }
 }
 </script>
 
@@ -34,15 +48,24 @@ function searchChanged(event: Event): void {
                     ></path>
                 </svg>
             </div>
-            <input
-                ref="searchText"
-                type="search"
-                class="p-2 pl-10 w-full"
-                placeholder="Search nodes"
-                :value="store.search"
-                required
-                @input="searchChanged"
-            />
+            <div class="w-full">
+                <input
+                    ref="searchText"
+                    type="search"
+                    class="pl-10"
+                    placeholder="Search nodes"
+                    :value="store.search"
+                    required
+                    @input="searchChanged"
+                />
+                <button
+                    title="Add as Filter"
+                    class="btn-sm bg-transparent hover:bg-gray-500 text-gray-500 font-semibold hover:text-white p-2 border border-gray-300 hover:border-transparent rounded-full"
+                    @click="addFilter"
+                >
+                    <font-awesome-icon icon="plus" />
+                </button>
+            </div>
         </div>
     </div>
 </template>

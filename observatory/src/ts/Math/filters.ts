@@ -1,44 +1,47 @@
+import { Filter } from '../SharedTypes/Filters'
 import { Node } from '../UniverseTypes/Node'
 
-export function findNodesWithName(name: string, root: Node): Node[] {
+export function applyFilters(filters: Filter[], root: Node): Node[] {
     const result: Node[] = []
 
-    if (root.name.toLowerCase().includes(name.toLowerCase())) {
+    if (Filter.applyAll(filters, root)) {
         result.push(root)
     }
 
     return root.children.reduce(
-        (currentArray, child) => currentArray.concat(findNodesWithName(name, child)),
+        (currentArray, child) => currentArray.concat(applyFilters(filters, child)),
         result
     )
 }
 
-export function findNodeWithIdentifier(identifier: string, root: Node): Node | undefined {
-    if (root.identifier === identifier) {
-        return root
-    }
-
-    return root.children
-        .map((child) => findNodeWithIdentifier(identifier, child))
-        .find((value: Node | undefined) => value !== undefined)
+export function findNodesWithName(name: string, root: Node): Node[] {
+    return applyFilters(
+        [new Filter('', (node: Node) => node.name.toLowerCase().includes(name.toLowerCase()))],
+        root
+    )
 }
 
-export function findNodesWithIdentifiers(identifiers: string[], root: Node): Node[] {
+export function findNodeEqualingIdentifier(identifier: string, root: Node): Node | undefined {
+    return (
+        applyFilters([new Filter('', (node: Node) => node.identifier === identifier)], root)[0] ??
+        undefined
+    )
+}
+
+export function findNodesEqualingAnyIdentifier(identifiers: string[], root: Node): Node[] {
     return identifiers
-        .map((identifier: string) => findNodeWithIdentifier(identifier, root))
+        .map((identifier: string) => findNodeEqualingIdentifier(identifier, root))
         .filter((mapResult: Node | undefined) => mapResult !== undefined) as Node[]
 }
 
-export function findNodesWithIdentifier(identifier: string, root: Node): Node[] {
-    const result: Node[] = []
-
-    if (root.identifier.toLowerCase().includes(identifier.toLowerCase())) {
-        result.push(root)
-    }
-
-    return root.children.reduce(
-        (currentArray, child) => currentArray.concat(findNodesWithIdentifier(identifier, child)),
-        result
+export function findNodesIncludingIdentifier(identifier: string, root: Node): Node[] {
+    return applyFilters(
+        [
+            new Filter('', (node: Node) =>
+                node.identifier.toLowerCase().includes(identifier.toLowerCase())
+            )
+        ],
+        root
     )
 }
 
