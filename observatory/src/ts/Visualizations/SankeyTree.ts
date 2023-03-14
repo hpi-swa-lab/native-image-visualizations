@@ -392,18 +392,14 @@ export class SankeyTree implements MultiverseVisualization {
         nodeEnter: Selection<SVGGElement, SankeyHierarchyPointNode, SVGGElement, unknown>,
         universeMetadata: UniverseMetadata
     ) {
-        const minSize = 20
+        const minSize = d3NodeHeight
         const getBarHeight = (b: Bytes) => {
-            // const res = Math.max(minSize, (inMB(b) * minSize));
-            const res = minSize + inMB(b) * minSize
-            return res
+            return minSize + inMB(b) * minSize
         }
 
         return nodeEnter
             .append('rect')
-            .attr('width', function () {
-                return minSize
-            })
+            .attr('width', minSize)
             .attr('height', (d: SankeyHierarchyPointNode) => getBarHeight(d.data.codeSize))
             .attr('y', (d: SankeyHierarchyPointNode) =>
                 d.data ? -getBarHeight(d.data.codeSize) / 2 : 0

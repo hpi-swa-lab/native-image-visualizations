@@ -29,7 +29,7 @@ const tooltipModel = reactive(new TooltipModel())
 const multiverse = computed(() => globalStore.multiverse)
 const currentLayer = computed(() => globalStore.currentLayer)
 const highlights = computed(() => globalStore.highlights)
-const selection = computed(() => globalStore.selections)
+const selections = computed(() => globalStore.selections)
 const nodesFilter = computed(() => sankeyStore.nodesFilter)
 
 const infoText = [
@@ -73,7 +73,7 @@ watch(
     { deep: true }
 )
 watch(
-    selection,
+    selections,
     (newSelection) => {
         visualization.setSelection(newSelection as Set<string>)
     },
