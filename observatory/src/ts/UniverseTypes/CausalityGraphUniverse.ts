@@ -366,7 +366,7 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
                     if (semanticBreakoutIndexes.some((i) => i !== -1 && i < dotIndex)) break
 
                     const newNode = {
-                        cg_only: true,
+                        cgOnly: true,
                         fullname: cgNodeName.substring(0, offset + dotIndex),
                         name: name.substring(0, dotIndex),
                         children: [],
@@ -389,7 +389,7 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
                 }
 
                 const newNode = {
-                    cg_only: true,
+                    cgOnly: true,
                     fullname: cgNodeName,
                     name: name,
                     cgNode: i,
