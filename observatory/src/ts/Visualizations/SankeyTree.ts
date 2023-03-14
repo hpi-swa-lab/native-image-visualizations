@@ -233,9 +233,9 @@ export class SankeyTree implements MultiverseVisualization {
     private markNodesModifiedFromLeaves(leaves: Node[]) {
         this.modifiedNodes = []
 
-        for (const leave of leaves) {
-            if (leave.sources.size !== 1) continue
-            this.markNodeModified(leave)
+        for (const leaf of leaves) {
+            if (leaf.sources.size !== 1) continue
+            this.markNodeModified(leaf)
         }
     }
     private markNodeModified(node: Node) {
@@ -247,24 +247,24 @@ export class SankeyTree implements MultiverseVisualization {
     private filterNodesFromLeaves(leaves: Node[], filter: NodesFilter) {
         this.filteredNodes = []
 
-        for (const leave of leaves) {
-            if (leave.sources.size < 1) continue
+        for (const leaf of leaves) {
+            if (leaf.sources.size < 1) continue
             if (filter.diffing.showUnmodified) {
                 if (
-                    !this.modifiedNodes.includes(leave) ||
-                    Array.from(leave.sources).every(([universeId]) =>
+                    !this.modifiedNodes.includes(leaf) ||
+                    Array.from(leaf.sources).every(([universeId]) =>
                         this.sankeyStore.isUniverseFiltered(universeId)
                     )
                 ) {
-                    this.markNodeFiltered(leave)
+                    this.markNodeFiltered(leaf)
                 }
             } else if (
-                this.modifiedNodes.includes(leave) &&
-                Array.from(leave.sources).every(([universeId]) =>
+                this.modifiedNodes.includes(leaf) &&
+                Array.from(leaf.sources).every(([universeId]) =>
                     this.sankeyStore.isUniverseFiltered(universeId)
                 )
             ) {
-                this.markNodeFiltered(leave)
+                this.markNodeFiltered(leaf)
             }
         }
     }
