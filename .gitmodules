@@ -1,0 +1,3 @@
+[submodule "graal"]
+	path = graal
+	url = git@github.com:hpi-swa-lab/MPWS2022RH1-graalvm.git
