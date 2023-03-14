@@ -679,8 +679,8 @@ class IncrementalBfs
     {
         auto& method_visited = r.method_inhibited;
         size_t root_methods_capacity = std::accumulate(depurge.begin(), depurge.end(), size_t(0), [](size_t acc, const auto& node){ return acc + node.mids.size(); });
-        method_id root_methods[root_methods_capacity];
-        size_t root_methods_size = 0;
+        vector<method_id> root_methods;
+        root_methods.reserve(root_methods_capacity);
 
         for(const PurgeTreeNode& node : depurge)
         {
@@ -701,12 +701,12 @@ class IncrementalBfs
                         })
                         )
                 {
-                    root_methods[root_methods_size++] = mid;
+                    root_methods.push_back(mid);
                 }
             }
         }
 
-        auto incremental_changes = r.run<false, true>(adj, {root_methods, root_methods + root_methods_size}, false);
+        auto incremental_changes = r.run<false, true>(adj, root_methods, false);
         state.emplace(stillpurge, depurge, std::move(incremental_changes));
     };
 
