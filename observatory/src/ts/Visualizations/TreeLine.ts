@@ -21,7 +21,7 @@ import { Filter } from '../SharedTypes/Filters'
 
 const LINE_WIDTH = 256
 const LINE_PADDING = 16
-const HIERARCHY_GAPS = 2
+const HIERARCHY_GAPS = 4
 
 // Info areas correspond to interactive parts of the layout. They are used by
 // tooltips.
@@ -61,9 +61,17 @@ export class TreeLine implements MultiverseVisualization {
     transform = { y: 0, k: 1 }
     infoAreas = [] as InfoArea[]
 
-    constructor(container: HTMLDivElement, colorScheme: ColorScheme, filters: Filter[]) {
+    constructor(
+        container: HTMLDivElement,
+        colorScheme: ColorScheme,
+        highlights: Set<string>,
+        selection: Set<string>,
+        filters: Filter[]
+    ) {
         this.colorScheme = colorScheme
         this.filters = filters
+        this.highlights = highlights
+        this.selection = selection
 
         this.canvas = document.createElement('canvas') as HTMLCanvasElement
         container.appendChild(this.canvas)
@@ -98,9 +106,9 @@ export class TreeLine implements MultiverseVisualization {
         this.redraw()
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     public setSelection(selection: Set<string>): void {
-        // TODO; https://github.com/hpi-swa-lab/MPWS2022RH1/issues/118
+        this.selection = selection
+        this.redraw()
     }
 
     public setHighlights(highlights: Set<string>): void {
@@ -320,6 +328,14 @@ export class TreeLine implements MultiverseVisualization {
         const boxWidth = textWidth + 2 * TEXT_HORIZONTAL_PADDING
 
         const isFaded = this.highlights.size > 0 && !this.highlights.has(node.identifier)
+        const isBordered = this.selection.size > 0 && this.selection.has(node.identifier)
+
+        if (isBordered) {
+            this.context.lineWidth = HIERARCHY_GAPS * 2
+            this.context.strokeRect(left, top, boxWidth, height - HIERARCHY_GAPS)
+            this.context.strokeStyle = 'black'
+        }
+
         if (containingCombinations.length > 1) {
             this.context.fillStyle = isFaded
                 ? lightenColor(DEFAULT_FILL_STYLE, 0.5)
