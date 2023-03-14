@@ -176,11 +176,11 @@ export class SankeyTree implements MultiverseVisualization {
         // Reason: expects HierarchyPointNode<T> but it's actually SankeyHierarchyPointNode
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
-        this.tree.root.descendants().forEach((d: SankeyHierarchyPointNode, i: number) => {
-            d.id = i.toString()
-            d._children = d.children
+        this.tree.root.descendants().forEach((vizNode: SankeyHierarchyPointNode, i: number) => {
+            vizNode.id = i.toString()
+            vizNode._children = vizNode.children
             // only expand the first level of children
-            if (d.depth > 0) d.children = undefined
+            if (vizNode.depth > 0) vizNode.children = undefined
         })
 
         // clear the selections, to redraw the change in a node's color and nodeSize
@@ -311,9 +311,9 @@ export class SankeyTree implements MultiverseVisualization {
         // Reason: expects HierarchyPointNode<T> but it's actually SankeyHierarchyPointNode
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
-        tree.root.eachBefore((d: SankeyHierarchyPointNode) => {
-            d.x0 = d.x
-            d.y0 = d.y
+        tree.root.eachBefore((vizNode: SankeyHierarchyPointNode) => {
+            vizNode.x0 = vizNode.x
+            vizNode.y0 = vizNode.y
         })
 
         const transition = containerSelections.zoomG
@@ -326,26 +326,26 @@ export class SankeyTree implements MultiverseVisualization {
                     : () => () => containerSelections.zoomG.dispatch('toggle')
             )
 
-        const node = containerSelections.gNode.selectAll('g').data(nodes, (d: any) => d.id)
+        const node = containerSelections.gNode.selectAll('g').data(nodes, (vizNode: any) => vizNode.id)
 
         const nodeEnter = this.enterNode(
             node,
             sourceNode,
-            (evt: MouseEvent, d: SankeyHierarchyPointNode) => {
-                toggleChildren(d, evt.shiftKey, this.filteredNodes)
-                this.redraw(evt, d, tree, containerSelections, universeMetadata)
+            (evt: MouseEvent, vizNode: SankeyHierarchyPointNode) => {
+                toggleChildren(vizNode, evt.shiftKey, this.filteredNodes)
+                this.redraw(evt, vizNode, tree, containerSelections, universeMetadata)
             }
         )
         const nodeEnterShape = this.appendShapeToNode(nodeEnter, universeMetadata)
         nodeEnterShape
-            .on('mouseover', (event: MouseEvent, d: SankeyHierarchyPointNode) => {
-                this.tooltip.updateContent(asHTML(d, this.metadata))
+            .on('mouseover', (event: MouseEvent, vizNode: SankeyHierarchyPointNode) => {
+                this.tooltip.updateContent(asHTML(vizNode, this.metadata))
                 this.tooltip.display()
             })
-            .on('mousemove', (event: MouseEvent, _d: SankeyHierarchyPointNode) =>
+            .on('mousemove', (event: MouseEvent, _vizNode: SankeyHierarchyPointNode) =>
                 this.tooltip.updatePosition(event.pageX, event.pageY)
             )
-            .on('mouseout', (_event: MouseEvent, _d: SankeyHierarchyPointNode) =>
+            .on('mouseout', (_event: MouseEvent, _vizNode: SankeyHierarchyPointNode) =>
                 this.tooltip.hide()
             )
 
@@ -357,12 +357,12 @@ export class SankeyTree implements MultiverseVisualization {
 
         const linkGenerator = d3
             .linkHorizontal<HierarchyPointLink<Node>, SankeyHierarchyPointNode>()
-            .x((d: SankeyHierarchyPointNode) => d.y)
-            .y((d: SankeyHierarchyPointNode) => d.x)
+            .x((vizNode: SankeyHierarchyPointNode) => vizNode.y)
+            .y((vizNode: SankeyHierarchyPointNode) => vizNode.x)
 
         const link = containerSelections.gLink
             .selectAll('path')
-            .data(links, (d: any) => d.target.id)
+            .data(links, (vizLink: any) => vizLink.target.id)
 
         const linkEnter = this.enterLink(link, linkGenerator, sourceNode)
 
@@ -374,7 +374,7 @@ export class SankeyTree implements MultiverseVisualization {
     private enterNode(
         node: Selection<BaseType, any, SVGGElement, unknown>,
         sourceNode: SankeyHierarchyPointNode,
-        onClickCallback: (evt: MouseEvent, d: SankeyHierarchyPointNode) => void
+        onClickCallback: (evt: MouseEvent, vizNode: SankeyHierarchyPointNode) => void
     ) {
         // Enter any new nodes at the parent's previous position.
         return node
@@ -383,8 +383,8 @@ export class SankeyTree implements MultiverseVisualization {
             .attr('transform', () => `translate(${sourceNode.y0 ?? 0},${sourceNode.x0 ?? 0})`)
             .attr('fill-opacity', 0)
             .attr('stroke-opacity', 0)
-            .on('click', (evt: MouseEvent, d: SankeyHierarchyPointNode) => {
-                onClickCallback(evt, d)
+            .on('click', (evt: MouseEvent, vizNode: SankeyHierarchyPointNode) => {
+                onClickCallback(evt, vizNode)
             })
     }
 
@@ -400,14 +400,14 @@ export class SankeyTree implements MultiverseVisualization {
         return nodeEnter
             .append('rect')
             .attr('width', minSize)
-            .attr('height', (d: SankeyHierarchyPointNode) => getBarHeight(d.data.codeSize))
-            .attr('y', (d: SankeyHierarchyPointNode) =>
-                d.data ? -getBarHeight(d.data.codeSize) / 2 : 0
+            .attr('height', (vizNode: SankeyHierarchyPointNode) => getBarHeight(vizNode.data.codeSize))
+            .attr('y', (vizNode: SankeyHierarchyPointNode) =>
+                vizNode.data ? -getBarHeight(vizNode.data.codeSize) / 2 : 0
             )
-            .style('fill', (d: HierarchyPointNode<Node>) => {
-                if (d.data.sources.size == 1) {
-                    return universeMetadata[Array.from(d.data.sources.keys())[0]]?.color
-                } else if (this.modifiedNodes.includes(d.data)) {
+            .style('fill', (vizNode: HierarchyPointNode<Node>) => {
+                if (vizNode.data.sources.size == 1) {
+                    return universeMetadata[Array.from(vizNode.data.sources.keys())[0]]?.color
+                } else if (this.modifiedNodes.includes(vizNode.data)) {
                     return this.sankeyStore.colorModified
                 } else {
                     return this.sankeyStore.colorUnmodified
@@ -422,11 +422,11 @@ export class SankeyTree implements MultiverseVisualization {
         return nodeEnter
             .append('text')
             .attr('dy', '0.31em')
-            .attr('x', (d: SankeyHierarchyPointNode) =>
-                d._children ? positionOffset.start : positionOffset.end
+            .attr('x', (vizNode: SankeyHierarchyPointNode) =>
+                vizNode._children ? positionOffset.start : positionOffset.end
             )
-            .attr('text-anchor', (d: SankeyHierarchyPointNode) => (d._children ? 'end' : 'start'))
-            .text((d: SankeyHierarchyPointNode) => d.data.name)
+            .attr('text-anchor', (vizNode: SankeyHierarchyPointNode) => (vizNode._children ? 'end' : 'start'))
+            .text((vizNode: SankeyHierarchyPointNode) => vizNode.data.name)
             .clone(true)
             .lower()
             .attr('stroke-linejoin', 'round')
@@ -443,7 +443,7 @@ export class SankeyTree implements MultiverseVisualization {
         return node
             .merge(nodeEnter)
             .transition(transition)
-            .attr('transform', (d: SankeyHierarchyPointNode) => `translate(${d.y},${d.x})`)
+            .attr('transform', (vizNode: SankeyHierarchyPointNode) => `translate(${vizNode.y},${vizNode.x})`)
             .attr('fill-opacity', 1)
             .attr('stroke-opacity', 1)
     }
@@ -476,13 +476,13 @@ export class SankeyTree implements MultiverseVisualization {
                 const o = { x: sourceNode.x0, y: sourceNode.y0 }
                 return linkGenerator({ source: o, target: o } as any)
             })
-            .attr('stroke-width', (d: HierarchyPointLink<Node>) =>
-                Math.max(1, inMB(d.target.data.codeSize) * d3NodeHeight)
+            .attr('stroke-width', (vizLink: HierarchyPointLink<Node>) =>
+                Math.max(1, inMB(vizLink.target.data.codeSize) * d3NodeHeight)
             )
-            .attr('stroke', (d: HierarchyPointLink<Node>) =>
-                this.modifiedNodes.includes(d.target.data)
-                    ? d.target.data.sources.size === 1
-                        ? this.metadata[d.target.data.sources.keys().next().value].color
+            .attr('stroke', (vizLink: HierarchyPointLink<Node>) =>
+                this.modifiedNodes.includes(vizLink.target.data)
+                    ? vizLink.target.data.sources.size === 1
+                        ? this.metadata[vizLink.target.data.sources.keys().next().value].color
                         : this.sankeyStore.colorModified
                     : this.sankeyStore.colorUnmodified
             )
@@ -498,9 +498,9 @@ export class SankeyTree implements MultiverseVisualization {
         return link
             .merge(linkEnter)
             .transition(transition)
-            .attr('d', (d: any) => {
-                const targetsIndex = d.source.children.indexOf(d.target)
-                let sourceX = d.source.children
+            .attr('d', (vizLink: any) => {
+                const targetsIndex = vizLink.source.children.indexOf(vizLink.target)
+                let sourceX = vizLink.source.children
                     .map((child: SankeyHierarchyPointNode, index: number) => {
                         if (index >= targetsIndex) return 0
                         return child.data ? inMB(child.data.codeSize) * d3NodeHeight : 0
@@ -508,10 +508,10 @@ export class SankeyTree implements MultiverseVisualization {
                     .reduce((a: any, b: any, _c: number) => {
                         return a + b
                     })
-                sourceX += d.source.x - (inMB(d.source.data.codeSize) * d3NodeHeight) / 2
-                sourceX += (inMB(d.target.data.codeSize) * d3NodeHeight) / 2
-                const source = { x: sourceX, y: d.source.y0 }
-                return linkGenerator({ source: source, target: d.target } as any)
+                sourceX += vizLink.source.x - (inMB(vizLink.source.data.codeSize) * d3NodeHeight) / 2
+                sourceX += (inMB(vizLink.target.data.codeSize) * d3NodeHeight) / 2
+                const source = { x: sourceX, y: vizLink.source.y0 }
+                return linkGenerator({ source: source, target: vizLink.target } as any)
             })
     }
 

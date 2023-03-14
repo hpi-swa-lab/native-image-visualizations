@@ -45,11 +45,11 @@ export function newApplyFilterEvent(filter: NodesFilter) {
     })
 }
 
-export function getCodeSizeFromLeaves(node: SankeyHierarchyPointNode): number {
-    if (!node._children) {
-        return node.data.codeSize
+export function getCodeSizeFromLeaves(vizNode: SankeyHierarchyPointNode): number {
+    if (!vizNode._children) {
+        return vizNode.data.codeSize
     }
-    return node._children.reduce(
+    return vizNode._children.reduce(
         (sum: number, child: SankeyHierarchyPointNode) => sum + getCodeSizeFromLeaves(child),
         0
     )
@@ -60,49 +60,49 @@ export function getCodeSizeFromLeaves(node: SankeyHierarchyPointNode): number {
 // #################################################################################################
 
 export function toggleChildren(
-    d: SankeyHierarchyPointNode,
+    vizNode: SankeyHierarchyPointNode,
     doToggleBranch: boolean,
     filteredNodes: Node[]
 ) {
-    if (!d._children) return
+    if (!vizNode._children) return
 
-    d.children
-        ? collapseChildren(d)
-        : (d.children = d._children.filter((child: SankeyHierarchyPointNode) =>
+    vizNode.children
+        ? collapseChildren(vizNode)
+        : (vizNode.children = vizNode._children.filter((child: SankeyHierarchyPointNode) =>
               filteredNodes.includes(child.data)
           ))
 
-    if (d.children && doToggleBranch) {
-        for (const child of d.children) {
+    if (vizNode.children && doToggleBranch) {
+        for (const child of vizNode.children) {
             toggleChildren(child, doToggleBranch, filteredNodes)
         }
     }
 }
 
-export function collapseChildren(d: SankeyHierarchyPointNode) {
-    if (!d.children) return
+export function collapseChildren(vizNode: SankeyHierarchyPointNode) {
+    if (!vizNode.children) return
 
-    d.children.forEach((child: SankeyHierarchyPointNode) => collapseChildren(child))
-    d.children = undefined
+    vizNode.children.forEach((child: SankeyHierarchyPointNode) => collapseChildren(child))
+    vizNode.children = undefined
 }
 
 // #################################################################################################
 // ##### FILTERING #################################################################################
 // #################################################################################################
 
-export function filterDiffingUniverses(node: SankeyHierarchyPointNode, filteredNodes: Node[]) {
-    if (!node._children) return
-    return node._children.filter((child: SankeyHierarchyPointNode) =>
+export function filterDiffingUniverses(vizNode: SankeyHierarchyPointNode, filteredNodes: Node[]) {
+    if (!vizNode._children) return
+    return vizNode._children.filter((child: SankeyHierarchyPointNode) =>
         filteredNodes.includes(child.data)
     )
 }
 
-export function sortPrivateChildren(node: SankeyHierarchyPointNode, filter: NodesSortingFilter) {
+export function sortPrivateChildren(vizNode: SankeyHierarchyPointNode, filter: NodesSortingFilter) {
     // Reason: the problem "'boolean' is not assignable to 'number'" is caused by
     // the fix for Chrome
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
-    return node._children?.sort((a: SankeyHierarchyPointNode, b: SankeyHierarchyPointNode) => {
+    return vizNode._children?.sort((a: SankeyHierarchyPointNode, b: SankeyHierarchyPointNode) => {
         const valueA = getSortingValue(a, filter)
         const valueB = getSortingValue(b, filter)
         if (filter.option !== SortingOption.NAME && valueA === valueB) {
@@ -114,12 +114,12 @@ export function sortPrivateChildren(node: SankeyHierarchyPointNode, filter: Node
     })
 }
 
-function getSortingValue(node: SankeyHierarchyPointNode, filter: NodesSortingFilter) {
+function getSortingValue(vizNode: SankeyHierarchyPointNode, filter: NodesSortingFilter) {
     switch (filter.option) {
         case SortingOption.NAME:
-            return node.data.name
+            return vizNode.data.name
         case SortingOption.SIZE:
-            return node.data.codeSize
+            return vizNode.data.codeSize
     }
 }
 
@@ -127,8 +127,8 @@ function getSortingValue(node: SankeyHierarchyPointNode, filter: NodesSortingFil
 // ##### OTHER #####################################################################################
 // #################################################################################################
 
-export function asHTML(d: SankeyHierarchyPointNode, metadata: UniverseMetadata) {
-    const node: Node = d.data
+export function asHTML(vizNode: SankeyHierarchyPointNode, metadata: UniverseMetadata) {
+    const node: Node = vizNode.data
     return `<b>Exists in</b>: ${Array.from(node.sources.keys())
         .map((uniIndex) => metadata[uniIndex].name)
         .join(', ')}
