@@ -204,7 +204,10 @@ export class VennSets implements MultiverseVisualization {
             [...groups.entries()]
                 .map((group: Array<unknown>) => group[0] as string)
                 .sort()
-                .map((group: string, index: number) => [group, this.colorScheme[index]])
+                .map((group: string, index: number) => [
+                    group,
+                    this.colorScheme[index % this.colorScheme.length]
+                ])
         )
 
         this.nodeHierarchy = d3
