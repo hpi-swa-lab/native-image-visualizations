@@ -42,10 +42,9 @@ export const UNMODIFIED = 'UNMODIFIED'
 export const MAX_OBSERVED_UNIVERSES_FOR_SANKEY_TREE = 2
 export const ROOT_NODE_NAME = 'root'
 
-const d3NodeHeight = 20
-let d3NodeWidth = 0
-
-const TRANSITION_DURATION = 500
+const D3_NODE_HEIGHT = 20
+const D3_NODE_WIDTH = 350
+const TRANSITION_DURATION = 250
 
 export class SankeyTree implements MultiverseVisualization {
     colorScheme: ColorScheme = []
@@ -138,8 +137,6 @@ export class SankeyTree implements MultiverseVisualization {
             width: 1280,
             height: 720
         }
-
-        d3NodeWidth = bounds.width / 5
 
         const svg = d3
             .select(containerSelector)
@@ -237,7 +234,7 @@ export class SankeyTree implements MultiverseVisualization {
         const tree: SankeyTreeCompound = {
             layout: d3
                 .tree()
-                .nodeSize([d3NodeHeight, d3NodeWidth])
+                .nodeSize([D3_NODE_HEIGHT, D3_NODE_WIDTH])
                 .separation((a, b) => this.getNodeSeparation(a, b)),
             root: hierarchy(nodeTree) as SankeyHierarchyPointNode,
             leaves: Array.from(leaves),
@@ -304,8 +301,6 @@ export class SankeyTree implements MultiverseVisualization {
         containerSelections: ContainerSelections,
         universeMetadata: UniverseMetadata
     ) {
-        const duration = 0
-
         if (event && Object.values(EventType).includes(event.type)) {
             this.handleCustomEvent(event, tree)
         }
@@ -331,7 +326,7 @@ export class SankeyTree implements MultiverseVisualization {
 
         const transition = containerSelections.zoomGroup
             .transition()
-            .duration(duration)
+            .duration(TRANSITION_DURATION)
             .tween(
                 'resize',
                 (window.ResizeObserver
@@ -407,7 +402,7 @@ export class SankeyTree implements MultiverseVisualization {
         nodeEnter: Selection<SVGGElement, SankeyHierarchyPointNode, SVGGElement, unknown>,
         universeMetadata: UniverseMetadata
     ) {
-        const minSize = d3NodeHeight
+        const minSize = D3_NODE_HEIGHT
         const getBarHeight = (b: Bytes) => {
             return minSize + inMB(b) * minSize
         }
@@ -499,7 +494,7 @@ export class SankeyTree implements MultiverseVisualization {
                 return linkGenerator({ source: o, target: o } as any)
             })
             .attr('stroke-width', (vizLink: HierarchyPointLink<Node>) =>
-                Math.max(1, inMB(vizLink.target.data.codeSize) * d3NodeHeight)
+                Math.max(1, inMB(vizLink.target.data.codeSize) * D3_NODE_HEIGHT)
             )
             .attr('stroke', (vizLink: HierarchyPointLink<Node>) =>
                 this.modifiedNodes.includes(vizLink.target.data)
@@ -525,14 +520,14 @@ export class SankeyTree implements MultiverseVisualization {
                 let sourceX = vizLink.source.children
                     .map((child: SankeyHierarchyPointNode, index: number) => {
                         if (index >= targetsIndex) return 0
-                        return child.data ? inMB(child.data.codeSize) * d3NodeHeight : 0
+                        return child.data ? inMB(child.data.codeSize) * D3_NODE_HEIGHT : 0
                     })
                     .reduce((a: any, b: any) => {
                         return a + b
                     })
                 sourceX +=
-                    vizLink.source.x - (inMB(vizLink.source.data.codeSize) * d3NodeHeight) / 2
-                sourceX += (inMB(vizLink.target.data.codeSize) * d3NodeHeight) / 2
+                    vizLink.source.x - (inMB(vizLink.source.data.codeSize) * D3_NODE_HEIGHT) / 2
+                sourceX += (inMB(vizLink.target.data.codeSize) * D3_NODE_HEIGHT) / 2
                 const source = { x: sourceX, y: vizLink.source.y0 }
                 return linkGenerator({ source: source, target: vizLink.target } as any)
             })
