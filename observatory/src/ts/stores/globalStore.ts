@@ -263,26 +263,26 @@ export const useGlobalStore = defineStore('globalConfig', {
         hasFilter(filter: Filter): boolean {
             return this.filters.find((existing) => existing.equals(filter)) != undefined
         },
-        isFilterActive(filter: Filter, appliesComplement = false): boolean {
+        isFilterActive(filter: Filter, applyComplement = false): boolean {
             return (
                 this.activeFilters.find(
                     (existing) =>
-                        existing.equals(filter) && existing.applyComplement === appliesComplement
+                        existing.equals(filter) && existing.applyComplement === applyComplement
                 ) != undefined
             )
         },
-        toggleFilter(filter: Filter, appliesComplement = false): void {
+        toggleFilter(filter: Filter, applyComplement = false): void {
             const matchingActiveFilter = this.activeFilters.find((active) => active.equals(filter))
 
             if (matchingActiveFilter) {
                 this.activeFilters.splice(this.activeFilters.indexOf(matchingActiveFilter), 1)
-                if (appliesComplement === matchingActiveFilter.applyComplement) return
-                matchingActiveFilter.applyComplement = appliesComplement
+                if (applyComplement === matchingActiveFilter.applyComplement) return
+                matchingActiveFilter.applyComplement = applyComplement
                 this.activeFilters.push(matchingActiveFilter)
             } else {
                 const matchingFilter = this.filters.find((existing) => existing.equals(filter))
                 if (!matchingFilter) return
-                matchingFilter.applyComplement = appliesComplement
+                matchingFilter.applyComplement = applyComplement
                 this.activeFilters.push(matchingFilter)
             }
         },

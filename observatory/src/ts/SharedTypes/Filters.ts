@@ -4,7 +4,7 @@ export type NodeValidator = (node: Node) => boolean
 
 type serializedFilter = {
     description: string
-    appliesComplement: boolean
+    applyComplement: boolean
     validator: string
     isCustom: boolean
 }
@@ -36,7 +36,7 @@ export class Filter {
         return new Filter(
             serialized.description,
             new Function('return ' + serialized.validator)(),
-            serialized.appliesComplement,
+            serialized.applyComplement,
             serialized.isCustom
         )
     }
@@ -73,8 +73,14 @@ export class Filter {
     }
 
     public serialize(): string {
-        return `{"description":"${this.description}","applyComplement":${
-            this.applyComplement
-        }, "validator":"${this.validator.toString()}", "isCustom":${this.isCustom}}`
+        // making sure, that this has the correct interface
+        const exportDict: serializedFilter = {
+            description: this.description,
+            applyComplement: this.applyComplement,
+            validator: this.validator.toString(),
+            isCustom: this.isCustom
+        }
+
+        return JSON.stringify(exportDict)
     }
 }
