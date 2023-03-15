@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { EventType } from '../../ts/enums/EventType'
 
 const props = withDefaults(
@@ -13,8 +13,14 @@ const props = withDefaults(
 
 const emit = defineEmits([EventType.CHANGE])
 
+const label = computed(() => props.label)
+watch(label, () => {
+    reset()
+})
+
 const inputElement = ref<HTMLInputElement>()
 const inputValue = ref(props.label)
+
 const isEditEnabled = ref<boolean>(false)
 
 function onInputUpdate() {
