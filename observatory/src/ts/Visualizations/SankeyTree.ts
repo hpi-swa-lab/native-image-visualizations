@@ -284,13 +284,8 @@ export class SankeyTree implements MultiverseVisualization {
     ) {
         let duration = 0
 
-        if (event) {
-            if (Object.values(EventType).includes(event.type)) {
-                this.handleCustomEvent(event, tree)
-            } else {
-                // if you press alt / option key, then the collapse/extend animation is much slower
-                duration = event && event.altKey ? 2500 : 250
-            }
+        if (event && Object.values(EventType).includes(event.type)) {
+            this.handleCustomEvent(event, tree)
         }
 
         // Compute the new treeLayout layout.
