@@ -8,6 +8,8 @@ import { SortingOption, SortingOrder } from '../../enums/Sorting'
 import { Node } from '../../UniverseTypes/Node'
 import { formatBytes } from '../../SharedTypes/Size'
 import { EventType } from '../../enums/EventType'
+import { HIERARCHY_NAME_SEPARATOR } from '../../globals'
+import { ROOT_NODE_NAME } from '../SankeyTree'
 
 // #################################################################################################
 // ##### (PRE-)PROCESSING ##########################################################################
@@ -15,7 +17,7 @@ import { EventType } from '../../enums/EventType'
 
 export function createHierarchyFromPackages(node: Node, dataTree: Node, leaves: Set<Node>) {
     let current = dataTree
-    const pathSegments = node.identifier.substring(1).split('.')
+    const pathSegments = node.identifier.substring(1).split(HIERARCHY_NAME_SEPARATOR)
     for (let i = 0; i < pathSegments.length; i++) {
         let child = current.children.find((child) => child.name === pathSegments[i])
         if (child) {
@@ -73,9 +75,7 @@ export function toggleChildren(
           ))
 
     if (vizNode.children && doToggleBranch) {
-        for (const child of vizNode.children) {
-            toggleChildren(child, doToggleBranch, filteredNodes)
-        }
+        vizNode.children.forEach((child) => toggleChildren(child, doToggleBranch, filteredNodes))
     }
 }
 
@@ -106,7 +106,6 @@ export function sortPrivateChildren(vizNode: SankeyHierarchyPointNode, filter: N
         const valueA = getSortingValue(a, filter)
         const valueB = getSortingValue(b, filter)
         if (filter.option !== SortingOption.NAME && valueA === valueB) {
-            // sort alphabetically ascending
             return a.data.name > b.data.name
         }
         // () ? 1 : -1 is a fixes sorting when using Chrome
@@ -120,6 +119,8 @@ function getSortingValue(vizNode: SankeyHierarchyPointNode, filter: NodesSorting
             return vizNode.data.name
         case SortingOption.SIZE:
             return vizNode.data.codeSize
+        default:
+            return vizNode.data.name
     }
 }
 
@@ -137,5 +138,5 @@ export function asHTML(vizNode: SankeyHierarchyPointNode, metadata: UniverseMeta
 }
 
 export function getWithoutRoot(identifier: string) {
-    return identifier.substring(4, identifier.length)
+    return identifier.substring(ROOT_NODE_NAME.length, identifier.length)
 }

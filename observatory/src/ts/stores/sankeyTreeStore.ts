@@ -8,6 +8,7 @@ import {
     serializeNodesSortingFilter
 } from '../SharedTypes/NodesFilter'
 import { useGlobalStore } from './globalStore'
+import {UniverseIndex} from '../SharedTypes/Indices';
 
 export type SankeyStoreConfig = Record<
     string,
@@ -33,7 +34,7 @@ export const useSankeyStore = defineStore('sankeyTreeConfig', {
                 diffing: state.diffingFilter,
                 sorting: state.sortingFilter
             } as NodesFilter),
-        isUniverseFiltered: (state) => (universeId: number) =>
+        isUniverseFiltered: (state) => (universeId: UniverseIndex) =>
             state.diffingFilter.universes.has(universeId),
         isFilteredSortingOption: (state) => (option: string) =>
             option === state.sortingFilter.option,

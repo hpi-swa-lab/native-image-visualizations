@@ -19,7 +19,7 @@ export interface SankeyHierarchyPointNode extends HierarchyPointNode<Node> {
     y0: number // initial position
 }
 
-export type Tree = {
+export type SankeyTreeCompound = {
     layout: d3.TreeLayout<unknown>
     root: SankeyHierarchyPointNode
     leaves: Node[]
@@ -28,9 +28,9 @@ export type Tree = {
 
 export type ContainerSelections = {
     svg: d3.Selection<SVGSVGElement, unknown, HTMLElement, any>
-    zoomG: d3.Selection<SVGGElement, unknown, HTMLElement, any>
-    gNode: d3.Selection<SVGGElement, unknown, HTMLElement, any>
-    gLink: d3.Selection<SVGGElement, unknown, HTMLElement, any>
+    zoomGroup: d3.Selection<SVGGElement, unknown, HTMLElement, any>
+    nodeGroup: d3.Selection<SVGGElement, unknown, HTMLElement, any>
+    linkGroup: d3.Selection<SVGGElement, unknown, HTMLElement, any>
 }
 
 export type NodeTextPositionOffset = {

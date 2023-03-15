@@ -19,7 +19,7 @@ import {
     ContainerSelections,
     NodeTextPositionOffset,
     SankeyHierarchyPointNode,
-    Tree,
+    SankeyTreeCompound,
     UniverseMetadata
 } from '../SharedTypes/SankeyTree'
 import { getNodesOnLevel } from '../Math/filters'
@@ -39,13 +39,12 @@ import { EventType } from '../enums/EventType'
 
 export const UNMODIFIED = 'UNMODIFIED'
 export const MAX_OBSERVED_UNIVERSES_FOR_SANKEY_TREE = 2
+export const ROOT_NODE_NAME = 'root'
 
-// constants
 const d3NodeHeight = 20
 let d3NodeWidth = 0
 
 const TRANSITION_DURATION = 500
-const ROOT_NODE_NAME = 'root'
 
 export class SankeyTree implements MultiverseVisualization {
     colorScheme: ColorScheme = []
@@ -56,7 +55,7 @@ export class SankeyTree implements MultiverseVisualization {
     private layer = Layers.PACKAGES
     private tooltip: TooltipModel
 
-    private tree: Tree = {
+    private tree: SankeyTreeCompound = {
         layout: d3.tree(),
         root: hierarchy(new Node('empty tree', [])) as SankeyHierarchyPointNode,
         leaves: [],
@@ -80,10 +79,9 @@ export class SankeyTree implements MultiverseVisualization {
     }
 
     setMultiverse(multiverse: Multiverse): void {
-        if (multiverse.sources.length <= MAX_OBSERVED_UNIVERSES_FOR_SANKEY_TREE) {
-            this.multiverse = multiverse
-            this.rebuildAndDrawTree(multiverse, this.layer)
-        }
+        if (multiverse.sources.length > MAX_OBSERVED_UNIVERSES_FOR_SANKEY_TREE) return
+        this.multiverse = multiverse
+        this.rebuildAndDrawTree(multiverse, this.layer)
     }
 
     setHighlights(highlights: Set<string>): void {
@@ -110,7 +108,7 @@ export class SankeyTree implements MultiverseVisualization {
         this.redraw(
             newApplyFilterEvent(this.sankeyStore.nodesFilter),
             this.tree.root,
-            this.tree ?? ({} as Tree),
+            this.tree ?? ({} as SankeyTreeCompound),
             this.containerSelections,
             this.metadata
         )
@@ -134,37 +132,30 @@ export class SankeyTree implements MultiverseVisualization {
             .attr('width', bounds.width)
             .attr('height', bounds.height)
 
-        const zoomG = svg
+        const zoomGroup = svg
             .append('g')
             .attr('id', 'zoomG')
             .attr('width', bounds.width)
             .attr('height', bounds.height)
 
-        const zoom = d3.zoom().on('zoom', ({ transform }) => zoomG.attr('transform', transform))
+        const zoom = d3.zoom().on('zoom', ({ transform }) => zoomGroup.attr('transform', transform))
         const transform = d3.zoomIdentity
             .translate((bounds.width * 1) / 5, bounds.height * 0.5)
             .scale(0.5)
 
-        // Reason: because of typing weird error
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        svg.call(zoom.transform, transform)
-        // call(zoom) again to make it panable & zoomable
-        // Reason: because of typing weird error
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        svg.call(zoom)
+        svg.call(zoom.transform as any, transform)
+        svg.call(zoom as any)
 
         return {
             svg: svg,
-            zoomG: zoomG,
-            gLink: zoomG
+            zoomGroup: zoomGroup,
+            linkGroup: zoomGroup
                 .append('g')
                 .attr('fill', 'none')
                 .attr('stroke', '#555')
                 .attr('stroke-opacity', 0.4)
                 .attr('stroke-width', 1.5),
-            gNode: zoomG.append('g').attr('cursor', 'pointer').attr('pointer-events', 'all')
+            nodeGroup: zoomGroup.append('g').attr('cursor', 'pointer').attr('pointer-events', 'all')
         }
     }
 
@@ -185,19 +176,19 @@ export class SankeyTree implements MultiverseVisualization {
         })
 
         // clear the selections, to redraw the change in a node's color and nodeSize
-        this.containerSelections.gNode.selectAll('g > *').remove()
-        this.containerSelections.gLink.selectAll('g > *').remove()
+        this.containerSelections.nodeGroup.selectAll('g > *').remove()
+        this.containerSelections.linkGroup.selectAll('g > *').remove()
 
         this.redraw(
             newApplyFilterEvent(this.sankeyStore.nodesFilter),
             this.tree.root,
-            this.tree ?? ({} as Tree),
+            this.tree ?? ({} as SankeyTreeCompound),
             this.containerSelections,
             this.metadata
         )
     }
 
-    private buildTree(multiverse: Multiverse, layer: Layers): Tree {
+    private buildTree(multiverse: Multiverse, layer: Layers): SankeyTreeCompound {
         const nodeTree: Node = new Node(ROOT_NODE_NAME, [])
 
         const leaves: Set<Node> = new Set()
@@ -216,7 +207,7 @@ export class SankeyTree implements MultiverseVisualization {
             0
         )
 
-        const tree: Tree = {
+        const tree: SankeyTreeCompound = {
             layout: d3
                 .tree()
                 .nodeSize([d3NodeHeight, d3NodeWidth])
@@ -282,7 +273,7 @@ export class SankeyTree implements MultiverseVisualization {
     private redraw(
         event: any | null,
         sourceNode: SankeyHierarchyPointNode,
-        tree: Tree,
+        tree: SankeyTreeCompound,
         containerSelections: ContainerSelections,
         universeMetadata: UniverseMetadata
     ) {
@@ -317,17 +308,17 @@ export class SankeyTree implements MultiverseVisualization {
             vizNode.y0 = vizNode.y
         })
 
-        const transition = containerSelections.zoomG
+        const transition = containerSelections.zoomGroup
             .transition()
             .duration(duration)
             .tween(
                 'resize',
                 window.ResizeObserver
                     ? null
-                    : () => () => containerSelections.zoomG.dispatch('toggle')
+                    : () => () => containerSelections.zoomGroup.dispatch('toggle')
             )
 
-        const node = containerSelections.gNode
+        const node = containerSelections.nodeGroup
             .selectAll('g')
             .data(nodes, (vizNode: any) => vizNode.id)
 
@@ -363,7 +354,7 @@ export class SankeyTree implements MultiverseVisualization {
             .x((vizNode: SankeyHierarchyPointNode) => vizNode.y)
             .y((vizNode: SankeyHierarchyPointNode) => vizNode.x)
 
-        const link = containerSelections.gLink
+        const link = containerSelections.linkGroup
             .selectAll('path')
             .data(links, (vizLink: any) => vizLink.target.id)
 
@@ -383,7 +374,7 @@ export class SankeyTree implements MultiverseVisualization {
         return node
             .enter()
             .append('g')
-            .attr('transform', () => `translate(${sourceNode.y0 ?? 0},${sourceNode.x0 ?? 0})`)
+            .attr('transform', `translate(${sourceNode.y0 ?? 0},${sourceNode.x0 ?? 0})`)
             .attr('fill-opacity', 0)
             .attr('stroke-opacity', 0)
             .on('click', (evt: MouseEvent, vizNode: SankeyHierarchyPointNode) => {
@@ -468,7 +459,7 @@ export class SankeyTree implements MultiverseVisualization {
             .exit()
             .transition(transition)
             .remove()
-            .attr('transform', () => `translate(${sourceNode.y},${sourceNode.x})`)
+            .attr('transform', `translate(${sourceNode.y},${sourceNode.x})`)
             .attr('fill-opacity', 0)
             .attr('stroke-opacity', 0)
     }
@@ -564,7 +555,7 @@ export class SankeyTree implements MultiverseVisualization {
         unselected: unknown,
         selected: unknown
     ) {
-        const visNodes = this.containerSelections.gNode.selectAll('g') as any
+        const visNodes = this.containerSelections.nodeGroup.selectAll('g') as any
         visNodes.selectAll('rect').style(style, unselected)
 
         visNodes
@@ -581,7 +572,7 @@ export class SankeyTree implements MultiverseVisualization {
     // ##### EVENT UTILS - not extractable #########################################################
     // #############################################################################################
 
-    private handleCustomEvent(event: any, tree: Tree) {
+    private handleCustomEvent(event: any, tree: SankeyTreeCompound) {
         if (event.detail.name === EventType.APPLY_FILTER) {
             // Reason: expects HierarchyPointNode<T> but it's actually SankeyHierarchyPointNode
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
