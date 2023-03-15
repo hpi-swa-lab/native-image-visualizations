@@ -38,8 +38,8 @@ export const useSankeyStore = defineStore('sankeyTreeConfig', {
             state.diffingFilter.universes.has(universeId),
         isFilteredSortingOption: (state) => (option: string) =>
             option === state.sortingFilter.option,
-        colorModified: () => useGlobalStore().colorScheme[6],
-        colorUnmodified: () => useGlobalStore().colorScheme[9]
+        colorModified: () => useGlobalStore().colorScheme[6 % useGlobalStore().colorScheme.length],
+        colorUnmodified: () => useGlobalStore().colorScheme[9 % useGlobalStore().colorScheme.length]
     },
     actions: {
         toExportDict(): SankeyStoreConfig {
