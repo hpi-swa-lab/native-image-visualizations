@@ -93,8 +93,9 @@ export class SankeyTree implements MultiverseVisualization {
 
     setHighlights(highlights: Set<string>): void {
         this.highlights = highlights
-        const defaultOpacity = highlights.size == 0 ? 1 : 0.1
-        this.applyStyleForChosen(highlights, 'opacity', defaultOpacity, 1, true)
+        const defaultOpacity = highlights.size == 0 ? 1 : 0.2
+        const areSetsEqual = this.highlights.size === this.highlights.size && [...highlights].every(item => this.highlights.has(item))
+        this.applyStyleForChosen(highlights, 'opacity', defaultOpacity, 1, !areSetsEqual)
     }
 
     public setFilters(filters: Filter[]): void {
@@ -165,7 +166,7 @@ export class SankeyTree implements MultiverseVisualization {
                 .append('g')
                 .attr('fill', 'none')
                 .attr('stroke', '#555')
-                .attr('stroke-opacity', 0.4)
+                .attr('stroke-opacity', 0.3)
                 .attr('stroke-width', 1.5),
             nodeGroup: zoomGroup.append('g').attr('cursor', 'pointer').attr('pointer-events', 'all')
         }
