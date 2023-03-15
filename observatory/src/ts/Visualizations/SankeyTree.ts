@@ -36,6 +36,7 @@ import {
 import { TooltipModel } from './TooltipModel'
 import { useSankeyStore } from '../stores/sankeyTreeStore'
 import { EventType } from '../enums/EventType'
+import {Filter} from "../SharedTypes/Filters";
 
 export const UNMODIFIED = 'UNMODIFIED'
 export const MAX_OBSERVED_UNIVERSES_FOR_SANKEY_TREE = 2
@@ -50,6 +51,7 @@ export class SankeyTree implements MultiverseVisualization {
     colorScheme: ColorScheme = []
     selection: Set<string> = new Set<string>()
     highlights: Set<string> = new Set<string>()
+    filters: Filter[]
     private multiverse: Multiverse = new Multiverse([])
     private metadata: UniverseMetadata = {}
     private layer = Layers.PACKAGES
@@ -74,12 +76,14 @@ export class SankeyTree implements MultiverseVisualization {
         tooltip: TooltipModel,
         highlights: Set<string>,
         selection: Set<string>,
+        filters: Filter[] = []
     ) {
         this.colorScheme = colorScheme
         this.tooltip = tooltip
         this.highlights = highlights
         this.selection = selection
         this.containerSelections = this.initializeContainerSelections(containerSelector)
+        this.filters = filters
     }
 
     setMultiverse(multiverse: Multiverse): void {
@@ -92,6 +96,11 @@ export class SankeyTree implements MultiverseVisualization {
         this.highlights = highlights
         const defaultOpacity = highlights.size == 0 ? 1 : 0.1
         this.applyStyleForChosen(highlights, 'opacity', defaultOpacity, 1, true)
+    }
+
+    public setFilters(filters: Filter[]): void {
+        // TODO implement with #167
+        //  https://github.com/orgs/hpi-swa-lab/projects/1/views/1?pane=issue&itemId=23021330
     }
 
     setSelection(selection: Set<string>): void {
@@ -178,6 +187,7 @@ export class SankeyTree implements MultiverseVisualization {
             vizNode._children = vizNode.children
             // only expand the first level of children
             if (vizNode.depth > 0) vizNode.children = undefined
+            if (vizNode.depth === 0 && vizNode.children) this.expandFistBranchToLeaves(vizNode.children[0])
         })
 
         // clear the selections, to redraw the change in a node's color and nodeSize
