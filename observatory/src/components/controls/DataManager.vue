@@ -145,7 +145,9 @@ async function loadData(zip: JSZip): Promise<string[]> {
                     await loadUniverseData(parsedJSON, universeName)
                 } catch (error: unknown) {
                     if (error instanceof Error) {
-                        errors.push(`Failed loading the universe '${universeName}'`)
+                        errors.push(
+                            `Failed loading the universe '${universeName}' due to the following error: ${error.message}`
+                        )
                     }
                 }
             })
