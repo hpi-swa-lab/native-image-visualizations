@@ -327,7 +327,9 @@ export class SankeyTree implements MultiverseVisualization {
                     : () => () => containerSelections.zoomG.dispatch('toggle')
             )
 
-        const node = containerSelections.gNode.selectAll('g').data(nodes, (vizNode: any) => vizNode.id)
+        const node = containerSelections.gNode
+            .selectAll('g')
+            .data(nodes, (vizNode: any) => vizNode.id)
 
         const nodeEnter = this.enterNode(
             node,
@@ -401,7 +403,9 @@ export class SankeyTree implements MultiverseVisualization {
         return nodeEnter
             .append('rect')
             .attr('width', minSize)
-            .attr('height', (vizNode: SankeyHierarchyPointNode) => getBarHeight(vizNode.data.codeSize))
+            .attr('height', (vizNode: SankeyHierarchyPointNode) =>
+                getBarHeight(vizNode.data.codeSize)
+            )
             .attr('y', (vizNode: SankeyHierarchyPointNode) =>
                 vizNode.data ? -getBarHeight(vizNode.data.codeSize) / 2 : 0
             )
@@ -426,7 +430,9 @@ export class SankeyTree implements MultiverseVisualization {
             .attr('x', (vizNode: SankeyHierarchyPointNode) =>
                 vizNode._children ? positionOffset.start : positionOffset.end
             )
-            .attr('text-anchor', (vizNode: SankeyHierarchyPointNode) => (vizNode._children ? 'end' : 'start'))
+            .attr('text-anchor', (vizNode: SankeyHierarchyPointNode) =>
+                vizNode._children ? 'end' : 'start'
+            )
             .text((vizNode: SankeyHierarchyPointNode) => vizNode.data.name)
             .clone(true)
             .lower()
@@ -444,7 +450,10 @@ export class SankeyTree implements MultiverseVisualization {
         return node
             .merge(nodeEnter)
             .transition(transition)
-            .attr('transform', (vizNode: SankeyHierarchyPointNode) => `translate(${vizNode.y},${vizNode.x})`)
+            .attr(
+                'transform',
+                (vizNode: SankeyHierarchyPointNode) => `translate(${vizNode.y},${vizNode.x})`
+            )
             .attr('fill-opacity', 1)
             .attr('stroke-opacity', 1)
     }
@@ -509,7 +518,8 @@ export class SankeyTree implements MultiverseVisualization {
                     .reduce((a: any, b: any, _c: number) => {
                         return a + b
                     })
-                sourceX += vizLink.source.x - (inMB(vizLink.source.data.codeSize) * d3NodeHeight) / 2
+                sourceX +=
+                    vizLink.source.x - (inMB(vizLink.source.data.codeSize) * d3NodeHeight) / 2
                 sourceX += (inMB(vizLink.target.data.codeSize) * d3NodeHeight) / 2
                 const source = { x: sourceX, y: vizLink.source.y0 }
                 return linkGenerator({ source: source, target: vizLink.target } as any)
