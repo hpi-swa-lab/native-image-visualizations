@@ -9,6 +9,7 @@ import SelectionList from '../controls/SelectionList.vue'
 import { ref } from 'vue'
 import { useGlobalStore } from '../../ts/stores/globalStore'
 import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
+import ModalButton from '../simpleUiElements/ModalButton.vue'
 
 withDefaults(
     defineProps<{
@@ -33,6 +34,11 @@ function toggleSidebarCollapse(): void {
             :class="collapsed ? 'w-0' : 'w-[300px]'"
         >
             <h2 class="text-center">{{ title }}</h2>
+
+            <ModalButton class="btn btn-light">
+                icon="info-circle" button-text="About Us"
+                <template #modal-content>Hey Ho</template>
+            </ModalButton>
 
             <TabLayout
                 :selected-index="

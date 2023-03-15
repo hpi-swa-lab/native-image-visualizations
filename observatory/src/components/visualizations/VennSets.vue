@@ -9,7 +9,7 @@ import { VennSets } from '../../ts/Visualizations/VennSets'
 import { Multiverse } from '../../ts/UniverseTypes/Multiverse'
 import VennControls from '../controls/VennControls.vue'
 import { TooltipModel } from '../../ts/Visualizations/TooltipModel'
-import Tooltip from '../controls/Tooltip.vue'
+import Tooltip from '../simpleUiElements/Tooltip.vue'
 import { SortingOrder } from '../../ts/enums/Sorting'
 import { Filter } from '../../ts/SharedTypes/Filters'
 

@@ -9,10 +9,11 @@ import {
     faArrowLeft,
     faXmark,
     faPlus,
-    faChevronLeft
+    faChevronLeft,
+    faInfoCircle
 } from '@fortawesome/free-solid-svg-icons'
 
-library.add(faFileExport, faArrowLeft, faXmark, faPlus, faChevronLeft)
+library.add(faFileExport, faArrowLeft, faXmark, faPlus, faChevronLeft, faInfoCircle)
 
 const pinia = createPinia()
 const app = createApp(App)

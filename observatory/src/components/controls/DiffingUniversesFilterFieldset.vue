@@ -5,8 +5,8 @@ import {
     UNMODIFIED
 } from '../../ts/constants/SankeyTreeConstants'
 import { UniverseProps } from '../../ts/interfaces/UniverseProps'
-import ColorLabel from './ColorLabel.vue'
-import ToggleSwitch from './ToggleSwitch.vue'
+import ColorLabel from '../simpleUiElements/ColorLabel.vue'
+import ToggleSwitch from '../simpleUiElements/ToggleSwitch.vue'
 import { useSankeyStore } from '../../ts/stores/sankeyTreeStore'
 
 defineProps<{

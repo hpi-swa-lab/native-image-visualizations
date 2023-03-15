@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useGlobalStore } from '../../ts/stores/globalStore'
-import ToggleSwitch from './ToggleSwitch.vue'
+import ToggleSwitch from '../simpleUiElements/ToggleSwitch.vue'
 
 const expanded = ref(false)
 const store = useGlobalStore()
