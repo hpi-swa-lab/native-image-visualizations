@@ -2,7 +2,7 @@
 import { useGlobalStore } from '../../ts/stores/globalStore'
 import ToggleSwitch from './ToggleSwitch.vue'
 
-const MAX_OBSERVABLE_UNIVERSES = 2
+const MAX_OBSERVABLE_UNIVERSES = 5
 
 const store = useGlobalStore()
 

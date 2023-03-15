@@ -71,10 +71,6 @@ export class VennSets implements MultiverseVisualization {
     }
 
     public toggleSelection(event: any, node: Node, selection: Set<string>): void {
-        // as our selection is the toRaw variant of what's in store,
-        // the responding vue won't get an update that selection has changed
-        // which is perfect for us. contrary to higlighting, we aren't changing multiple
-        // nodes, but one at a time. and therefore only need to change the style of one
         if (selection.has(node.identifier)) {
             selection.delete(node.identifier)
         } else {
@@ -208,7 +204,10 @@ export class VennSets implements MultiverseVisualization {
             [...groups.entries()]
                 .map((group: Array<unknown>) => group[0] as string)
                 .sort()
-                .map((group: string, index: number) => [group, this.colorScheme[index]])
+                .map((group: string, index: number) => [
+                    group,
+                    this.colorScheme[index % this.colorScheme.length]
+                ])
         )
 
         this.nodeHierarchy = d3
