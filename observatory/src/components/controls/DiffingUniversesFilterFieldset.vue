@@ -39,15 +39,15 @@ const isRealMultiverse = computed(() => globalStore.multiverse.sources.length ==
             v-for="key in Object.keys(universesMetadata)"
             :id="key"
             :key="key"
-            :value="universesMetadata[key].name"
+            :value="universesMetadata[parseInt(key)].name"
             :checked="sankeyStore.isUniverseFiltered(parseInt(key))"
             :disabled="!isRealMultiverse || isTheOnlyCheckedOption(key)"
             @input="sankeyStore.changeUniverseSelection(parseInt($event.target.id))"
         >
             <ColorLabel
                 :for-element="key"
-                :label="universesMetadata[key].name"
-                :color="universesMetadata[key].color"
+                :label="universesMetadata[parseInt(key)].name"
+                :color="universesMetadata[parseInt(key)].color"
             ></ColorLabel>
         </ToggleSwitch>
 

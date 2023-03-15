@@ -12,7 +12,7 @@ import { UniverseIndex } from '../SharedTypes/Indices'
 
 export type SankeyStoreConfig = Record<
     string,
-    Record<string, boolean | string[]> | Record<string, string>
+    Record<string, boolean | UniverseIndex[]> | Record<string, string>
 >
 
 export const useSankeyStore = defineStore('sankeyTreeConfig', {

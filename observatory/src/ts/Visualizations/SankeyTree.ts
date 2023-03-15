@@ -334,9 +334,9 @@ export class SankeyTree implements MultiverseVisualization {
             .duration(duration)
             .tween(
                 'resize',
-                window.ResizeObserver
+                (window.ResizeObserver
                     ? null
-                    : () => () => containerSelections.zoomGroup.dispatch('toggle')
+                    : () => () => containerSelections.zoomGroup.dispatch('toggle')) as any
             )
 
         const node = containerSelections.nodeGroup
