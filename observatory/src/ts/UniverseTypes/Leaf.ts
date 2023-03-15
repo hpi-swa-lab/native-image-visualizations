@@ -3,9 +3,6 @@ import { InitKind } from '../enums/InitKind'
 import { Node } from './Node'
 
 export class Leaf extends Node {
-    protected _isReflective: boolean
-    protected _isJni: boolean
-    protected _isSynthetic: boolean
     protected _initKinds: InitKind[]
 
     constructor(
@@ -23,22 +20,6 @@ export class Leaf extends Node {
         this._isJni = isJni
         this._isSynthetic = isSynthetic
         this._initKinds = initKinds
-    }
-
-    get isInline(): boolean {
-        return this.codeSize <= 0
-    }
-
-    get isReflective(): boolean {
-        return this._isReflective
-    }
-
-    get isJni(): boolean {
-        return this._isJni
-    }
-
-    get isSynthetic(): boolean {
-        return this._isSynthetic
     }
 
     get initKinds(): InitKind[] {
