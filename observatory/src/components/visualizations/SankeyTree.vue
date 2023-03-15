@@ -5,7 +5,7 @@ import {
     MAX_OBSERVED_UNIVERSES_FOR_SANKEY_TREE,
     SankeyTree
 } from '../../ts/Visualizations/SankeyTree'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import {computed, onMounted, reactive, ref, toRaw, watch} from 'vue'
 import { Multiverse } from '../../ts/UniverseTypes/Multiverse'
 import { EventType } from '../../ts/enums/EventType'
 import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
@@ -41,33 +41,35 @@ const displayInfo = computed(
 )
 
 const metadata = ref<UniverseMetadata>(
-    createUniverseMetadata(globalStore.multiverse as Multiverse, globalStore.colorScheme)
+    createUniverseMetadata(toRaw(globalStore.multiverse) as Multiverse, toRaw(globalStore.colorScheme))
 )
 let visualization: SankeyTree
 
 onMounted(() => {
     visualization = new SankeyTree(
         '#viz-container',
-        globalStore.currentLayer,
-        globalStore.colorScheme,
-        tooltipModel
+        toRaw(globalStore.currentLayer),
+        toRaw(globalStore.colorScheme),
+        tooltipModel,
+        toRaw(globalStore.highlights),
+        globalStore.selections,
     )
     visualization.setMetadata(metadata.value)
-    visualization.setMultiverse(globalStore.multiverse as Multiverse)
+    visualization.setMultiverse(toRaw(globalStore.multiverse) as Multiverse)
 })
 
 watch(multiverse, (newMultiverse) => {
-    metadata.value = createUniverseMetadata(newMultiverse as Multiverse, globalStore.colorScheme)
+    metadata.value = createUniverseMetadata(toRaw(newMultiverse) as Multiverse, toRaw(globalStore.colorScheme))
     visualization.setMetadata(metadata.value)
-    visualization.setMultiverse(newMultiverse as Multiverse)
+    visualization.setMultiverse(toRaw(newMultiverse) as Multiverse)
 })
 watch(currentLayer, (newLayer) => {
-    visualization.setLayer(newLayer)
+    visualization.setLayer(toRaw(newLayer))
 })
 watch(
     highlights,
     (newHighlights) => {
-        visualization.setHighlights(newHighlights as Set<string>)
+        visualization.setHighlights(toRaw(newHighlights) as Set<string>)
     },
     { deep: true }
 )

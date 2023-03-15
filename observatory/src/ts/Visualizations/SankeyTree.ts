@@ -71,10 +71,14 @@ export class SankeyTree implements MultiverseVisualization {
         containerSelector: string,
         layer: Layers,
         colorScheme: ColorScheme,
-        tooltip: TooltipModel
+        tooltip: TooltipModel,
+        highlights: Set<string>,
+        selection: Set<string>,
     ) {
         this.colorScheme = colorScheme
         this.tooltip = tooltip
+        this.highlights = highlights
+        this.selection = selection
         this.containerSelections = this.initializeContainerSelections(containerSelector)
     }
 
@@ -86,12 +90,13 @@ export class SankeyTree implements MultiverseVisualization {
 
     setHighlights(highlights: Set<string>): void {
         this.highlights = highlights
-        this.applyStyleForChosen(highlights, 'opacity', 0.4, 1)
+        const defaultOpacity = highlights.size == 0 ? 1 : 0.1
+        this.applyStyleForChosen(highlights, 'opacity', defaultOpacity, 1, true)
     }
 
     setSelection(selection: Set<string>): void {
         this.selection = selection
-        this.applyStyleForChosen(this.selection, 'display', 'none', 'block')
+        this.applyStyleForChosen(this.selection, 'stroke-width', '0', '5', false)
     }
 
     public setLayer(layer: Layers): void {
@@ -363,6 +368,7 @@ export class SankeyTree implements MultiverseVisualization {
         this.updateLink(link, linkEnter, transition, linkGenerator)
 
         this.exitLink(link, linkGenerator, sourceNode, transition)
+        this.visualizeUserSelections()
     }
 
     private enterNode(
@@ -550,22 +556,28 @@ export class SankeyTree implements MultiverseVisualization {
     }
 
     private applyStyleForChosen(
-        highlights: Set<string>,
+        selection: Set<string>,
         style: string,
         unselected: unknown,
-        selected: unknown
+        selected: unknown,
+        enableTransition: boolean
     ) {
         const visNodes = this.containerSelections.nodeGroup.selectAll('g') as any
         visNodes.selectAll('rect').style(style, unselected)
 
         visNodes
             .filter((node: HierarchyPointNode<Node>) =>
-                highlights.has(getWithoutRoot(node.data.identifier))
+                selection.has(getWithoutRoot(node.data.identifier))
             )
             .selectAll('rect')
             .transition()
-            .duration(TRANSITION_DURATION)
+            .duration(enableTransition ? TRANSITION_DURATION : 0)
             .style(style, selected)
+    }
+
+    private visualizeUserSelections() {
+        this.setSelection(this.selection)
+        this.setHighlights(this.highlights)
     }
 
     // #############################################################################################
