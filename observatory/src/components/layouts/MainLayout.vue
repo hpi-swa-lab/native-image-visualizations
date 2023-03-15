@@ -35,9 +35,9 @@ function toggleSidebarCollapse(): void {
         >
             <h2 class="text-center">{{ title }}</h2>
 
-            <ModalButton class="btn btn-light">
-                icon="info-circle" button-text="About Us"
-                <template #modal-content>Hey Ho</template>
+            <ModalButton button-styling="btn btn-light" icon="info-circle" button-text="About Us">
+                <template #modal-header>About Us</template>
+                <template #modal-content> </template>
             </ModalButton>
 
             <TabLayout
