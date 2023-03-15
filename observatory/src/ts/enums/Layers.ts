@@ -23,3 +23,17 @@ export function deserializeLayer(value: string): Layers | undefined {
 export function layerName(layer: Layers): string {
     return Layers[layer]
 }
+
+export interface LayerExport {
+    value: number
+    name: string
+}
+
+export function getAllLayersWithNames(): LayerExport[] {
+    return [Layers.MODULES, Layers.PACKAGES, Layers.CLASSES, Layers.METHODS].map(
+        (layer: Layers) => ({
+            value: layer,
+            name: layerName(layer).toLowerCase()
+        })
+    )
+}
