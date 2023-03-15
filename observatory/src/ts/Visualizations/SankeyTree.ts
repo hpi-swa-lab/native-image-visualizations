@@ -187,8 +187,11 @@ export class SankeyTree implements MultiverseVisualization {
             vizNode._children = vizNode.children
             // only expand the first level of children
             if (vizNode.depth > 0) vizNode.children = undefined
-            if (vizNode.depth === 0 && vizNode.children) this.expandFistBranchToLeaves(vizNode.children[0])
         })
+
+        if (this.tree.root.children) {
+            this.expandFistBranchToLeaves(this.tree.root.children[0])
+        }
 
         // clear the selections, to redraw the change in a node's color and nodeSize
         this.containerSelections.nodeGroup.selectAll('g > *').remove()
@@ -201,6 +204,15 @@ export class SankeyTree implements MultiverseVisualization {
             this.containerSelections,
             this.metadata
         )
+    }
+
+    private expandFistBranchToLeaves(vizNode: SankeyHierarchyPointNode) {
+        if (!vizNode) return
+        console.log("expand", vizNode.data.name)
+
+        toggleChildren(vizNode, false, this.filteredNodes)
+        if(!vizNode.children) return
+        this.expandFistBranchToLeaves(vizNode.children[0])
     }
 
     private buildTree(multiverse: Multiverse, layer: Layers): SankeyTreeCompound {
@@ -309,7 +321,6 @@ export class SankeyTree implements MultiverseVisualization {
             )
 
         // Stash the old positions for transition
-
         // Reason: expects HierarchyPointNode<T> but it's actually SankeyHierarchyPointNode
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
@@ -373,6 +384,7 @@ export class SankeyTree implements MultiverseVisualization {
         this.updateLink(link, linkEnter, transition, linkGenerator)
 
         this.exitLink(link, linkGenerator, sourceNode, transition)
+
         this.visualizeUserSelections()
     }
 

@@ -3,6 +3,7 @@ import AlertBox from './AlertBox.vue'
 import SortingFilterFieldset from './SortingFilterFieldset.vue'
 import DiffingUniversesFilterFieldset from './DiffingUniversesFilterFieldset.vue'
 import { UniverseMetadata } from '../../ts/SharedTypes/SankeyTree'
+import LayerSelection from './LayerSelection.vue'
 
 const SHORTCUTS = ['shift+click on node expands branch']
 
@@ -18,14 +19,13 @@ withDefaults(
 
 <template>
     <div id="sankey-tree-controls" class="input-container settings-container space-y-4">
-        <form class="space-y-4 border rounded p-2">
+            <LayerSelection />
+
             <DiffingUniversesFilterFieldset
                 :universes-metadata="universesMetadata"
             ></DiffingUniversesFilterFieldset>
 
             <SortingFilterFieldset />
-        </form>
-
         <AlertBox title="Shortcuts" :alert-infos="SHORTCUTS"></AlertBox>
     </div>
 </template>
