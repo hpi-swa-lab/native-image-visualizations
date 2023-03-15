@@ -28,10 +28,9 @@ export function serializeNodesFilter(
 
 export function deserializeNodesFilter(config: Record<string, unknown>): NodesFilter | undefined {
     if (
-        !('diffingUniverses' in config) ||
-        !('diffingShowUnmodified' in config) ||
-        !('sortingOption' in config) ||
-        !('sortingOrder' in config)
+        ['diffingUniverses', 'diffingShowUnmodified', 'sortingOption', 'sortingOrder'].some(
+            (option) => !(option in config)
+        )
     ) {
         return undefined
     }

@@ -93,7 +93,7 @@ async function loadConfigAndData(event: Event) {
     const input = event.target as HTMLInputElement
     if (!input.files) {
         configLoadError.value = Error(
-            'The loading function was triggert, but the input element does not hold any files.'
+            'The loading function was triggered, but the input element does not hold any files.'
         )
         return
     }
@@ -155,49 +155,49 @@ async function loadData(zip: JSZip): Promise<string[]> {
 }
 
 async function loadConfig(zip: JSZip): Promise<string[]> {
+    if (!(`${CONFIG_NAME}.json` in zip.files)) {
+        return [`The config.zip does not include the expected '${CONFIG_NAME}.json' file`]
+    }
+
     const errors: string[] = []
 
-    if (`${CONFIG_NAME}.json` in zip.files) {
-        const rawConfig = await zip.files[`${CONFIG_NAME}.json`].async('string')
-        const config = JSON.parse(rawConfig)
+    const rawConfig = await zip.files[`${CONFIG_NAME}.json`].async('string')
+    const config = JSON.parse(rawConfig)
 
-        const configMappings = [
-            {
-                name: 'venn',
-                store: vennStore
-            },
-            {
-                name: 'sankey',
-                store: sankeyStore
-            },
-            {
-                name: 'treeLine',
-                store: treeLineStore
-            },
-            {
-                name: 'causalityGraph',
-                store: causalityGraphStore
-            },
-            {
-                name: 'global',
-                store: globalStore
-            }
-        ]
+    const configMappings = [
+        {
+            name: 'venn',
+            store: vennStore
+        },
+        {
+            name: 'sankey',
+            store: sankeyStore
+        },
+        {
+            name: 'treeLine',
+            store: treeLineStore
+        },
+        {
+            name: 'causalityGraph',
+            store: causalityGraphStore
+        },
+        {
+            name: 'global',
+            store: globalStore
+        }
+    ]
 
-        configMappings.forEach((mapping) => {
-            if (mapping.name in config) {
-                mapping.store.loadExportDict(config[mapping.name])
-            } else {
-                errors.push(`
+    configMappings.forEach((mapping) => {
+        if (mapping.name in config) {
+            mapping.store.loadExportDict(config[mapping.name])
+        } else {
+            errors.push(`
                     Could not load the ${mapping.name} config, 
                     as the key '${mapping.name}' is not present 
                     in the config
                 `)
-            }
-        })
-    } else {
-        errors.push(`The config.zip does not include the expected '${CONFIG_NAME}.json' file`)
-    }
+        }
+    })
 
     return errors
 }
