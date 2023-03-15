@@ -36,7 +36,7 @@ import {
 import { TooltipModel } from './TooltipModel'
 import { useSankeyStore } from '../stores/sankeyTreeStore'
 import { EventType } from '../enums/EventType'
-import {Filter} from "../SharedTypes/Filters";
+import { Filter } from '../SharedTypes/Filters'
 
 export const UNMODIFIED = 'UNMODIFIED'
 export const MAX_OBSERVED_UNIVERSES_FOR_SANKEY_TREE = 2
@@ -99,6 +99,7 @@ export class SankeyTree implements MultiverseVisualization {
     }
 
     public setFilters(filters: Filter[]): void {
+        this.filters = filters
         // TODO implement with #167
         //  https://github.com/orgs/hpi-swa-lab/projects/1/views/1?pane=issue&itemId=23021330
     }
@@ -208,10 +209,9 @@ export class SankeyTree implements MultiverseVisualization {
 
     private expandFistBranchToLeaves(vizNode: SankeyHierarchyPointNode) {
         if (!vizNode) return
-        console.log("expand", vizNode.data.name)
 
         toggleChildren(vizNode, false, this.filteredNodes)
-        if(!vizNode.children) return
+        if (!vizNode.children) return
         this.expandFistBranchToLeaves(vizNode.children[0])
     }
 
@@ -304,7 +304,7 @@ export class SankeyTree implements MultiverseVisualization {
         containerSelections: ContainerSelections,
         universeMetadata: UniverseMetadata
     ) {
-        let duration = 0
+        const duration = 0
 
         if (event && Object.values(EventType).includes(event.type)) {
             this.handleCustomEvent(event, tree)
@@ -357,12 +357,10 @@ export class SankeyTree implements MultiverseVisualization {
                 this.tooltip.updateContent(asHTML(vizNode, this.metadata))
                 this.tooltip.display()
             })
-            .on('mousemove', (event: MouseEvent, _vizNode: SankeyHierarchyPointNode) =>
+            .on('mousemove', (event: MouseEvent) =>
                 this.tooltip.updatePosition(event.pageX, event.pageY)
             )
-            .on('mouseout', (_event: MouseEvent, _vizNode: SankeyHierarchyPointNode) =>
-                this.tooltip.hide()
-            )
+            .on('mouseout', () => this.tooltip.hide())
 
         this.appendTextToNode(nodeEnter)
 
@@ -529,7 +527,7 @@ export class SankeyTree implements MultiverseVisualization {
                         if (index >= targetsIndex) return 0
                         return child.data ? inMB(child.data.codeSize) * d3NodeHeight : 0
                     })
-                    .reduce((a: any, b: any, _c: number) => {
+                    .reduce((a: any, b: any) => {
                         return a + b
                     })
                 sourceX +=

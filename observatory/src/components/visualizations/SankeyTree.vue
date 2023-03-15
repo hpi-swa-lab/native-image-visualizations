@@ -5,7 +5,7 @@ import {
     MAX_OBSERVED_UNIVERSES_FOR_SANKEY_TREE,
     SankeyTree
 } from '../../ts/Visualizations/SankeyTree'
-import {computed, onMounted, reactive, ref, toRaw, watch} from 'vue'
+import { computed, onMounted, reactive, ref, toRaw, watch } from 'vue'
 import { Multiverse } from '../../ts/UniverseTypes/Multiverse'
 import { EventType } from '../../ts/enums/EventType'
 import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
@@ -41,7 +41,10 @@ const displayInfo = computed(
 )
 
 const metadata = ref<UniverseMetadata>(
-    createUniverseMetadata(toRaw(globalStore.multiverse) as Multiverse, toRaw(globalStore.colorScheme))
+    createUniverseMetadata(
+        toRaw(globalStore.multiverse) as Multiverse,
+        toRaw(globalStore.colorScheme)
+    )
 )
 let visualization: SankeyTree
 
@@ -52,14 +55,17 @@ onMounted(() => {
         toRaw(globalStore.colorScheme),
         tooltipModel,
         toRaw(globalStore.highlights),
-        globalStore.selections,
+        globalStore.selections
     )
     visualization.setMetadata(metadata.value)
     visualization.setMultiverse(toRaw(globalStore.multiverse) as Multiverse)
 })
 
 watch(multiverse, (newMultiverse) => {
-    metadata.value = createUniverseMetadata(toRaw(newMultiverse) as Multiverse, toRaw(globalStore.colorScheme))
+    metadata.value = createUniverseMetadata(
+        toRaw(newMultiverse) as Multiverse,
+        toRaw(globalStore.colorScheme)
+    )
     visualization.setMetadata(metadata.value)
     visualization.setMultiverse(toRaw(newMultiverse) as Multiverse)
 })

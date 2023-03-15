@@ -19,13 +19,13 @@ withDefaults(
 
 <template>
     <div id="sankey-tree-controls" class="input-container settings-container space-y-4">
-            <LayerSelection />
+        <LayerSelection />
 
-            <DiffingUniversesFilterFieldset
-                :universes-metadata="universesMetadata"
-            ></DiffingUniversesFilterFieldset>
+        <DiffingUniversesFilterFieldset
+            :universes-metadata="universesMetadata"
+        ></DiffingUniversesFilterFieldset>
 
-            <SortingFilterFieldset />
+        <SortingFilterFieldset />
         <AlertBox title="Shortcuts" :alert-infos="SHORTCUTS"></AlertBox>
     </div>
 </template>

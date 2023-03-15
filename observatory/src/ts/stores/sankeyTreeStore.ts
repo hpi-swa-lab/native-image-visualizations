@@ -8,7 +8,7 @@ import {
     serializeNodesSortingFilter
 } from '../SharedTypes/NodesFilter'
 import { useGlobalStore } from './globalStore'
-import {UniverseIndex} from '../SharedTypes/Indices';
+import { UniverseIndex } from '../SharedTypes/Indices'
 
 export type SankeyStoreConfig = Record<
     string,

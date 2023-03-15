@@ -4,7 +4,7 @@ import {
     SortingOrder,
     sortingOrderForExport
 } from '../enums/Sorting'
-import {UniverseIndex} from './Indices';
+import { UniverseIndex } from './Indices'
 
 export type NodesFilter = {
     diffing: NodesDiffingFilter
