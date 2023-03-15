@@ -1,4 +1,5 @@
 import { ColorScheme } from '../SharedTypes/Colors'
+import { Filter } from '../SharedTypes/Filters'
 
 /**
  * Side Notes:
@@ -12,7 +13,9 @@ export interface Visualization {
     colorScheme: ColorScheme
     selection: Set<string>
     highlights: Set<string>
+    filters: Filter[]
 
     setSelection(selection: Set<string>): void
     setHighlights(highlights: Set<string>): void
+    setFilters(filters: Filter[]): void
 }
