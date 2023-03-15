@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { Universe } from '../../ts/UniverseTypes/Universe'
 import { CausalityGraphUniverse } from '../../ts/UniverseTypes/CausalityGraphUniverse'
-import { loadJson, loadCgZip, parseReachabilityExport, ReachabilityJson } from '../../ts/parsing'
+import { loadJson, loadCgZip, parseReachabilityExport } from '../../ts/parsing'
 import { useGlobalStore, CONFIG_NAME } from '../../ts/stores/globalStore'
 import { useVennStore } from '../../ts/stores/vennStore'
 import { useSankeyStore } from '../../ts/stores/sankeyTreeStore'
