@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { deserializeSortingOrder, SortingOrder } from '../enums/Sorting'
+import { loadStringParameter } from './helpers'
 
 export type VennConfig = Record<string, unknown>
 
@@ -14,13 +15,12 @@ export const useVennStore = defineStore('vennConfig', {
     },
     actions: {
         loadExportDict(config: VennConfig): void {
-            if (config['sortingOrder'] && typeof config['sortingOrder'] === 'string') {
-                const sortingOrder = deserializeSortingOrder(config['sortingOrder'])
-
-                if (sortingOrder) {
-                    this.setSortingOrder(sortingOrder)
-                }
-            }
+            loadStringParameter(
+                'sortingOrder',
+                config,
+                (order: string) => deserializeSortingOrder(order),
+                (order: SortingOrder) => this.setSortingOrder(order)
+            )
         },
         toExportDict(): VennConfig {
             return {

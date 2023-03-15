@@ -22,6 +22,7 @@ import { toRaw } from 'vue'
 import tailwindConfig from '../../../tailwind.config.cjs'
 import resolveConfig from 'tailwindcss/resolveConfig'
 import { Filter } from '../SharedTypes/Filters'
+import { loadStringArrayParameter, loadStringParameter } from './helpers'
 
 const cssConfig = resolveConfig(tailwindConfig)
 
@@ -161,98 +162,91 @@ export const useGlobalStore = defineStore('globalConfig', {
             )
         },
         loadExportDict(config: GlobalConfig) {
-            if (
-                'observedUniverses' in config &&
-                Array.isArray(config['observedUniverses']) &&
-                config['observedUniverses'].every((name) => typeof name === 'string')
-            ) {
-                const observedUniverseNames: string[] = config['observedUniverses']
-                const universes = this.universes as Universe[]
+            loadStringArrayParameter(
+                'observedUniverses',
+                config,
+                (universeNames: string[]) =>
+                    (this.universes as Universe[])
+                        .map((universe: Universe) => universe.name)
+                        .filter((name: string) => universeNames.includes(name)),
+                (universeNames: string[]) =>
+                    universeNames.forEach((name: string) => this.toggleObservationByName(name))
+            )
 
-                universes
-                    .map((universe: Universe) => universe.name)
-                    .filter((name: string) => observedUniverseNames.includes(name))
-                    .forEach((name: string) => {
-                        this.toggleObservationByName(name)
-                    })
-            }
+            loadStringArrayParameter(
+                'selections',
+                config,
+                (selections: string[]) => new Set(selections),
+                (selections: Set<string>) => this.setSelection(selections)
+            )
 
-            if (
-                'selections' in config &&
-                Array.isArray(config['selections']) &&
-                config['selections'].every((selection) => typeof selection === 'string')
-            ) {
-                this.setSelection(new Set(config['selections']))
-            }
+            loadStringArrayParameter(
+                'highlights',
+                config,
+                (highlights: string[]) => new Set(highlights),
+                (highlights: Set<string>) => this.setHighlights(highlights)
+            )
 
-            if (
-                'highlights' in config &&
-                Array.isArray(config['highlights']) &&
-                config['highlights'].every((highlight) => typeof highlight === 'string')
-            ) {
-                this.setHighlights(new Set(config['highlights']))
-            }
+            loadStringParameter(
+                'currentLayer',
+                config,
+                (layerName: string) => deserializeLayer(layerName),
+                (layer: Layers) => this.switchToLayer(layer)
+            )
 
-            if ('currentLayer' in config && typeof config['currentLayer'] === 'string') {
-                const layer = deserializeLayer(config['currentLayer'])
+            loadStringArrayParameter(
+                'colorScheme',
+                config,
+                (colorScheme: string[]) => colorScheme,
+                (colorScheme: string[]) => this.switchColorScheme(colorScheme)
+            )
 
-                if (layer) this.switchToLayer(layer)
-            }
+            loadStringParameter(
+                'currentComponent',
+                config,
+                (componentName: string) => deserializeComponent(componentName),
+                (component: SwappableComponentType) => this.switchToComponent(component)
+            )
 
-            if (
-                'colorScheme' in config &&
-                Array.isArray(config['colorScheme']) &&
-                config['colorScheme'].every((color) => typeof color === 'string')
-            ) {
-                this.switchColorScheme(config['colorScheme'])
-            }
-
-            if ('currentComponent' in config && typeof config['currentComponent'] === 'string') {
-                const component = deserializeComponent(config['currentComponent'])
-
-                if (component) this.switchToComponent(component)
-            }
-
-            if ('previousComponent' in config && typeof config['previousComponent'] === 'string') {
-                const component = deserializeComponent(config['previousComponent'])
-
-                if (component) {
+            loadStringParameter(
+                'previousComponent',
+                config,
+                (componentName: string) => deserializeComponent(componentName),
+                (component: SwappableComponentType) => {
                     this.previousComponent = component
                 }
-            }
+            )
 
-            if ('search' in config && typeof config['search'] === 'string') {
-                this.changeSearch(config['search'])
-            }
+            loadStringParameter(
+                'search',
+                config,
+                (search: string) => search,
+                (search: string) => this.changeSearch(search)
+            )
 
-            if (
-                'filters' in config &&
-                Array.isArray(config['filters']) &&
-                config['filters'].every((filter) => typeof filter === 'string')
-            ) {
-                config['filters']
-                    .map((filter: string) => Filter.parse(filter))
-                    .forEach((filter: Filter) => this.addFilter(filter))
-            }
+            loadStringArrayParameter(
+                'filters',
+                config,
+                (filters: string[]) => filters.map((filter) => Filter.parse(filter)),
+                (filters: Filter[]) => filters.forEach((filter: Filter) => this.addFilter(filter))
+            )
 
-            if (
-                'activeFilters' in config &&
-                Array.isArray(config['activeFilters']) &&
-                config['activeFilters'].every((filter) => typeof filter === 'string')
-            ) {
-                config['activeFilters']
-                    .map((filter: string) => Filter.parse(filter))
-                    .map((filter: Filter) =>
-                        (this.filters as Filter[]).find((existing: Filter) =>
-                            existing.equals(filter)
-                        )
-                    )
-                    .forEach((filter: Filter | undefined) => {
-                        if (filter !== undefined) {
-                            this.toggleFilter(filter)
-                        }
+            loadStringArrayParameter(
+                'filters',
+                config,
+                (filters: string[]) =>
+                    filters
+                        .map((filter) => Filter.parse(filter))
+                        .map((filter: Filter) =>
+                            (this.filters as Filter[]).find((existing: Filter) =>
+                                existing.equals(filter)
+                            )
+                        ),
+                (filters: (Filter | undefined)[]) =>
+                    filters.forEach((filter: Filter | undefined) => {
+                        if (filter !== undefined) this.toggleFilter(filter)
                     })
-            }
+            )
         },
         addFilter(filter: Filter): boolean {
             const matchingFilter = this.filters.find((existing) => existing.equals(filter))
