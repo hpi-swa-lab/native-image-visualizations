@@ -224,6 +224,35 @@ export const useGlobalStore = defineStore('globalConfig', {
             if ('search' in config && typeof config['search'] === 'string') {
                 this.changeSearch(config['search'])
             }
+
+            if (
+                'filters' in config &&
+                Array.isArray(config['filters']) &&
+                config['filters'].every((filter) => typeof filter === 'string')
+            ) {
+                config['filters']
+                    .map((filter: string) => Filter.parse(filter))
+                    .forEach((filter: Filter) => this.addFilter(filter))
+            }
+
+            if (
+                'activeFilters' in config &&
+                Array.isArray(config['activeFilters']) &&
+                config['activeFilters'].every((filter) => typeof filter === 'string')
+            ) {
+                config['activeFilters']
+                    .map((filter: string) => Filter.parse(filter))
+                    .map((filter: Filter) =>
+                        (this.filters as Filter[]).find((existing: Filter) =>
+                            existing.equals(filter)
+                        )
+                    )
+                    .forEach((filter: Filter | undefined) => {
+                        if (filter !== undefined) {
+                            this.toggleFilter(filter)
+                        }
+                    })
+            }
         },
         addFilter(filter: Filter): boolean {
             const matchingFilter = this.filters.find((existing) => existing.equals(filter))
