@@ -31,7 +31,8 @@ import {
     filterDiffingUniverses,
     getWithoutRoot,
     sortPrivateChildren,
-    toggleChildren, toggleSelection
+    toggleChildren,
+    toggleSelection
 } from './utils/SankeyTreeUtils'
 import { TooltipModel } from './TooltipModel'
 import { useSankeyStore } from '../stores/sankeyTreeStore'
@@ -94,8 +95,9 @@ export class SankeyTree implements MultiverseVisualization {
     setHighlights(highlights: Set<string>): void {
         this.highlights = highlights
         const defaultOpacity = highlights.size == 0 ? 1 : 0.2
-        const areSetsEqual = this.highlights.size === this.highlights.size
-            && [...highlights].every(item => this.highlights.has(item))
+        const areSetsEqual =
+            this.highlights.size === this.highlights.size &&
+            [...highlights].every((item) => this.highlights.has(item))
         this.applyStyleForChosen(highlights, 'opacity', defaultOpacity, 1, !areSetsEqual)
     }
 
@@ -169,7 +171,8 @@ export class SankeyTree implements MultiverseVisualization {
                 .attr('stroke', '#555')
                 .attr('stroke-opacity', 0.3)
                 .attr('stroke-width', 1.5),
-            nodeGroup: zoomGroup.append('g')
+            nodeGroup: zoomGroup
+                .append('g')
                 .attr('cursor', 'pointer')
                 .attr('pointer-events', 'all')
                 .attr('stroke', 'black')
@@ -259,6 +262,7 @@ export class SankeyTree implements MultiverseVisualization {
             this.markNodeModified(leaf)
         }
     }
+
     private markNodeModified(node: Node) {
         if (this.modifiedNodes.includes(node)) return
         this.modifiedNodes.push(node)
@@ -289,6 +293,7 @@ export class SankeyTree implements MultiverseVisualization {
             }
         }
     }
+
     private markNodeFiltered(node: Node) {
         if (this.filteredNodes.includes(node)) return
         this.filteredNodes.push(node)
