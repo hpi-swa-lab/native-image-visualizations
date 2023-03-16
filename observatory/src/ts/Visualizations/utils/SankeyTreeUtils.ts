@@ -61,6 +61,15 @@ export function getCodeSizeFromLeaves(vizNode: SankeyHierarchyPointNode): number
 // ##### EVENTS ####################################################################################
 // #################################################################################################
 
+export function toggleSelection(node: Node, selection: Set<string>): void {
+    const identifier = getWithoutRoot(node.identifier)
+    if (selection.has(identifier)) {
+        selection.delete(identifier)
+    } else {
+        selection.add(identifier)
+    }
+}
+
 export function toggleChildren(
     vizNode: SankeyHierarchyPointNode,
     doToggleBranch: boolean,

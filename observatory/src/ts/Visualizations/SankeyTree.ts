@@ -31,7 +31,7 @@ import {
     filterDiffingUniverses,
     getWithoutRoot,
     sortPrivateChildren,
-    toggleChildren
+    toggleChildren, toggleSelection
 } from './utils/SankeyTreeUtils'
 import { TooltipModel } from './TooltipModel'
 import { useSankeyStore } from '../stores/sankeyTreeStore'
@@ -94,7 +94,8 @@ export class SankeyTree implements MultiverseVisualization {
     setHighlights(highlights: Set<string>): void {
         this.highlights = highlights
         const defaultOpacity = highlights.size == 0 ? 1 : 0.2
-        const areSetsEqual = this.highlights.size === this.highlights.size && [...highlights].every(item => this.highlights.has(item))
+        const areSetsEqual = this.highlights.size === this.highlights.size
+            && [...highlights].every(item => this.highlights.has(item))
         this.applyStyleForChosen(highlights, 'opacity', defaultOpacity, 1, !areSetsEqual)
     }
 
@@ -168,7 +169,10 @@ export class SankeyTree implements MultiverseVisualization {
                 .attr('stroke', '#555')
                 .attr('stroke-opacity', 0.3)
                 .attr('stroke-width', 1.5),
-            nodeGroup: zoomGroup.append('g').attr('cursor', 'pointer').attr('pointer-events', 'all')
+            nodeGroup: zoomGroup.append('g')
+                .attr('cursor', 'pointer')
+                .attr('pointer-events', 'all')
+                .attr('stroke', 'black')
         }
     }
 
@@ -343,7 +347,11 @@ export class SankeyTree implements MultiverseVisualization {
             node,
             sourceNode,
             (evt: MouseEvent, vizNode: SankeyHierarchyPointNode) => {
-                toggleChildren(vizNode, evt.shiftKey, this.filteredNodes)
+                if (evt.ctrlKey) {
+                    toggleSelection(vizNode.data, this.selection)
+                } else {
+                    toggleChildren(vizNode, evt.shiftKey, this.filteredNodes)
+                }
                 this.redraw(evt, vizNode, tree, containerSelections, universeMetadata)
             }
         )
