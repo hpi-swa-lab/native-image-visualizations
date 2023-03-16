@@ -15,8 +15,8 @@ export type UniverseMetadata = Record<number, UniverseProps>
 export interface SankeyHierarchyPointNode extends HierarchyPointNode<Node> {
     id: string | undefined // override to remove readonly
     _children: SankeyHierarchyPointNode[] | undefined // backed up children
-    x0: number // initial position
-    y0: number // initial position
+    initialX: number
+    initialY: number
 }
 
 export type SankeyTreeCompound = {

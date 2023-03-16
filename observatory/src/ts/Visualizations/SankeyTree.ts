@@ -330,8 +330,8 @@ export class SankeyTree implements MultiverseVisualization {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
         tree.root.eachBefore((vizNode: SankeyHierarchyPointNode) => {
-            vizNode.x0 = vizNode.x
-            vizNode.y0 = vizNode.y
+            vizNode.initialX = vizNode.x
+            vizNode.initialY = vizNode.y
         })
 
         const transition = containerSelections.zoomGroup
@@ -404,7 +404,7 @@ export class SankeyTree implements MultiverseVisualization {
         return node
             .enter()
             .append('g')
-            .attr('transform', `translate(${sourceNode.y0 ?? 0},${sourceNode.x0 ?? 0})`)
+            .attr('transform', `translate(${sourceNode.initialY ?? 0},${sourceNode.initialX ?? 0})`)
             .attr('fill-opacity', 0)
             .attr('stroke-opacity', 0)
             .on('click', (evt: MouseEvent, vizNode: SankeyHierarchyPointNode) => {
@@ -504,7 +504,7 @@ export class SankeyTree implements MultiverseVisualization {
             .enter()
             .append('path')
             .attr('d', () => {
-                const o = { x: sourceNode.x0, y: sourceNode.y0 }
+                const o = { x: sourceNode.initialX, y: sourceNode.initialY }
                 return linkGenerator({ source: o, target: o } as any)
             })
             .attr('stroke-width', (vizLink: HierarchyPointLink<Node>) =>
