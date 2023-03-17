@@ -232,19 +232,14 @@ export const useGlobalStore = defineStore('globalConfig', {
             )
 
             loadStringArrayParameter(
-                'filters',
+                'activeFilters',
                 config,
-                (filters: string[]) =>
-                    filters
-                        .map((filter) => Filter.parse(filter))
-                        .map((filter: Filter) =>
-                            (this.filters as Filter[]).find((existing: Filter) =>
-                                existing.equals(filter)
-                            )
-                        ),
-                (filters: (Filter | undefined)[]) =>
-                    filters.forEach((filter: Filter | undefined) => {
-                        if (filter !== undefined) this.toggleFilter(filter)
+                (filters: string[]) => filters.map((filter) => Filter.parse(filter)),
+                // note to Luc: the check if the active filter is one of the existing ones
+                // is already done in toggleFilter
+                (filters: Filter[]) =>
+                    filters.forEach((filter: Filter) => {
+                        this.toggleFilter(filter)
                     })
             )
         },
@@ -291,7 +286,9 @@ export const useGlobalStore = defineStore('globalConfig', {
                 observedUniverses: (this.observedUniverses as Universe[]).map(
                     (universe: Universe) => universe.name
                 ),
-                filters: this.filters.map((filter) => filter.serialize()),
+                filters: this.filters
+                    .filter((filter) => filter.isCustom)
+                    .map((filter) => filter.serialize()),
                 activeFilters: this.activeFilters.map((filter) => filter.serialize()),
                 selections: Array.from(this.selections),
                 highlights: Array.from(this.highlights),

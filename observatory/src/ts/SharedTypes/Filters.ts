@@ -4,7 +4,7 @@ export type NodeValidator = (node: Node) => boolean
 
 type serializedFilter = {
     description: string
-    appliesComplement: boolean
+    applyComplement: boolean
     validator: string
     isCustom: boolean
 }
@@ -36,7 +36,7 @@ export class Filter {
         return new Filter(
             serialized.description,
             new Function('return ' + serialized.validator)(),
-            serialized.appliesComplement,
+            serialized.applyComplement,
             serialized.isCustom
         )
     }
@@ -44,7 +44,12 @@ export class Filter {
     static fromSearchTerm(term: string): Filter {
         return new Filter(
             `${term}`,
-            (node) => node.identifier.toLowerCase().includes(term.toLowerCase()),
+            new Function(
+                'return (node) => node.identifier.toLowerCase().includes("term")'.replace(
+                    'term',
+                    term.toLowerCase()
+                )
+            )(),
             false,
             true
         )
@@ -54,7 +59,12 @@ export class Filter {
         const copy = new Set(selection)
         return new Filter(
             `User Selection with ${selection.size} items`,
-            (node) => copy.has(node.identifier),
+            new Function(
+                'return (node) => new Set(copy).has(node.identifier)'.replace(
+                    'copy',
+                    JSON.stringify([...copy])
+                )
+            )(),
             false,
             true
         )
@@ -75,6 +85,8 @@ export class Filter {
     public serialize(): string {
         return `{"description":"${this.description}","applyComplement":${
             this.applyComplement
-        }, "validator":"${this.validator.toString()}", "isCustom":${this.isCustom}}`
+        }, "validator":"${this.validator.toString().replaceAll('"', '\\"')}", "isCustom":"${
+            this.isCustom
+        }"}`
     }
 }
