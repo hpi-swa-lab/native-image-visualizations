@@ -6,37 +6,39 @@ const store = useGlobalStore()
 </script>
 
 <template>
-    <div class="overflow-auto w-full h-[250px]">
-        <label class="ml-1">All | None</label>
-        <div v-for="(filter, index) in store.filters" :key="index">
-            <div class="flex flex-nowrap">
-                <ToggleSwitch
-                    :id="filter.description"
-                    :value="false"
-                    :checked="store.isFilterActive(filter, false)"
-                    role="menuitem"
-                    @change.self="store.toggleFilter(filter, $event)"
-                />
-                <ToggleSwitch
-                    :id="filter.description"
-                    :value="true"
-                    :checked="store.isFilterActive(filter, true)"
-                    role="menuitem"
-                    @change.self="store.toggleFilter(filter, $event)"
-                />
-                <div class="flex-1">
-                    <label class="whitespace-nowrap pt-1" :for="filter.description">{{
-                        filter.description
-                    }}</label>
+    <div class="overflow-auto w-full h-[250px] grid grid-cols-8 relative content-start">
+        <p>All |</p>
+        <p>None</p>
+        <div class="col-start-1 w-fit">
+            <template v-for="(filter, index) in store.filters" :key="index">
+                <div class="flex">
+                    <ToggleSwitch
+                        :id="filter.description"
+                        :value="false"
+                        :checked="store.isFilterActive(filter, false)"
+                        role="menuitem"
+                        @change.self="store.toggleFilter(filter, $event)"
+                    />
+                    <ToggleSwitch
+                        :id="filter.description"
+                        :value="true"
+                        :checked="store.isFilterActive(filter, true)"
+                        role="menuitem"
+                        @change.self="store.toggleFilter(filter, $event)"
+                    />
+
+                    <p class="whitespace-nowrap flex-1 flex-nowrap" :for="filter.description">
+                        {{ filter.description }}
+                    </p>
+                    <button
+                        v-if="filter.isCustom"
+                        class="btn-sm rounded text-xs btn-danger bg-white sticky right-0 m-1"
+                        @click="() => store.removeFilter(filter)"
+                    >
+                        <font-awesome-icon icon="xmark" />
+                    </button>
                 </div>
-                <button
-                    v-if="filter.isCustom"
-                    class="btn-sm rounded my-1 mb-2 text-xs ml-5 btn-danger bg-white sticky right-0"
-                    @click="() => store.removeFilter(filter)"
-                >
-                    <font-awesome-icon icon="xmark" />
-                </button>
-            </div>
+            </template>
         </div>
     </div>
 </template>

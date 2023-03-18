@@ -50,8 +50,8 @@ function toggleSidebarCollapse(): void {
                         <hr />
 
                         <SearchBar />
-                        <FilteringOptions />
                         <SelectionList />
+                        <FilteringOptions />
 
                         <ul class="space-y-2">
                             <slot name="controls"></slot>
