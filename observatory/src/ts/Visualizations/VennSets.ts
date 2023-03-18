@@ -164,7 +164,7 @@ export class VennSets implements MultiverseVisualization {
             .selectAll('text')
             .data(root.children)
             .join('svg:text')
-            .text((node: PackedHierarchyNode) => node.data[0])
+            .text((node: PackedHierarchyNode) => node.data[0] + ' ' + formatBytes(node.value ?? 0))
             .attr('class', 'label')
             .attr('x', (node: PackedHierarchyNode) => node.x)
             .attr('y', (node: PackedHierarchyNode) => (node.y ?? 0) - node.r)
@@ -192,9 +192,7 @@ export class VennSets implements MultiverseVisualization {
 
     private asCombinationPartitionedHierarchy(nodes: Node[]): HierarchyNode<Group> {
         const indicesToNames = (node: Node) =>
-            [...node.sources.keys()]
-                .map((index) => this.multiverse.sources[index].name)
-                .join(' intersecting ')
+            [...node.sources.keys()].map((index) => this.multiverse.sources[index].name).join(' ∩ ')
 
         const groups = d3.rollup(
             nodes,
