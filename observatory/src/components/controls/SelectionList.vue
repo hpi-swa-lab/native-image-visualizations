@@ -19,8 +19,8 @@ function removeItem(event: Event) {
 </script>
 
 <template>
-    <div class="w-full flex">
-        <select class="dropdown dropdown-white w-full" @change="removeItem">
+    <div class="w-full flex content-start grid grid-cols-8">
+        <select class="dropdown dropdown-white w-full col-span-7" @change="removeItem">
             <option ref="defaultOption" value="" selected>Currently Selecting</option>
             <option value="" disabled>Click to delete from selection</option>
             <option value="Clear-All">Clear</option>
@@ -30,7 +30,7 @@ function removeItem(event: Event) {
         </select>
         <button
             title="Add as Filter"
-            class="btn-sm bg-transparent hover:bg-gray-500 text-gray-500 font-semibold hover:text-white py-2 border border-gray-300 hover:border-transparent rounded-full mx-1"
+            class="btn-sm bg-transparent hover:bg-gray-500 text-gray-500 font-semibold hover:text-white py-2 border border-gray-300 hover:border-transparent rounded-full"
             @click="store.addFilter(Filter.fromSelection(store.selections))"
         >
             <font-awesome-icon icon="plus" />
