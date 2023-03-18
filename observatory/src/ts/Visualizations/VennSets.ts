@@ -14,6 +14,7 @@ import { TooltipModel } from './TooltipModel'
 import { SortingOrder } from '../enums/Sorting'
 import { Filter } from '../SharedTypes/Filters'
 import { HIERARCHY_NAME_SEPARATOR } from '../globals'
+import { toRaw } from 'vue'
 
 type Group = d3.InternMap<string, d3.InternMap<Node, number>>
 type NodeData = [string, d3.InternMap<Node, number>]
@@ -67,7 +68,7 @@ export class VennSets implements MultiverseVisualization {
 
     public setSelection(selection: Set<string>): void {
         this.selection = selection
-        this.applyStyleForChosen(this.selection, 'stroke-width', '0', '5', false)
+        this.applyStyleForChosen(toRaw(this.selection), 'stroke-width', '0', '5', false, true)
     }
 
     public toggleSelection(event: any, node: Node, selection: Set<string>): void {
@@ -81,7 +82,7 @@ export class VennSets implements MultiverseVisualization {
     public setHighlights(highlights: Set<string>): void {
         this.highlights = highlights
         const defaultOpacity = highlights.size == 0 ? 1 : 0.1
-        this.applyStyleForChosen(this.highlights, 'opacity', defaultOpacity, 1, true)
+        this.applyStyleForChosen(this.highlights, 'opacity', defaultOpacity, 1, true, false)
     }
 
     public setFilters(filters: Filter[]): void {
@@ -98,11 +99,13 @@ export class VennSets implements MultiverseVisualization {
         this.sortingOrder = sortingOrder
         this.nodeHierarchy.sort(this.comparatorBySortingOrder(sortingOrder))
         this.circlePack(this.nodeHierarchy)
+        const transitionDuration =
+            this.container.selectAll('circle').size() > 2000 ? 0 : TRANSITION_DURATION
 
         this.container
             .selectAll('circle')
             .transition()
-            .duration(TRANSITION_DURATION)
+            .duration(transitionDuration)
             .ease(d3.easeCircleInOut)
             .attr('cx', (leaf: PackedHierarchyLeaf) => leaf.x)
             .attr('cy', (leaf: PackedHierarchyLeaf) => leaf.y)
@@ -116,9 +119,9 @@ export class VennSets implements MultiverseVisualization {
     private redraw() {
         this.cleanContainer()
 
-        const nodesOnLevel: Node[] = getNodesOnLevel(this.layer, this.multiverse.root).filter(
-            (nodeOnLevel) => Filter.applyAll(this.filters, nodeOnLevel)
-        )
+        const nodesOnLevel: Node[] = getNodesOnLevel(this.layer, this.multiverse.root)
+            .filter((nodeOnLevel) => Filter.applyAll(this.filters, nodeOnLevel))
+            .filter((node) => node.codeSize > 0)
         const root = this.asCombinationPartitionedHierarchy(nodesOnLevel)
         if (!root.children) return
 
@@ -170,7 +173,7 @@ export class VennSets implements MultiverseVisualization {
     }
 
     private circlePack(root: HierarchyNode<Group>): void {
-        d3.pack().size([this.containerWidth(), this.containerHeight()]).padding(5)(root)
+        d3.pack().size([this.containerWidth(), this.containerHeight()]).padding(10)(root)
     }
 
     private asHTML(leaf: PackedHierarchyLeaf): string {
@@ -183,7 +186,7 @@ export class VennSets implements MultiverseVisualization {
     }
 
     private pathToNode(node: Node): string {
-        if (this.layer <= Layers.MODULES) return '/'
+        if (this.layer <= Layers.MODULES) return HIERARCHY_NAME_SEPARATOR
         return node.identifier.substring(0, node.identifier.lastIndexOf(HIERARCHY_NAME_SEPARATOR))
     }
 
@@ -247,7 +250,7 @@ export class VennSets implements MultiverseVisualization {
     private initializeZoom() {
         const zoom = d3
             .zoom()
-            .scaleExtent([0.5, 6])
+            .scaleExtent([0.5, 10])
             .on('zoom', ({ transform }) => this.container.select('g').attr('transform', transform))
         this.container.call(zoom)
     }
@@ -262,7 +265,8 @@ export class VennSets implements MultiverseVisualization {
         style: string,
         unselected: unknown,
         selected: unknown,
-        enableTransition: boolean
+        enableTransition: boolean,
+        checkSegments: boolean
     ) {
         const circles = this.container.selectAll('circle')
 
@@ -270,8 +274,16 @@ export class VennSets implements MultiverseVisualization {
 
         if (selection.size === 0) return
 
+        const isMarked = checkSegments
+            ? Filter.fromSelection(selection)
+            : new Filter('', () => true)
+
         circles
-            .filter((circle: PackedHierarchyLeaf) => selection.has(circle.data[0].identifier))
+            .filter(
+                (circle: PackedHierarchyLeaf) =>
+                    selection.has(circle.data[0].identifier) ||
+                    (checkSegments && isMarked.validate(circle.data[0]))
+            )
             .transition()
             .duration(enableTransition ? TRANSITION_DURATION : 0)
             .style(style, selected)

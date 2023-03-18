@@ -1,4 +1,5 @@
 import { Node } from '../UniverseTypes/Node'
+import { HIERARCHY_NAME_SEPARATOR } from '../globals'
 
 export type NodeValidator = (node: Node) => boolean
 
@@ -51,10 +52,20 @@ export class Filter {
     }
 
     static fromSelection(selection: Set<string>): Filter {
-        const copy = new Set(selection)
+        // we have to check for "selectionTerm + HIERARCHY_NAME_SEPARATOR" in cases
+        // of packages like "java.util", where selecting "java.util" must not add the package
+        // "java.util.regex"
+        const copy = [...selection]
         return new Filter(
             `User Selection with ${selection.size} items`,
-            (node) => copy.has(node.identifier),
+            (node) =>
+                copy.some(
+                    (selectionTerm) =>
+                        node.identifier
+                            .toLowerCase()
+                            .includes(selectionTerm + HIERARCHY_NAME_SEPARATOR) ||
+                        node.identifier.toLowerCase().endsWith(selectionTerm)
+                ),
             false,
             true
         )
