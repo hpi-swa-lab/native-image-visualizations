@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Layers, getAllLayersWithNames } from '../../ts/enums/Layers'
+import { Layers, getSelectableLayersWithNames } from '../../ts/enums/Layers'
 import { useGlobalStore } from '../../ts/stores/globalStore'
 
 const store = useGlobalStore()
@@ -9,7 +9,7 @@ function applyLayer(event: Event) {
     store.switchToLayer(currentLayer)
 }
 
-const layers = getAllLayersWithNames()
+const layers = getSelectableLayersWithNames()
 </script>
 
 <template>

@@ -29,7 +29,7 @@ export interface LayerExport {
     name: string
 }
 
-export function getAllLayersWithNames(): LayerExport[] {
+export function getSelectableLayersWithNames(): LayerExport[] {
     return [Layers.MODULES, Layers.PACKAGES, Layers.CLASSES, Layers.METHODS].map(
         (layer: Layers) => ({
             value: layer,
