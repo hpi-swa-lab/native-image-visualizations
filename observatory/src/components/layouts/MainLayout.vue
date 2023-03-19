@@ -31,7 +31,7 @@ function toggleSidebarCollapse(): void {
     <div class="w-full h-full flex flex-row">
         <div
             class="shrink-0 transition-[width] drop-shadow-xl overflow-y-scroll rounded bg-gray-50 space-y-4 h-auto min-h-full"
-            :class="collapsed ? 'w-0' : 'w-[300px]'"
+            :class="collapsed ? 'w-0' : 'w-[320px]'"
         >
             <h2 class="text-center">{{ title }}</h2>
 
