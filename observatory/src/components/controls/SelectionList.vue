@@ -1,33 +1,31 @@
 <script setup lang="ts">
 import { useGlobalStore } from '../../ts/stores/globalStore'
 import { Filter } from '../../ts/SharedTypes/Filters'
-import { OptionHTMLAttributes, ref } from 'vue'
 
 const store = useGlobalStore()
-const defaultOption = ref<OptionHTMLAttributes>()
 
 function removeItem(event: Event) {
     const selectedItem = (event.target as HTMLSelectElement).value
-    if (selectedItem === 'Clear-All') {
-        store.selections.clear()
-        // Only clickable when element already exists
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        defaultOption.value!.selected = true
-    }
     store.selections.delete(selectedItem)
 }
 </script>
 
 <template>
     <div class="w-full flex content-start grid grid-cols-8">
-        <select class="dropdown dropdown-white w-full col-span-7" @change="removeItem">
-            <option ref="defaultOption" value="" selected>Currently Selecting</option>
+        <select class="dropdown dropdown-white w-full col-span-6" @change="removeItem">
+            <option value="" selected>Currently Selecting</option>
             <option value="" disabled>Click to delete from selection</option>
-            <option value="Clear-All">Clear</option>
             <option v-for="selection in store.selections" :key="selection" :value="selection">
                 {{ selection }}
             </option>
         </select>
+        <button
+            title="Clear all"
+            class="btn-sm rounded btn-danger bg-white py-2 rounded-full"
+            @click="() => store.selections.clear()"
+        >
+            <font-awesome-icon icon="xmark" />
+        </button>
         <button
             title="Add as Filter"
             class="btn-sm bg-transparent hover:bg-gray-500 text-gray-500 font-semibold hover:text-white py-2 border border-gray-300 hover:border-transparent rounded-full"
