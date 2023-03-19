@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { Layers, layerName, getAllLayersWithNames } from '../../ts/enums/Layers'
+import { Layers, getAllLayersWithNames } from '../../ts/enums/Layers'
 import { useGlobalStore } from '../../ts/stores/globalStore'
 
 const store = useGlobalStore()
@@ -10,7 +9,7 @@ function applyLayer(event: Event) {
     store.switchToLayer(currentLayer)
 }
 
-const layers = computed(() => getAllLayersWithNames())
+const layers = getAllLayersWithNames()
 </script>
 
 <template>
@@ -34,8 +33,8 @@ const layers = computed(() => getAllLayersWithNames())
 
         <datalist id="granularities" class="flex flex-column w-full justify-between">
             <template v-for="layer in layers" :key="layer">
-                <option :value="layer.value" :label="layer.name"></option
-            ></template>
+                <option :value="layer.value" :label="layer.name" />
+            </template>
         </datalist>
     </div>
 </template>
