@@ -4,7 +4,8 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import loadWASM from './lib/causality-query.js'
-import { CausalityGraphBinaryData } from './CausalityGraphBinaryData'
+import { causalityBinaryFileNames, CausalityGraphBinaryData } from './CausalityGraphBinaryData'
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Module: any = await loadWASM()
 
 export const Unreachable = 0xff
@@ -140,21 +141,7 @@ export class CausalityGraph extends WasmObjectWrapper {
     private nMethods: number
 
     public constructor(nMethods: number, nTypes: number, data: CausalityGraphBinaryData) {
-        const parameterFiles: (
-            | 'typestates.bin'
-            | 'interflows.bin'
-            | 'direct_invokes.bin'
-            | 'typeflow_methods.bin'
-            | 'typeflow_filters.bin'
-        )[] = [
-            'typestates.bin',
-            'interflows.bin',
-            'direct_invokes.bin',
-            'typeflow_methods.bin',
-            'typeflow_filters.bin'
-        ]
-
-        const filesAsNativeByteArrays = parameterFiles.map((name) => {
+        const filesAsNativeByteArrays = causalityBinaryFileNames.map((name) => {
             const arr = data[name]
             const buffer = new NativeBuffer(arr.length)
             buffer.viewU8.set(arr)
