@@ -22,7 +22,7 @@ export interface AsyncSimulationResult {
 }
 
 export interface AsyncIncrementalSimulationResult extends AsyncSimulationResult {
-    simulateNext(): Promise<number | undefined>
+    simulateNext(): Promise<{ token: number, history: Uint8Array } | undefined>
 }
 
 export interface AsyncDetailedSimulationResult extends AsyncSimulationResult {

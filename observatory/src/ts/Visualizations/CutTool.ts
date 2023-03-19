@@ -62,30 +62,12 @@ class CutTool {
             const dataAndSize = new ReachabilityVector(data, this.codesizes)
 
             if (v === undefined) {
-                const dataAndSizeRecalculated = new ReachabilityVector(
-                    new PurgeResults(
-                        await this.cg.simulatePurge([
-                            ...new Set(
-                                [...this.cutview.selectedForPurging].flatMap((v) =>
-                                    collectCgNodesInSubtree(v)
-                                )
-                            )
-                        ])
-                    ),
-                    this.codesizes
-                )
-
-                // TODO: Investigate when that fails, or remove combined purging
-                assert(dataAndSizeRecalculated.results.equals(dataAndSize.results))
-                assert(dataAndSizeRecalculated.size === dataAndSize.size)
-
                 assert(this.additionalSimulationResults === undefined)
                 this.additionalSimulationResults = {
                     cache: new Map<FullyHierarchicalNode, ReachabilityVector>(),
-                    onlySelected: dataAndSizeRecalculated
+                    onlySelected: dataAndSize
                 }
             } else {
-                // TODO: Investigate when that fails, or remove combined purging
                 assert(this.additionalSimulationResults !== undefined)
                 this.additionalSimulationResults.cache.set(v, dataAndSize)
                 this.cutview.setAdditionalPurgeData(
