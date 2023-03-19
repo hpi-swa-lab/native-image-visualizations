@@ -5,6 +5,7 @@
 // @ts-ignore
 import loadWASM from './lib/causality-query.js'
 import { causalityBinaryFileNames, CausalityGraphBinaryData } from './CausalityGraphBinaryData'
+import { assert } from '../util/assert.js'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Module: any = await loadWASM()
 
@@ -203,32 +204,32 @@ export class CausalityGraph extends WasmObjectWrapper {
         const purgeNodesCount = calcPurgeNodesCount(purgeRoot)
 
         const subsetsArrLen = purgeNodesCount * 4 /* {{ptr, len}, {child_ptr, child_len}} */
-        const subsetsArrBuffer = new NativeBuffer(subsetsArrLen * 4 /* (4 byte ptr/len) */)
-        const subsetsArr = subsetsArrBuffer.viewU32
+        const subsetsBuffer = new NativeBuffer(subsetsArrLen * 4 /* (4 byte ptr/len) */)
+        const subsetsArr = subsetsBuffer.viewU32
 
         const midsCount = calcMidsCount(purgeRoot) + prepurgeMids.length
         const midsBuffer = new NativeBuffer(midsCount * 4)
-        const midsPtr = midsBuffer.viewU8.byteOffset
 
-        let midsPos: number = midsPtr / 4
+        let midsPos: number = midsBuffer.viewU32.offset
 
         const indexToInputToken: (Token | undefined)[] = new Array(purgeNodesCount)
         {
-            let i = 1
+            let subset = 1
 
             function layoutChildren(purgeRoot: PurgeTreeNode<Token>, offset: number) {
                 indexToInputToken[offset] = purgeRoot.token
-                const midsPos_start = midsPos
+                const midsPosBefore = midsPos
 
-                const i_start = i
+                const subsetStart = subset
 
                 if (purgeRoot.mids) {
                     if (purgeRoot.children) {
-                        subsetsArr[i * 4] /* ptr */ = midsPos * 4
-                        subsetsArr[i * 4 + 1] /* len */ = purgeRoot.mids.length
-                        subsetsArr[i * 4 + 2] = 0 // no children
-                        subsetsArr[i * 4 + 3] = 0 // no children
-                        i += 1
+                        const slice = subsetsArr.subarray(subset * 4, (subset + 1) * 4)
+                        slice[0] /* ptr */ = midsPos * 4
+                        slice[1] /* len */ = purgeRoot.mids.length
+                        slice[2] = 0 // no children
+                        slice[3] = 0 // no children
+                        subset += 1
                     }
                     for (const mid of purgeRoot.mids) {
                         Module.HEAPU32[midsPos] = mid + 1
@@ -236,25 +237,20 @@ export class CausalityGraph extends WasmObjectWrapper {
                     }
                 }
 
-                let i_end = i
-
                 if (purgeRoot.children) {
-                    let local_i = i
-                    i += purgeRoot.children.length
-                    i_end = i
+                    let childIndex = subset
+                    subset += purgeRoot.children.length
                     for (const child of purgeRoot.children) {
-                        layoutChildren(child, local_i)
-                        local_i += 1
+                        layoutChildren(child, childIndex)
+                        childIndex += 1
                     }
                 }
 
-                const midsPos_end = midsPos
-
                 const slice = subsetsArr.subarray(offset * 4, (offset + 1) * 4)
-                slice[0] = midsPos_start * 4
-                slice[1] = midsPos_end - midsPos_start
-                slice[2] = subsetsArrBuffer.viewU8.byteOffset + i_start * 16
-                slice[3] = i_end - i_start
+                slice[0] = midsPosBefore * 4
+                slice[1] = midsPos - midsPosBefore
+                slice[2] = subsetsBuffer.viewU8.byteOffset + subsetStart * 16
+                slice[3] = subset - subsetStart
             }
 
             for (const mid of prepurgeMids) {
@@ -263,19 +259,21 @@ export class CausalityGraph extends WasmObjectWrapper {
             }
             layoutChildren(purgeRoot, 0)
             // Also include prepurgeMids
-            subsetsArr[0] = midsPtr
+            subsetsArr[0] = midsBuffer.viewU8.byteOffset
             subsetsArr[1] += prepurgeMids.length
+
+            assert(subset === subsetsArr.length / 4)
         }
 
         const wasmObject = CausalityGraph._simulatePurgesBatched(
             this,
-            subsetsArrBuffer.viewU8.byteOffset
+            subsetsBuffer.viewU8.byteOffset
         )
         return new IncrementalSimulationResult(
             this.nMethods,
             wasmObject,
             midsBuffer,
-            subsetsArrBuffer,
+            subsetsBuffer,
             indexToInputToken
         )
     }
