@@ -210,7 +210,7 @@ export class CausalityGraph extends WasmObjectWrapper {
         const midsCount = calcMidsCount(purgeRoot) + prepurgeMids.length
         const midsBuffer = new NativeBuffer(midsCount * 4)
 
-        let midsPos: number = midsBuffer.viewU32.offset
+        let midsPos: number = midsBuffer.viewU32.byteOffset / 4
 
         const indexToInputToken: (Token | undefined)[] = new Array(purgeNodesCount)
         {
