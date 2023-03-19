@@ -65,11 +65,16 @@ public:
 
     [[nodiscard]] size_t next(size_t pos) const
     {
-        block_t already_started = blocks[pos / bits_per_block];
-        already_started >>= (pos % bits_per_block) + 1;
+        size_t pos_rem = ((pos + 1) % bits_per_block);
 
-        if(already_started)
-            return pos + 1 + std::countr_zero(already_started);
+        if(pos_rem)
+        {
+            block_t already_started = blocks[pos / bits_per_block];
+            already_started >>= pos_rem;
+
+            if(already_started)
+                return pos + 1 + std::countr_zero(already_started);
+        }
 
         for(size_t i = pos / bits_per_block + 1; i < blocks.size(); i++)
             if(blocks[i] != 0)
