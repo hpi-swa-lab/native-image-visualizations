@@ -77,3 +77,123 @@ input[type='radio'] {
 .dropdown-white {
     @apply bg-white border-gray-300 text-gray-900 focus:ring-blue-500 focus:border-blue-500;
 }
+
+#cut-tool-root span {
+    font-family: system-ui;
+}
+
+/* Remove default bullets */
+ul {
+    @apply list-none;
+}
+
+/* Remove margins and padding from the parent ul */
+.unpadded {
+    @apply m-0 p-0;
+}
+
+/* Style the caret/arrow */
+.caret {
+    @apply cursor-pointer select-none row-start-1 col-start-1 before:content-['\25B6'] before:text-[black] before:inline-block before:mr-1.5;
+
+    /* Prevent text selection */
+}
+.cutview-node {
+    @apply select-none text-ellipsis whitespace-nowrap overflow-hidden;
+}
+.imageview-node {
+    @apply row-start-1 col-start-2 select-none text-ellipsis whitespace-nowrap overflow-hidden;
+}
+
+/* Create the caret/arrow with a unicode, and style it */
+
+/* Rotate the caret/arrow icon when clicked on (using JavaScript) */
+.caret-down::before {
+    @apply rotate-90;
+}
+
+/* Hide the nested list */
+.nested {
+    @apply hidden row-start-3 col-start-1 col-end-5 pl-5;
+}
+
+/* Show the nested list when the user clicks on the caret/arrow (with JavaScript) */
+.active {
+    @apply block;
+}
+.total-size-column {
+    @apply float-right row-start-1 col-start-3 text-right text-[#606060] w-[60px] mx-[5px];
+}
+.cut-size-column {
+    @apply float-right text-[#cf8020] row-start-1 col-start-3 text-right w-[60px] mx-[5px];
+}
+.size-bar-outer {
+    @apply float-right h-[17px] row-start-1 col-start-2 bg-[#a0a0a080] max-h-[17px];
+}
+.size-bar-inner-0 {
+    @apply float-right h-full w-0 bg-[#ffffff80] -ml-px;
+
+    /* Weird hack to prevent wrap */
+}
+.size-bar-inner-1 {
+    @apply float-left h-full w-0 bg-[#ff7070];
+}
+.size-bar-inner-2 {
+    @apply float-left h-full w-0 bg-[#efa070] -mr-px;
+
+    /* Weird hack to prevent wrap */
+}
+.purge-percentage-bar-outer {
+    @apply border w-[60px] row-start-1 col-start-4 grid grid-cols-[100%] grid-rows-[100%] mx-2.5 my-px border-solid border-[#f0f0f0];
+}
+.purge-percentage-bar-inner {
+    @apply h-full w-0 row-start-1 col-start-1 bg-[#ff000020];
+}
+.purge-percentage-bar-text {
+    @apply w-full h-full row-start-1 col-start-1 text-[darkblue] text-center -mt-px;
+}
+.fullscreen {
+    @apply w-full h-full;
+}
+.hovered-for-purge {
+    @apply border bg-[#cf900010] -m-px border-solid border-[#cf900080];
+}
+.selected-for-purge {
+    @apply border bg-[#ff000040] -m-px border-solid border-[#df0000];
+}
+.selected-for-detail {
+    @apply border bg-[#00ff0020] -m-px border-solid border-[#80ff80];
+}
+.selectable {
+    @apply cursor-crosshair;
+}
+.cut-row {
+    @apply grid grid-cols-[max-content_1fr_max-content] grid-rows-[18px];
+}
+.image-row {
+    @apply grid grid-cols-[max-content_1fr_max-content] grid-rows-[18px];
+}
+.cut-size-bar {
+    @apply bg-[#cf9000] h-0.5 w-0 row-start-2 col-start-2 col-end-3 -mt-0.5;
+}
+.center {
+    @apply self-center flex justify-center items-center h-full;
+}
+.cg-only {
+    @apply text-[#208020];
+}
+.synthetic {
+    @apply text-[#808080];
+}
+.purged {
+    @apply line-through;
+}
+
+/* For detail view: */
+.support-edge {
+    @apply stroke-[#a0a0a0];
+    stroke-dasharray: 0 0.5% 0;
+}
+.direct-edge {
+    @apply stroke-[#808080];
+}

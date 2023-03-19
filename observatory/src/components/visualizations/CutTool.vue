@@ -3,7 +3,6 @@ import { computed, onMounted, ref, toRaw, watch } from 'vue'
 import MainLayout from '../layouts/MainLayout.vue'
 import { CutToolVis } from '../../ts/Visualizations/CutTool'
 import { useGlobalStore } from '../../ts/stores/globalStore'
-import styleContent from './CutTool.css?inline'
 
 const store = useGlobalStore()
 const multiverse = computed(() => store.multiverse)
@@ -29,22 +28,17 @@ watch(multiverse, (newMultiverse) => {
 
 <template>
     <MainLayout title="Cut Tool">
-        <div id="cut-tool-root" ref="container">
-            <!-- eslint-disable -->
-            <component is="style" scoped>
-                {{ styleContent }}
-            </component>
-            <!-- eslint-enable -->
-            <div id="loading-panel" class="fullscreen" hidden>
+        <div id="cut-tool-root" ref="container" class="h-[98%]" style="all: initial">
+            <div id="loading-panel" class="fullscreen cursor-wait" hidden>
                 <div class="center">Causality Graph is being parsed...</div>
             </div>
 
             <div id="main-panel" class="fullscreen" hidden>
-                <div id="overview-div">
+                <div class="float-left w-1/5 h-full overflow-y-scroll resize-x mr-[5px]">
                     <span><b>Cut Overview:</b></span>
                     <div id="cut-overview-root"></div>
                 </div>
-                <div id="detail-div" hidden>
+                <div id="detail-div" class="float-right w-6/12 h-full" hidden>
                     <svg id="detail-svg" class="h-full w-full">
                         <g id="chartpanel">
                             <rect class="h-full w-full opacity-0" />
@@ -52,7 +46,7 @@ watch(multiverse, (newMultiverse) => {
                         </g>
                     </svg>
                 </div>
-                <div id="imageview-div">
+                <div class="float-none overflow-x-hidden w-[1fr] h-full overflow-y-scroll">
                     <span><b>In-Image Overview:</b></span>
                     <div id="imageview-root"></div>
                 </div>
