@@ -53,7 +53,7 @@ export class Filter {
     static fromSelection(selection: Set<string>): Filter {
         const copy = new Set(selection)
         return new Filter(
-            `User Selection with ${selection.size} items`,
+            `${[...copy].join(', ')}`,
             (node) => copy.has(node.identifier),
             false,
             true
