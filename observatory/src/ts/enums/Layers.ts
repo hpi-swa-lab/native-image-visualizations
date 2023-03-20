@@ -23,8 +23,3 @@ export function deserializeLayer(value: string): Layers | undefined {
 export function layerName(layer: Layers): string {
     return Layers[layer]
 }
-
-export interface LayerExport {
-    value: number
-    name: string
-}
