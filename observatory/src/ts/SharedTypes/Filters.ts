@@ -64,12 +64,7 @@ export class Filter {
         return new Filter(
             `${copy.join(', ')}`,
             new Function(
-                `return (node) => 
-                    copy.some( 
-                        (selectionTerm) => 
-                            node.identifier.toLowerCase().includes(selectionTerm + HIERARCHY_NAME_SEPARATOR) 
-                        ||  node.identifier.toLowerCase().endsWith(selectionTerm)
-                    )`
+                'return (node) => copy.some( (selectionTerm) => node.identifier.includes(selectionTerm + "HIERARCHY_NAME_SEPARATOR") ||  node.identifier.endsWith(selectionTerm))'
                     .replace('HIERARCHY_NAME_SEPARATOR', HIERARCHY_NAME_SEPARATOR)
                     .replace('copy', JSON.stringify(copy))
             )(),
@@ -94,7 +89,10 @@ export class Filter {
         const exportDict: serializedFilter = {
             description: this.description,
             applyComplement: this.applyComplement,
-            validator: this.validator.toString().replaceAll('"', '\\"'),
+            // Reason: JSON string objects need \ to be recognized as valid syntax. Prettier deletes
+            // it as it is an invalid escape character
+            // prettier-ignore
+            validator: this.validator.toString().replaceAll('"', '\"'),
             isCustom: this.isCustom
         }
 
