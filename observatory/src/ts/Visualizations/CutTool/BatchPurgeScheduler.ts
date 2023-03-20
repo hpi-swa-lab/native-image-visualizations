@@ -109,30 +109,30 @@ export class BatchPurgeScheduler {
 
     async next() {
         if (this.runningBatch) {
-            const token = await this.runningBatch.simulateNext()
-            if (token === undefined) {
+            const result = await this.runningBatch.simulateNext()
+            if (result === undefined) {
                 this.runningBatch.delete()
                 this.runningBatch = undefined
                 return this.waitlist.length > 0
-            } else if (token === -1) {
+            } else if (result.token === -1) {
                 /* empty purge */ assert(this.calcBaselineFirst)
-                const stillReachable = await this.runningBatch.getReachableArray()
+                const stillReachable = result.history
                 this.calcBaselineFirst = false
                 if (this.callback) this.callback(undefined, new PurgeResults(stillReachable))
             } else {
                 let node: FullyHierarchicalNode | undefined
-                if (token === -1) {
+                if (result.token === -1) {
                     assert(this.calcBaselineFirst)
                     this.calcBaselineFirst = false
                     node = undefined
                 } else {
-                    node = this.runningIndexToNode[token]
+                    node = this.runningIndexToNode[result.token]
                     if (node === undefined) return true
                     assert(!this.calcBaselineFirst)
                 }
 
                 if (this.callback) {
-                    const stillReachable = await this.runningBatch.getReachableArray()
+                    const stillReachable = result.history
                     this.callback(node, new PurgeResults(stillReachable))
                 }
             }

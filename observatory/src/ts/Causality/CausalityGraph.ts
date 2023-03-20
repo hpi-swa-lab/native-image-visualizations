@@ -363,13 +363,14 @@ export class IncrementalSimulationResult<Token> extends SimulationResult {
         this.indexToInputToken = indexToInputToken
     }
 
-    simulateNext(): Token | undefined {
+    simulateNext(): { token: Token, history: Uint8Array } | undefined {
         while (true) {
             const curNode = IncrementalSimulationResult._simulateNext(this)
             if (curNode === 0) return
             const index = (curNode - this.subsetsArr.viewU8.byteOffset) / 16
             const inputNode = this.indexToInputToken[index]
-            if (inputNode !== undefined) return inputNode
+            if (inputNode !== undefined)
+                return { token: inputNode, history: this.getReachableArray() }
         }
     }
 
