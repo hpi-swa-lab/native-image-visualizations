@@ -4,7 +4,7 @@ export type NodeValidator = (node: Node) => boolean
 
 type serializedFilter = {
     description: string
-    appliesComplement: boolean
+    applyComplement: boolean
     validator: string
     isCustom: boolean
 }
@@ -36,7 +36,7 @@ export class Filter {
         return new Filter(
             serialized.description,
             new Function('return ' + serialized.validator)(),
-            serialized.appliesComplement,
+            serialized.applyComplement,
             serialized.isCustom
         )
     }
@@ -44,7 +44,12 @@ export class Filter {
     static fromSearchTerm(term: string): Filter {
         return new Filter(
             `${term}`,
-            (node) => node.identifier.toLowerCase().includes(term.toLowerCase()),
+            new Function(
+                'return (node) => node.identifier.toLowerCase().includes("term")'.replace(
+                    'term',
+                    term.toLowerCase()
+                )
+            )(),
             false,
             true
         )
@@ -52,12 +57,7 @@ export class Filter {
 
     static fromSelection(selection: Set<string>): Filter {
         const copy = new Set(selection)
-        return new Filter(
-            `${[...copy].join(', ')}`,
-            (node) => copy.has(node.identifier),
-            false,
-            true
-        )
+        return new Filter([...copy].join(', '), (node) => copy.has(node.identifier), false, true)
     }
 
     public equals(another: Filter): boolean {
@@ -73,8 +73,13 @@ export class Filter {
     }
 
     public serialize(): string {
-        return `{"description":"${this.description}","applyComplement":${
-            this.applyComplement
-        }, "validator":"${this.validator.toString()}", "isCustom":${this.isCustom}}`
+        const exportDict: serializedFilter = {
+            description: this.description,
+            applyComplement: this.applyComplement,
+            validator: this.validator.toString().replaceAll('"', '\\"'),
+            isCustom: this.isCustom
+        }
+
+        return JSON.stringify(exportDict)
     }
 }

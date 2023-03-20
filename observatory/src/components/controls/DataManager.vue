@@ -14,6 +14,9 @@ import JSZip from 'jszip'
 import FileSaver from 'file-saver'
 import { InvalidInputError } from '../../ts/errors'
 import { ExportConfig } from '../../ts/stores/ExportConfig'
+import { EventType } from '../../ts/enums/EventType'
+
+const emit = defineEmits([EventType.CONFIG_LOADED])
 
 const globalStore = useGlobalStore()
 const vennStore = useVennStore()
@@ -22,6 +25,7 @@ const causalityGraphStore = useCausalityGraphStore()
 const sankeyStore = useSankeyStore()
 
 const uploadError = ref<Error | undefined>(undefined)
+const configLoadError = ref<Error | undefined>(undefined)
 
 const nameFields = ref<InstanceType<typeof InlineEditableField>[]>()
 
@@ -77,6 +81,18 @@ async function validateFileAndAddUniverseOnSuccess(
     }
 }
 
+async function loadUniverseData(
+    universeData: Record<string, any>,
+    universeName: string
+): Promise<void> {
+    const newUniverse = new Universe(
+        universeName,
+        parseReachabilityExport(universeData, universeName)
+    )
+
+    globalStore.addUniverse(newUniverse, universeData)
+}
+
 function addUniverses(event: Event) {
     const input = event.target as HTMLInputElement
     if (!input.files) return
@@ -110,6 +126,29 @@ function exportConfig() {
     })
 }
 
+async function loadConfigAndData(event: Event) {
+    const input = event.target as HTMLInputElement
+    if (!input.files) {
+        configLoadError.value = Error(
+            'The loading function was triggered, but the input element does not hold any files.'
+        )
+        return
+    }
+
+    let errors: string[] = []
+    const zip = await JSZip.loadAsync(input.files[0])
+
+    errors = errors.concat(await loadData(zip))
+    errors = errors.concat(await loadConfig(zip))
+
+    if (errors.length > 0) {
+        configLoadError.value = Error(errors.join('\n'))
+    } else {
+        configLoadError.value = undefined
+        emit(EventType.CONFIG_LOADED)
+    }
+}
+
 function changeUniverseName(oldName: string, newName: string, inputIndex: number) {
     try {
         globalStore.updateUniverseName(oldName, newName)
@@ -124,10 +163,102 @@ function changeUniverseName(oldName: string, newName: string, inputIndex: number
         }
     }
 }
+
+async function loadData(zip: JSZip): Promise<string[]> {
+    globalStore.$reset()
+
+    const errors: string[] = []
+
+    await Promise.all(
+        Object.keys(zip.files)
+            .filter((filename: string) => filename !== `${CONFIG_NAME}.json`)
+            .map(async (filename: string) => {
+                const universeName = filename.replace(/\.[^/.]+$/, '')
+
+                try {
+                    const rawData = await zip.files[filename].async('string')
+                    const parsedJSON = JSON.parse(rawData)
+
+                    await loadUniverseData(parsedJSON, universeName)
+                } catch (error: unknown) {
+                    if (error instanceof Error) {
+                        errors.push(
+                            `Failed loading the universe '${universeName}' due to the following error: ${error.message}`
+                        )
+                    }
+                }
+            })
+    )
+
+    return errors
+}
+
+async function loadConfig(zip: JSZip): Promise<string[]> {
+    if (!(`${CONFIG_NAME}.json` in zip.files)) {
+        return [`The config.zip does not include the expected '${CONFIG_NAME}.json' file`]
+    }
+
+    const errors: string[] = []
+
+    const rawConfig = await zip.files[`${CONFIG_NAME}.json`].async('string')
+    const config = JSON.parse(rawConfig)
+
+    const configMappings = [
+        {
+            name: 'venn',
+            store: vennStore
+        },
+        {
+            name: 'sankey',
+            store: sankeyStore
+        },
+        {
+            name: 'treeLine',
+            store: treeLineStore
+        },
+        {
+            name: 'causalityGraph',
+            store: causalityGraphStore
+        },
+        {
+            name: 'global',
+            store: globalStore
+        }
+    ]
+
+    configMappings.forEach((mapping) => {
+        if (mapping.name in config) {
+            mapping.store.loadExportDict(config[mapping.name])
+        } else {
+            errors.push(`
+                    Could not load the ${mapping.name} config, 
+                    as the key '${mapping.name}' is not present 
+                    in the config
+                `)
+        }
+    })
+
+    return errors
+}
 </script>
 
 <template>
     <div class="space-y-4">
+        <div class="mb-2">
+            <label for="input-config" class="block">Upload a Config Archive:</label>
+            <input
+                id="input-config"
+                class="w-full space-y-4"
+                type="file"
+                accept="application/zip"
+                @change="loadConfigAndData"
+            />
+
+            <p v-if="configLoadError" class="warning-text space-y-4">
+                {{ configLoadError.message }}
+            </p>
+        </div>
+
         <div class="mb-2">
             <label for="input-report-data" class="block">Upload Build Reports:</label>
             <input

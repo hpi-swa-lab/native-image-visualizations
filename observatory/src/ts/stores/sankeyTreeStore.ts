@@ -5,7 +5,9 @@ import {
     serializeNodesDiffingFilter,
     NodesFilter,
     NodesSortingFilter,
-    serializeNodesSortingFilter
+    serializeNodesSortingFilter,
+    deserializeNodesDiffingFilter,
+    deserializeNodesSortingFilter
 } from '../SharedTypes/NodesFilter'
 import { useGlobalStore } from './globalStore'
 import { UniverseIndex } from '../SharedTypes/Indices'
@@ -42,6 +44,25 @@ export const useSankeyStore = defineStore('sankeyTreeConfig', {
         colorUnmodified: () => useGlobalStore().colorScheme[9 % useGlobalStore().colorScheme.length]
     },
     actions: {
+        loadExportDict(config: SankeyStoreConfig) {
+            if (!('diffing' in config) || !('sorting' in config)) {
+                return
+            }
+
+            const diffing = deserializeNodesDiffingFilter(config['diffing'])
+            if (diffing) {
+                diffing.universes.forEach((universeId: number) => {
+                    this.changeUniverseSelection(universeId)
+                })
+                this.setShowUnmodified(diffing.showUnmodified)
+            }
+
+            const sorting = deserializeNodesSortingFilter(config['sorting'])
+            if (sorting) {
+                this.setSortingOrder(sorting.order)
+                this.setSortingOption(sorting.option)
+            }
+        },
         toExportDict(): SankeyStoreConfig {
             return {
                 diffing: serializeNodesDiffingFilter(this.diffingFilter),
