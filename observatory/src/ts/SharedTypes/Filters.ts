@@ -44,7 +44,12 @@ export class Filter {
     static fromSearchTerm(term: string): Filter {
         return new Filter(
             `${term}`,
-            (node) => node.identifier.toLowerCase().includes(term.toLowerCase()),
+            new Function(
+                'return (node) => node.identifier.toLowerCase().includes("term")'.replace(
+                    'term',
+                    term.toLowerCase()
+                )
+            )(),
             false,
             true
         )
@@ -54,7 +59,12 @@ export class Filter {
         const copy = new Set(selection)
         return new Filter(
             `User Selection with ${selection.size} items`,
-            (node) => copy.has(node.identifier),
+            new Function(
+                'return (node) => new Set(copy).has(node.identifier)'.replace(
+                    'copy',
+                    JSON.stringify([...copy])
+                )
+            )(),
             false,
             true
         )
@@ -73,11 +83,10 @@ export class Filter {
     }
 
     public serialize(): string {
-        // making sure, that this has the correct interface
         const exportDict: serializedFilter = {
             description: this.description,
             applyComplement: this.applyComplement,
-            validator: this.validator.toString(),
+            validator: this.validator.toString().replaceAll('"', '\\"'),
             isCustom: this.isCustom
         }
 
