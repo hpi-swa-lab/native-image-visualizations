@@ -28,12 +28,3 @@ export interface LayerExport {
     value: number
     name: string
 }
-
-export function getSelectableLayersWithNames(): LayerExport[] {
-    return [Layers.MODULES, Layers.PACKAGES, Layers.CLASSES, Layers.METHODS].map(
-        (layer: Layers) => ({
-            value: layer,
-            name: layerName(layer).toLowerCase()
-        })
-    )
-}
