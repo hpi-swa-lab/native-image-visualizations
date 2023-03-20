@@ -10,7 +10,7 @@ const vennStore = useVennStore()
     <div id="venn-controls" class="input-container settings-container space-y-4">
         <LayerSelection />
         <div class="space-y-4">
-            <label class="ml-1"> Sorting: </label>
+            <label class="ml-1">Sorting:</label>
             <template v-for="(order, index) in Object.values(SortingOrder)" :key="index">
                 <div class="relative block">
                     <input
