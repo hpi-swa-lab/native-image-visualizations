@@ -5,7 +5,7 @@ export type NodeValidator = (node: Node) => boolean
 
 type serializedFilter = {
     description: string
-    appliesComplement: boolean
+    applyComplement: boolean
     validator: string
     isCustom: boolean
 }
@@ -37,7 +37,7 @@ export class Filter {
         return new Filter(
             serialized.description,
             new Function('return ' + serialized.validator)(),
-            serialized.appliesComplement,
+            serialized.applyComplement,
             serialized.isCustom
         )
     }
@@ -45,7 +45,12 @@ export class Filter {
     static fromSearchTerm(term: string): Filter {
         return new Filter(
             `${term}`,
-            (node) => node.identifier.toLowerCase().includes(term.toLowerCase()),
+            new Function(
+                'return (node) => node.identifier.toLowerCase().includes("term")'.replace(
+                    'term',
+                    term.toLowerCase()
+                )
+            )(),
             false,
             true
         )
@@ -57,15 +62,17 @@ export class Filter {
         // "java.util.regex"
         const copy = [...selection]
         return new Filter(
-            `${[...copy].join(', ')}`,
-            (node) =>
-                copy.some(
-                    (selectionTerm) =>
-                        node.identifier
-                            .toLowerCase()
-                            .includes(selectionTerm + HIERARCHY_NAME_SEPARATOR) ||
-                        node.identifier.toLowerCase().endsWith(selectionTerm)
-                ),
+            `${copy.join(', ')}`,
+            new Function(
+                `return (node) => 
+                    copy.some( 
+                        (selectionTerm) => 
+                            node.identifier.toLowerCase().includes(selectionTerm + HIERARCHY_NAME_SEPARATOR) 
+                        ||  node.identifier.toLowerCase().endsWith(selectionTerm)
+                    )`
+                    .replace('HIERARCHY_NAME_SEPARATOR', HIERARCHY_NAME_SEPARATOR)
+                    .replace('copy', JSON.stringify(copy))
+            )(),
             false,
             true
         )
@@ -84,8 +91,13 @@ export class Filter {
     }
 
     public serialize(): string {
-        return `{"description":"${this.description}","applyComplement":${
-            this.applyComplement
-        }, "validator":"${this.validator.toString()}", "isCustom":${this.isCustom}}`
+        const exportDict: serializedFilter = {
+            description: this.description,
+            applyComplement: this.applyComplement,
+            validator: this.validator.toString().replaceAll('"', '\\"'),
+            isCustom: this.isCustom
+        }
+
+        return JSON.stringify(exportDict)
     }
 }

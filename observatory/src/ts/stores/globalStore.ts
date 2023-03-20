@@ -4,9 +4,10 @@ import { Node } from '../UniverseTypes/Node'
 import {
     SwappableComponentType,
     componentName,
-    serializeComponent
+    serializeComponent,
+    deserializeComponent
 } from '../enums/SwappableComponentType'
-import { serializerLayer, Layers } from '../enums/Layers'
+import { serializerLayer, Layers, deserializeLayer } from '../enums/Layers'
 import { Multiverse } from '../UniverseTypes/Multiverse'
 import { InvalidInputError } from '../errors'
 import { ColorScheme } from '../SharedTypes/Colors'
@@ -21,6 +22,7 @@ import { toRaw } from 'vue'
 import tailwindConfig from '../../../tailwind.config.cjs'
 import resolveConfig from 'tailwindcss/resolveConfig'
 import { Filter } from '../SharedTypes/Filters'
+import { loadStringArrayParameter, loadStringParameter } from './helpers'
 
 const cssConfig = resolveConfig(tailwindConfig)
 
@@ -159,6 +161,88 @@ export const useGlobalStore = defineStore('globalConfig', {
                 )
             )
         },
+        loadExportDict(config: GlobalConfig) {
+            loadStringArrayParameter(
+                'observedUniverses',
+                config,
+                (universeNames: string[]) =>
+                    (this.universes as Universe[])
+                        .map((universe: Universe) => universe.name)
+                        .filter((name: string) => universeNames.includes(name)),
+                (universeNames: string[]) =>
+                    universeNames.forEach((name: string) => this.toggleObservationByName(name))
+            )
+
+            loadStringArrayParameter(
+                'selections',
+                config,
+                (selections: string[]) => new Set(selections),
+                (selections: Set<string>) => this.setSelection(selections)
+            )
+
+            loadStringArrayParameter(
+                'highlights',
+                config,
+                (highlights: string[]) => new Set(highlights),
+                (highlights: Set<string>) => this.setHighlights(highlights)
+            )
+
+            loadStringParameter(
+                'currentLayer',
+                config,
+                (layerName: string) => deserializeLayer(layerName),
+                (layer: Layers) => this.switchToLayer(layer)
+            )
+
+            loadStringArrayParameter(
+                'colorScheme',
+                config,
+                (colorScheme: string[]) => colorScheme,
+                (colorScheme: string[]) => this.switchColorScheme(colorScheme)
+            )
+
+            loadStringParameter(
+                'currentComponent',
+                config,
+                (componentName: string) => deserializeComponent(componentName),
+                (component: SwappableComponentType) => this.switchToComponent(component)
+            )
+
+            loadStringParameter(
+                'previousComponent',
+                config,
+                (componentName: string) => deserializeComponent(componentName),
+                (component: SwappableComponentType) => {
+                    this.previousComponent = component
+                }
+            )
+
+            loadStringParameter(
+                'search',
+                config,
+                (search: string) => search,
+                (search: string) => this.changeSearch(search)
+            )
+
+            loadStringArrayParameter(
+                'filters',
+                config,
+                (filters: string[]) => filters.map((filter) => Filter.parse(filter)),
+                (filters: Filter[]) => filters.forEach((filter: Filter) => this.addFilter(filter))
+            )
+
+            loadStringArrayParameter(
+                'activeFilters',
+                config,
+                (filters: string[]) => filters.map((filter) => Filter.parse(filter)),
+                // the check if the active filter is one of the existing ones
+                // is already done in toggleFilter
+                (filters: Filter[]) =>
+                    filters.forEach((filter: Filter) => {
+                        this.toggleFilter(filter)
+                    })
+            )
+        },
         addFilter(filter: Filter): boolean {
             const matchingFilter = this.filters.find((existing) => existing.equals(filter))
             if (matchingFilter) return false
@@ -174,26 +258,26 @@ export const useGlobalStore = defineStore('globalConfig', {
         hasFilter(filter: Filter): boolean {
             return this.filters.find((existing) => existing.equals(filter)) != undefined
         },
-        isFilterActive(filter: Filter, appliesComplement = false): boolean {
+        isFilterActive(filter: Filter, applyComplement = false): boolean {
             return (
                 this.activeFilters.find(
                     (existing) =>
-                        existing.equals(filter) && existing.applyComplement === appliesComplement
+                        existing.equals(filter) && existing.applyComplement === applyComplement
                 ) != undefined
             )
         },
-        toggleFilter(filter: Filter, appliesComplement = false): void {
+        toggleFilter(filter: Filter, applyComplement = false): void {
             const matchingActiveFilter = this.activeFilters.find((active) => active.equals(filter))
 
             if (matchingActiveFilter) {
                 this.activeFilters.splice(this.activeFilters.indexOf(matchingActiveFilter), 1)
-                if (appliesComplement === matchingActiveFilter.applyComplement) return
-                matchingActiveFilter.applyComplement = appliesComplement
+                if (applyComplement === matchingActiveFilter.applyComplement) return
+                matchingActiveFilter.applyComplement = applyComplement
                 this.activeFilters.push(matchingActiveFilter)
             } else {
                 const matchingFilter = this.filters.find((existing) => existing.equals(filter))
                 if (!matchingFilter) return
-                matchingFilter.applyComplement = appliesComplement
+                matchingFilter.applyComplement = applyComplement
                 this.activeFilters.push(matchingFilter)
             }
         },
@@ -202,7 +286,9 @@ export const useGlobalStore = defineStore('globalConfig', {
                 observedUniverses: (this.observedUniverses as Universe[]).map(
                     (universe: Universe) => universe.name
                 ),
-                filters: this.filters.map((filter) => filter.serialize()),
+                filters: this.filters
+                    .filter((filter) => filter.isCustom)
+                    .map((filter) => filter.serialize()),
                 activeFilters: this.activeFilters.map((filter) => filter.serialize()),
                 selections: Array.from(this.selections),
                 highlights: Array.from(this.highlights),
