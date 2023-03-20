@@ -1,5 +1,6 @@
 import * as original from './CausalityGraph'
 import * as Comlink from 'comlink'
+import { CausalityGraphBinaryData } from './CausalityGraphBinaryData'
 
 // For execution of causality queries on background worker thread,
 // this class wraps the object model in Comlink-Proxies.
@@ -7,7 +8,7 @@ import * as Comlink from 'comlink'
 export class RemoteCausalityGraph {
     wrapped: original.CausalityGraph
 
-    public constructor(nMethods: number, nTypes: number, data: original.CausalityGraphBinaryData) {
+    public constructor(nMethods: number, nTypes: number, data: CausalityGraphBinaryData) {
         this.wrapped = new original.CausalityGraph(nMethods, nTypes, data)
     }
 

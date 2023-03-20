@@ -1,0 +1,6 @@
+[submodule "graal"]
+	path = graal
+	url = ../MPWS2022RH1-graalvm
+[submodule "samples/spring-petclinic"]
+	path = samples/spring-petclinic
+	url = https://github.com/spring-projects/spring-petclinic

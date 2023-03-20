@@ -4,6 +4,7 @@ import {
     AsyncDetailedSimulationResult,
     AsyncIncrementalSimulationResult
 } from './AsyncCausalityGraph'
+import { CausalityGraphBinaryData } from './CausalityGraphBinaryData'
 
 // Executes causality queries on UI thread.
 // Workaround for bug in firefox: https://bugzil.la/1247687
@@ -11,7 +12,7 @@ import {
 export class UiAsyncCausalityGraph implements AsyncCausalityGraph {
     wrapped: original.CausalityGraph
 
-    public constructor(nMethods: number, nTypes: number, data: original.CausalityGraphBinaryData) {
+    public constructor(nMethods: number, nTypes: number, data: CausalityGraphBinaryData) {
         this.wrapped = new original.CausalityGraph(nMethods, nTypes, data)
     }
 

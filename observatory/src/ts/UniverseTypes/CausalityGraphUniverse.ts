@@ -5,28 +5,22 @@ import {
     loadCausalityGraphConstructor
 } from '../Causality/AsyncCausalityGraph'
 import { ReachabilityJson } from '../parsing'
+import { CausalityGraphBinaryData } from '../Causality/CausalityGraphBinaryData'
 
 const createCausalityGraph = loadCausalityGraphConstructor()
 
-export interface CausalityGraphData {
+export interface CausalityGraphData extends CausalityGraphBinaryData {
     // Object structure of "reachability.json"
     reachabilityData: ReachabilityJson
 
     nodeLabels: string[]
     typeLabels: string[]
-
-    // These binary blobs are handed to the wasm module
-    'interflows.bin': Uint8Array
-    'direct_invokes.bin': Uint8Array
-    'typestates.bin': Uint8Array
-    'typeflow_filters.bin': Uint8Array
-    'typeflow_methods.bin': Uint8Array
 }
 
 export class CausalityGraphUniverse extends Universe {
-    public readonly cgNodeLabels: string[]
-    public readonly cgTypeLabels: string[]
-    public readonly codesizeByCgNodeLabels: number[]
+    public readonly nodeLabels: string[]
+    public readonly typeLabels: string[]
+    public readonly codesizeByNodeLabels: number[]
 
     public readonly causalityRoot: FullyHierarchicalNode
 
@@ -34,8 +28,8 @@ export class CausalityGraphUniverse extends Universe {
 
     constructor(name: string, root: Node, causalityData: CausalityGraphData) {
         super(name, root)
-        this.cgNodeLabels = causalityData.nodeLabels
-        this.cgTypeLabels = causalityData.typeLabels
+        this.nodeLabels = causalityData.nodeLabels
+        this.typeLabels = causalityData.typeLabels
         this.causalityRoot = generateHierarchyFromReachabilityJsonAndMethodList(
             causalityData.reachabilityData,
             causalityData.nodeLabels
@@ -44,10 +38,8 @@ export class CausalityGraphUniverse extends Universe {
         const codesizesDict = getMethodCodesizeDictFromReachabilityJson(
             causalityData.reachabilityData
         )
-        this.codesizeByCgNodeLabels = new Array(this.cgNodeLabels.length)
-        for (let i = 0; i < this.cgNodeLabels.length; i++) {
-            this.codesizeByCgNodeLabels[i] = codesizesDict[this.cgNodeLabels[i]] ?? 0
-        }
+        this.codesizeByNodeLabels = new Array(this.nodeLabels.length)
+        this.codesizeByNodeLabels = this.nodeLabels.map((element) => codesizesDict[element] ?? 0)
 
         this.cgPromise = createCausalityGraph(
             causalityData.nodeLabels.length,
@@ -61,23 +53,6 @@ export class CausalityGraphUniverse extends Universe {
         // Therefore we want to get rid of it ASAP
         return (this.cgPromise = await this.cgPromise)
     }
-}
-
-function getMethodCodesizeDictFromReachabilityJson(data: ReachabilityJson) {
-    const dict: { [fullyQualifiedName: string]: number } = {}
-
-    for (const toplevel of data) {
-        for (const [packageName, pkg] of Object.entries(toplevel.packages)) {
-            for (const [typeName, type] of Object.entries(pkg.types)) {
-                for (const [methodName, method] of Object.entries(type.methods)) {
-                    const fullyQualifiedName = `${packageName}.${typeName}.${methodName}`
-                    dict[fullyQualifiedName] = method.size
-                }
-            }
-        }
-    }
-
-    return dict
 }
 
 class TrieNode<Value> {
@@ -108,6 +83,11 @@ class Trie<Value> {
     }
 }
 
+/* Integrating this with 'Node' currently would break constant-depth guarantees:
+ * 1. Packages are organized by their dot-separated prefixes
+ * 2. Modules can have reflection-configs as their children
+ * 3. Classes can have events "[Reflection registration]", "[Instantiated]", etc. as their children
+ */
 export interface FullyHierarchicalNode {
     name: string // Displayed for this node
     parent: FullyHierarchicalNode | undefined
@@ -130,8 +110,8 @@ export function forEachInSubtree<TNode extends { children?: TNode[] }>(
 ) {
     const stack: TNode[] = []
     stack.push(node)
-    while (stack.length > 0) {
-        const u = stack.pop()!
+    let u
+    while ((u = stack.pop())) {
         const handled = callback(u)
         if (u.children && !handled) stack.push(...u.children)
     }
@@ -193,6 +173,25 @@ function computeCodesizePartialSum(root: FullyHierarchicalNode): number {
  * - the longest common subpackage prefix for classes and methods not contained in the image,
  * - the top-level-source for configuration files by their path.
  */
+
+// The keys of the returned dict have to exactly match the notation of causality node labels
+function getMethodCodesizeDictFromReachabilityJson(data: ReachabilityJson) {
+    const dict: { [fullyQualifiedName: string]: number } = {}
+
+    for (const toplevel of data) {
+        for (const [packageName, pkg] of Object.entries(toplevel.packages)) {
+            for (const [typeName, type] of Object.entries(pkg.types)) {
+                for (const [methodName, method] of Object.entries(type.methods)) {
+                    const fullyQualifiedName = `${packageName}.${typeName}.${methodName}`
+                    dict[fullyQualifiedName] = method.size
+                }
+            }
+        }
+    }
+
+    return dict
+}
+
 function generateHierarchyFromReachabilityJsonAndMethodList(
     json: ReachabilityJson,
     cgNodeLabels: string[]

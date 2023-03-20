@@ -25,6 +25,34 @@ const uploadError = ref<Error | undefined>(undefined)
 
 const nameFields = ref<InstanceType<typeof InlineEditableField>[]>()
 
+async function createUniverseFromCausalityExport(
+    file: File,
+    universeName: string
+): Promise<[Universe, unknown]> {
+    const parsedCG = await loadCgZip(file)
+    const newUniverse = new CausalityGraphUniverse(
+        universeName,
+        parseReachabilityExport(parsedCG.reachabilityData, universeName),
+        parsedCG
+    )
+    const rawData = parsedCG.reachabilityData
+    return [newUniverse, rawData]
+}
+
+async function createUniverseFromReachabilityJson(
+    file: File,
+    universeName: string
+): Promise<[Universe, unknown]> {
+    const parsedJSON = await loadJson(file)
+
+    const newUniverse = new Universe(
+        universeName,
+        parseReachabilityExport(parsedJSON, universeName)
+    )
+
+    return [newUniverse, parsedJSON]
+}
+
 async function validateFileAndAddUniverseOnSuccess(
     file: File,
     universeName: string
@@ -34,20 +62,9 @@ async function validateFileAndAddUniverseOnSuccess(
         let rawData
 
         if (file.name.endsWith('.cg.zip')) {
-            const parsedCG = await loadCgZip(file)
-            newUniverse = new CausalityGraphUniverse(
-                universeName,
-                parseReachabilityExport(parsedCG.reachabilityData, universeName),
-                parsedCG
-            )
-            rawData = parsedCG.reachabilityData
+            ;[newUniverse, rawData] = await createUniverseFromCausalityExport(file, universeName)
         } else if (file.name.endsWith('.json')) {
-            const parsedJSON = await loadJson(file)
-            newUniverse = new Universe(
-                universeName,
-                parseReachabilityExport(parsedJSON, universeName)
-            )
-            rawData = parsedJSON
+            ;[newUniverse, rawData] = await createUniverseFromReachabilityJson(file, universeName)
         } else {
             throw new Error('Unknown file ending')
         }
