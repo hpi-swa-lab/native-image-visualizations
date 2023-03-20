@@ -39,8 +39,7 @@ export class DetailView {
 
             nodesSet.add(e.src)
             nodesSet.add(e.dst)
-            const newObj: VisGraphLink = { source: e.src, target: e.dst }
-            if (e.via_type) newObj.via_type = e.via_type
+            const newObj: VisGraphLink = { source: e.src, target: e.dst, via_type: e.via_type }
             links.push(newObj)
         })
 
@@ -191,13 +190,17 @@ interface VisGraphNode {
 interface VisGraphLink {
     source: number
     target: number
-    via_type?: number
+    via_type: number | undefined
 }
 
 function getUnqualifiedCausalityGraphNodeName(fullyQualifiedName: string): string {
-    const parenIndex = fullyQualifiedName.lastIndexOf('/')
-    if (parenIndex !== -1) return fullyQualifiedName.substring(parenIndex + 1)
-    else return fullyQualifiedName.replaceAll(/(?<![A-Za-z0-9])([a-z]\w+\.)+/g, '')
+    if(fullyQualifiedName.endsWith('[Configuration File]')) {
+        const parenIndex = fullyQualifiedName.lastIndexOf('/')
+        if (parenIndex !== -1) return fullyQualifiedName.substring(parenIndex + 1)
+        return fullyQualifiedName
+    } else {
+        return fullyQualifiedName.replaceAll(/(?<![A-Za-z0-9])([a-z]\w+\.)+/g, '')
+    }
 }
 
 function getColorAccordingToCausalityGraphNodeType(fullyQualifiedName: string): string {
