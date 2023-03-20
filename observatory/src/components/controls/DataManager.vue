@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { Universe } from '../../ts/UniverseTypes/Universe'
-import { loadJson, parseReachabilityExport } from '../../ts/parsing'
+import { CausalityGraphUniverse } from '../../ts/UniverseTypes/CausalityGraphUniverse'
+import { loadJson, loadCgZip, parseReachabilityExport } from '../../ts/parsing'
 import { useGlobalStore, CONFIG_NAME } from '../../ts/stores/globalStore'
 import { useVennStore } from '../../ts/stores/vennStore'
 import { useSankeyStore } from '../../ts/stores/sankeyTreeStore'
@@ -28,14 +29,50 @@ const configLoadError = ref<Error | undefined>(undefined)
 
 const nameFields = ref<InstanceType<typeof InlineEditableField>[]>()
 
+async function createUniverseFromCausalityExport(
+    file: File,
+    universeName: string
+): Promise<[Universe, unknown]> {
+    const parsedCG = await loadCgZip(file)
+    const newUniverse = new CausalityGraphUniverse(
+        universeName,
+        parseReachabilityExport(parsedCG.reachabilityData, universeName),
+        parsedCG
+    )
+    const rawData = parsedCG.reachabilityData
+    return [newUniverse, rawData]
+}
+
+async function createUniverseFromReachabilityJson(
+    file: File,
+    universeName: string
+): Promise<[Universe, unknown]> {
+    const parsedJSON = await loadJson(file)
+
+    const newUniverse = new Universe(
+        universeName,
+        parseReachabilityExport(parsedJSON, universeName)
+    )
+
+    return [newUniverse, parsedJSON]
+}
+
 async function validateFileAndAddUniverseOnSuccess(
     file: File,
     universeName: string
 ): Promise<void> {
     try {
-        const parsedJSON = await loadJson(file)
-        await loadUniverseData(parsedJSON, universeName)
+        let newUniverse: Universe
+        let rawData
 
+        if (file.name.endsWith('.cg.zip')) {
+            ;[newUniverse, rawData] = await createUniverseFromCausalityExport(file, universeName)
+        } else if (file.name.endsWith('.json')) {
+            ;[newUniverse, rawData] = await createUniverseFromReachabilityJson(file, universeName)
+        } else {
+            throw new Error('Unknown file ending')
+        }
+        globalStore.addUniverse(newUniverse, rawData)
         uploadError.value = undefined
     } catch (error: unknown) {
         if (error instanceof Error) {
@@ -228,7 +265,7 @@ async function loadConfig(zip: JSZip): Promise<string[]> {
                 id="input-report-data"
                 class="w-full space-y-4"
                 type="file"
-                accept="application/json"
+                accept="application/json,.cg.zip"
                 required
                 multiple
                 @change="addUniverses"
