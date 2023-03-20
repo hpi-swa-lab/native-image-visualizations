@@ -57,17 +57,7 @@ export class Filter {
 
     static fromSelection(selection: Set<string>): Filter {
         const copy = new Set(selection)
-        return new Filter(
-            `User Selection with ${selection.size} items`,
-            new Function(
-                'return (node) => new Set(copy).has(node.identifier)'.replace(
-                    'copy',
-                    JSON.stringify([...copy])
-                )
-            )(),
-            false,
-            true
-        )
+        return new Filter([...copy].join(', '), (node) => copy.has(node.identifier), false, true)
     }
 
     public equals(another: Filter): boolean {

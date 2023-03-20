@@ -6,6 +6,7 @@ import {
     deserializeSortingOrder,
     deserializeSortingOption
 } from '../enums/Sorting'
+import { UniverseIndex } from './Indices'
 
 export type NodesFilter = {
     diffing: NodesDiffingFilter
@@ -14,7 +15,7 @@ export type NodesFilter = {
 
 export function serializeNodesFilter(
     filter: NodesFilter
-): Record<string, string | string[] | boolean> {
+): Record<string, string | UniverseIndex[] | boolean> {
     const diffingExport = serializeNodesDiffingFilter(filter.diffing)
     const sortingExport = serializeNodesSortingFilter(filter.sorting)
 
@@ -56,13 +57,13 @@ export function deserializeNodesFilter(config: Record<string, unknown>): NodesFi
 }
 
 export type NodesDiffingFilter = {
-    universes: Set<string>
+    universes: Set<UniverseIndex>
     showUnmodified: boolean
 }
 
 export function serializeNodesDiffingFilter(
     filter: NodesDiffingFilter
-): Record<string, string[] | boolean> {
+): Record<string, UniverseIndex[] | boolean> {
     return {
         universes: Array.from(filter.universes),
         showUnmodified: filter.showUnmodified

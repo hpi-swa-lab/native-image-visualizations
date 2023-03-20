@@ -16,3 +16,7 @@ export function formatBytes(bytes: Bytes, cutOffAt = 2): string {
 
     return (bytes / BYTES_IN_TB).toFixed(cutOffAt) + ' TB'
 }
+
+export function inMB(b: Bytes) {
+    return b / BYTES_IN_MB
+}

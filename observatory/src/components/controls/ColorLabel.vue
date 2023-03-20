@@ -1,9 +1,9 @@
 <script setup lang="ts">
 withDefaults(
     defineProps<{
-        forElement: string
         label: string
         color: string
+        forElement?: string
     }>(),
     {
         forElement: '',
