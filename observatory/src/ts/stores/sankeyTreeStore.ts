@@ -51,7 +51,7 @@ export const useSankeyStore = defineStore('sankeyTreeConfig', {
 
             const diffing = deserializeNodesDiffingFilter(config['diffing'])
             if (diffing) {
-                diffing.universes.forEach((universeId: string) => {
+                diffing.universes.forEach((universeId: number) => {
                     this.changeUniverseSelection(universeId)
                 })
                 this.setShowUnmodified(diffing.showUnmodified)
