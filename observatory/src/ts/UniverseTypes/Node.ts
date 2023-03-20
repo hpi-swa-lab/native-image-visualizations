@@ -116,6 +116,10 @@ export class Node {
         this._parent = newParent
     }
 
+    set codeSize(newCodeSize: Bytes) {
+        this._codeSize = newCodeSize
+    }
+
     public push(...children: Node[]): number {
         for (const child of children) {
             this._children.push(child)

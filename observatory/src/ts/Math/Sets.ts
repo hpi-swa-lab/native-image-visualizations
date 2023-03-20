@@ -9,11 +9,11 @@ export function createVennPartitions(multiverse: Multiverse): VennPartitions {
     multiverse.root.children.forEach(countIn)
 
     function countIn(node: Node): void {
-        const occurences = Array.from(node.sources.keys())
-        const intersection = JSON.stringify(occurences)
+        const occurrences = Array.from(node.sources.keys())
+        const intersection = JSON.stringify(occurrences)
         exclusiveCounts.set(intersection, (exclusiveCounts.get(intersection) ?? 0) + 1)
 
-        const combinations = hitOrCalculateOnMiss(occurences, intersection, powerSetCache)
+        const combinations = hitOrCalculateOnMiss(occurrences, intersection, powerSetCache)
         combinations.forEach((combination) =>
             inclusiveCounts.set(combination, (inclusiveCounts.get(combination) ?? 0) + 1)
         )

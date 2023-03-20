@@ -118,6 +118,7 @@ export class VennSets implements MultiverseVisualization {
 
     private redraw() {
         this.cleanContainer()
+        this.fitToScreen()
 
         const nodesOnLevel: Node[] = getNodesOnLevel(this.layer, this.multiverse.root)
             .filter((nodeOnLevel) => Filter.applyAll(this.filters, nodeOnLevel))
@@ -129,6 +130,15 @@ export class VennSets implements MultiverseVisualization {
         this.drawCircles(root)
         this.drawLabels(root)
         this.visualizeUserSelections()
+    }
+
+    private fitToScreen() {
+        const targetWidth = window.innerWidth
+        const targetHeight = window.innerHeight
+
+        if (this.containerWidth() != targetWidth || this.containerHeight() != targetHeight) {
+            this.container.attr('width', targetWidth).attr('height', targetHeight)
+        }
     }
 
     private drawCircles(root: HierarchyNode<Group>) {

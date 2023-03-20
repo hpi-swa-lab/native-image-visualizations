@@ -57,7 +57,7 @@ export class Filter {
         // "java.util.regex"
         const copy = [...selection]
         return new Filter(
-            `User Selection with ${selection.size} items`,
+            `${[...copy].join(', ')}`,
             (node) =>
                 copy.some(
                     (selectionTerm) =>
