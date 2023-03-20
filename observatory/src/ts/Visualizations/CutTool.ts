@@ -46,7 +46,7 @@ class CutTool {
         this.dataRoot = universe.causalityRoot
         this.cg = cg
         this.allReachable = allReachable
-        this.codesizes = universe.codesizeByCgNodeLabels
+        this.codesizes = universe.codesizeByNodeLabels
 
         this.ps = new PurgeScheduler(cg, allReachable.results)
         this.ps.detailSelectedCallback = (edges, targetMid) =>
@@ -88,7 +88,7 @@ class CutTool {
         this.imageview = new ImageView(
             allReachable.results,
             universe.causalityRoot,
-            universe.codesizeByCgNodeLabels,
+            universe.codesizeByNodeLabels,
             Math.max(...this.dataRoot.children.map((d) => d.accumulatedSize)),
             (v) => (this.ps.detailSelectedNode = v)
         )
@@ -97,8 +97,8 @@ class CutTool {
 
         this.detailview = new DetailView(
             domRoot.querySelector('#detail-div')!,
-            universe.cgNodeLabels,
-            universe.cgTypeLabels
+            universe.nodeLabels,
+            universe.typeLabels
         )
 
         let mainMethod: FullyHierarchicalNode | undefined
@@ -116,7 +116,7 @@ class CutTool {
         const cg = await universe.getCausalityGraph()
         const allReachable = new ReachabilityVector(
             new PurgeResults(await cg.simulatePurge()),
-            universe.codesizeByCgNodeLabels
+            universe.codesizeByNodeLabels
         )
         domRoot.querySelector<HTMLDivElement>('#loading-panel')!.hidden = true
         domRoot.querySelector<HTMLDivElement>('#main-panel')!.hidden = false
