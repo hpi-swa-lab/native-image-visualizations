@@ -8,7 +8,8 @@ import FilteringOptions from '../controls/FilteringOptions.vue'
 import SelectionList from '../controls/SelectionList.vue'
 import { onMounted, ref } from 'vue'
 import { useGlobalStore } from '../../ts/stores/globalStore'
-import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
+import { SwappableComponentType, componentName } from '../../ts/enums/SwappableComponentType'
+import ModalButton from '../simpleUiElements/modalButton.vue'
 
 withDefaults(
     defineProps<{
@@ -19,15 +20,14 @@ withDefaults(
     }
 )
 
+const store = useGlobalStore()
+
+const helpButton = ref<HTMLButtonElement>()
 const collapsed = ref(false)
-const selectedIndex = ref(useGlobalStore().currentComponent === SwappableComponentType.Home ? 1 : 0)
+const selectedIndex = ref(store.currentComponent === SwappableComponentType.Home ? 1 : 0)
 
 function toggleSidebarCollapse(): void {
     collapsed.value = !collapsed.value
-}
-
-function showHelp() {
-    alert('help')
 }
 
 onMounted(() => {
@@ -37,7 +37,7 @@ onMounted(() => {
         )
         localStorage.setItem('helpDialogDismissed', 'yes')
         if (wantsHelp) {
-            showHelp()
+            helpButton.value?.click()
         } else {
             alert('Okay. You can always access the help via the question mark button on the left')
         }
@@ -52,9 +52,14 @@ onMounted(() => {
             :class="collapsed ? 'w-0' : 'w-[320px]'"
         >
             <div class="flex p-4 space-x-4 justify-even">
-                <button class="btn btn-light">
-                    <font-awesome-icon icon="circle-question" @click="showHelp()" />
-                </button>
+                <ModalButton ref="helpButton" icon="circle-question" button-styling="btn btn-light">
+                    <template #modal-header
+                        >Help for {{ componentName(store.currentComponent) }}</template
+                    >
+                    <template #modal-content>
+                        <HelpDialog />
+                    </template>
+                </ModalButton>
                 <h2 class="col-start-3 text-center">{{ title }}</h2>
             </div>
             <TabLayout
