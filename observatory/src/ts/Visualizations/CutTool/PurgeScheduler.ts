@@ -147,7 +147,7 @@ export class PurgeScheduler {
                 return true
             }
             assert(mid !== undefined)
-        } else if(dists[mid] === Unreachable) {
+        } else if (dists[mid] === Unreachable) {
             if (this.detailSelectedCallback) this.detailSelectedCallback([], undefined)
             return true
         }

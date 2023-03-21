@@ -363,7 +363,7 @@ export class IncrementalSimulationResult<Token> extends SimulationResult {
         this.indexToInputToken = indexToInputToken
     }
 
-    simulateNext(): { token: Token, history: Uint8Array } | undefined {
+    simulateNext(): { token: Token; history: Uint8Array } | undefined {
         while (true) {
             const curNode = IncrementalSimulationResult._simulateNext(this)
             if (curNode === 0) return

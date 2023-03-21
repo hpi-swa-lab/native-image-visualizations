@@ -194,7 +194,7 @@ interface VisGraphLink {
 }
 
 function getUnqualifiedCausalityGraphNodeName(fullyQualifiedName: string): string {
-    if(fullyQualifiedName.endsWith('[Configuration File]')) {
+    if (fullyQualifiedName.endsWith('[Configuration File]')) {
         const parenIndex = fullyQualifiedName.lastIndexOf('/')
         if (parenIndex !== -1) return fullyQualifiedName.substring(parenIndex + 1)
         return fullyQualifiedName

@@ -42,18 +42,19 @@ function detailViewClose(): void {
                     <span><b>Cut Overview:</b></span>
                     <div id="cut-overview-root"></div>
                 </div>
-                <div id="detail-div" class="rotate-180 absolute overflow-auto resize border-2 right-0 bottom-0 float-right w-6/12 h-3/6 bg-[white] z-[1]" hidden>
+                <div
+                    id="detail-div"
+                    class="rotate-180 absolute overflow-auto resize border-2 right-0 bottom-0 float-right w-6/12 h-3/6 bg-[white] z-[1]"
+                    hidden
+                >
                     <div class="rotate-180 h-full w-full">
                         <button
-                                class="absolute right-[10px] z-10 btn bg-gray-50 mt-2 ml-2 hover:bg-gray-200 shadow-md"
+                            class="absolute right-[10px] z-10 btn bg-gray-50 mt-2 ml-2 hover:bg-gray-200 shadow-md"
                         >
-                            <font-awesome-icon
-                                    icon="xmark"
-                                    @click="detailViewClose"
-                            />
+                            <font-awesome-icon icon="xmark" @click="detailViewClose" />
                         </button>
                         <span style="position: absolute; padding: 10px; background: white"
-                        ><b>Detail-view:</b></span
+                            ><b>Detail-view:</b></span
                         >
                         <svg id="detail-svg" class="h-full w-full">
                             <g id="chartpanel">
