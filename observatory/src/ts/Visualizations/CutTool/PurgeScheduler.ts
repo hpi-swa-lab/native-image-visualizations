@@ -127,10 +127,11 @@ export class PurgeScheduler {
 
         let mid = this._detailSelectedNode.cgNode
 
+        const dists = await this.selectedSimulationResult.getReachableArray()
+
         if (mid === undefined) {
             // Take the cg node referenced in the subtree that first got reachable
             const mids = collectCgNodesInSubtree(this._detailSelectedNode)
-            const dists = await this.selectedSimulationResult.getReachableArray()
 
             let bestDist = Unreachable
             for (const candidateMid of mids) {
@@ -146,6 +147,9 @@ export class PurgeScheduler {
                 return true
             }
             assert(mid !== undefined)
+        } else if(dists[mid] === Unreachable) {
+            if (this.detailSelectedCallback) this.detailSelectedCallback([], undefined)
+            return true
         }
 
         const edges = await this.selectedSimulationResult.getReachabilityHyperpath(mid)
