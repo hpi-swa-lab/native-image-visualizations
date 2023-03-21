@@ -62,6 +62,7 @@ export class ImageView {
 
     public populate(domRoot: HTMLDivElement) {
         const list = this.generateHtmlImageview(this.root)
+        this.updatePurgeValues(this.root)
         domRoot.appendChild(list)
         list.classList.remove('nested')
         list.classList.add('unpadded')
@@ -189,6 +190,8 @@ export class ImageView {
         selectableSpan.appendChild(nameSpan)
         selectableSpan.classList.add('imageview-node')
         li.appendChild(selectableSpan)
+
+        if (!node.cgNode) selectableSpan.classList.add('no-cg')
 
         selectableSpan.classList.add('selectable')
         selectableSpan.addEventListener('click', () => {
