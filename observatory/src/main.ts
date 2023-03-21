@@ -12,10 +12,11 @@ import {
     faChevronLeft,
     faCircleQuestion
 } from '@fortawesome/free-solid-svg-icons'
+import VueCarousel from 'vue-carousel'
 
 library.add(faFileExport, faArrowLeft, faXmark, faPlus, faChevronLeft, faCircleQuestion)
 
 const pinia = createPinia()
 const app = createApp(App)
 
-app.use(pinia).component('font-awesome-icon', FontAwesomeIcon).mount('#app')
+app.use(pinia).use(VueCarousel).component('font-awesome-icon', FontAwesomeIcon).mount('#app')
