@@ -6,7 +6,7 @@ import TabLayout from './TabLayout.vue'
 import DataManager from '../controls/DataManager.vue'
 import FilteringOptions from '../controls/FilteringOptions.vue'
 import SelectionList from '../controls/SelectionList.vue'
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useGlobalStore } from '../../ts/stores/globalStore'
 import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
 
@@ -25,6 +25,24 @@ const selectedIndex = ref(useGlobalStore().currentComponent === SwappableCompone
 function toggleSidebarCollapse(): void {
     collapsed.value = !collapsed.value
 }
+
+function showHelp() {
+    alert('help')
+}
+
+onMounted(() => {
+    if (!localStorage.getItem('helpDialogDismissed')) {
+        const wantsHelp = confirm(
+            'It seems you did not visit this tool yet. Do you want to get a tour?'
+        )
+        localStorage.setItem('helpDialogDismissed', 'yes')
+        if (wantsHelp) {
+            showHelp()
+        } else {
+            alert('Okay. You can always access the help via the question mark button on the left')
+        }
+    }
+})
 </script>
 
 <template>
@@ -33,8 +51,12 @@ function toggleSidebarCollapse(): void {
             class="shrink-0 transition-[width] drop-shadow-xl overflow-y-scroll rounded bg-gray-50 space-y-4 h-auto min-h-full"
             :class="collapsed ? 'w-0' : 'w-[320px]'"
         >
-            <h2 class="text-center">{{ title }}</h2>
-
+            <div class="flex p-4 space-x-4 justify-even">
+                <button class="btn btn-light">
+                    <font-awesome-icon icon="circle-question" @click="showHelp()" />
+                </button>
+                <h2 class="col-start-3 text-center">{{ title }}</h2>
+            </div>
             <TabLayout
                 :selected-index="selectedIndex"
                 :tab-names="['controls', 'data-manager']"
