@@ -1,10 +1,16 @@
 <script setup lang="ts">
-import { Carousel, Slide } from 'vue-carousel'
+import { Carousel, Slide, Pagination, Navigation } from 'vue3-carousel'
 </script>
 
 <template>
-    <Carousel>
-        <Slide>Help Image 1</Slide>
-        <Slide>Help Image 2</Slide>
-    </Carousel>
+    <carousel :items-to-show="1">
+        <slide v-for="slide in 10" :key="slide">
+            {{ slide }}
+        </slide>
+
+        <template #addons>
+            <navigation />
+            <pagination />
+        </template>
+    </carousel>
 </template>
