@@ -13,10 +13,18 @@ withDefaults(
     }
 )
 const showModal = ref(false)
+
+function openModal() {
+    showModal.value = true
+}
+
+function closeModal() {
+    showModal.value = false
+}
 </script>
 
 <template>
-    <button :class="buttonStyling" @click="showModal = !showModal">
+    <button :class="buttonStyling" @click="openModal">
         <font-awesome-icon v-if="icon !== undefined" :icon="icon" />
         {{ buttonText }}
     </button>
@@ -32,6 +40,9 @@ const showModal = ref(false)
                 <!-- Modal header -->
                 <div class="flex items-start justify-between p-4 border-b rounded-t">
                     <slot name="modal-header" />
+                    <button class="btn-sm btn-danger" @click="closeModal">
+                        <font-awesome-icon icon="xmark" />
+                    </button>
                 </div>
                 <!-- Modal body -->
                 <div class="p-6 space-y-6">
