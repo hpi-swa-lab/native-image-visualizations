@@ -205,14 +205,14 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
     }
     const system: FullyHierarchicalNode = {
         children: [],
-        name: 'system',
+        name: 'runtime components',
         size: 0,
         parent: root,
         accumulatedSize: 0
     }
     const user: FullyHierarchicalNode = {
         children: [],
-        name: 'user',
+        name: 'user application and dependencies',
         size: 0,
         parent: root,
         accumulatedSize: 0
