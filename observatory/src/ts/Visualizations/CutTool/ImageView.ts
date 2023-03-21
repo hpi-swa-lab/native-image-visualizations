@@ -1,6 +1,7 @@
 import { collectSubtree, FullyHierarchicalNode } from '../../UniverseTypes/CausalityGraphUniverse'
 import { formatByteSizeWithUnitPrefix } from '../../util/ByteSizeFormatter'
 import { NodeSet, PurgeResults } from './BatchPurgeScheduler'
+import {nodeTypeToCssString} from './CutView';
 
 function forEachInSubtreePostorder<TNode extends { children: TNode[] }, TResult>(
     node: TNode,
@@ -131,6 +132,11 @@ export class ImageView {
         li.className = 'image-row'
         const span = document.createElement('span')
         li.appendChild(span)
+
+        const typeSymbolSpan = document.createElement('span')
+        li.appendChild(typeSymbolSpan)
+        typeSymbolSpan.classList.add('type-symbol')
+        typeSymbolSpan.classList.add(nodeTypeToCssString(v.type))
 
         {
             const totalSizeColumn = document.createElement('span')

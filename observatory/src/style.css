@@ -83,7 +83,8 @@ input[type='radio'] {
 }
 
 #cut-tool-root span {
-    font-family: system-ui;
+    font-family: sans-serif;
+    font-stretch: condensed;
 }
 
 /* Remove default bullets */
@@ -98,7 +99,8 @@ ul {
 
 /* Style the caret/arrow */
 .caret {
-    @apply cursor-pointer select-none row-start-1 col-start-1 before:content-['\25B6'] before:text-[black] before:inline-block before:mr-1.5;
+    @apply cursor-pointer select-none row-start-1 col-start-1 before:content-['›'] before:text-[black] before:inline-block before:mr-1.5 before:relative before:top-[-1px];
+    font-size: larger;
 
     /* Prevent text selection */
 }
@@ -106,19 +108,69 @@ ul {
     @apply select-none text-ellipsis whitespace-nowrap overflow-hidden;
 }
 .imageview-node {
-    @apply row-start-1 col-start-2 select-none text-ellipsis whitespace-nowrap overflow-hidden;
+    @apply row-start-1 col-start-3 select-none text-ellipsis whitespace-nowrap overflow-hidden;
 }
 
 /* Create the caret/arrow with a unicode, and style it */
 
 /* Rotate the caret/arrow icon when clicked on (using JavaScript) */
 .caret-down::before {
-    @apply rotate-90;
+    @apply content-['›'] text-[gray] rotate-90;
+}
+
+.type-symbol {
+    width: 18px;
+}
+
+.type-symbol.custom {
+    width: 0px;
+}
+
+.type-symbol.module::before {
+    content: "\25A0";
+    margin-right: 5px;
+    color: darkgreen;
+    font-size: small;
+    position: relative;
+    top: -1px;
+}
+
+.type-symbol.package::before {
+    content: "\1F4C1";
+    margin-right: 5px;
+    color: darkblue;
+    font-size: smaller;
+}
+
+.type-symbol.class::before {
+    content: "\1F152";
+    margin-right: 5px;
+    color: darkblue;
+    font-size: smaller;
+    position: relative;
+    top: -1px;
+}
+
+.type-symbol.method::before {
+    content: "\1F17C";
+    margin-right: 5px;
+    color: darkred;
+    font-size: smaller;
+    position: relative;
+    top: -1px;
+}
+
+.type-symbol.cg-only::before {
+    content: "\2022";
+    margin-right: 5px;
+    color: darkblue;
+    font-size: smaller;
+    margin-left: 5px;
 }
 
 /* Hide the nested list */
 .nested {
-    @apply hidden row-start-3 col-start-1 col-end-5 pl-5;
+    @apply hidden row-start-3 col-start-1 col-end-6 pl-5;
 }
 
 /* Show the nested list when the user clicks on the caret/arrow (with JavaScript) */
@@ -126,13 +178,15 @@ ul {
     @apply block;
 }
 .total-size-column {
-    @apply float-right row-start-1 col-start-3 text-right text-[#606060] w-[60px] mx-[5px];
+    @apply float-right row-start-1 col-start-4 text-right text-[#606060] w-[70px] mx-[5px];
+    font-size: smaller;
 }
 .cut-size-column {
-    @apply float-right text-[#cf8020] row-start-1 col-start-3 text-right w-[60px] mx-[5px];
+    @apply float-right text-[#cf8020] row-start-1 col-start-4 text-right w-[70px] mx-[5px];
+    font-size: smaller;
 }
 .size-bar-outer {
-    @apply float-right h-[17px] row-start-1 col-start-2 bg-[#a0a0a080] max-h-[17px];
+    @apply float-right h-[17px] row-start-1 col-start-3 bg-[#a0a0a080] max-h-[17px];
 }
 .size-bar-inner-0 {
     @apply float-right h-full w-0 bg-[#ffffff80] -ml-px;
@@ -148,13 +202,15 @@ ul {
     /* Weird hack to prevent wrap */
 }
 .purge-percentage-bar-outer {
-    @apply border w-[60px] row-start-1 col-start-4 grid grid-cols-[100%] grid-rows-[100%] mx-2.5 my-px border-solid border-[#f0f0f0];
+    @apply border w-[60px] row-start-1 col-start-5 grid grid-cols-[100%] grid-rows-[100%] mx-2.5 my-px border-solid border-[#f0f0f0];
 }
 .purge-percentage-bar-inner {
     @apply h-full w-0 row-start-1 col-start-1 bg-[#ff000020];
 }
 .purge-percentage-bar-text {
     @apply w-full h-full row-start-1 col-start-1 text-[darkblue] text-center -mt-px;
+    font-size: small;
+    margin-bottom: -2px
 }
 .fullscreen {
     @apply w-full h-full;
@@ -172,13 +228,13 @@ ul {
     @apply cursor-crosshair;
 }
 .cut-row {
-    @apply grid grid-cols-[max-content_1fr_max-content] grid-rows-[18px];
+    @apply grid grid-cols-[max-content_max-content_1fr_max-content] grid-rows-[18px];
 }
 .image-row {
-    @apply grid grid-cols-[max-content_1fr_max-content] grid-rows-[18px];
+    @apply grid grid-cols-[max-content_max-content_1fr_max-content] grid-rows-[18px];
 }
 .cut-size-bar {
-    @apply bg-[#cf9000] h-0.5 w-0 row-start-2 col-start-2 col-end-3 -mt-0.5;
+    @apply bg-[#cf9000] h-0.5 w-0 row-start-2 col-start-3 col-end-4 -mt-0.5;
 }
 .center {
     @apply self-center flex justify-center items-center h-full;

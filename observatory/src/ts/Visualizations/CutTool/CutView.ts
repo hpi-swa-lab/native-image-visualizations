@@ -1,6 +1,23 @@
-import { forEachInSubtree, FullyHierarchicalNode } from '../../UniverseTypes/CausalityGraphUniverse'
-import { formatByteSizeWithUnitPrefix } from '../../util/ByteSizeFormatter'
-import { assert } from '../../util/assert'
+import {forEachInSubtree, FullyHierarchicalNode, NodeType} from '../../UniverseTypes/CausalityGraphUniverse'
+import {formatByteSizeWithUnitPrefix} from '../../util/ByteSizeFormatter'
+import {assert} from '../../util/assert'
+
+export function nodeTypeToCssString(type: NodeType) : string {
+    switch(type) {
+        case NodeType.CgOnly:
+            return 'cg-only'
+        case NodeType.Class:
+            return 'class'
+        case NodeType.Method:
+            return 'method'
+        case NodeType.Package:
+            return 'package'
+        case NodeType.Module:
+            return 'module'
+        case NodeType.CustomCategory:
+            return 'custom'
+    }
+}
 
 class NodeData {
     readonly html: HTMLLIElement
@@ -162,6 +179,11 @@ export class CutView {
             span.style.visibility = 'hidden'
         }
         li.appendChild(span)
+
+        const typeSymbolSpan = document.createElement('span')
+        li.appendChild(typeSymbolSpan)
+        typeSymbolSpan.classList.add('type-symbol')
+        typeSymbolSpan.classList.add(nodeTypeToCssString(v.type))
 
         const nameSpan = document.createElement('span')
         nameSpan.appendChild(document.createTextNode(v.name ?? ''))
