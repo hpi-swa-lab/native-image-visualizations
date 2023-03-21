@@ -1,4 +1,5 @@
 import { Node } from '../UniverseTypes/Node'
+import { HIERARCHY_NAME_SEPARATOR } from '../globals'
 
 export type NodeValidator = (node: Node) => boolean
 
@@ -56,8 +57,20 @@ export class Filter {
     }
 
     static fromSelection(selection: Set<string>): Filter {
-        const copy = new Set(selection)
-        return new Filter([...copy].join(', '), (node) => copy.has(node.identifier), false, true)
+        // we have to check for "selectionTerm + HIERARCHY_NAME_SEPARATOR" in cases
+        // of packages like "java.util", where selecting "java.util" must not add the package
+        // "java.util.regex"
+        const copy = [...selection]
+        return new Filter(
+            `${copy.join(', ')}`,
+            new Function(
+                'return (node) => copy.some( (selectionTerm) => node.identifier.includes(selectionTerm + "HIERARCHY_NAME_SEPARATOR") ||  node.identifier.endsWith(selectionTerm))'
+                    .replace('HIERARCHY_NAME_SEPARATOR', HIERARCHY_NAME_SEPARATOR)
+                    .replace('copy', JSON.stringify(copy))
+            )(),
+            false,
+            true
+        )
     }
 
     public equals(another: Filter): boolean {
@@ -76,7 +89,10 @@ export class Filter {
         const exportDict: serializedFilter = {
             description: this.description,
             applyComplement: this.applyComplement,
-            validator: this.validator.toString().replaceAll('"', '\\"'),
+            // Reason: JSON string objects need \ to be recognized as valid syntax. Prettier deletes
+            // it as it is an invalid escape character
+            // prettier-ignore
+            validator: this.validator.toString().replaceAll('"', '\"'),
             isCustom: this.isCustom
         }
 
