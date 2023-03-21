@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import ColorLabel from './ColorLabel.vue'
-import ToggleSwitch from './ToggleSwitch.vue'
+import ColorLabel from '../simpleUiElements/ColorLabel.vue'
+import ToggleSwitch from '../simpleUiElements/ToggleSwitch.vue'
 import { useSankeyStore } from '../../ts/stores/sankeyTreeStore'
 import { useGlobalStore } from '../../ts/stores/globalStore'
 import { UNMODIFIED } from '../../ts/Visualizations/SankeyTree'

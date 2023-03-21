@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import VisualizationNavigation from '../controls/VisualizationNagivation.vue'
 import UniverseSelectionList from '../controls/UniverseSelectionList.vue'
-import SearchBar from '../controls/SearchBar.vue'
+import SearchBar from '../simpleUiElements/SearchBar.vue'
 import TabLayout from './TabLayout.vue'
 import DataManager from '../controls/DataManager.vue'
 import FilteringOptions from '../controls/FilteringOptions.vue'
@@ -10,6 +10,7 @@ import { onMounted, ref } from 'vue'
 import { useGlobalStore } from '../../ts/stores/globalStore'
 import { SwappableComponentType, componentName } from '../../ts/enums/SwappableComponentType'
 import ModalButton from '../simpleUiElements/modalButton.vue'
+import HelpDialog from '../controls/HelpDialog.vue'
 
 withDefaults(
     defineProps<{

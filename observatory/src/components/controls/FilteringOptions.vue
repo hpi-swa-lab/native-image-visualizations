@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useGlobalStore } from '../../ts/stores/globalStore'
-import ToggleSwitch from './ToggleSwitch.vue'
+import ToggleSwitch from '../simpleUiElements/ToggleSwitch.vue'
 
 const store = useGlobalStore()
 </script>
