@@ -10,7 +10,7 @@ import { onMounted, ref } from 'vue'
 import { useGlobalStore } from '../../ts/stores/globalStore'
 import { SwappableComponentType, componentName } from '../../ts/enums/SwappableComponentType'
 import ModalButton from '../simpleUiElements/modalButton.vue'
-import HelpDialog from '../controls/HelpDialog.vue'
+import HelpDialog from '../help/HelpDialog.vue'
 
 withDefaults(
     defineProps<{
