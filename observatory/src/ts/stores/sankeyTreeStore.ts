@@ -9,8 +9,17 @@ import {
     deserializeNodesDiffingFilter,
     deserializeNodesSortingFilter
 } from '../SharedTypes/NodesFilter'
-import { useGlobalStore } from './globalStore'
 import { UniverseIndex } from '../SharedTypes/Indices'
+
+// Reason: Vite does not support commonJS out of box. In the vite.config, the commonjs plugin
+// transpiles the cjs to ts, but the transpilation and mapping happens during run time.
+// Thus, the system cannot find a declaration file for the module statically.
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import tailwindConfig from '../../../tailwind.config.cjs'
+import resolveConfig from 'tailwindcss/resolveConfig'
+
+const cssConfig: any = resolveConfig(tailwindConfig)
 
 export type SankeyStoreConfig = Record<
     string,
@@ -40,8 +49,8 @@ export const useSankeyStore = defineStore('sankeyTreeConfig', {
             state.diffingFilter.universes.has(universeId),
         isFilteredSortingOption: (state) => (option: string) =>
             option === state.sortingFilter.option,
-        colorModified: () => useGlobalStore().colorScheme[6 % useGlobalStore().colorScheme.length],
-        colorUnmodified: () => useGlobalStore().colorScheme[9 % useGlobalStore().colorScheme.length]
+        colorModified: () => cssConfig.theme.colors.MODIFIED,
+        colorUnmodified: () => cssConfig.theme.colors.UNMODIFIED
     },
     actions: {
         loadExportDict(config: SankeyStoreConfig) {

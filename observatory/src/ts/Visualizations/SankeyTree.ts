@@ -52,6 +52,7 @@ export class SankeyTree implements MultiverseVisualization {
     selection: Set<string> = new Set<string>()
     highlights: Set<string> = new Set<string>()
     filters: Filter[]
+    private searchTerm = ''
     private multiverse: Multiverse = new Multiverse([])
     private metadata: UniverseMetadata = {}
     private layer = Layers.PACKAGES
@@ -76,12 +77,14 @@ export class SankeyTree implements MultiverseVisualization {
         tooltip: TooltipModel,
         highlights: Set<string>,
         selection: Set<string>,
+        searchTerm: string,
         filters: Filter[] = []
     ) {
         this.colorScheme = colorScheme
         this.tooltip = tooltip
         this.highlights = highlights
         this.selection = selection
+        this.searchTerm = searchTerm
         this.containerSelections = this.initializeContainerSelections(containerSelector)
         this.filters = filters
     }
@@ -94,11 +97,20 @@ export class SankeyTree implements MultiverseVisualization {
 
     setHighlights(highlights: Set<string>): void {
         this.highlights = highlights
-        const defaultOpacity = highlights.size == 0 ? 1 : 0.2
-        const areSetsEqual =
-            this.highlights.size === this.highlights.size &&
-            [...highlights].every((item) => this.highlights.has(item))
-        this.applyStyleForChosen(highlights, 'opacity', defaultOpacity, 1, !areSetsEqual)
+        // highlights are unused, searchTerm is used for highlighting instead
+    }
+
+    setSearchTerm(searchTerm: string): void {
+        const enableTransition = this.searchTerm !== searchTerm
+        this.searchTerm = searchTerm
+        const defaultOpacity = searchTerm === '' ? 1 : 0.2
+        this.applyStyleForChosen(
+            (nodeIdentifier) => nodeIdentifier.toLowerCase().includes(searchTerm.toLowerCase()),
+            'opacity',
+            defaultOpacity,
+            1,
+            enableTransition
+        )
     }
 
     public setFilters(filters: Filter[]): void {
@@ -109,7 +121,13 @@ export class SankeyTree implements MultiverseVisualization {
 
     setSelection(selection: Set<string>): void {
         this.selection = selection
-        this.applyStyleForChosen(this.selection, 'stroke-width', '0', '5', false)
+        this.applyStyleForChosen(
+            (nodeIdentifier) => this.selection.has(nodeIdentifier),
+            'stroke-width',
+            '0',
+            '5',
+            false
+        )
     }
 
     public setLayer(layer: Layers): void {
@@ -352,7 +370,7 @@ export class SankeyTree implements MultiverseVisualization {
             node,
             sourceNode,
             (evt: MouseEvent, vizNode: SankeyHierarchyPointNode) => {
-                if (evt.ctrlKey) {
+                if (evt.ctrlKey || evt.metaKey) {
                     toggleSelection(vizNode.data, this.selection)
                 } else {
                     toggleChildren(vizNode, evt.shiftKey, this.filteredNodes)
@@ -580,7 +598,7 @@ export class SankeyTree implements MultiverseVisualization {
     }
 
     private applyStyleForChosen(
-        selection: Set<string>,
+        filterCallback: (nodeIdentifier: string) => boolean,
         style: string,
         unselected: unknown,
         selected: unknown,
@@ -591,7 +609,7 @@ export class SankeyTree implements MultiverseVisualization {
 
         visNodes
             .filter((node: HierarchyPointNode<Node>) =>
-                selection.has(getWithoutRoot(node.data.identifier))
+                filterCallback(getWithoutRoot(node.data.identifier))
             )
             .selectAll('rect')
             .transition()
@@ -601,7 +619,7 @@ export class SankeyTree implements MultiverseVisualization {
 
     private visualizeUserSelections() {
         this.setSelection(this.selection)
-        this.setHighlights(this.highlights)
+        this.setSearchTerm(this.searchTerm)
     }
 
     // #############################################################################################

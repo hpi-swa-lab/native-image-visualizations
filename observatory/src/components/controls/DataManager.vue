@@ -7,7 +7,6 @@ import { useGlobalStore, CONFIG_NAME } from '../../ts/stores/globalStore'
 import { useVennStore } from '../../ts/stores/vennStore'
 import { useSankeyStore } from '../../ts/stores/sankeyTreeStore'
 import { useTreeLineStore } from '../../ts/stores/treeLineStore'
-import { useCausalityGraphStore } from '../../ts/stores/causalityGraphStore'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import InlineEditableField from './InlineEditableField.vue'
 import JSZip from 'jszip'
@@ -21,7 +20,6 @@ const emit = defineEmits([EventType.CONFIG_LOADED])
 const globalStore = useGlobalStore()
 const vennStore = useVennStore()
 const treeLineStore = useTreeLineStore()
-const causalityGraphStore = useCausalityGraphStore()
 const sankeyStore = useSankeyStore()
 
 const uploadError = ref<Error | undefined>(undefined)
@@ -35,9 +33,10 @@ async function createUniverseFromCausalityExport(
 ): Promise<Universe> {
     const parsedCG = await loadCgZip(file)
     const newUniverse = new CausalityGraphUniverse(
-            universeName,
-            parseReachabilityExport(parsedCG.reachabilityData, universeName),
-            parsedCG
+        universeName,
+        globalStore.nextUniverseColor,
+        parseReachabilityExport(parsedCG.reachabilityData, universeName),
+        parsedCG
     )
     const rawData = parsedCG.reachabilityData
     return newUniverse
@@ -51,6 +50,7 @@ async function createUniverseFromReachabilityJson(
 
     const newUniverse = new Universe(
         universeName,
+        globalStore.nextUniverseColor,
         parseReachabilityExport(parsedJSON, universeName)
     )
 
@@ -98,8 +98,7 @@ function exportConfig() {
         global: globalStore.toExportDict(),
         venn: vennStore.toExportDict(),
         sankey: sankeyStore.toExportDict(),
-        treeLine: treeLineStore.toExportDict(),
-        causalityGraph: causalityGraphStore.toExportDict()
+        treeLine: treeLineStore.toExportDict()
     }
 
     const zip = new JSZip()
@@ -217,10 +216,6 @@ async function loadConfig(zip: JSZip): Promise<string[]> {
             store: treeLineStore
         },
         {
-            name: 'causalityGraph',
-            store: causalityGraphStore
-        },
-        {
             name: 'global',
             store: globalStore
         }
@@ -231,8 +226,8 @@ async function loadConfig(zip: JSZip): Promise<string[]> {
             mapping.store.loadExportDict(config[mapping.name])
         } else {
             errors.push(`
-                    Could not load the ${mapping.name} config, 
-                    as the key '${mapping.name}' is not present 
+                    Could not load the ${mapping.name} config,
+                    as the key '${mapping.name}' is not present
                     in the config
                 `)
         }

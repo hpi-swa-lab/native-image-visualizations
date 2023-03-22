@@ -8,7 +8,7 @@ import { SortingOption, SortingOrder } from '../../enums/Sorting'
 import { Node } from '../../UniverseTypes/Node'
 import { formatBytes } from '../../SharedTypes/Size'
 import { EventType } from '../../enums/EventType'
-import { HIERARCHY_NAME_SEPARATOR } from '../../globals'
+import { HIERARCHY_NAME_SEPARATOR, SUB_HIERARCHY_NAME_SEPARATOR } from '../../globals'
 import { ROOT_NODE_NAME } from '../SankeyTree'
 
 // #################################################################################################
@@ -19,22 +19,32 @@ export function createHierarchyFromPackages(node: Node, dataTree: Node, leaves: 
     let current = dataTree
     const pathSegments = node.identifier.substring(1).split(HIERARCHY_NAME_SEPARATOR)
     for (let i = 0; i < pathSegments.length; i++) {
-        let child = current.children.find((child) => child.name === pathSegments[i])
-        if (child) {
-            child.sources.set(node.sources.keys().next().value, node.sources.values().next().value)
-            child.codeSize = child.codeSize + node.codeSize
+        let hierarchySeparator = HIERARCHY_NAME_SEPARATOR
+        const subPathSegments = pathSegments[i].split(SUB_HIERARCHY_NAME_SEPARATOR)
+        for (let j = 0; j < subPathSegments.length; j++) {
+            let child = current.children.find((child) => child.name === subPathSegments[j])
+            if (child) {
+                child.sources.set(
+                    node.sources.keys().next().value,
+                    node.sources.values().next().value
+                )
+                child.codeSize = child.codeSize + node.codeSize
 
-            // FIXME set correct codeSize in child
-            //  (right now its the sum of A+B in the merged node)
-            //  #153 https://github.com/hpi-swa-lab/MPWS2022RH1/issues/153
-        } else {
-            child = new Node(pathSegments[i], [], current, node.codeSize)
-            child.sources = node.sources
-            current.children.push(child)
+                // FIXME set correct codeSize in child
+                //  (right now its the sum of A+B in the merged node)
+                //  #153 https://github.com/hpi-swa-lab/MPWS2022RH1/issues/153
+            } else {
+                child = new Node(subPathSegments[j], [], current, node.codeSize)
+                child.sources = node.sources
+                child.overrideHierarchyNameSeparator(hierarchySeparator)
+                current.children.push(child)
+            }
+
+            current = child
+            hierarchySeparator = SUB_HIERARCHY_NAME_SEPARATOR
+
+            if (i === pathSegments.length - 1 && j === subPathSegments.length - 1) leaves.add(child)
         }
-
-        current = child
-        if (i === pathSegments.length - 1) leaves.add(child)
     }
 }
 

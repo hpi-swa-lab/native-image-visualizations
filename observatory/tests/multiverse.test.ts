@@ -32,8 +32,8 @@ describe('Multiverse', () => {
     describe('Merging universes', () => {
         test('Two trees without overlap stay separated in result', () => {
             const multiverse = new Multiverse([
-                new Universe('c', forest.overlappingTreeC),
-                new Universe('d', forest.differentPackageTree)
+                new Universe('c', '#000000', forest.overlappingTreeC),
+                new Universe('d', '#000000', forest.differentPackageTree)
             ])
 
             const c = forest.overlappingTreeC.children[0]
@@ -62,7 +62,9 @@ describe('Multiverse', () => {
         })
 
         test('Should have the occurences set to the only tree given', () => {
-            const multiverse = new Multiverse([new Universe('a', forest.overlappingTreeA)])
+            const multiverse = new Multiverse([
+                new Universe('a', '#000000', forest.overlappingTreeA)
+            ])
             const a = forest.overlappingTreeA.children[0]
 
             const expected = node('', new Map(), [
@@ -81,8 +83,8 @@ describe('Multiverse', () => {
 
         test('Merging two equal trees results in the same tree with both indexes', () => {
             const multiverse = new Multiverse([
-                new Universe('a', forest.overlappingTreeA),
-                new Universe('anotherA', forest.overlappingTreeA)
+                new Universe('a', '#000000', forest.overlappingTreeA),
+                new Universe('anotherA', '#000000', forest.overlappingTreeA)
             ])
             const a = forest.overlappingTreeA.children[0]
 
@@ -137,8 +139,8 @@ describe('Multiverse', () => {
 
         test('should merge 2 overlapping trees into one tree', () => {
             const multiverse = new Multiverse([
-                new Universe('a', forest.overlappingTreeA),
-                new Universe('b', forest.overlappingTreeB)
+                new Universe('a', '#000000', forest.overlappingTreeA),
+                new Universe('b', '#000000', forest.overlappingTreeB)
             ])
             const a = forest.overlappingTreeA.children[0]
             const b = forest.overlappingTreeB.children[0]
@@ -177,9 +179,9 @@ describe('Multiverse', () => {
 
         test('should merge 3 overlapping trees into one tree', () => {
             const multiverse = new Multiverse([
-                new Universe('a', forest.overlappingTreeA),
-                new Universe('b', forest.overlappingTreeB),
-                new Universe('c', forest.overlappingTreeC)
+                new Universe('a', '#000000', forest.overlappingTreeA),
+                new Universe('b', '#000000', forest.overlappingTreeB),
+                new Universe('c', '#000000', forest.overlappingTreeC)
             ])
 
             const a = forest.overlappingTreeA.children[0]
@@ -224,9 +226,9 @@ describe('Multiverse', () => {
 
         test('should merge 2 overlapping trees, append the different package with the same method name', () => {
             const multiverse = new Multiverse([
-                new Universe('a', forest.overlappingTreeA),
-                new Universe('b', forest.overlappingTreeB),
-                new Universe('d', forest.differentPackageTree)
+                new Universe('a', '#000000', forest.overlappingTreeA),
+                new Universe('b', '#000000', forest.overlappingTreeB),
+                new Universe('d', '#000000', forest.differentPackageTree)
             ])
 
             const a = forest.overlappingTreeA.children[0]
@@ -280,7 +282,10 @@ describe('Multiverse', () => {
             const treeA = clone(forest.overlappingTreeA)
             const treeB = clone(forest.overlappingTreeB)
 
-            new Multiverse([new Universe('a', treeA), new Universe('b', treeB)])
+            new Multiverse([
+                new Universe('a', '#000000', treeA),
+                new Universe('b', '#000000', treeB)
+            ])
 
             expect(treeA.equals(forest.overlappingTreeA)).toBeTruthy()
             expect(treeB.equals(forest.overlappingTreeB)).toBeTruthy()
@@ -289,15 +294,18 @@ describe('Multiverse', () => {
         test('merging images should not affect original values', () => {
             const imageA = clone(forest.overlappingImageA)
             const imageB = clone(forest.overlappingImageB)
-            new Multiverse([new Universe('a', imageA), new Universe('b', imageB)])
+            new Multiverse([
+                new Universe('a', '#000000', imageA),
+                new Universe('b', '#000000', imageB)
+            ])
             expect(imageA.equals(forest.overlappingImageA)).toBeTruthy()
             expect(imageB.equals(forest.overlappingImageB)).toBeTruthy()
         })
 
         test('should merge 2 overlapping images into one image', () => {
             const multiverse = new Multiverse([
-                new Universe('a', forest.overlappingImageA),
-                new Universe('b', forest.overlappingImageB)
+                new Universe('a', '#000000', forest.overlappingImageA),
+                new Universe('b', '#000000', forest.overlappingImageB)
             ])
             const a = forest.overlappingImageA.children[0]
             const b = forest.overlappingImageB.children[0]
@@ -335,9 +343,9 @@ describe('Multiverse', () => {
 
         test('should merge 3 overlapping trees into one tree', () => {
             const multiverse = new Multiverse([
-                new Universe('a', forest.overlappingImageA),
-                new Universe('b', forest.overlappingImageB),
-                new Universe('c', forest.overlappingImageC)
+                new Universe('a', '#000000', forest.overlappingImageA),
+                new Universe('b', '#000000', forest.overlappingImageB),
+                new Universe('c', '#000000', forest.overlappingImageC)
             ])
 
             const a = forest.overlappingImageA.children[0]
@@ -393,8 +401,8 @@ describe('Multiverse', () => {
 
     describe('equals', () => {
         test('returns true if sources are the same', () => {
-            const universeA = new Universe('overlappingTreeA', forest.overlappingTreeA)
-            const universeB = new Universe('overlappingTreeB', forest.overlappingTreeB)
+            const universeA = new Universe('overlappingTreeA', '#000000', forest.overlappingTreeA)
+            const universeB = new Universe('overlappingTreeB', '#000000', forest.overlappingTreeB)
 
             const multiverseA = new Multiverse([universeA, universeB])
             const multiverseB = new Multiverse([universeA, universeB])
@@ -403,11 +411,27 @@ describe('Multiverse', () => {
         })
 
         test('returnes true if sources are clones of the same data', () => {
-            const universeA = new Universe('overlappingTreeA', clone(forest.overlappingTreeA))
-            const universeB = new Universe('overlappingTreeB', clone(forest.overlappingTreeB))
+            const universeA = new Universe(
+                'overlappingTreeA',
+                '#000000',
+                clone(forest.overlappingTreeA)
+            )
+            const universeB = new Universe(
+                'overlappingTreeB',
+                '#000000',
+                clone(forest.overlappingTreeB)
+            )
 
-            const universeC = new Universe('overlappingTreeA', clone(forest.overlappingTreeA))
-            const universeD = new Universe('overlappingTreeB', clone(forest.overlappingTreeB))
+            const universeC = new Universe(
+                'overlappingTreeA',
+                '#000000',
+                clone(forest.overlappingTreeA)
+            )
+            const universeD = new Universe(
+                'overlappingTreeB',
+                '#000000',
+                clone(forest.overlappingTreeB)
+            )
 
             const multiverseA = new Multiverse([universeA, universeB])
             const multiverseB = new Multiverse([universeC, universeD])
@@ -416,9 +440,13 @@ describe('Multiverse', () => {
         })
 
         test('returns false if the sources are different', () => {
-            const universeA = new Universe('overlappingTreeA', forest.overlappingTreeA)
-            const universeB = new Universe('overlappingTreeB', forest.overlappingTreeB)
-            const universeC = new Universe('differentPackageTree', forest.differentPackageTree)
+            const universeA = new Universe('overlappingTreeA', '#000000', forest.overlappingTreeA)
+            const universeB = new Universe('overlappingTreeB', '#000000', forest.overlappingTreeB)
+            const universeC = new Universe(
+                'differentPackageTree',
+                '#000000',
+                forest.differentPackageTree
+            )
 
             const multiverseA = new Multiverse([universeA, universeB])
             const multiverseB = new Multiverse([universeA, universeC])
