@@ -1,1 +1,2 @@
 export const HIERARCHY_NAME_SEPARATOR = ';'
+export const SUB_HIERARCHY_NAME_SEPARATOR = '.'
