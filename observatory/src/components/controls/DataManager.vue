@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { Universe } from '../../ts/UniverseTypes/Universe'
 import { CausalityGraphUniverse } from '../../ts/UniverseTypes/CausalityGraphUniverse'
 import { loadJson, loadText, parseReachabilityExport, ReachabilityJson } from '../../ts/parsing'
-import { useGlobalStore, CONFIG_NAME, RawData } from '../../ts/stores/globalStore'
+import { useGlobalStore, CONFIG_NAME } from '../../ts/stores/globalStore'
 import { useVennStore } from '../../ts/stores/vennStore'
 import { useSankeyStore } from '../../ts/stores/sankeyTreeStore'
 import { useTreeLineStore } from '../../ts/stores/treeLineStore'
@@ -33,7 +33,7 @@ const nameFields = ref<InstanceType<typeof InlineEditableField>[]>()
 async function createUniverseFromZip(
     zipFiles: { [path: string]: JSZip.JSZipObject | undefined },
     universeName: string
-): Promise<[Universe, RawData]> {
+): Promise<Universe> {
     function getZipEntry(path: string) {
         const entry = zipFiles[path]
         if (!entry) throw new Error(`Missing zip entry: ${path}`)
@@ -44,7 +44,6 @@ async function createUniverseFromZip(
     const reachabilityData = (await loadJson(reachabilityBlob)) as ReachabilityJson
 
     let newUniverse
-    const rawData: RawData = { 'reachability.json': reachabilityBlob }
 
     const causalityFileNames: string[] = causalityBinaryFileNames as unknown as string[]
     causalityFileNames.push('methods.txt', 'types.txt')
@@ -73,10 +72,6 @@ async function createUniverseFromZip(
             parseReachabilityExport(reachabilityData, universeName),
             cgData
         )
-
-        for (const name of causalityFileNames) {
-            rawData[name] = await zipFiles[name]!.async('blob')
-        }
     } else {
         newUniverse = new Universe(
             universeName,
@@ -84,13 +79,13 @@ async function createUniverseFromZip(
         )
     }
 
-    return [newUniverse, rawData]
+    return newUniverse
 }
 
 async function createUniverseFromReachabilityJson(
     file: File,
     universeName: string
-): Promise<[Universe, RawData]> {
+): Promise<Universe> {
     const jsonAsString = await loadText(file)
     const parsedJSON = JSON.parse(jsonAsString)
 
@@ -99,7 +94,7 @@ async function createUniverseFromReachabilityJson(
         parseReachabilityExport(parsedJSON, universeName)
     )
 
-    return [newUniverse, { 'reachability.json': jsonAsString }]
+    return newUniverse
 }
 
 async function validateFileAndAddUniverseOnSuccess(
@@ -108,21 +103,20 @@ async function validateFileAndAddUniverseOnSuccess(
 ): Promise<void> {
     try {
         let newUniverse: Universe
-        let rawData
 
         if (file.name.endsWith('.zip')) {
-            ;[newUniverse, rawData] = await createUniverseFromZip(
+            newUniverse = await createUniverseFromZip(
                 (
                     await new JSZip().loadAsync(file)
                 ).files,
                 universeName
             )
         } else if (file.name.endsWith('.json')) {
-            ;[newUniverse, rawData] = await createUniverseFromReachabilityJson(file, universeName)
+            newUniverse = await createUniverseFromReachabilityJson(file, universeName)
         } else {
             throw new Error('Unknown file ending')
         }
-        globalStore.addUniverse(newUniverse, rawData)
+        globalStore.addUniverse(newUniverse, file)
         uploadError.value = undefined
     } catch (error: unknown) {
         if (error instanceof Error) {
@@ -156,12 +150,10 @@ function exportConfig() {
     const zip = new JSZip()
     zip.file(`${CONFIG_NAME}.json`, JSON.stringify(configData))
     Object.entries(rawData).forEach(([universeName, data]) => {
-        Object.entries(data).forEach(([filename, filedata]) => {
-            zip.file(`universe-data/${universeName}/${filename}`, filedata)
-        })
+        zip.file(`universe-data/${universeName}/${data.name}`, data)
     })
 
-    zip.generateAsync({ type: 'blob', compression: 'DEFLATE' }).then((content) => {
+    zip.generateAsync({ type: 'blob' }).then((content) => {
         FileSaver.saveAs(content, Object.keys(rawData).join('-') + '.observatory-config.zip')
     })
 }
@@ -218,17 +210,21 @@ async function loadData(zip: JSZip): Promise<string[]> {
         universeNames.map(async (universeName: string) => {
             try {
                 const subdir = 'universe-data/' + universeName + '/'
-                const subdirZipView = Object.fromEntries(
-                    Object.entries(zip.files)
-                        .filter(([n, f]) => [n.startsWith(subdir), f])
-                        .map(([n, f]) => [n.substring(subdir.length), f])
+                const inputDataFile = Object.values(zip.files).find(
+                    (f) => f.name.length > subdir.length && f.name.startsWith(subdir)
                 )
+                if (!inputDataFile) throw Error('Unexpected empty directory in config export')
 
-                const [newUniverse, universeData] = await createUniverseFromZip(
-                    subdirZipView,
+                // The input routine depends on the name to distinguish types of data.
+                const fileNameParts = inputDataFile.name.split('/')
+                const fileName = fileNameParts[fileNameParts.length - 1]
+                const file = new File([await inputDataFile.async('blob')], fileName)
+
+                await validateFileAndAddUniverseOnSuccess(
+                    // We need the name
+                    file,
                     universeName
                 )
-                globalStore.addUniverse(newUniverse, universeData)
             } catch (error: unknown) {
                 if (error instanceof Error) {
                     errors.push(
