@@ -60,13 +60,17 @@ export const useGlobalStore = defineStore('globalConfig', {
             // Reason: Since our schemes are custom added, they're not part of the type declaration
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             colorScheme: Object.values((cssConfig as any).theme.colors.SET_3) as ColorScheme,
+            universeColors: Object.values(
+                (cssConfig as any).theme.colors.UNIVERSE_COLORS
+            ) as ColorScheme,
             search: ''
         }
     },
     getters: {
         currentComponentName: (state) => componentName(state.currentComponent),
         previousComponentName: (state) => componentName(state.previousComponent),
-        universeCount: (state) => state.universes.length
+        nextUniverseColor: (state) =>
+            state.universeColors[state.universes.length % state.universeColors.length]
     },
     actions: {
         addUniverse(newUniverse: Universe, rawData: unknown): void {
@@ -202,6 +206,13 @@ export const useGlobalStore = defineStore('globalConfig', {
                 (colorScheme: string[]) => this.switchColorScheme(colorScheme)
             )
 
+            loadStringArrayParameter(
+                'universeColors',
+                config,
+                (universeColors: string[]) => universeColors,
+                (universeColors: string[]) => (this.universeColors = universeColors)
+            )
+
             loadStringParameter(
                 'currentComponent',
                 config,
@@ -295,6 +306,7 @@ export const useGlobalStore = defineStore('globalConfig', {
                 highlights: Array.from(this.highlights),
                 currentLayer: serializerLayer(this.currentLayer),
                 colorScheme: this.colorScheme,
+                universeColors: this.universeColors,
                 currentComponent: serializeComponent(this.currentComponent),
                 previousComponent: this.previousComponent
                     ? serializeComponent(this.previousComponent)
