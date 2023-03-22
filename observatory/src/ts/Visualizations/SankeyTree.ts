@@ -101,9 +101,9 @@ export class SankeyTree implements MultiverseVisualization {
     }
 
     setSearchTerm(searchTerm: string): void {
-        const enableTransition = this.searchTerm != searchTerm
+        const enableTransition = this.searchTerm !== searchTerm
         this.searchTerm = searchTerm
-        const defaultOpacity = searchTerm == '' ? 1 : 0.2
+        const defaultOpacity = searchTerm === '' ? 1 : 0.2
         this.applyStyleForChosen(
             (nodeIdentifier) => nodeIdentifier.toLowerCase().includes(searchTerm.toLowerCase()),
             'opacity',

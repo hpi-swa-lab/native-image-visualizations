@@ -72,7 +72,6 @@ export function getCodeSizeFromLeaves(vizNode: SankeyHierarchyPointNode): number
 // #################################################################################################
 
 export function toggleSelection(node: Node, selection: Set<string>): void {
-    // Fixme node.identifier needs correct hierarchy_separators!!
     const identifier = getWithoutRoot(node.identifier)
     if (selection.has(identifier)) {
         selection.delete(identifier)
