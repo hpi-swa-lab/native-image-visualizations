@@ -5,7 +5,10 @@ import DiffingUniversesFilterFieldset from './DiffingUniversesFilterFieldset.vue
 import { UniverseMetadata } from '../../ts/SharedTypes/SankeyTree'
 import LayerSelection from './LayerSelection.vue'
 
-const SHORTCUTS = ['* shift+click on node expands branch', '* ctrl+click on node de-/selects it (command+click on Mac)']
+const SHORTCUTS = [
+    '* shift+click on node expands branch',
+    '* ctrl+click on node de-/selects it (command+click on Mac)'
+]
 
 withDefaults(
     defineProps<{

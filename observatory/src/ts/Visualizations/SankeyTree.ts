@@ -38,7 +38,6 @@ import { TooltipModel } from './TooltipModel'
 import { useSankeyStore } from '../stores/sankeyTreeStore'
 import { EventType } from '../enums/EventType'
 import { Filter } from '../SharedTypes/Filters'
-import {HIERARCHY_NAME_SEPARATOR, SUB_HIERARCHY_NAME_SEPARATOR} from '../globals';
 
 export const UNMODIFIED = 'UNMODIFIED'
 export const MAX_OBSERVED_UNIVERSES_FOR_SANKEY_TREE = 2
@@ -105,7 +104,13 @@ export class SankeyTree implements MultiverseVisualization {
         const enableTransition = this.searchTerm != searchTerm
         this.searchTerm = searchTerm
         const defaultOpacity = searchTerm == '' ? 1 : 0.2
-        this.applyStyleForChosen((nodeIdentifier) => nodeIdentifier.toLowerCase().includes(searchTerm.toLowerCase()), 'opacity', defaultOpacity, 1, enableTransition)
+        this.applyStyleForChosen(
+            (nodeIdentifier) => nodeIdentifier.toLowerCase().includes(searchTerm.toLowerCase()),
+            'opacity',
+            defaultOpacity,
+            1,
+            enableTransition
+        )
     }
 
     public setFilters(filters: Filter[]): void {
@@ -116,7 +121,13 @@ export class SankeyTree implements MultiverseVisualization {
 
     setSelection(selection: Set<string>): void {
         this.selection = selection
-        this.applyStyleForChosen((nodeIdentifier) => this.selection.has(nodeIdentifier), 'stroke-width', '0', '5', false)
+        this.applyStyleForChosen(
+            (nodeIdentifier) => this.selection.has(nodeIdentifier),
+            'stroke-width',
+            '0',
+            '5',
+            false
+        )
     }
 
     public setLayer(layer: Layers): void {
@@ -587,7 +598,7 @@ export class SankeyTree implements MultiverseVisualization {
     }
 
     private applyStyleForChosen(
-        filterCallback: (nodeIdentifier: string) => {},
+        filterCallback: (nodeIdentifier: string) => boolean,
         style: string,
         unselected: unknown,
         selected: unknown,

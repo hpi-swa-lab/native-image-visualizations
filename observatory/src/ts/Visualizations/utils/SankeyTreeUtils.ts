@@ -8,7 +8,7 @@ import { SortingOption, SortingOrder } from '../../enums/Sorting'
 import { Node } from '../../UniverseTypes/Node'
 import { formatBytes } from '../../SharedTypes/Size'
 import { EventType } from '../../enums/EventType'
-import {HIERARCHY_NAME_SEPARATOR, SUB_HIERARCHY_NAME_SEPARATOR} from '../../globals'
+import { HIERARCHY_NAME_SEPARATOR, SUB_HIERARCHY_NAME_SEPARATOR } from '../../globals'
 import { ROOT_NODE_NAME } from '../SankeyTree'
 
 // #################################################################################################
@@ -24,7 +24,10 @@ export function createHierarchyFromPackages(node: Node, dataTree: Node, leaves: 
         for (let j = 0; j < subPathSegments.length; j++) {
             let child = current.children.find((child) => child.name === subPathSegments[j])
             if (child) {
-                child.sources.set(node.sources.keys().next().value, node.sources.values().next().value)
+                child.sources.set(
+                    node.sources.keys().next().value,
+                    node.sources.values().next().value
+                )
                 child.codeSize = child.codeSize + node.codeSize
 
                 // FIXME set correct codeSize in child
