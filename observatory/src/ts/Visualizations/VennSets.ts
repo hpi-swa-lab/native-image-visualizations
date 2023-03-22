@@ -4,7 +4,7 @@
 import * as d3 from 'd3'
 import { Multiverse } from '../UniverseTypes/Multiverse'
 import { Node } from '../UniverseTypes/Node'
-import { MultiverseVisualization } from './MultiverseVisualization'
+import { Visualization } from './Visualization'
 import { Layers } from '../enums/Layers'
 import { getNodesOnLevel } from '../Math/filters'
 import { HierarchyNode } from 'd3'
@@ -24,7 +24,7 @@ type PackedHierarchyLeaf = HierarchyNode<LeafData> & d3.PackRadius
 
 const TRANSITION_DURATION = 500
 
-export class VennSets implements MultiverseVisualization {
+export class VennSets implements Visualization {
     colorScheme: ColorScheme = []
     selection: Set<string> = new Set<string>()
     highlights: Set<string> = new Set<string>()

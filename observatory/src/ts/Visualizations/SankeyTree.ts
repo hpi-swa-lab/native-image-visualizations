@@ -10,7 +10,7 @@ import {
     Link
 } from 'd3'
 import { Node } from '../UniverseTypes/Node'
-import { MultiverseVisualization } from './MultiverseVisualization'
+import { Visualization } from './Visualization'
 import { ColorScheme } from '../SharedTypes/Colors'
 import { Multiverse } from '../UniverseTypes/Multiverse'
 import { Layers } from '../enums/Layers'
@@ -47,7 +47,7 @@ const D3_NODE_HEIGHT = 20
 const D3_NODE_WIDTH = 350
 const TRANSITION_DURATION = 250
 
-export class SankeyTree implements MultiverseVisualization {
+export class SankeyTree implements Visualization {
     colorScheme: ColorScheme = []
     selection: Set<string> = new Set<string>()
     highlights: Set<string> = new Set<string>()
