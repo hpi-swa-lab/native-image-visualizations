@@ -56,7 +56,6 @@ export const useGlobalStore = defineStore('globalConfig', {
             activeFilters: [] as Filter[],
             currentLayer: Layers.PACKAGES,
             currentComponent: SwappableComponentType.Home as SwappableComponentType,
-            previousComponent: undefined as SwappableComponentType | undefined,
             // Reason: Since our schemes are custom added, they're not part of the type declaration
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             colorScheme: Object.values((cssConfig as any).theme.colors.SET_3) as ColorScheme,
@@ -68,7 +67,6 @@ export const useGlobalStore = defineStore('globalConfig', {
     },
     getters: {
         currentComponentName: (state) => componentName(state.currentComponent),
-        previousComponentName: (state) => componentName(state.previousComponent),
         nextUniverseColor: (state) =>
             state.universeColors[state.universes.length % state.universeColors.length]
     },
@@ -138,13 +136,7 @@ export const useGlobalStore = defineStore('globalConfig', {
             this.colorScheme = newScheme
         },
         switchToComponent(newComponent: SwappableComponentType): void {
-            this.previousComponent = this.currentComponent
             this.currentComponent = newComponent
-        },
-        goToPreviousComponent(): void {
-            if (this.previousComponent) {
-                this.switchToComponent(this.previousComponent)
-            }
         },
         basicChangeSearchTerm(newSearch: string): void {
             this.search = newSearch
@@ -218,15 +210,6 @@ export const useGlobalStore = defineStore('globalConfig', {
                 config,
                 (componentName: string) => deserializeComponent(componentName),
                 (component: SwappableComponentType) => this.switchToComponent(component)
-            )
-
-            loadStringParameter(
-                'previousComponent',
-                config,
-                (componentName: string) => deserializeComponent(componentName),
-                (component: SwappableComponentType) => {
-                    this.previousComponent = component
-                }
             )
 
             loadStringParameter(
@@ -308,9 +291,6 @@ export const useGlobalStore = defineStore('globalConfig', {
                 colorScheme: this.colorScheme,
                 universeColors: this.universeColors,
                 currentComponent: serializeComponent(this.currentComponent),
-                previousComponent: this.previousComponent
-                    ? serializeComponent(this.previousComponent)
-                    : '',
                 search: this.search
             }
         }
