@@ -1,19 +1,34 @@
 <script setup lang="ts">
-import {
-    COLOR_MODIFIED,
-    COLOR_UNMODIFIED,
-    UNMODIFIED
-} from '../../ts/constants/SankeyTreeConstants'
-import { UniverseProps } from '../../ts/interfaces/UniverseProps'
 import ColorLabel from './ColorLabel.vue'
 import ToggleSwitch from './ToggleSwitch.vue'
 import { useSankeyStore } from '../../ts/stores/sankeyTreeStore'
+import { useGlobalStore } from '../../ts/stores/globalStore'
+import { UNMODIFIED } from '../../ts/Visualizations/SankeyTree'
+import { UniverseMetadata } from '../../ts/SharedTypes/SankeyTree'
+import { computed } from 'vue'
 
 defineProps<{
-    universesMetadata: Record<string, UniverseProps>
+    universesMetadata: UniverseMetadata
 }>()
 
-const sankeyTreeStore = useSankeyStore()
+const globalStore = useGlobalStore()
+const sankeyStore = useSankeyStore()
+
+const isTheOnlyCheckedOption = computed(
+    () => (key: string) => onlyShowUnmodifiedChecked(key) || onlyOneUniverseChecked(key)
+)
+
+const onlyShowUnmodifiedChecked = (key: string) =>
+    sankeyStore.diffingFilter.showUnmodified &&
+    sankeyStore.diffingFilter.universes.size === 0 &&
+    key === UNMODIFIED
+
+const onlyOneUniverseChecked = (key: string) =>
+    !sankeyStore.diffingFilter.showUnmodified &&
+    sankeyStore.diffingFilter.universes.size === 1 &&
+    sankeyStore.isUniverseFiltered(parseInt(key))
+
+const isRealMultiverse = computed(() => globalStore.multiverse.sources.length === 2)
 </script>
 
 <template>
@@ -24,34 +39,38 @@ const sankeyTreeStore = useSankeyStore()
             v-for="key in Object.keys(universesMetadata)"
             :id="key"
             :key="key"
-            :value="universesMetadata[key].name"
-            :checked="sankeyTreeStore.isUniverseFiltered(key)"
-            @input="sankeyTreeStore.changeUniverseSelection($event.target.id)"
+            :value="universesMetadata[parseInt(key)].name"
+            :checked="sankeyStore.isUniverseFiltered(parseInt(key))"
+            :disabled="!isRealMultiverse || isTheOnlyCheckedOption(key)"
+            @input="sankeyStore.changeUniverseSelection(parseInt($event.target.id))"
         >
             <ColorLabel
                 :for-element="key"
-                :label="universesMetadata[key].name"
-                :color="universesMetadata[key].color"
+                :label="universesMetadata[parseInt(key)].name"
+                :color="universesMetadata[parseInt(key)].color"
             ></ColorLabel>
         </ToggleSwitch>
 
-        <ToggleSwitch
-            :id="UNMODIFIED"
-            :value="UNMODIFIED"
-            :checked="sankeyTreeStore.diffingFilter.showUnmodified"
-            @input="sankeyTreeStore.setShowUnmodified($event.target.checked)"
-        >
+        <template v-if="isRealMultiverse">
+            <ToggleSwitch
+                :id="UNMODIFIED"
+                :value="UNMODIFIED"
+                :checked="sankeyStore.diffingFilter.showUnmodified"
+                :disabled="isTheOnlyCheckedOption(UNMODIFIED)"
+                @input="sankeyStore.setShowUnmodified($event.target.checked)"
+            >
+                <ColorLabel
+                    :for-element="UNMODIFIED"
+                    label="unmodified packages"
+                    :color="sankeyStore.colorUnmodified"
+                ></ColorLabel>
+            </ToggleSwitch>
+
             <ColorLabel
-                :for-element="UNMODIFIED"
-                label="unmodified packages"
-                :color="COLOR_UNMODIFIED"
+                label="modified packages"
+                :color="sankeyStore.colorModified"
+                class="ml-[29px]"
             ></ColorLabel>
-        </ToggleSwitch>
-
-        <ColorLabel
-            label="modified packages"
-            :color="COLOR_MODIFIED"
-            class="ml-[29px]"
-        ></ColorLabel>
+        </template>
     </fieldset>
 </template>

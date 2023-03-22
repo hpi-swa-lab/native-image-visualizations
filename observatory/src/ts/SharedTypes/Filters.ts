@@ -1,10 +1,11 @@
 import { Node } from '../UniverseTypes/Node'
+import { HIERARCHY_NAME_SEPARATOR } from '../globals'
 
 export type NodeValidator = (node: Node) => boolean
 
 type serializedFilter = {
     description: string
-    appliesComplement: boolean
+    applyComplement: boolean
     validator: string
     isCustom: boolean
 }
@@ -36,7 +37,7 @@ export class Filter {
         return new Filter(
             serialized.description,
             new Function('return ' + serialized.validator)(),
-            serialized.appliesComplement,
+            serialized.applyComplement,
             serialized.isCustom
         )
     }
@@ -44,17 +45,29 @@ export class Filter {
     static fromSearchTerm(term: string): Filter {
         return new Filter(
             `${term}`,
-            (node) => node.identifier.toLowerCase().includes(term.toLowerCase()),
+            new Function(
+                'return (node) => node.identifier.toLowerCase().includes("term")'.replace(
+                    'term',
+                    term.toLowerCase()
+                )
+            )(),
             false,
             true
         )
     }
 
     static fromSelection(selection: Set<string>): Filter {
-        const copy = new Set(selection)
+        // we have to check for "selectionTerm + HIERARCHY_NAME_SEPARATOR" in cases
+        // of packages like "java.util", where selecting "java.util" must not add the package
+        // "java.util.regex"
+        const copy = [...selection]
         return new Filter(
-            `User Selection with ${selection.size} items`,
-            (node) => copy.has(node.identifier),
+            `${copy.join(', ')}`,
+            new Function(
+                'return (node) => copy.some( (selectionTerm) => node.identifier.includes(selectionTerm + "HIERARCHY_NAME_SEPARATOR") ||  node.identifier.endsWith(selectionTerm))'
+                    .replace('HIERARCHY_NAME_SEPARATOR', HIERARCHY_NAME_SEPARATOR)
+                    .replace('copy', JSON.stringify(copy))
+            )(),
             false,
             true
         )
@@ -73,8 +86,16 @@ export class Filter {
     }
 
     public serialize(): string {
-        return `{"description":"${this.description}","applyComplement":${
-            this.applyComplement
-        }, "validator":"${this.validator.toString()}", "isCustom":${this.isCustom}}`
+        const exportDict: serializedFilter = {
+            description: this.description,
+            applyComplement: this.applyComplement,
+            // Reason: JSON string objects need \ to be recognized as valid syntax. Prettier deletes
+            // it as it is an invalid escape character
+            // prettier-ignore
+            validator: this.validator.toString().replaceAll('"', '\"'),
+            isCustom: this.isCustom
+        }
+
+        return JSON.stringify(exportDict)
     }
 }

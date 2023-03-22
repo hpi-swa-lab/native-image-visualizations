@@ -56,7 +56,8 @@
         "quotes": ["error", "single"],
         "no-multi-spaces": ["error"],
         "class-methods-use-this": "off",
-        "@typescript-eslint/adjacent-overload-signatures": "off"
+        "@typescript-eslint/adjacent-overload-signatures": "off",
+        "@typescript-eslint/no-explicit-any": ["off"]
     },
     "settings": {
         "import/parsers": {

@@ -71,6 +71,10 @@ input[type='radio'] {
     @apply bg-red-100 border-l-4 border-red-500 text-red-700 p-4 animate-flash;
 }
 
+.warning-text {
+    @apply bg-orange-100 border-l-4 border-orange-500 text-orange-700 p-4 animate-flash;
+}
+
 .dropdown {
     @apply border text-sm rounded-lg p-2.5;
 }
