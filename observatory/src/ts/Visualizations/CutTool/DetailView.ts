@@ -133,13 +133,13 @@ export class DetailView {
             .attr('fill', 'black')
             .attr('dominant-baseline', 'middle')
             .attr('x', (d) => {
-                const side = getSide(d.x, d.y)
+                const side = getSide(d.x!, d.y!)
                 if (side === true) return 1.2 * nodeRadius
                 else if (side === false) return -1.2 * nodeRadius
                 else return 0
             })
             .attr('class', (d) => {
-                const side = getSide(d.x, d.y)
+                const side = getSide(d.x!, d.y!)
                 if (side === true) return 'detail-text-left'
                 else if (side === false) return 'detail-text-right'
                 else return 'detail-text-middle'

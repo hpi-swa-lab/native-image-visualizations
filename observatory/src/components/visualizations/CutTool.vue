@@ -3,6 +3,7 @@ import { computed, onMounted, ref, toRaw, watch } from 'vue'
 import MainLayout from '../layouts/MainLayout.vue'
 import { CutToolVis } from '../../ts/Visualizations/CutTool'
 import { useGlobalStore } from '../../ts/stores/globalStore'
+import { Universe } from '../../ts/UniverseTypes/Universe'
 
 const store = useGlobalStore()
 const multiverse = computed(() => store.multiverse)
@@ -17,12 +18,18 @@ onMounted(() => {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     visualization = new CutToolVis(container.value!)
     const universes = multiverse.value.sources
-    if (universes.length === 1) visualization.setUniverse(toRaw(universes[0]))
+    if (universes.length === 1) {
+        const u = universes[0] as Universe
+        visualization.setUniverse(toRaw(u))
+    }
 })
 
 watch(multiverse, (newMultiverse) => {
     const universes = newMultiverse.sources
-    if (universes.length === 1) visualization?.setUniverse(toRaw(universes[0]))
+    if (universes.length === 1) {
+        const u = universes[0] as Universe
+        visualization?.setUniverse(toRaw(u))
+    }
 })
 
 function detailViewClose(): void {

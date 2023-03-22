@@ -14,6 +14,7 @@ import { assert } from '../util/assert'
 import { UniverseVisualization } from './UniverseVisualization'
 import { Universe } from '../UniverseTypes/Universe'
 import { ColorScheme } from '../SharedTypes/Colors'
+import { Filter } from '../SharedTypes/Filters'
 
 class CutTool {
     readonly domRoot: HTMLDivElement
@@ -233,6 +234,8 @@ export class CutToolVis implements UniverseVisualization {
     highlights = new Set<string>()
     selection = new Set<string>()
 
+    filters: Filter[] = [] // TODO: https://github.com/hpi-swa-lab/MPWS2022RH1/issues/156
+
     private universeSpecificCutTool: Promise<CutTool | undefined> | undefined
     private readonly domRoot: HTMLDivElement
 
@@ -249,6 +252,10 @@ export class CutToolVis implements UniverseVisualization {
     }
 
     setSelection(_: Set<string>): void {
+        // TODO: https://github.com/hpi-swa-lab/MPWS2022RH1/issues/156
+    }
+
+    setFilters(filters: Filter[]): void {
         // TODO: https://github.com/hpi-swa-lab/MPWS2022RH1/issues/156
     }
 
