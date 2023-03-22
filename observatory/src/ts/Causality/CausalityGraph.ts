@@ -5,7 +5,7 @@
 // @ts-ignore
 import loadWASM from './lib/causality-query.js'
 import { causalityBinaryFileNames, CausalityGraphBinaryData } from './CausalityGraphBinaryData'
-import { assert } from '../util/assert.js'
+import { assert } from '../util/assert'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Module: any = await loadWASM()
 
@@ -237,9 +237,12 @@ export class CausalityGraph extends WasmObjectWrapper {
                     }
                 }
 
+                let subsetEnd = subset
+
                 if (purgeRoot.children) {
                     let childIndex = subset
                     subset += purgeRoot.children.length
+                    subsetEnd = subset
                     for (const child of purgeRoot.children) {
                         layoutChildren(child, childIndex)
                         childIndex += 1
@@ -250,7 +253,7 @@ export class CausalityGraph extends WasmObjectWrapper {
                 slice[0] = midsPosBefore * 4
                 slice[1] = midsPos - midsPosBefore
                 slice[2] = subsetsBuffer.viewU8.byteOffset + subsetStart * 16
-                slice[3] = subset - subsetStart
+                slice[3] = subsetEnd - subsetStart
             }
 
             for (const mid of prepurgeMids) {
@@ -360,13 +363,14 @@ export class IncrementalSimulationResult<Token> extends SimulationResult {
         this.indexToInputToken = indexToInputToken
     }
 
-    simulateNext(): Token | undefined {
+    simulateNext(): { token: Token; history: Uint8Array } | undefined {
         while (true) {
             const curNode = IncrementalSimulationResult._simulateNext(this)
             if (curNode === 0) return
             const index = (curNode - this.subsetsArr.viewU8.byteOffset) / 16
             const inputNode = this.indexToInputToken[index]
-            if (inputNode !== undefined) return inputNode
+            if (inputNode !== undefined)
+                return { token: inputNode, history: this.getReachableArray() }
         }
     }
 

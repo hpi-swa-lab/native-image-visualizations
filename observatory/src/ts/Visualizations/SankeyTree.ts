@@ -542,7 +542,7 @@ export class SankeyTree implements Visualization {
                 sourceX +=
                     vizLink.source.x - (inMB(vizLink.source.data.codeSize) * D3_NODE_HEIGHT) / 2
                 sourceX += (inMB(vizLink.target.data.codeSize) * D3_NODE_HEIGHT) / 2
-                const source = { x: sourceX, y: vizLink.source.y0 }
+                const source = { x: sourceX, y: vizLink.source.initialY }
                 return linkGenerator({ source: source, target: vizLink.target } as any)
             })
     }

@@ -52,7 +52,7 @@ class UiAsyncIncrementalSimulationResult implements AsyncIncrementalSimulationRe
         this.wrapped = wrapped
     }
 
-    async simulateNext(): Promise<number | undefined> {
+    async simulateNext(): Promise<{ token: number; history: Uint8Array } | undefined> {
         await new Promise((r) => setTimeout(r, 1))
         return this.wrapped.simulateNext()
     }

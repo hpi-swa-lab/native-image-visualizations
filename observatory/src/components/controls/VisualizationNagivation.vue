@@ -27,6 +27,7 @@ function applyComponent(event: Event) {
             <option :value="SwappableComponentType.VennSets">Venn Sets</option>
             <option :value="SwappableComponentType.SankeyTree">Sankey Tree</option>
             <option :value="SwappableComponentType.TreeLine">Tree Line</option>
+            <option :value="SwappableComponentType.CutTool">Cut Tool</option>
         </select>
     </div>
 </template>
