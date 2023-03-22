@@ -6,7 +6,7 @@ const store = useGlobalStore()
 </script>
 
 <template>
-    <div class="overflow-auto w-full h-[250px] grid grid-cols-8 relative content-start">
+    <div class="overflow-auto w-full max-h-[250px] grid grid-cols-8 relative content-start">
         <p class="content-center">Only</p>
         <p class="content-center">None</p>
         <template v-for="(filter, index) in store.filters" :key="index">
