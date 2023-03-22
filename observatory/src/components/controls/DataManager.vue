@@ -2,8 +2,8 @@
 import { ref } from 'vue'
 import { Universe } from '../../ts/UniverseTypes/Universe'
 import { CausalityGraphUniverse } from '../../ts/UniverseTypes/CausalityGraphUniverse'
-import { loadJson, loadCgZip, parseReachabilityExport } from '../../ts/parsing'
-import { useGlobalStore, CONFIG_NAME } from '../../ts/stores/globalStore'
+import { loadJson, loadText, parseReachabilityExport, ReachabilityJson } from '../../ts/parsing'
+import { useGlobalStore, CONFIG_NAME, RawData } from '../../ts/stores/globalStore'
 import { useVennStore } from '../../ts/stores/vennStore'
 import { useSankeyStore } from '../../ts/stores/sankeyTreeStore'
 import { useTreeLineStore } from '../../ts/stores/treeLineStore'
@@ -15,6 +15,7 @@ import FileSaver from 'file-saver'
 import { InvalidInputError } from '../../ts/errors'
 import { ExportConfig } from '../../ts/stores/ExportConfig'
 import { EventType } from '../../ts/enums/EventType'
+import { causalityBinaryFileNames } from '../../ts/Causality/CausalityGraphBinaryData'
 
 const emit = defineEmits([EventType.CONFIG_LOADED])
 
@@ -29,32 +30,76 @@ const configLoadError = ref<Error | undefined>(undefined)
 
 const nameFields = ref<InstanceType<typeof InlineEditableField>[]>()
 
-async function createUniverseFromCausalityExport(
-    file: File,
+async function createUniverseFromZip(
+    zipFiles: { [path: string]: JSZip.JSZipObject | undefined },
     universeName: string
-): Promise<[Universe, unknown]> {
-    const parsedCG = await loadCgZip(file)
-    const newUniverse = new CausalityGraphUniverse(
-        universeName,
-        parseReachabilityExport(parsedCG.reachabilityData, universeName),
-        parsedCG
-    )
-    const rawData = parsedCG.reachabilityData
+): Promise<[Universe, RawData]> {
+    function getZipEntry(path: string) {
+        const entry = zipFiles[path]
+        if (!entry) throw new Error(`Missing zip entry: ${path}`)
+        return entry
+    }
+
+    const reachabilityBlob = await getZipEntry('reachability.json').async('blob')
+    const reachabilityData = (await loadJson(reachabilityBlob)) as ReachabilityJson
+
+    let newUniverse
+    const rawData: RawData = { 'reachability.json': reachabilityBlob }
+
+    const causalityFileNames: string[] = causalityBinaryFileNames as unknown as string[]
+    causalityFileNames.push('methods.txt', 'types.txt')
+
+    if (causalityFileNames.every((name) => zipFiles[name])) {
+        const cgData = {
+            reachabilityData: reachabilityData,
+            nodeLabels: (await getZipEntry('methods.txt').async('string')).split('\n').slice(0, -1),
+            typeLabels: (await getZipEntry('types.txt').async('string')).split('\n').slice(0, -1),
+
+            // Only initializing this because the loop below cannot infer
+            // that every of these properties will be set
+            'typestates.bin': new Uint8Array(),
+            'interflows.bin': new Uint8Array(),
+            'direct_invokes.bin': new Uint8Array(),
+            'typeflow_methods.bin': new Uint8Array(),
+            'typeflow_filters.bin': new Uint8Array()
+        }
+
+        for (const path of causalityBinaryFileNames) {
+            cgData[path] = await getZipEntry(path).async('uint8array')
+        }
+
+        newUniverse = new CausalityGraphUniverse(
+            universeName,
+            parseReachabilityExport(reachabilityData, universeName),
+            cgData
+        )
+
+        for (const name of causalityFileNames) {
+            rawData[name] = await zipFiles[name]!.async('blob')
+        }
+    } else {
+        newUniverse = new Universe(
+            universeName,
+            parseReachabilityExport(reachabilityData, universeName)
+        )
+    }
+
     return [newUniverse, rawData]
 }
 
 async function createUniverseFromReachabilityJson(
     file: File,
     universeName: string
-): Promise<[Universe, unknown]> {
-    const parsedJSON = await loadJson(file)
+): Promise<[Universe, RawData]> {
+    const jsonAsString = await loadText(file)
+    const parsedJSON = JSON.parse(jsonAsString)
 
     const newUniverse = new Universe(
         universeName,
         parseReachabilityExport(parsedJSON, universeName)
     )
 
-    return [newUniverse, parsedJSON]
+    return [newUniverse, { 'reachability.json': jsonAsString }]
 }
 
 async function validateFileAndAddUniverseOnSuccess(
@@ -65,8 +110,13 @@ async function validateFileAndAddUniverseOnSuccess(
         let newUniverse: Universe
         let rawData
 
-        if (file.name.endsWith('.cg.zip')) {
-            ;[newUniverse, rawData] = await createUniverseFromCausalityExport(file, universeName)
+        if (file.name.endsWith('.zip')) {
+            ;[newUniverse, rawData] = await createUniverseFromZip(
+                (
+                    await new JSZip().loadAsync(file)
+                ).files,
+                universeName
+            )
         } else if (file.name.endsWith('.json')) {
             ;[newUniverse, rawData] = await createUniverseFromReachabilityJson(file, universeName)
         } else {
@@ -79,18 +129,6 @@ async function validateFileAndAddUniverseOnSuccess(
             uploadError.value = error
         }
     }
-}
-
-async function loadUniverseData(
-    universeData: Record<string, any>,
-    universeName: string
-): Promise<void> {
-    const newUniverse = new Universe(
-        universeName,
-        parseReachabilityExport(universeData, universeName)
-    )
-
-    globalStore.addUniverse(newUniverse, universeData)
 }
 
 function addUniverses(event: Event) {
@@ -118,11 +156,13 @@ function exportConfig() {
     const zip = new JSZip()
     zip.file(`${CONFIG_NAME}.json`, JSON.stringify(configData))
     Object.entries(rawData).forEach(([universeName, data]) => {
-        zip.file(`${universeName}.json`, JSON.stringify(data))
+        Object.entries(data).forEach(([filename, filedata]) => {
+            zip.file(`universe-data/${universeName}/${filename}`, filedata)
+        })
     })
 
-    zip.generateAsync({ type: 'blob' }).then((content) => {
-        FileSaver.saveAs(content, Object.keys(rawData).join('-') + 'observatory-config.zip')
+    zip.generateAsync({ type: 'blob', compression: 'DEFLATE' }).then((content) => {
+        FileSaver.saveAs(content, Object.keys(rawData).join('-') + '.observatory-config.zip')
     })
 }
 
@@ -169,25 +209,34 @@ async function loadData(zip: JSZip): Promise<string[]> {
 
     const errors: string[] = []
 
+    const universeNames = Object.keys(zip.files)
+        .map((f) => f.match(/^universe-data\/([^/]+)\/$/))
+        .filter((m) => m)
+        .map((m) => m![1])
+
     await Promise.all(
-        Object.keys(zip.files)
-            .filter((filename: string) => filename !== `${CONFIG_NAME}.json`)
-            .map(async (filename: string) => {
-                const universeName = filename.replace(/\.[^/.]+$/, '')
+        universeNames.map(async (universeName: string) => {
+            try {
+                const subdir = 'universe-data/' + universeName + '/'
+                const subdirZipView = Object.fromEntries(
+                    Object.entries(zip.files)
+                        .filter(([n, f]) => [n.startsWith(subdir), f])
+                        .map(([n, f]) => [n.substring(subdir.length), f])
+                )
 
-                try {
-                    const rawData = await zip.files[filename].async('string')
-                    const parsedJSON = JSON.parse(rawData)
-
-                    await loadUniverseData(parsedJSON, universeName)
-                } catch (error: unknown) {
-                    if (error instanceof Error) {
-                        errors.push(
-                            `Failed loading the universe '${universeName}' due to the following error: ${error.message}`
-                        )
-                    }
+                const [newUniverse, universeData] = await createUniverseFromZip(
+                    subdirZipView,
+                    universeName
+                )
+                globalStore.addUniverse(newUniverse, universeData)
+            } catch (error: unknown) {
+                if (error instanceof Error) {
+                    errors.push(
+                        `Failed loading the universe '${universeName}' due to the following error: ${error.message}`
+                    )
                 }
-            })
+            }
+        })
     )
 
     return errors

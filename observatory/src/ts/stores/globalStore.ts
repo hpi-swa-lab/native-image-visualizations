@@ -39,11 +39,15 @@ function validateUniverseName(name: string) {
     }
 }
 
+export interface RawData {
+    [filename: string]: Blob | string | Uint8Array
+}
+
 export const useGlobalStore = defineStore('globalConfig', {
     state: () => {
         return {
             universes: [] as Universe[],
-            rawData: {} as Record<string, unknown>,
+            rawData: {} as Record<string, RawData>,
             observedUniverses: [] as Universe[],
             multiverse: new Multiverse([]),
             selections: new Set<string>(),
@@ -68,7 +72,7 @@ export const useGlobalStore = defineStore('globalConfig', {
         previousComponentName: (state) => componentName(state.previousComponent)
     },
     actions: {
-        addUniverse(newUniverse: Universe, rawData: unknown): void {
+        addUniverse(newUniverse: Universe, rawData: RawData): void {
             validateUniverseName(newUniverse.name)
 
             const matchingUniverse = this.universes.find(
@@ -101,8 +105,9 @@ export const useGlobalStore = defineStore('globalConfig', {
             if (!universe) return
             universe.name = newName
             if (!this.rawData[oldName]) return
-            this.rawData[newName] = this.rawData[oldName]
+            const data = this.rawData[oldName]
             delete this.rawData[oldName]
+            this.rawData[newName] = data
         },
         toggleObservationByName(universeName: string): void {
             const matchingUniverse = this.observedUniverses.find(
