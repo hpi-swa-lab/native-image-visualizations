@@ -11,6 +11,9 @@ import { Bytes } from './SharedTypes/Size'
 import { Leaf } from './UniverseTypes/Leaf'
 import { InitKind } from './enums/InitKind'
 import { Node } from './UniverseTypes/Node'
+import JSZip from 'jszip'
+import { CausalityGraphData } from './UniverseTypes/CausalityGraphUniverse'
+import { causalityBinaryFileNames } from './Causality/CausalityGraphBinaryData'
 
 interface Method {
     flags?: string[]
@@ -104,17 +107,54 @@ export class InvalidReachabilityFormatError extends Error {
     }
 }
 
-export async function loadText(file: Blob): Promise<string> {
-    return new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.readAsText(file)
-        reader.onload = () => resolve(reader.result as string)
-        reader.onerror = reject
-    })
+export async function loadCgZip(file: File): Promise<CausalityGraphData> {
+    const zip = await new JSZip().loadAsync(file)
+
+    function getZipEntry(path: string) {
+        const entry = zip.files[path]
+        if (!entry) throw new Error(`Missing zip entry: ${path}`)
+        return entry
+    }
+
+    const reachabilityData = (await loadJson(
+        await getZipEntry('reachability.json').async('blob')
+    )) as ReachabilityJson
+
+    const cgData = {
+        reachabilityData: reachabilityData,
+        nodeLabels: (await getZipEntry('methods.txt').async('string')).split('\n').slice(0, -1),
+        typeLabels: (await getZipEntry('types.txt').async('string')).split('\n').slice(0, -1),
+
+        // Only initializing this because the loop below cannot infer
+        // that every of these properties will be set
+        'typestates.bin': new Uint8Array(),
+        'interflows.bin': new Uint8Array(),
+        'direct_invokes.bin': new Uint8Array(),
+        'typeflow_methods.bin': new Uint8Array(),
+        'typeflow_filters.bin': new Uint8Array()
+    }
+
+    for (const path of causalityBinaryFileNames) {
+        cgData[path] = await getZipEntry(path).async('uint8array')
+    }
+
+    return cgData
 }
 
 export async function loadJson(file: Blob): Promise<object> {
-    return JSON.parse(await loadText(file))
+    return new Promise<object>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.readAsText(file)
+        reader.onload = () => {
+            try {
+                const json = JSON.parse(reader.result as string)
+                resolve(json)
+            } catch (e) {
+                reject(e)
+            }
+        }
+        reader.onerror = reject
+    })
 }
 
 export function parseReachabilityExport(parsedJSON: any, universeName: string): Node {

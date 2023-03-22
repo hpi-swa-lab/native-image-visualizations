@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { Universe } from '../../ts/UniverseTypes/Universe'
 import { CausalityGraphUniverse } from '../../ts/UniverseTypes/CausalityGraphUniverse'
-import { loadJson, loadText, parseReachabilityExport, ReachabilityJson } from '../../ts/parsing'
+import { loadJson, loadCgZip, parseReachabilityExport } from '../../ts/parsing'
 import { useGlobalStore, CONFIG_NAME } from '../../ts/stores/globalStore'
 import { useVennStore } from '../../ts/stores/vennStore'
 import { useSankeyStore } from '../../ts/stores/sankeyTreeStore'
@@ -15,7 +15,6 @@ import FileSaver from 'file-saver'
 import { InvalidInputError } from '../../ts/errors'
 import { ExportConfig } from '../../ts/stores/ExportConfig'
 import { EventType } from '../../ts/enums/EventType'
-import { causalityBinaryFileNames } from '../../ts/Causality/CausalityGraphBinaryData'
 
 const emit = defineEmits([EventType.CONFIG_LOADED])
 
@@ -30,55 +29,17 @@ const configLoadError = ref<Error | undefined>(undefined)
 
 const nameFields = ref<InstanceType<typeof InlineEditableField>[]>()
 
-async function createUniverseFromZip(
-    zipFiles: { [path: string]: JSZip.JSZipObject | undefined },
-    universeName: string
+async function createUniverseFromCausalityExport(
+        file: File,
+        universeName: string
 ): Promise<Universe> {
-    function getZipEntry(path: string) {
-        const entry = zipFiles[path]
-        if (!entry) throw new Error(`Missing zip entry: ${path}`)
-        return entry
-    }
-
-    const reachabilityBlob = await getZipEntry('reachability.json').async('blob')
-    const reachabilityData = (await loadJson(reachabilityBlob)) as ReachabilityJson
-
-    let newUniverse
-
-    const causalityFileNames: string[] = causalityBinaryFileNames as unknown as string[]
-    causalityFileNames.push('methods.txt', 'types.txt')
-
-    if (causalityFileNames.every((name) => zipFiles[name])) {
-        const cgData = {
-            reachabilityData: reachabilityData,
-            nodeLabels: (await getZipEntry('methods.txt').async('string')).split('\n').slice(0, -1),
-            typeLabels: (await getZipEntry('types.txt').async('string')).split('\n').slice(0, -1),
-
-            // Only initializing this because the loop below cannot infer
-            // that every of these properties will be set
-            'typestates.bin': new Uint8Array(),
-            'interflows.bin': new Uint8Array(),
-            'direct_invokes.bin': new Uint8Array(),
-            'typeflow_methods.bin': new Uint8Array(),
-            'typeflow_filters.bin': new Uint8Array()
-        }
-
-        for (const path of causalityBinaryFileNames) {
-            cgData[path] = await getZipEntry(path).async('uint8array')
-        }
-
-        newUniverse = new CausalityGraphUniverse(
+    const parsedCG = await loadCgZip(file)
+    const newUniverse = new CausalityGraphUniverse(
             universeName,
-            parseReachabilityExport(reachabilityData, universeName),
-            cgData
-        )
-    } else {
-        newUniverse = new Universe(
-            universeName,
-            parseReachabilityExport(reachabilityData, universeName)
-        )
-    }
-
+            parseReachabilityExport(parsedCG.reachabilityData, universeName),
+            parsedCG
+    )
+    const rawData = parsedCG.reachabilityData
     return newUniverse
 }
 
@@ -86,8 +47,7 @@ async function createUniverseFromReachabilityJson(
     file: File,
     universeName: string
 ): Promise<Universe> {
-    const jsonAsString = await loadText(file)
-    const parsedJSON = JSON.parse(jsonAsString)
+    const parsedJSON = await loadJson(file)
 
     const newUniverse = new Universe(
         universeName,
@@ -104,13 +64,8 @@ async function validateFileAndAddUniverseOnSuccess(
     try {
         let newUniverse: Universe
 
-        if (file.name.endsWith('.zip')) {
-            newUniverse = await createUniverseFromZip(
-                (
-                    await new JSZip().loadAsync(file)
-                ).files,
-                universeName
-            )
+        if (file.name.endsWith('.cg.zip')) {
+            newUniverse = await createUniverseFromCausalityExport(file, universeName)
         } else if (file.name.endsWith('.json')) {
             newUniverse = await createUniverseFromReachabilityJson(file, universeName)
         } else {
