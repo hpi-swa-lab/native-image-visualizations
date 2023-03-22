@@ -1,6 +1,5 @@
 import { ColorScheme } from '../SharedTypes/Colors'
 import { Filter } from '../SharedTypes/Filters'
-import { Multiverse } from '../UniverseTypes/Multiverse'
 
 /**
  * Side Notes:
@@ -16,7 +15,6 @@ export interface Visualization {
     highlights: Set<string>
     filters: Filter[]
 
-    setMultiverse(multiverse: Multiverse): void
     setSelection(selection: Set<string>): void
     setHighlights(highlights: Set<string>): void
     setFilters(filters: Filter[]): void

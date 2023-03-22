@@ -16,7 +16,7 @@ import {
     UniverseCombination,
     universeCombinationAsIndices
 } from '../UniverseTypes/UniverseCombination'
-import { Visualization } from './Visualization'
+import { MultiverseVisualization } from './MultiverseVisualization'
 import { Filter } from '../SharedTypes/Filters'
 import { Universe } from '../UniverseTypes/Universe'
 
@@ -43,7 +43,7 @@ function doesAreaContain(area: InfoArea, x: number, y: number): boolean {
     return area.x <= x && area.x + area.width >= x && area.y <= y && area.y + area.height >= y
 }
 
-export class TreeLine implements Visualization {
+export class TreeLine implements MultiverseVisualization {
     multiverse: Multiverse = new Multiverse([])
     colorScheme: ColorScheme
     selection: Set<string> = new Set<string>()
