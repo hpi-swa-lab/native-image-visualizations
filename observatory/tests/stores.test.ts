@@ -15,7 +15,7 @@ describe('global store', () => {
     })
 
     test('removing an observed universe removes it from the multiverse', () => {
-        const someUniverse = new Universe('universe', new Node('node'))
+        const someUniverse = new Universe('universe', '#000000', new Node('node'))
         store.addUniverse(someUniverse)
         store.toggleObservationByName(someUniverse.name)
 
