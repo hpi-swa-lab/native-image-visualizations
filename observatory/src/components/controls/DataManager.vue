@@ -28,8 +28,8 @@ const configLoadError = ref<Error | undefined>(undefined)
 const nameFields = ref<InstanceType<typeof InlineEditableField>[]>()
 
 async function createUniverseFromCausalityExport(
-        file: File,
-        universeName: string
+    file: File,
+    universeName: string
 ): Promise<Universe> {
     const parsedCG = await loadCgZip(file)
     const newUniverse = new CausalityGraphUniverse(
