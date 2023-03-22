@@ -83,6 +83,15 @@ class Trie<Value> {
     }
 }
 
+export enum NodeType {
+    CustomCategory,
+    Module,
+    Package,
+    Class,
+    Method,
+    CgOnly
+}
+
 /* Integrating this with 'Node' currently would break constant-depth guarantees:
  * 1. Packages are organized by their dot-separated prefixes
  * 2. Modules can have reflection-configs as their children
@@ -102,6 +111,7 @@ export interface FullyHierarchicalNode {
 
     cgOnly?: boolean
     cgNode?: number
+    type: NodeType
 }
 
 export function forEachInSubtree<TNode extends { children?: TNode[] }>(
@@ -201,28 +211,32 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
         size: 0,
         name: '',
         parent: undefined,
-        accumulatedSize: 0
+        accumulatedSize: 0,
+        type: NodeType.CustomCategory
     }
     const system: FullyHierarchicalNode = {
         children: [],
-        name: 'system',
+        name: 'runtime components',
         size: 0,
         parent: root,
-        accumulatedSize: 0
+        accumulatedSize: 0,
+        type: NodeType.CustomCategory
     }
     const user: FullyHierarchicalNode = {
         children: [],
-        name: 'user',
+        name: 'user application and dependencies',
         size: 0,
         parent: root,
-        accumulatedSize: 0
+        accumulatedSize: 0,
+        type: NodeType.CustomCategory
     }
     const main: FullyHierarchicalNode = {
         children: [],
         name: 'main',
         size: 0,
         parent: root,
-        accumulatedSize: 0
+        accumulatedSize: 0,
+        type: NodeType.CustomCategory
     }
 
     const trie = new Trie<FullyHierarchicalNode & { fullname: string }>()
@@ -258,7 +272,8 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
             fullname: l1fullname,
             size: 0,
             parent: undefined,
-            accumulatedSize: 0
+            accumulatedSize: 0,
+            type: NodeType.Module
         }
 
         if (toplevel.path) {
@@ -280,7 +295,8 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
                             name: subPackageName,
                             parent: l2,
                             size: 0,
-                            accumulatedSize: 0
+                            accumulatedSize: 0,
+                            type: NodeType.Package
                         }
                         /* Eigentlich sollten keine Causality-Graph-Knoten direkt in einem Package
                          * Es gibt jedoch Knoten für Klassen, die nicht reachable sind
@@ -303,7 +319,8 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
                     children: [],
                     size: 0,
                     parent: l2,
-                    accumulatedSize: 0
+                    accumulatedSize: 0,
+                    type: NodeType.Class
                 }
 
                 if (type.flags?.includes('synthetic')) l3.synthetic = true
@@ -317,7 +334,8 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
                         children: [],
                         size: method.size,
                         parent: l3,
-                        accumulatedSize: 0
+                        accumulatedSize: 0,
+                        type: NodeType.Method
                     }
                     if (method.flags?.includes('synthetic')) l4.synthetic = true
                     trie.add(l4.fullname, l4)
@@ -365,13 +383,14 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
                     if (semanticBreakoutIndexes.some((i) => i !== -1 && i < dotIndex)) break
 
                     const newNode = {
-                        cg_only: true,
+                        cgOnly: true,
                         fullname: cgNodeName.substring(0, offset + dotIndex),
                         name: name.substring(0, dotIndex),
                         children: [],
                         size: 0,
                         parent: curNode,
-                        accumulatedSize: 0
+                        accumulatedSize: 0,
+                        type: NodeType.CgOnly
                     }
                     curNode.children.push(newNode)
                     trie.add(newNode.fullname, newNode)
@@ -388,14 +407,15 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
                 }
 
                 const newNode = {
-                    cg_only: true,
+                    cgOnly: true,
                     fullname: cgNodeName,
                     name: name,
                     cgNode: i,
                     children: [],
                     size: 0,
                     parent: curNode,
-                    accumulatedSize: 0
+                    accumulatedSize: 0,
+                    type: NodeType.CgOnly
                 }
                 curNode.children.push(newNode)
                 trie.add(newNode.fullname, newNode)
