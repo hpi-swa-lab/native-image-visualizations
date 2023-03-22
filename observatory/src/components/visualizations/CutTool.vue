@@ -38,7 +38,9 @@ function detailViewClose(): void {
             </div>
 
             <div id="main-panel" class="fullscreen" hidden>
-                <div class="float-left w-1/5 h-full overflow-y-scroll resize-x ml-2 mr-1 border-r-2">
+                <div
+                    class="float-left w-1/5 h-full overflow-y-scroll resize-x ml-2 mr-1 border-r-2"
+                >
                     <span><b>Cut Overview:</b></span>
                     <div id="cut-overview-root"></div>
                 </div>

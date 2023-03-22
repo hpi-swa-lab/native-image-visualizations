@@ -127,7 +127,7 @@ ul {
 }
 
 .type-symbol.module::before {
-    content: "\25A0";
+    content: '\25A0';
     margin-right: 5px;
     color: darkgreen;
     font-size: small;
@@ -136,14 +136,14 @@ ul {
 }
 
 .type-symbol.package::before {
-    content: "\1F4C1";
+    content: '\1F4C1';
     margin-right: 5px;
     color: darkblue;
     font-size: smaller;
 }
 
 .type-symbol.class::before {
-    content: "\1F152";
+    content: '\1F152';
     margin-right: 5px;
     color: darkblue;
     font-size: smaller;
@@ -152,7 +152,7 @@ ul {
 }
 
 .type-symbol.method::before {
-    content: "\1F17C";
+    content: '\1F17C';
     margin-right: 5px;
     color: darkred;
     font-size: smaller;
@@ -161,7 +161,7 @@ ul {
 }
 
 .type-symbol.cg-only::before {
-    content: "\2022";
+    content: '\2022';
     margin-right: 5px;
     color: darkblue;
     font-size: smaller;
@@ -210,7 +210,7 @@ ul {
 .purge-percentage-bar-text {
     @apply w-full h-full row-start-1 col-start-1 text-[darkblue] text-center -mt-px;
     font-size: small;
-    margin-bottom: -2px
+    margin-bottom: -2px;
 }
 .fullscreen {
     @apply w-full h-full;

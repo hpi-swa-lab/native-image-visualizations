@@ -1,9 +1,13 @@
-import {forEachInSubtree, FullyHierarchicalNode, NodeType} from '../../UniverseTypes/CausalityGraphUniverse'
-import {formatByteSizeWithUnitPrefix} from '../../util/ByteSizeFormatter'
-import {assert} from '../../util/assert'
+import {
+    forEachInSubtree,
+    FullyHierarchicalNode,
+    NodeType
+} from '../../UniverseTypes/CausalityGraphUniverse'
+import { formatByteSizeWithUnitPrefix } from '../../util/ByteSizeFormatter'
+import { assert } from '../../util/assert'
 
-export function nodeTypeToCssString(type: NodeType) : string {
-    switch(type) {
+export function nodeTypeToCssString(type: NodeType): string {
+    switch (type) {
         case NodeType.CgOnly:
             return 'cg-only'
         case NodeType.Class:

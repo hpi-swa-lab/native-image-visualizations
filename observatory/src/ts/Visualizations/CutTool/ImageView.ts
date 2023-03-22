@@ -1,7 +1,7 @@
 import { collectSubtree, FullyHierarchicalNode } from '../../UniverseTypes/CausalityGraphUniverse'
 import { formatByteSizeWithUnitPrefix } from '../../util/ByteSizeFormatter'
 import { NodeSet, PurgeResults } from './BatchPurgeScheduler'
-import {nodeTypeToCssString} from './CutView';
+import { nodeTypeToCssString } from './CutView'
 
 function forEachInSubtreePostorder<TNode extends { children: TNode[] }, TResult>(
     node: TNode,
