@@ -56,16 +56,19 @@ export const useGlobalStore = defineStore('globalConfig', {
             activeFilters: [] as Filter[],
             currentLayer: Layers.PACKAGES,
             currentComponent: SwappableComponentType.Home as SwappableComponentType,
-            previousComponent: undefined as SwappableComponentType | undefined,
             // Reason: Since our schemes are custom added, they're not part of the type declaration
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            colorScheme: Object.values((cssConfig as any).theme.colors.TABLEAU_10) as ColorScheme,
+            colorScheme: Object.values((cssConfig as any).theme.colors.SET_3) as ColorScheme,
+            universeColors: Object.values(
+                (cssConfig as any).theme.colors.UNIVERSE_COLORS
+            ) as ColorScheme,
             search: ''
         }
     },
     getters: {
         currentComponentName: (state) => componentName(state.currentComponent),
-        previousComponentName: (state) => componentName(state.previousComponent)
+        nextUniverseColor: (state) =>
+            state.universeColors[state.universes.length % state.universeColors.length]
     },
     actions: {
         addUniverse(newUniverse: Universe, rawData: unknown): void {
@@ -133,13 +136,7 @@ export const useGlobalStore = defineStore('globalConfig', {
             this.colorScheme = newScheme
         },
         switchToComponent(newComponent: SwappableComponentType): void {
-            this.previousComponent = this.currentComponent
             this.currentComponent = newComponent
-        },
-        goToPreviousComponent(): void {
-            if (this.previousComponent) {
-                this.switchToComponent(this.previousComponent)
-            }
         },
         basicChangeSearchTerm(newSearch: string): void {
             this.search = newSearch
@@ -201,20 +198,18 @@ export const useGlobalStore = defineStore('globalConfig', {
                 (colorScheme: string[]) => this.switchColorScheme(colorScheme)
             )
 
+            loadStringArrayParameter(
+                'universeColors',
+                config,
+                (universeColors: string[]) => universeColors,
+                (universeColors: string[]) => (this.universeColors = universeColors)
+            )
+
             loadStringParameter(
                 'currentComponent',
                 config,
                 (componentName: string) => deserializeComponent(componentName),
                 (component: SwappableComponentType) => this.switchToComponent(component)
-            )
-
-            loadStringParameter(
-                'previousComponent',
-                config,
-                (componentName: string) => deserializeComponent(componentName),
-                (component: SwappableComponentType) => {
-                    this.previousComponent = component
-                }
             )
 
             loadStringParameter(
@@ -294,10 +289,8 @@ export const useGlobalStore = defineStore('globalConfig', {
                 highlights: Array.from(this.highlights),
                 currentLayer: serializerLayer(this.currentLayer),
                 colorScheme: this.colorScheme,
+                universeColors: this.universeColors,
                 currentComponent: serializeComponent(this.currentComponent),
-                previousComponent: this.previousComponent
-                    ? serializeComponent(this.previousComponent)
-                    : '',
                 search: this.search
             }
         }

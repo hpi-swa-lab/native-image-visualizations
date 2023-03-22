@@ -9,7 +9,6 @@ import { computed, onMounted, reactive, ref, toRaw, watch } from 'vue'
 import { Multiverse } from '../../ts/UniverseTypes/Multiverse'
 import { EventType } from '../../ts/enums/EventType'
 import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
-import { ColorScheme } from '../../ts/SharedTypes/Colors'
 import { UniverseMetadata } from '../../ts/SharedTypes/SankeyTree'
 import { TooltipModel } from '../../ts/Visualizations/TooltipModel'
 import Tooltip from '../controls/Tooltip.vue'
@@ -42,10 +41,7 @@ const displayInfo = computed(
 )
 
 const metadata = ref<UniverseMetadata>(
-    createUniverseMetadata(
-        toRaw(globalStore.multiverse) as Multiverse,
-        toRaw(globalStore.colorScheme)
-    )
+    createUniverseMetadata(toRaw(globalStore.multiverse) as Multiverse)
 )
 let visualization: SankeyTree
 
@@ -64,10 +60,7 @@ onMounted(() => {
 })
 
 watch(multiverse, (newMultiverse) => {
-    metadata.value = createUniverseMetadata(
-        toRaw(newMultiverse) as Multiverse,
-        toRaw(globalStore.colorScheme)
-    )
+    metadata.value = createUniverseMetadata(toRaw(newMultiverse) as Multiverse)
     visualization.setMetadata(metadata.value)
     visualization.setMultiverse(toRaw(newMultiverse) as Multiverse)
 })
@@ -106,12 +99,12 @@ watch(
     { deep: true }
 )
 
-function createUniverseMetadata(multiverse: Multiverse, colorScheme: ColorScheme) {
+function createUniverseMetadata(multiverse: Multiverse) {
     const metadata: UniverseMetadata = {}
     multiverse.sources.forEach((universe, index) => {
         metadata[index] = {
             name: universe.name,
-            color: colorScheme[index] ?? 'black'
+            color: universe.color ?? 'black'
         }
         sankeyStore.addSelectedUniverse(index)
     })

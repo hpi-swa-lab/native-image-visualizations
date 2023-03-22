@@ -26,8 +26,8 @@ export class CausalityGraphUniverse extends Universe {
 
     private cgPromise: Promise<AsyncCausalityGraph> | AsyncCausalityGraph
 
-    constructor(name: string, root: Node, causalityData: CausalityGraphData) {
-        super(name, root)
+    constructor(name: string, color: string, root: Node, causalityData: CausalityGraphData) {
+        super(name, color, root)
         this.nodeLabels = causalityData.nodeLabels
         this.typeLabels = causalityData.typeLabels
         this.causalityRoot = generateHierarchyFromReachabilityJsonAndMethodList(

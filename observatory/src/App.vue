@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import Home from './components/Home.vue'
-import CausalityGraph from './components/visualizations/CausalityGraph.vue'
 import SankeyTree from './components/visualizations/SankeyTree.vue'
 import { SwappableComponentType } from './ts/enums/SwappableComponentType'
 import TreeLine from './components/visualizations/TreeLine.vue'
@@ -17,9 +16,6 @@ const store = useGlobalStore()
         v-else-if="store.currentComponent === SwappableComponentType.SankeyTree"
     ></SankeyTree>
     <TreeLine v-else-if="store.currentComponent === SwappableComponentType.TreeLine"></TreeLine>
-    <CausalityGraph
-        v-else-if="store.currentComponent === SwappableComponentType.CausalityGraph"
-    ></CausalityGraph>
     <Home v-else-if="store.currentComponent === SwappableComponentType.Home"></Home>
     <CutTool v-else-if="store.currentComponent === SwappableComponentType.CutTool"></CutTool>
 </template>

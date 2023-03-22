@@ -20,7 +20,7 @@ describe('Venn', () => {
 
     test('For a tree with only occurences in one universe, has one set with count equal to tree size', () => {
         const multiverse = new Multiverse([
-            new Universe('simpleTree', new Node('Universe', [forest.simpleTree]))
+            new Universe('simpleTree', '#000000', new Node('Universe', [forest.simpleTree]))
         ])
 
         const actual = createVennPartitions(multiverse)
@@ -34,8 +34,8 @@ describe('Venn', () => {
 
     test('One merged tree with two equal trees has same amount of single combinations and double combinations', () => {
         const multiverse = new Multiverse([
-            new Universe('simpleTree', new Node('Universe', [forest.simpleTree])),
-            new Universe('simpleTree2', new Node('Universe', [forest.simpleTree]))
+            new Universe('simpleTree', '#000000', new Node('Universe', [forest.simpleTree])),
+            new Universe('simpleTree2', '#000000', new Node('Universe', [forest.simpleTree]))
         ])
 
         const actual = createVennPartitions(multiverse)
@@ -53,8 +53,8 @@ describe('Venn', () => {
 
     test('Two trees without overlap do not create a combination of occurences', () => {
         const multiverse = new Multiverse([
-            new Universe('overlappingTreeC', forest.overlappingTreeC),
-            new Universe('differentPackageTree', forest.differentPackageTree)
+            new Universe('overlappingTreeC', '#000000', forest.overlappingTreeC),
+            new Universe('differentPackageTree', '#000000', forest.differentPackageTree)
         ])
 
         const actual = createVennPartitions(multiverse)
@@ -74,8 +74,8 @@ describe('Venn', () => {
 
     test('Two overlapping trees', () => {
         const multiverse = new Multiverse([
-            new Universe('overlappingTreeA', forest.overlappingTreeA),
-            new Universe('overlappingTreeB', forest.overlappingTreeB)
+            new Universe('overlappingTreeA', '#000000', forest.overlappingTreeA),
+            new Universe('overlappingTreeB', '#000000', forest.overlappingTreeB)
         ])
 
         const actual = createVennPartitions(multiverse)
@@ -96,9 +96,9 @@ describe('Venn', () => {
 
     test('Three overlapping trees', () => {
         const multiverse = new Multiverse([
-            new Universe('overlappingTreeA', forest.overlappingTreeA),
-            new Universe('overlappingTreeB', forest.overlappingTreeB),
-            new Universe('overlappingTreeC', forest.overlappingTreeC)
+            new Universe('overlappingTreeA', '#000000', forest.overlappingTreeA),
+            new Universe('overlappingTreeB', '#000000', forest.overlappingTreeB),
+            new Universe('overlappingTreeC', '#000000', forest.overlappingTreeC)
         ])
 
         const actual = createVennPartitions(multiverse)
@@ -125,9 +125,9 @@ describe('Venn', () => {
 
     test('Two overlapping trees, one appended', () => {
         const multiverse = new Multiverse([
-            new Universe('overlappingTreeA', forest.overlappingTreeA),
-            new Universe('overlappingTreeB', forest.overlappingTreeB),
-            new Universe('differentPackageTree', forest.differentPackageTree)
+            new Universe('overlappingTreeA', '#000000', forest.overlappingTreeA),
+            new Universe('overlappingTreeB', '#000000', forest.overlappingTreeB),
+            new Universe('differentPackageTree', '#000000', forest.differentPackageTree)
         ])
 
         const actual = createVennPartitions(multiverse)
