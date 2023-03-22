@@ -98,20 +98,14 @@ export class SankeyTree implements MultiverseVisualization {
 
     setHighlights(highlights: Set<string>): void {
         this.highlights = highlights
-        // Fixme or remove
-        // const defaultOpacity = highlights.size == 0 ? 1 : 0.2
-        // const areSetsEqual =
-        //     this.highlights.size === this.highlights.size &&
-        //     [...highlights].every((item) => this.highlights.has(item))
-        // this.applyStyleForChosen(highlights, 'opacity', defaultOpacity, 1, !areSetsEqual)
+        // highlights are unused, searchTerm is used for highlighting instead
     }
 
     setSearchTerm(searchTerm: string): void {
-        searchTerm = searchTerm.replace(SUB_HIERARCHY_NAME_SEPARATOR, HIERARCHY_NAME_SEPARATOR)
         const enableTransition = this.searchTerm != searchTerm
         this.searchTerm = searchTerm
         const defaultOpacity = searchTerm == '' ? 1 : 0.2
-        this.applyStyleForSearch(searchTerm, 'opacity', defaultOpacity, 1, enableTransition)
+        this.applyStyleForChosen((nodeIdentifier) => nodeIdentifier.toLowerCase().includes(searchTerm.toLowerCase()), 'opacity', defaultOpacity, 1, enableTransition)
     }
 
     public setFilters(filters: Filter[]): void {
@@ -122,7 +116,7 @@ export class SankeyTree implements MultiverseVisualization {
 
     setSelection(selection: Set<string>): void {
         this.selection = selection
-        this.applyStyleForChosen(this.selection, 'stroke-width', '0', '5', false)
+        this.applyStyleForChosen((nodeIdentifier) => this.selection.has(nodeIdentifier), 'stroke-width', '0', '5', false)
     }
 
     public setLayer(layer: Layers): void {
@@ -365,7 +359,7 @@ export class SankeyTree implements MultiverseVisualization {
             node,
             sourceNode,
             (evt: MouseEvent, vizNode: SankeyHierarchyPointNode) => {
-                if (evt.ctrlKey) {
+                if (evt.ctrlKey || evt.metaKey) {
                     toggleSelection(vizNode.data, this.selection)
                 } else {
                     toggleChildren(vizNode, evt.shiftKey, this.filteredNodes)
@@ -593,29 +587,7 @@ export class SankeyTree implements MultiverseVisualization {
     }
 
     private applyStyleForChosen(
-        selection: Set<string>,
-        style: string,
-        unselected: unknown,
-        selected: unknown,
-        enableTransition: boolean
-    ) {
-        const visNodes = this.containerSelections.nodeGroup.selectAll('g') as any
-        visNodes.selectAll('rect').style(style, unselected)
-
-        selection = new Set(Array.from(selection).map(value => value.replaceAll(SUB_HIERARCHY_NAME_SEPARATOR, HIERARCHY_NAME_SEPARATOR)))
-
-        visNodes
-            .filter((node: HierarchyPointNode<Node>) =>
-                selection.has(getWithoutRoot(node.data.identifier))
-            )
-            .selectAll('rect')
-            .transition()
-            .duration(enableTransition ? TRANSITION_DURATION : 0)
-            .style(style, selected)
-    }
-
-    private applyStyleForSearch(
-        searchTerm: string,
+        filterCallback: (nodeIdentifier: string) => {},
         style: string,
         unselected: unknown,
         selected: unknown,
@@ -626,7 +598,7 @@ export class SankeyTree implements MultiverseVisualization {
 
         visNodes
             .filter((node: HierarchyPointNode<Node>) =>
-                getWithoutRoot(node.data.identifier).toLowerCase().includes(searchTerm.toLowerCase())
+                filterCallback(getWithoutRoot(node.data.identifier))
             )
             .selectAll('rect')
             .transition()
@@ -636,7 +608,6 @@ export class SankeyTree implements MultiverseVisualization {
 
     private visualizeUserSelections() {
         this.setSelection(this.selection)
-        this.setHighlights(this.highlights)
         this.setSearchTerm(this.searchTerm)
     }
 
