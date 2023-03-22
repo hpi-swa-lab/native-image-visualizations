@@ -38,6 +38,7 @@ import { TooltipModel } from './TooltipModel'
 import { useSankeyStore } from '../stores/sankeyTreeStore'
 import { EventType } from '../enums/EventType'
 import { Filter } from '../SharedTypes/Filters'
+import {HIERARCHY_NAME_SEPARATOR, SUB_HIERARCHY_NAME_SEPARATOR} from '../globals';
 
 export const UNMODIFIED = 'UNMODIFIED'
 export const MAX_OBSERVED_UNIVERSES_FOR_SANKEY_TREE = 2
@@ -52,6 +53,7 @@ export class SankeyTree implements MultiverseVisualization {
     selection: Set<string> = new Set<string>()
     highlights: Set<string> = new Set<string>()
     filters: Filter[]
+    private searchTerm = ''
     private multiverse: Multiverse = new Multiverse([])
     private metadata: UniverseMetadata = {}
     private layer = Layers.PACKAGES
@@ -76,12 +78,14 @@ export class SankeyTree implements MultiverseVisualization {
         tooltip: TooltipModel,
         highlights: Set<string>,
         selection: Set<string>,
+        searchTerm: string,
         filters: Filter[] = []
     ) {
         this.colorScheme = colorScheme
         this.tooltip = tooltip
         this.highlights = highlights
         this.selection = selection
+        this.searchTerm = searchTerm
         this.containerSelections = this.initializeContainerSelections(containerSelector)
         this.filters = filters
     }
@@ -94,11 +98,20 @@ export class SankeyTree implements MultiverseVisualization {
 
     setHighlights(highlights: Set<string>): void {
         this.highlights = highlights
-        const defaultOpacity = highlights.size == 0 ? 1 : 0.2
-        const areSetsEqual =
-            this.highlights.size === this.highlights.size &&
-            [...highlights].every((item) => this.highlights.has(item))
-        this.applyStyleForChosen(highlights, 'opacity', defaultOpacity, 1, !areSetsEqual)
+        // Fixme or remove
+        // const defaultOpacity = highlights.size == 0 ? 1 : 0.2
+        // const areSetsEqual =
+        //     this.highlights.size === this.highlights.size &&
+        //     [...highlights].every((item) => this.highlights.has(item))
+        // this.applyStyleForChosen(highlights, 'opacity', defaultOpacity, 1, !areSetsEqual)
+    }
+
+    setSearchTerm(searchTerm: string): void {
+        searchTerm = searchTerm.replace(SUB_HIERARCHY_NAME_SEPARATOR, HIERARCHY_NAME_SEPARATOR)
+        const enableTransition = this.searchTerm != searchTerm
+        this.searchTerm = searchTerm
+        const defaultOpacity = searchTerm == '' ? 1 : 0.2
+        this.applyStyleForSearch(searchTerm, 'opacity', defaultOpacity, 1, enableTransition)
     }
 
     public setFilters(filters: Filter[]): void {
@@ -589,6 +602,8 @@ export class SankeyTree implements MultiverseVisualization {
         const visNodes = this.containerSelections.nodeGroup.selectAll('g') as any
         visNodes.selectAll('rect').style(style, unselected)
 
+        selection = new Set(Array.from(selection).map(value => value.replaceAll(SUB_HIERARCHY_NAME_SEPARATOR, HIERARCHY_NAME_SEPARATOR)))
+
         visNodes
             .filter((node: HierarchyPointNode<Node>) =>
                 selection.has(getWithoutRoot(node.data.identifier))
@@ -599,9 +614,30 @@ export class SankeyTree implements MultiverseVisualization {
             .style(style, selected)
     }
 
+    private applyStyleForSearch(
+        searchTerm: string,
+        style: string,
+        unselected: unknown,
+        selected: unknown,
+        enableTransition: boolean
+    ) {
+        const visNodes = this.containerSelections.nodeGroup.selectAll('g') as any
+        visNodes.selectAll('rect').style(style, unselected)
+
+        visNodes
+            .filter((node: HierarchyPointNode<Node>) =>
+                getWithoutRoot(node.data.identifier).toLowerCase().includes(searchTerm.toLowerCase())
+            )
+            .selectAll('rect')
+            .transition()
+            .duration(enableTransition ? TRANSITION_DURATION : 0)
+            .style(style, selected)
+    }
+
     private visualizeUserSelections() {
         this.setSelection(this.selection)
         this.setHighlights(this.highlights)
+        this.setSearchTerm(this.searchTerm)
     }
 
     // #############################################################################################

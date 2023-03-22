@@ -8,7 +8,7 @@ import { SortingOption, SortingOrder } from '../../enums/Sorting'
 import { Node } from '../../UniverseTypes/Node'
 import { formatBytes } from '../../SharedTypes/Size'
 import { EventType } from '../../enums/EventType'
-import { HIERARCHY_NAME_SEPARATOR } from '../../globals'
+import {HIERARCHY_NAME_SEPARATOR, SUB_HIERARCHY_NAME_SEPARATOR} from '../../globals'
 import { ROOT_NODE_NAME } from '../SankeyTree'
 
 // #################################################################################################
@@ -17,7 +17,10 @@ import { ROOT_NODE_NAME } from '../SankeyTree'
 
 export function createHierarchyFromPackages(node: Node, dataTree: Node, leaves: Set<Node>) {
     let current = dataTree
-    const pathSegments = node.identifier.substring(1).split(HIERARCHY_NAME_SEPARATOR)
+    const pathSegments = node.identifier.substring(1)
+        .split(HIERARCHY_NAME_SEPARATOR)
+        .join(SUB_HIERARCHY_NAME_SEPARATOR)
+        .split(SUB_HIERARCHY_NAME_SEPARATOR)
     for (let i = 0; i < pathSegments.length; i++) {
         let child = current.children.find((child) => child.name === pathSegments[i])
         if (child) {
@@ -62,6 +65,7 @@ export function getCodeSizeFromLeaves(vizNode: SankeyHierarchyPointNode): number
 // #################################################################################################
 
 export function toggleSelection(node: Node, selection: Set<string>): void {
+    // Fixme node.identifier needs correct hierarchy_separators!!
     const identifier = getWithoutRoot(node.identifier)
     if (selection.has(identifier)) {
         selection.delete(identifier)

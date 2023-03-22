@@ -29,6 +29,7 @@ const multiverse = computed(() => globalStore.multiverse)
 const currentLayer = computed(() => globalStore.currentLayer)
 const highlights = computed(() => globalStore.highlights)
 const selections = computed(() => globalStore.selections)
+const searchTerm = computed(() => globalStore.search)
 const nodesFilter = computed(() => sankeyStore.nodesFilter)
 
 const infoText = [
@@ -55,7 +56,8 @@ onMounted(() => {
         toRaw(globalStore.colorScheme),
         tooltipModel,
         toRaw(globalStore.highlights),
-        globalStore.selections
+        globalStore.selections,
+        toRaw(globalStore.search)
     )
     visualization.setMetadata(metadata.value)
     visualization.setMultiverse(toRaw(globalStore.multiverse) as Multiverse)
@@ -79,6 +81,15 @@ watch(
     },
     { deep: true }
 )
+
+watch(
+    searchTerm,
+    (newSearchTerm) => {
+        visualization.setSearchTerm(toRaw(newSearchTerm) as string)
+    },
+    { deep: true }
+)
+
 watch(
     selections,
     (newSelection) => {
