@@ -9,8 +9,11 @@ import {
     deserializeNodesDiffingFilter,
     deserializeNodesSortingFilter
 } from '../SharedTypes/NodesFilter'
-import { useGlobalStore } from './globalStore'
 import { UniverseIndex } from '../SharedTypes/Indices'
+import tailwindConfig from '../../../tailwind.config.cjs'
+import resolveConfig from 'tailwindcss/resolveConfig'
+
+const cssConfig: any = resolveConfig(tailwindConfig)
 
 export type SankeyStoreConfig = Record<
     string,
@@ -40,8 +43,8 @@ export const useSankeyStore = defineStore('sankeyTreeConfig', {
             state.diffingFilter.universes.has(universeId),
         isFilteredSortingOption: (state) => (option: string) =>
             option === state.sortingFilter.option,
-        colorModified: () => useGlobalStore().colorScheme[6 % useGlobalStore().colorScheme.length],
-        colorUnmodified: () => useGlobalStore().colorScheme[9 % useGlobalStore().colorScheme.length]
+        colorModified: () => cssConfig.theme.colors.MODIFIED,
+        colorUnmodified: () => cssConfig.theme.colors.UNMODIFIED
     },
     actions: {
         loadExportDict(config: SankeyStoreConfig) {

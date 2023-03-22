@@ -11,16 +11,16 @@ const store = useGlobalStore()
         <p class="content-center">None</p>
         <template v-for="(filter, index) in store.filters" :key="index">
             <ToggleSwitch
-                class="col-start-1 content-center"
                 :id="filter.description"
+                class="col-start-1 content-center"
                 :value="false"
                 :checked="store.isFilterActive(filter, false)"
                 role="menuitem"
                 @change.self="store.toggleFilter(filter, $event)"
             />
             <ToggleSwitch
-                class="content-center"
                 :id="filter.description"
+                class="content-center"
                 :value="true"
                 :checked="store.isFilterActive(filter, true)"
                 role="menuitem"

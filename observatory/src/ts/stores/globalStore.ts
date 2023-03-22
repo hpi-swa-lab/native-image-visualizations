@@ -59,13 +59,14 @@ export const useGlobalStore = defineStore('globalConfig', {
             previousComponent: undefined as SwappableComponentType | undefined,
             // Reason: Since our schemes are custom added, they're not part of the type declaration
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            colorScheme: Object.values((cssConfig as any).theme.colors.TABLEAU_10) as ColorScheme,
+            colorScheme: Object.values((cssConfig as any).theme.colors.SET_3) as ColorScheme,
             search: ''
         }
     },
     getters: {
         currentComponentName: (state) => componentName(state.currentComponent),
-        previousComponentName: (state) => componentName(state.previousComponent)
+        previousComponentName: (state) => componentName(state.previousComponent),
+        universeCount: (state) => state.universes.length
     },
     actions: {
         addUniverse(newUniverse: Universe, rawData: unknown): void {

@@ -15,6 +15,7 @@ import { SortingOrder } from '../enums/Sorting'
 import { Filter } from '../SharedTypes/Filters'
 import { HIERARCHY_NAME_SEPARATOR } from '../globals'
 import { toRaw } from 'vue'
+import { Universe } from '../UniverseTypes/Universe'
 
 type Group = d3.InternMap<string, d3.InternMap<Node, number>>
 type NodeData = [string, d3.InternMap<Node, number>]
@@ -211,14 +212,26 @@ export class VennSets implements Visualization {
             (node: Node) => node
         )
 
+        let usedColors = 0
         this.colorsByName = new Map(
             [...groups.entries()]
                 .map((group: Array<unknown>) => group[0] as string)
                 .sort()
-                .map((group: string, index: number) => [
-                    group,
-                    this.colorScheme[index % this.colorScheme.length]
-                ])
+                .map((group: string) => {
+                    const universe = this.multiverse.sources.find(
+                        (universe: Universe) => universe.name === group
+                    )
+
+                    let color = ''
+                    if (universe) {
+                        color = universe.color
+                    } else {
+                        color = this.colorScheme[usedColors % this.colorScheme.length]
+                        usedColors += 1
+                    }
+
+                    return [group, color]
+                })
         )
 
         this.nodeHierarchy = d3

@@ -18,6 +18,7 @@ import {
 } from '../UniverseTypes/UniverseCombination'
 import { Visualization } from './Visualization'
 import { Filter } from '../SharedTypes/Filters'
+import { Universe } from '../UniverseTypes/Universe'
 
 const LINE_WIDTH = 256
 const LINE_PADDING = 16
@@ -138,11 +139,10 @@ export class TreeLine implements Visualization {
     }
 
     private buildColors() {
-        const indices: UniverseIndex[] = this.multiverse.sources.map((_, i) => i)
         this.colorsByIndex = new Map()
-        for (const index of indices) {
-            this.colorsByIndex.set(index, this.colorScheme[index % this.colorScheme.length])
-        }
+        this.multiverse.sources.forEach((universe: Universe, index: number) => {
+            this.colorsByIndex.set(index, universe.color)
+        })
     }
 
     private buildFillStyles() {

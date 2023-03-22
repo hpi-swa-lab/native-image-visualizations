@@ -16,6 +16,13 @@ import { InvalidInputError } from '../../ts/errors'
 import { ExportConfig } from '../../ts/stores/ExportConfig'
 import { EventType } from '../../ts/enums/EventType'
 
+import tailwindConfig from '../../../tailwind.config.cjs'
+import resolveConfig from 'tailwindcss/resolveConfig'
+import { ColorScheme } from '../../ts/SharedTypes/Colors'
+
+const cssConfig = resolveConfig(tailwindConfig)
+const universeColors = Object.values((cssConfig as any).theme.colors.UNIVERSE_COLORS) as ColorScheme
+
 const emit = defineEmits([EventType.CONFIG_LOADED])
 
 const globalStore = useGlobalStore()
@@ -51,6 +58,7 @@ async function createUniverseFromReachabilityJson(
 
     const newUniverse = new Universe(
         universeName,
+        universeColors[globalStore.universeCount % universeColors.length],
         parseReachabilityExport(parsedJSON, universeName)
     )
 
@@ -87,6 +95,7 @@ async function loadUniverseData(
 ): Promise<void> {
     const newUniverse = new Universe(
         universeName,
+        universeColors[globalStore.universeCount % universeColors.length],
         parseReachabilityExport(universeData, universeName)
     )
 

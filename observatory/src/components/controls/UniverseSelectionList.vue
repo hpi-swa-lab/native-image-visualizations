@@ -40,6 +40,12 @@ function isDisabled(universeName: string) {
                 >
                     {{ universe.name }}
                 </label>
+                <input
+                    type="color"
+                    class="mr-1 w-[25px] h-[25px] p-0 align-middle border-none"
+                    :value="universe.color"
+                    disabled
+                />
             </ToggleSwitch>
         </div>
     </div>
