@@ -5,6 +5,9 @@ import {
 } from '../../UniverseTypes/CausalityGraphUniverse'
 import { formatByteSizeWithUnitPrefix } from '../../util/ByteSizeFormatter'
 import { assert } from '../../util/assert'
+import { SortingOption } from '../../enums/Sorting'
+import { useCutToolStore } from '../../stores/cutToolStore'
+import { computed, toRaw, watch } from 'vue'
 
 export function nodeTypeToCssString(type: NodeType): string {
     switch (type) {
@@ -24,11 +27,11 @@ export function nodeTypeToCssString(type: NodeType): string {
 }
 
 class NodeData {
-    readonly html: HTMLLIElement
+    readonly html: HTMLElement
     reachableAfterOnlyCuttingThis: undefined | number
     reachableAfterAdditionallyCuttingThis: undefined | number
 
-    constructor(html: HTMLLIElement) {
+    constructor(html: HTMLElement) {
         this.html = html
     }
 }
@@ -43,6 +46,9 @@ export class CutView {
     private readonly selectionChanged: (v: FullyHierarchicalNode | undefined) => void
     private readonly onHover: (v: FullyHierarchicalNode | undefined) => boolean
 
+    private readonly watchStopHandle
+    private readonly sortby
+
     constructor(
         onExpanded: (v: FullyHierarchicalNode) => void,
         selectionChanged: (v: FullyHierarchicalNode | undefined) => void,
@@ -51,15 +57,51 @@ export class CutView {
         this.onExpanded = onExpanded
         this.selectionChanged = selectionChanged
         this.onHover = onHover
+
+        const cutToolStore = useCutToolStore()
+        this.sortby = computed(() => cutToolStore.cutview.sortby)
+        this.watchStopHandle = watch(this.sortby, (newOrder) => {
+            const sortby = toRaw(newOrder)
+            for (const [k, v] of this.data.entries()) {
+                this.sortChildren(sortby, k, v.html.querySelector('ul')!)
+            }
+        })
     }
 
     get visibleNodes(): IterableIterator<FullyHierarchicalNode> {
         return this.data.keys()
     }
 
+    private static comparisonFromSortingOption(
+        sortby: SortingOption
+    ): (
+        a: { node: FullyHierarchicalNode; data: NodeData | undefined },
+        b: { node: FullyHierarchicalNode; data: NodeData | undefined }
+    ) => number {
+        switch (sortby) {
+            case SortingOption.NAME:
+                return (a, b) => {
+                    if (a.node.type == b.node.type) return a.node.name.localeCompare(b.node.name)
+                    if (a.node.type > b.node.type) return 1
+                    else return -1
+                }
+            case SortingOption.SIZE:
+                return (a, b) =>
+                    (b.data?.reachableAfterOnlyCuttingThis ?? -1) -
+                    (a.data?.reachableAfterOnlyCuttingThis ?? -1)
+            default:
+                throw Error('Invalid enum')
+        }
+    }
+
+    public dispose() {
+        this.watchStopHandle()
+    }
+
     public populate(domRoot: HTMLDivElement, root: FullyHierarchicalNode) {
         const list = this.generateHtmlList(root)
         domRoot.appendChild(list)
+        this.data.set(root, new NodeData(domRoot))
         list.classList.remove('nested')
         list.classList.add('unpadded')
         list.classList.add('active')
@@ -74,35 +116,43 @@ export class CutView {
         this.increaseMaxPurgedSize(size)
         this.refreshPurgeSizeInCutOverview(vData)
 
-        const parent = v.parent
-        if (!parent) return
+        if (this.sortby.value === SortingOption.SIZE) {
+            const parent = v.parent
+            if (!parent) return
 
-        // Insert this node according to its size in a sorted position:
+            // Insert this node according to its size in a sorted position:
 
-        function lt(a: { size: number; name: string }, b: { size: number; name: string }): boolean {
-            return a.size < b.size || (a.size === b.size && a.name > b.name)
-        }
-
-        const vComp = { size, name: v.name }
-
-        let lowestAbove: { size: number; name: string; html: HTMLElement } | undefined
-        for (const c of parent.children) {
-            if (c === v) continue
-            const cData = this.data.get(c)
-            assert(cData !== undefined)
-            const cSize = cData.reachableAfterOnlyCuttingThis
-            if (!cSize) continue
-            const candidate = { size: cSize, name: c.name, html: cData.html }
-            if (lt(candidate, vComp)) continue
-            if (lowestAbove) {
-                if (lt(lowestAbove, candidate)) continue
+            function lt(
+                a: { size: number; name: string },
+                b: { size: number; name: string }
+            ): boolean {
+                return a.size < b.size || (a.size === b.size && a.name > b.name)
             }
-            lowestAbove = candidate
-        }
 
-        const list = vData.html.parentElement
-        assert(list !== null)
-        list.insertBefore(vData.html, lowestAbove ? lowestAbove.html.nextSibling : list.children[0])
+            const vComp = { size, name: v.name }
+
+            let lowestAbove: { size: number; name: string; html: HTMLElement } | undefined
+            for (const c of parent.children) {
+                if (c === v) continue
+                const cData = this.data.get(c)
+                assert(cData !== undefined)
+                const cSize = cData.reachableAfterOnlyCuttingThis
+                if (!cSize) continue
+                const candidate = { size: cSize, name: c.name, html: cData.html }
+                if (lt(candidate, vComp)) continue
+                if (lowestAbove) {
+                    if (lt(lowestAbove, candidate)) continue
+                }
+                lowestAbove = candidate
+            }
+
+            const list = vData.html.parentElement
+            assert(list !== null)
+            list.insertBefore(
+                vData.html,
+                lowestAbove ? lowestAbove.html.nextSibling : list.children[0]
+            )
+        }
     }
 
     public setAdditionalPurgeData(v: FullyHierarchicalNode, size: number | undefined) {
@@ -256,5 +306,16 @@ export class CutView {
         }
         html.querySelector<HTMLSpanElement>('.cut-size-column')!.textContent = text
         html.querySelector<HTMLDivElement>('.cut-size-bar')!.style.width = width
+    }
+
+    private sortChildren(sortby: SortingOption, u: FullyHierarchicalNode, uHtml: HTMLUListElement) {
+        const sorted = u.children
+            .map((v) => {
+                return { node: v, data: this.data.get(v) }
+            })
+            .sort(CutView.comparisonFromSortingOption(sortby))
+        for (const { data } of sorted) {
+            if (data) uHtml.appendChild(data.html)
+        }
     }
 }

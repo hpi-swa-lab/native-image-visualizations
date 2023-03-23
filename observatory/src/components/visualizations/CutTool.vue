@@ -4,6 +4,7 @@ import MainLayout from '../layouts/MainLayout.vue'
 import { CutToolVis } from '../../ts/Visualizations/CutTool'
 import { useGlobalStore } from '../../ts/stores/globalStore'
 import { Universe } from '../../ts/UniverseTypes/Universe'
+import { SortingOption } from '../../ts/enums/Sorting'
 
 const store = useGlobalStore()
 const multiverse = computed(() => store.multiverse)
@@ -39,6 +40,48 @@ function detailViewClose(): void {
 
 <template>
     <MainLayout title="Cut Tool">
+        <template #controls>
+            <form class="border rounded p-2">
+                <label class="block">Cut Overview:</label>
+
+                <div class="border rounded p-2 flex">
+                    <label class="block mt-[3px] mr-5">Sort by:</label>
+                    <template v-for="(option, index) in Object.values(SortingOption)" :key="index">
+                        <div class="relative block ml-2">
+                            <input
+                                :id="option"
+                                name="sorting-options"
+                                :value="option"
+                                type="radio"
+                                :checked="cutToolStore.isCutviewSortingOptionSelected(option)"
+                                @change="cutToolStore.setCutviewSortingOption(option)"
+                            />
+                            <label :for="option" class="ml-1"> {{ option }} </label>
+                        </div>
+                    </template>
+                </div>
+            </form>
+            <form class="border rounded p-2">
+                <label class="block">Image Overview:</label>
+
+                <div class="border rounded p-2 flex">
+                    <label class="block mt-[3px] mr-5">Sort by:</label>
+                    <template v-for="(option, index) in Object.values(SortingOption)" :key="index">
+                        <div class="relative block ml-2">
+                            <input
+                                :id="option"
+                                name="sorting-options"
+                                :value="option"
+                                type="radio"
+                                :checked="cutToolStore.isImageviewSortingOptionSelected(option)"
+                                @change="cutToolStore.setImageviewSortingOption(option)"
+                            />
+                            <label :for="option" class="ml-1"> {{ option }} </label>
+                        </div>
+                    </template>
+                </div>
+            </form>
+        </template>
         <div id="cut-tool-root" ref="container" class="h-[98%]" style="all: initial">
             <div id="loading-panel" class="fullscreen cursor-wait" hidden>
                 <div class="center">Causality Graph is being parsed...</div>

@@ -423,9 +423,9 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
         }
     }
 
+    if (main.children.length) root.children.push(main)
     if (user.children.length) root.children.push(user)
     if (system.children.length) root.children.push(system)
-    if (main.children.length) root.children.push(main)
 
     computeCodesizePartialSum(root)
 

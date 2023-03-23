@@ -2,6 +2,9 @@ import { collectSubtree, FullyHierarchicalNode } from '../../UniverseTypes/Causa
 import { formatByteSizeWithUnitPrefix } from '../../util/ByteSizeFormatter'
 import { NodeSet, PurgeResults } from './BatchPurgeScheduler'
 import { nodeTypeToCssString } from './CutView'
+import { SortingOption } from '../../enums/Sorting'
+import { useCutToolStore } from '../../stores/cutToolStore'
+import { computed, toRaw, watch } from 'vue'
 
 function forEachInSubtreePostorder<TNode extends { children: TNode[] }, TResult>(
     node: TNode,
@@ -24,10 +27,10 @@ function forEachInStrictSubtreePostorder<TNode extends { children: TNode[] }, TR
 }
 
 class ImageViewData {
-    html: HTMLLIElement
+    html: HTMLElement
     collapsedChildren: NodeSet | undefined
 
-    constructor(html: HTMLLIElement, collapsedChildNodes?: NodeSet) {
+    constructor(html: HTMLElement, collapsedChildNodes?: NodeSet) {
         this.html = html
         this.collapsedChildren = collapsedChildNodes
     }
@@ -44,6 +47,8 @@ export class ImageView {
     private readonly allReachable: PurgeResults
     private reachableWithSelectedPurged: PurgeResults
     private reachableWithHoveredPurged: PurgeResults
+    private readonly watchStopHandle
+    private readonly sortby
 
     constructor(
         allReachable: PurgeResults,
@@ -59,9 +64,33 @@ export class ImageView {
         this.reachableWithHoveredPurged = allReachable
         this.codesizes = codesizes
         this.selectedNodeChange = selectedNodeChange
+
+        const cutToolStore = useCutToolStore()
+        this.sortby = computed(() => cutToolStore.imageview.sortby)
+        this.watchStopHandle = watch(this.sortby, (newOrder) => {
+            this.changeSortby(toRaw(newOrder))
+        })
+    }
+
+    private static comparisonFromSortingOption(
+        sortby: SortingOption
+    ): (a: FullyHierarchicalNode, b: FullyHierarchicalNode) => number {
+        switch (sortby) {
+            case SortingOption.NAME:
+                return (a, b) => {
+                    if (a.type == b.type) return a.name.localeCompare(b.name)
+                    if (a.type > b.type) return 1
+                    else return -1
+                }
+            case SortingOption.SIZE:
+                return (a, b) => b.accumulatedSize - a.accumulatedSize
+            default:
+                throw Error('Invalid enum')
+        }
     }
 
     public populate(domRoot: HTMLDivElement) {
+        this.imageviewData.set(this.root, new ImageViewData(domRoot))
         const list = this.generateHtmlImageview(this.root)
         this.updatePurgeValues(this.root)
         domRoot.appendChild(list)
@@ -91,6 +120,10 @@ export class ImageView {
         if (this.selectedNodeChange) this.selectedNodeChange(undefined)
     }
 
+    public dispose() {
+        this.watchStopHandle()
+    }
+
     private updatePurgeValues(root: FullyHierarchicalNode) {
         forEachInStrictSubtreePostorder<FullyHierarchicalNode, SizeInfo | undefined>(
             root,
@@ -110,17 +143,6 @@ export class ImageView {
             if (v.cgOnly) continue
             ul.appendChild(this.generateHtmlImageviewForNode(v))
         }
-
-        const childSizes = u.children.filter((d) => !d.cgOnly).map((cn) => cn.accumulatedSize)
-
-        const order = new Array(childSizes.length)
-        for (let i = 0; i < order.length; i++) order[i] = i
-
-        const nodes = ul.children
-        order
-            .sort((a, b) => childSizes[b] - childSizes[a])
-            .map((i) => nodes[i])
-            .forEach((node) => ul.appendChild(node))
 
         return ul
     }
@@ -178,7 +200,9 @@ export class ImageView {
             span.addEventListener('click', () => {
                 const expanded = span.classList.toggle('caret-down')
                 if (!li.querySelector('.nested') && expanded) {
-                    li.appendChild(this.generateHtmlImageview(node))
+                    const ul = this.generateHtmlImageview(node)
+                    li.appendChild(ul)
+                    this.sortChildren(this.sortby.value, node, ul)
                     this.updatePurgeValues(node)
                 }
                 li.querySelector('.nested')!.classList.toggle('active')
@@ -218,14 +242,6 @@ export class ImageView {
         })
 
         return li
-    }
-
-    private sumPurged(reachable: PurgeResults | undefined, vs: FullyHierarchicalNode[]) {
-        let sum = 0
-        if (reachable) {
-            for (const v of vs) if (reachable.isPurged(v)) sum += v.size
-        }
-        return sum
     }
 
     private refreshPurgeValueForImageviewNode(
@@ -290,6 +306,20 @@ export class ImageView {
         }
 
         return results
+    }
+
+    private sortChildren(sortby: SortingOption, u: FullyHierarchicalNode, uHtml: HTMLUListElement) {
+        const sorted = u.children.sort(ImageView.comparisonFromSortingOption(sortby))
+        for (const v of sorted) {
+            const vData = this.imageviewData.get(v)
+            if (vData) uHtml.appendChild(vData.html)
+        }
+    }
+
+    private changeSortby(sortby: SortingOption) {
+        for (const [k, v] of this.imageviewData.entries()) {
+            this.sortChildren(sortby, k, v.html.querySelector('ul')!)
+        }
     }
 }
 
