@@ -33,11 +33,12 @@ import {
     sortPrivateChildren,
     toggleChildren,
     toggleSelection
-} from './utils/SankeyTreeUtils'
+} from './SankeyTree/SankeyTreeUtils'
 import { TooltipModel } from './TooltipModel'
 import { useSankeyStore } from '../stores/sankeyTreeStore'
 import { EventType } from '../enums/EventType'
 import { Filter } from '../SharedTypes/Filters'
+import { ExclusiveSizes } from '../Math/Universes'
 
 export const UNMODIFIED = 'UNMODIFIED'
 export const MAX_OBSERVED_UNIVERSES_FOR_SANKEY_TREE = 2
@@ -54,6 +55,8 @@ export class SankeyTree implements MultiverseVisualization {
     filters: Filter[]
     private searchTerm = ''
     private multiverse: Multiverse = new Multiverse([])
+    private exclusiveSizes: Map<string, ExclusiveSizes> = new Map().set('', new Map().set('', -1))
+
     private metadata: UniverseMetadata = {}
     private layer = Layers.PACKAGES
     private tooltip: TooltipModel
@@ -242,12 +245,13 @@ export class SankeyTree implements MultiverseVisualization {
         const nodeTree: Node = new Node(ROOT_NODE_NAME, [])
 
         const leaves: Set<Node> = new Set()
+        this.exclusiveSizes = new Map()
 
         // create hierarchy of Node based on selected Layer
         for (let i = Layers.MODULES.valueOf(); i <= layer.valueOf(); i++) {
             const nodes: Node[] = getNodesOnLevel(i, multiverse.root)
             nodes.forEach((node) => {
-                createHierarchyFromPackages(node, nodeTree, leaves)
+                createHierarchyFromPackages(node, nodeTree, leaves, this.exclusiveSizes)
             })
         }
 
@@ -381,7 +385,7 @@ export class SankeyTree implements MultiverseVisualization {
         const nodeEnterShape = this.appendShapeToNode(nodeEnter, universeMetadata)
         nodeEnterShape
             .on('mouseover', (event: MouseEvent, vizNode: SankeyHierarchyPointNode) => {
-                this.tooltip.updateContent(asHTML(vizNode, this.metadata))
+                this.tooltip.updateContent(asHTML(vizNode, this.exclusiveSizes, this.metadata))
                 this.tooltip.display()
             })
             .on('mousemove', (event: MouseEvent) =>
