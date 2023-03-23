@@ -31,8 +31,8 @@ module.exports = {
                     eleventh: '#ccebc5',
                     twelfth: '#ffed6f'
                 },
-                UNMODIFIED: '#99ddff',
-                MODIFIED: '#9c755f'
+                UNMODIFIED: '#bbbbbb',
+                MODIFIED: '#baa17e'
             },
             keyframes: {
                 flash: {
