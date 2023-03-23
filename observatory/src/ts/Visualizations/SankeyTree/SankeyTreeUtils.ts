@@ -37,11 +37,13 @@ export function createHierarchyFromPackages(
                     node.sources.values().next().value
                 )
 
-                const codeSizeByUniverse = calculateCodeSizeByUniverse(
-                    exclusiveCodeSizes,
-                    child.identifier,
-                    node
-                )
+                const codeSizeByUniverse = exclusiveCodeSizes.get(child.identifier) ?? new Map()
+                for (const [universeId, sourceNode] of node.sources.entries()) {
+                    codeSizeByUniverse.set(
+                        universeId.toString(),
+                        codeSizeByUniverse.get(universeId.toString()) + sourceNode.codeSize
+                    )
+                }
                 exclusiveCodeSizes.set(child.identifier, codeSizeByUniverse)
                 child.codeSize = getMaxCodeSizeByUniverse(codeSizeByUniverse)
             } else {
@@ -49,11 +51,10 @@ export function createHierarchyFromPackages(
                 child.sources = node.sources
                 child.overrideHierarchyNameSeparator(hierarchySeparator)
 
-                const codeSizeByUniverse = calculateCodeSizeByUniverse(
-                    exclusiveCodeSizes,
-                    child.identifier,
-                    node
-                )
+                const codeSizeByUniverse = exclusiveCodeSizes.get(child.identifier) ?? new Map()
+                for (const [universeId, sourceNode] of node.sources.entries()) {
+                    codeSizeByUniverse.set(universeId.toString(), sourceNode.codeSize)
+                }
                 exclusiveCodeSizes.set(child.identifier, codeSizeByUniverse)
                 child.codeSize = getMaxCodeSizeByUniverse(codeSizeByUniverse)
 
@@ -66,18 +67,6 @@ export function createHierarchyFromPackages(
             if (i === pathSegments.length - 1 && j === subPathSegments.length - 1) leaves.add(child)
         }
     }
-}
-
-function calculateCodeSizeByUniverse(
-    exclusiveCodeSizes: Map<string, ExclusiveSizes>,
-    nodeId: string,
-    node: Node
-) {
-    const codeSizeByUniverse = exclusiveCodeSizes.get(nodeId) ?? new Map()
-    for (const [universeId, sourceNode] of node.sources.entries()) {
-        codeSizeByUniverse.set(universeId.toString(), sourceNode.codeSize)
-    }
-    return codeSizeByUniverse
 }
 
 function getMaxCodeSizeByUniverse(codeSizeByUniverse: Map<UniverseCombination, Bytes>) {
