@@ -77,8 +77,8 @@ export class SankeyTree implements MultiverseVisualization {
         tooltip: TooltipModel,
         highlights: Set<string>,
         selection: Set<string>,
-        searchTerm: string,
-        filters: Filter[] = []
+        filters: Filter[],
+        searchTerm: string
     ) {
         this.colorScheme = colorScheme
         this.tooltip = tooltip
@@ -92,7 +92,7 @@ export class SankeyTree implements MultiverseVisualization {
     setMultiverse(multiverse: Multiverse): void {
         if (multiverse.sources.length > MAX_OBSERVED_UNIVERSES_FOR_SANKEY_TREE) return
         this.multiverse = multiverse
-        this.rebuildAndDrawTree(multiverse, this.layer)
+        this.rebuildAndDrawTree(multiverse, this.layer, this.filters)
     }
 
     setHighlights(highlights: Set<string>): void {
@@ -115,8 +115,7 @@ export class SankeyTree implements MultiverseVisualization {
 
     public setFilters(filters: Filter[]): void {
         this.filters = filters
-        // TODO implement with #167
-        //  https://github.com/orgs/hpi-swa-lab/projects/1/views/1?pane=issue&itemId=23021330
+        this.rebuildAndDrawTree(this.multiverse, this.layer, this.filters)
     }
 
     setSelection(selection: Set<string>): void {
@@ -132,7 +131,7 @@ export class SankeyTree implements MultiverseVisualization {
 
     public setLayer(layer: Layers): void {
         this.layer = layer
-        this.rebuildAndDrawTree(this.multiverse, layer)
+        this.rebuildAndDrawTree(this.multiverse, layer, this.filters)
     }
 
     setMetadata(metadata: UniverseMetadata): void {
@@ -200,8 +199,8 @@ export class SankeyTree implements MultiverseVisualization {
     // #############################################################################################
     // ### BUILD TREE HELPER FUNCTIONS #############################################################
     // #############################################################################################
-    private rebuildAndDrawTree(multiverse: Multiverse, layer: Layers) {
-        this.tree = this.buildTree(multiverse, layer)
+    private rebuildAndDrawTree(multiverse: Multiverse, layer: Layers, filters: Filter[]) {
+        this.tree = this.buildTree(multiverse, layer, filters)
 
         // Reason: expects HierarchyPointNode<T> but it's actually SankeyHierarchyPointNode
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -238,7 +237,11 @@ export class SankeyTree implements MultiverseVisualization {
         this.expandFistBranchToLeaves(vizNode.children[0])
     }
 
-    private buildTree(multiverse: Multiverse, layer: Layers): SankeyTreeCompound {
+    private buildTree(
+        multiverse: Multiverse,
+        layer: Layers,
+        filters: Filter[],
+    ): SankeyTreeCompound {
         const nodeTree: Node = new Node(ROOT_NODE_NAME, [])
 
         const leaves: Set<Node> = new Set()
@@ -246,6 +249,8 @@ export class SankeyTree implements MultiverseVisualization {
         // create hierarchy of Node based on selected Layer
         for (let i = Layers.MODULES.valueOf(); i <= layer.valueOf(); i++) {
             const nodes: Node[] = getNodesOnLevel(i, multiverse.root)
+                .filter((nodeOnLevel) => Filter.applyAll(filters, nodeOnLevel))
+                .filter((node) => node.codeSize > 0)
             nodes.forEach((node) => {
                 createHierarchyFromPackages(node, nodeTree, leaves)
             })
@@ -597,6 +602,7 @@ export class SankeyTree implements MultiverseVisualization {
         return Math.max(1, separation)
     }
 
+    // todo auslagern in utils
     private applyStyleForChosen(
         filterCallback: (nodeIdentifier: string) => boolean,
         style: string,
