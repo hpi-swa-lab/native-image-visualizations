@@ -114,6 +114,15 @@ export interface FullyHierarchicalNode {
     type: NodeType
 }
 
+export function parents<TNode extends { parent?: TNode }>(node: TNode | undefined): TNode[] {
+    const result = []
+    while(node) {
+        result.push(node)
+        node = node.parent
+    }
+    return result
+}
+
 export function forEachInSubtree<TNode extends { children?: TNode[] }>(
     node: TNode,
     callback: (v: TNode) => unknown
@@ -286,7 +295,9 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
 
             if (packageName.length !== 0) {
                 for (const subPackageName of packageName.split('.')) {
-                    prefix += subPackageName + '.'
+                    if (prefix.length)
+                        prefix += '.'
+                    prefix += subPackageName
                     let next = l2.children.find((n) => n.name === subPackageName)
                     if (!next) {
                         const newNode = {
@@ -314,7 +325,7 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
 
             for (const [typeName, type] of Object.entries(pkg.types)) {
                 const l3: FullyHierarchicalNode & { fullname: string } = {
-                    fullname: prefix + typeName,
+                    fullname: `${prefix}.${typeName}`,
                     name: typeName,
                     children: [],
                     size: 0,
@@ -329,7 +340,7 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
 
                 for (const [methodName, method] of Object.entries(type.methods)) {
                     const l4: FullyHierarchicalNode & { fullname: string } = {
-                        fullname: l3.fullname + '.' + methodName,
+                        fullname: `${l3.fullname}.${methodName}`,
                         name: methodName,
                         children: [],
                         size: method.size,

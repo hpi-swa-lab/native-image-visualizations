@@ -230,9 +230,11 @@ ul {
 .cut-row {
     @apply grid grid-cols-[max-content_max-content_1fr_max-content] grid-rows-[18px];
 }
+
 .image-row {
     @apply grid grid-cols-[max-content_max-content_1fr_max-content] grid-rows-[18px];
 }
+
 .cut-size-bar {
     @apply bg-[#cf9000] h-0.5 w-0 row-start-2 col-start-3 col-end-4 -mt-0.5;
 }
@@ -279,4 +281,8 @@ ul {
 .detail-text-right {
     @apply text-xl;
     text-anchor: end;
+}
+
+.highlight-excluded {
+    opacity: 0.2;
 }

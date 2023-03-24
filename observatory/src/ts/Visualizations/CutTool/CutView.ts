@@ -8,6 +8,7 @@ import { assert } from '../../util/assert'
 import { SortingOption } from '../../enums/Sorting'
 import { useCutToolStore } from '../../stores/cutToolStore'
 import { computed, toRaw, watch } from 'vue'
+import {dom} from '@fortawesome/fontawesome-svg-core';
 
 export function nodeTypeToCssString(type: NodeType): string {
     switch (type) {
@@ -27,49 +28,88 @@ export function nodeTypeToCssString(type: NodeType): string {
 }
 
 class NodeData {
-    readonly html: HTMLElement
+    readonly html: HTMLLIElement
     reachableAfterOnlyCuttingThis: undefined | number
     reachableAfterAdditionallyCuttingThis: undefined | number
 
-    constructor(html: HTMLElement) {
+    constructor(html: HTMLLIElement) {
         this.html = html
     }
 }
 
 export class CutView {
-    selectedForPurging: Set<FullyHierarchicalNode> = new Set()
-
     private readonly data = new Map<FullyHierarchicalNode, NodeData>()
     private maxPurgedSize = 0
 
+    private readonly root
+
     private readonly onExpanded: (v: FullyHierarchicalNode) => void
-    private readonly selectionChanged: (v: FullyHierarchicalNode | undefined) => void
     private readonly onHover: (v: FullyHierarchicalNode | undefined) => boolean
 
-    private readonly watchStopHandle
+    private readonly cutToolStore
+    private readonly watchStopHandles
     private readonly sortby
+    private readonly searchTerm
+    private readonly selection
 
     constructor(
+        domRoot: HTMLDivElement,
+        root: FullyHierarchicalNode,
         onExpanded: (v: FullyHierarchicalNode) => void,
-        selectionChanged: (v: FullyHierarchicalNode | undefined) => void,
         onHover: (v: FullyHierarchicalNode | undefined) => boolean
     ) {
+        this.root = root
+
         this.onExpanded = onExpanded
-        this.selectionChanged = selectionChanged
         this.onHover = onHover
 
-        const cutToolStore = useCutToolStore()
-        this.sortby = computed(() => cutToolStore.cutview.sortby)
-        this.watchStopHandle = watch(this.sortby, (newOrder) => {
-            const sortby = toRaw(newOrder)
-            for (const [k, v] of this.data.entries()) {
-                this.sortChildren(sortby, k, v.html.querySelector('ul')!)
-            }
-        })
+        this.cutToolStore = useCutToolStore()
+        this.sortby = computed(() => this.cutToolStore.cutview.sortby)
+        this.searchTerm = computed(() => this.cutToolStore.cutview.search)
+        this.selection = computed(() => this.cutToolStore.cutview.selection)
+        this.watchStopHandles = [
+            watch(this.sortby, (newOrder) => {
+                const sortby = toRaw(newOrder)
+                for (const [k, v] of this.data.entries()) {
+                    this.sortChildren(sortby, k, v.html.querySelector('ul')!)
+                }
+                this.sortChildren(sortby, root, domRoot.querySelector('ul')!)
+            }),
+            watch(this.searchTerm, (newTerm) => {
+                const searchString = toRaw(newTerm)
+
+                const fitting: FullyHierarchicalNode[] = []
+                forEachInSubtree(root, (v) => {
+                    if(!v.fullname)
+                        return
+                    if(v.fullname.endsWith(searchString)) {
+                        if(v.fullname.length > searchString.length) {
+                            const prevChar = v.fullname[v.fullname.length - 1 - searchString.length]
+                            if (prevChar !== '.' && prevChar !== '/')
+                                return
+                        }
+                        fitting.push(v)
+                    }
+                })
+                if(fitting.length == 1) {
+                    this.expandTo(fitting[0])
+                }
+                for(const [v, vData] of this.data) {
+                    const highlighted = searchString.length === 0 || (v.fullname && v.fullname.includes(searchString))
+                    vData.html.querySelector('.cut-row')!.classList.toggle('highlight-excluded', !highlighted)
+                }
+            })
+        ]
+
+        const list = this.generateHtmlList(root)
+        domRoot.appendChild(list)
+        list.classList.remove('nested')
+        list.classList.add('unpadded')
+        list.classList.add('active')
     }
 
-    get visibleNodes(): IterableIterator<FullyHierarchicalNode> {
-        return this.data.keys()
+    get visibleNodes(): FullyHierarchicalNode[] {
+        return [...this.data.keys()]
     }
 
     private static comparisonFromSortingOption(
@@ -95,17 +135,12 @@ export class CutView {
     }
 
     public dispose() {
-        this.watchStopHandle()
+        for(const stopper of this.watchStopHandles)
+            stopper()
     }
 
-    public populate(domRoot: HTMLDivElement, root: FullyHierarchicalNode) {
-        const list = this.generateHtmlList(root)
-        domRoot.appendChild(list)
-        this.data.set(root, new NodeData(domRoot))
-        list.classList.remove('nested')
-        list.classList.add('unpadded')
-        list.classList.add('active')
-        this.onExpanded(root)
+    public populate() {
+        this.onExpanded(this.root)
     }
 
     public setSinglePurgeData(v: FullyHierarchicalNode, size: number) {
@@ -169,14 +204,25 @@ export class CutView {
             path.unshift(cur)
         }
 
-        path.pop()
+        const last = path.pop()
 
-        for (let i = 0; i < path.length; i++) {
-            const list = this.generateHtmlList(path[i])
-            this.data.get(path[i])!.html.appendChild(list)
+        for (const u of path) {
+            const uData = this.data.get(u)
+
+            if(!uData || uData.html.querySelector('ul'))
+                continue
+
+            const list = this.generateHtmlList(u)
+            uData.html.appendChild(list)
             list.classList.add('active')
             list.parentElement!.querySelector('.caret')!.classList.add('caret-down')
-            this.onExpanded(path[i])
+            this.onExpanded(u)
+        }
+
+        if(last) {
+            const lastData = this.data.get(last)
+            if(lastData)
+                lastData.html.querySelector('.cut-row')!.scrollIntoView({ block: 'center' })
         }
     }
 
@@ -195,15 +241,22 @@ export class CutView {
         const li = document.createElement('li')
         const cutData = new NodeData(li)
         this.data.set(v, cutData)
-        li.className = 'cut-row'
+
+        const row = document.createElement('div')
+        row.className = 'cut-row'
+        const searchTerm = toRaw(this.searchTerm.value)
+        const highlighted = searchTerm.length === 0
+            || (v.fullname && v.fullname.includes(searchTerm))
+        row.classList.toggle('highlight-excluded', !highlighted)
+        li.appendChild(row)
 
         const cutSizeColumn = document.createElement('span')
         cutSizeColumn.className = 'cut-size-column'
-        li.appendChild(cutSizeColumn)
+        row.appendChild(cutSizeColumn)
 
         const cutSizeBar = document.createElement('div')
         cutSizeBar.className = 'cut-size-bar'
-        li.appendChild(cutSizeBar)
+        row.appendChild(cutSizeBar)
 
         const node = v
         const span = document.createElement('span')
@@ -219,23 +272,20 @@ export class CutView {
                     const list = li.querySelector('ul')!
                     li.removeChild(list)
 
-                    const selectionSize = this.selectedForPurging.size
                     for (const c of node.children)
                         forEachInSubtree(c, (w) => {
                             this.data.delete(w)
-                            this.selectedForPurging.delete(w)
+                            this.cutToolStore.deleteCutviewSelection(w)
                         })
-                    if (this.selectedForPurging.size !== selectionSize)
-                        this.selectionChanged(undefined)
                 }
             })
         } else {
             span.style.visibility = 'hidden'
         }
-        li.appendChild(span)
+        row.appendChild(span)
 
         const typeSymbolSpan = document.createElement('span')
-        li.appendChild(typeSymbolSpan)
+        row.appendChild(typeSymbolSpan)
         typeSymbolSpan.classList.add('type-symbol')
         typeSymbolSpan.classList.add(nodeTypeToCssString(v.type))
 
@@ -248,12 +298,12 @@ export class CutView {
         selectableSpan.classList.add('selectable', 'cutview-node')
         if (node.cgOnly) selectableSpan.classList.add('cg-only')
         if (node.synthetic) selectableSpan.classList.add('synthetic')
-        li.appendChild(selectableSpan)
+        row.appendChild(selectableSpan)
 
         selectableSpan.addEventListener('mouseenter', async () => {
-            if (this.selectedForPurging.has(node)) return
+            if (this.selection.value.has(node)) return
 
-            if (this.onHover && this.onHover(v)) {
+            if (this.onHover(v)) {
                 selectableSpan.classList.add('hovered-for-purge')
             }
         })
@@ -261,21 +311,15 @@ export class CutView {
         selectableSpan.addEventListener('mouseleave', async () => {
             selectableSpan.classList.remove('hovered-for-purge')
 
-            if (this.selectedForPurging.has(node)) return
+            if (this.selection.value.has(node)) return
 
-            if (this.onHover) this.onHover(undefined)
+            this.onHover(undefined)
         })
 
         selectableSpan.addEventListener('click', () => {
             selectableSpan.classList.remove('hovered-for-purge')
-            const selected = selectableSpan.classList.toggle('selected-for-purge')
-            if (selected) {
-                this.selectedForPurging.add(node)
-            } else {
-                this.selectedForPurging.delete(node)
-            }
-
-            if (this.selectionChanged) return this.selectionChanged(selected ? v : undefined)
+            const selected = this.cutToolStore.toggleCutviewSelection(node)
+            selectableSpan.classList.toggle('selected-for-purge', selected)
         })
 
         return li
@@ -294,13 +338,13 @@ export class CutView {
         const html = cutData.html
 
         const purged =
-            this.selectedForPurging.size > 0
+            this.selection.value.size > 0
                 ? cutData.reachableAfterAdditionallyCuttingThis
                 : cutData.reachableAfterOnlyCuttingThis
 
         let text = null
         let width = '0'
-        if (purged) {
+        if (purged !== undefined) {
             text = formatByteSizeWithUnitPrefix(purged)
             width = (purged / this.maxPurgedSize) * 100 + '%'
         }

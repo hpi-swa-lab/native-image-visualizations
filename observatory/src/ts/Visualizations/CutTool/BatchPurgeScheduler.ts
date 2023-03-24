@@ -47,6 +47,16 @@ export class PurgeResults {
         }
         return sum
     }
+
+    allPurged(vs: NodeSet) {
+        const cgNodes = vs.cgNodes
+        const sizes = vs.sizes
+        assert(cgNodes.length === sizes.length)
+        for (let i = 0; i < cgNodes.length; i++) {
+            if (this.reachableArr[cgNodes[i]] === Unreachable) return false
+        }
+        return true
+    }
 }
 
 export class ReachabilityVector {
@@ -114,11 +124,6 @@ export class BatchPurgeScheduler {
                 this.runningBatch.delete()
                 this.runningBatch = undefined
                 return this.waitlist.length > 0
-            } else if (result.token === -1) {
-                /* empty purge */ assert(this.calcBaselineFirst)
-                const stillReachable = result.history
-                this.calcBaselineFirst = false
-                if (this.callback) this.callback(undefined, new PurgeResults(stillReachable))
             } else {
                 let node: FullyHierarchicalNode | undefined
                 if (result.token === -1) {

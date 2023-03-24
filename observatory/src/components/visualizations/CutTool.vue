@@ -5,8 +5,16 @@ import { CutToolVis } from '../../ts/Visualizations/CutTool'
 import { useGlobalStore } from '../../ts/stores/globalStore'
 import { Universe } from '../../ts/UniverseTypes/Universe'
 import { SortingOption } from '../../ts/enums/Sorting'
+import {useCutToolStore} from '../../ts/stores/cutToolStore';
+import {faHouse} from '@fortawesome/free-solid-svg-icons';
+import {
+    CausalityGraphUniverse,
+    forEachInSubtree,
+    FullyHierarchicalNode
+} from '../../ts/UniverseTypes/CausalityGraphUniverse';
 
 const store = useGlobalStore()
+const cutToolStore = useCutToolStore()
 const multiverse = computed(() => store.multiverse)
 
 let visualization: CutToolVis | undefined
@@ -34,37 +42,118 @@ watch(multiverse, (newMultiverse) => {
 })
 
 function detailViewClose(): void {
-    visualization?.closeDetailView()
+    cutToolStore.setDetailSelectedNode(undefined)
+}
+
+function searchMainFunction(): void {
+    const universes = multiverse.value.sources
+    if (universes.length === 1) {
+        const u = toRaw(universes[0]) as Universe
+
+        if(u instanceof CausalityGraphUniverse) {
+            let mainNode: FullyHierarchicalNode | undefined
+
+            forEachInSubtree(u.causalityRoot, v => {
+                if (v.main)
+                    mainNode = v
+            })
+            if (mainNode && mainNode.fullname) {
+                cutToolStore.changeCutviewSearch(mainNode.fullname)
+            }
+        }
+    }
 }
 </script>
 
 <template>
     <MainLayout title="Cut Tool">
         <template #controls>
-            <form class="border rounded p-2">
+            <div class="border rounded p-2">
                 <label class="block">Cut Overview:</label>
+                <div class="w-full flex content-start mb-2">
+                    <div class="absolute mt-2.5 pl-3 pointer-events-none">
+                        <svg
+                                aria-hidden="true"
+                                class="w-5 h-5 text-gray-500"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                                xmlns="http://www.w3.org/2000/svg"
+                        >
+                            <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                            ></path>
+                        </svg>
+                    </div>
 
-                <div class="border rounded p-2 flex">
+                    <input
+                            ref="searchText"
+                            type="search"
+                            class="pl-10"
+                            placeholder="Search nodes"
+                            :value="cutToolStore.cutview.search"
+                            @input="event => cutToolStore.changeCutviewSearch(event.target.value)"
+                    />
+                </div>
+                <form class="flex border rounded p-2">
                     <label class="block mt-[3px] mr-5">Sort by:</label>
                     <template v-for="(option, index) in Object.values(SortingOption)" :key="index">
                         <div class="relative block ml-2">
                             <input
-                                :id="option"
-                                name="sorting-options"
-                                :value="option"
-                                type="radio"
-                                :checked="cutToolStore.isCutviewSortingOptionSelected(option)"
-                                @change="cutToolStore.setCutviewSortingOption(option)"
+                                    :id="option"
+                                    name="sorting-options"
+                                    :value="option"
+                                    type="radio"
+                                    :checked="cutToolStore.isCutviewSortingOptionSelected(option)"
+                                    @change="cutToolStore.setCutviewSortingOption(option)"
                             />
                             <label :for="option" class="ml-1"> {{ option }} </label>
                         </div>
                     </template>
-                </div>
-            </form>
-            <form class="border rounded p-2">
+                </form>
+                <button
+                        title="Focus on main()"
+                        class="z-10 btn bg-gray-50 mt-2 ml-2 hover:bg-gray-200 shadow-md"
+                        @click="searchMainFunction"
+                >
+                    <font-awesome-icon :icon="faHouse" />
+                </button>
+            </div>
+            <div class="border rounded p-2">
                 <label class="block">Image Overview:</label>
 
-                <div class="border rounded p-2 flex">
+                <div class="w-full flex content-start mb-2">
+                    <div class="absolute mt-2.5 pl-3 pointer-events-none">
+                        <svg
+                                aria-hidden="true"
+                                class="w-5 h-5 text-gray-500"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                                xmlns="http://www.w3.org/2000/svg"
+                        >
+                            <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                            ></path>
+                        </svg>
+                    </div>
+
+                    <input
+                            ref="searchText"
+                            type="search"
+                            class="pl-10"
+                            placeholder="Search nodes"
+                            :value="cutToolStore.imageview.search"
+                            @input="event => cutToolStore.changeImageviewSearch(event.target.value)"
+                    />
+                </div>
+                <form class="border rounded p-2 flex">
                     <label class="block mt-[3px] mr-5">Sort by:</label>
                     <template v-for="(option, index) in Object.values(SortingOption)" :key="index">
                         <div class="relative block ml-2">
@@ -79,8 +168,8 @@ function detailViewClose(): void {
                             <label :for="option" class="ml-1"> {{ option }} </label>
                         </div>
                     </template>
-                </div>
-            </form>
+                </form>
+            </div>
         </template>
         <div id="cut-tool-root" ref="container" class="h-[98%]" style="all: initial">
             <div id="loading-panel" class="fullscreen cursor-wait" hidden>

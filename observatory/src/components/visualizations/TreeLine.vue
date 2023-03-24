@@ -11,6 +11,9 @@ import { SizeInfo, TreeLine } from '../../ts/Visualizations/TreeLine'
 import Tooltip from '../controls/Tooltip.vue'
 import MainLayout from '../layouts/MainLayout.vue'
 import { Filter } from '../../ts/SharedTypes/Filters'
+import SearchBar from '../controls/SearchBar.vue';
+import SelectionList from '../controls/SelectionList.vue';
+import FilteringOptions from '../controls/FilteringOptions.vue';
 
 const store = useGlobalStore()
 const multiverse = computed(() => store.multiverse)
@@ -129,6 +132,13 @@ watch(
 
 <template>
     <MainLayout title="Tree Line">
+        <template #controls>
+            <div class="input-container settings-container space-y-4">
+                <SearchBar />
+                <SelectionList />
+                <FilteringOptions />
+            </div>
+        </template>
         <Tooltip :data-model="tooltip"></Tooltip>
         <div ref="container" class="w-full h-full" />
     </MainLayout>

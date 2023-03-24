@@ -1,4 +1,4 @@
-import { collectSubtree, FullyHierarchicalNode } from '../../UniverseTypes/CausalityGraphUniverse'
+import {collectSubtree, forEachInSubtree, FullyHierarchicalNode} from '../../UniverseTypes/CausalityGraphUniverse'
 import { formatByteSizeWithUnitPrefix } from '../../util/ByteSizeFormatter'
 import { NodeSet, PurgeResults } from './BatchPurgeScheduler'
 import { nodeTypeToCssString } from './CutView'
@@ -41,21 +41,22 @@ export class ImageView {
     private readonly codesizes: number[]
     private readonly maxCodeSize: number
     private readonly imageviewData = new Map<FullyHierarchicalNode, ImageViewData>()
-    private detailSelectedElement?: HTMLElement
-    private readonly selectedNodeChange: (v: FullyHierarchicalNode | undefined) => void
 
     private readonly allReachable: PurgeResults
     private reachableWithSelectedPurged: PurgeResults
     private reachableWithHoveredPurged: PurgeResults
-    private readonly watchStopHandle
+    private readonly watchStopHandles
     private readonly sortby
+    private readonly selectedNode
+    private readonly searchTerm
+    private readonly cutToolStore
 
     constructor(
         allReachable: PurgeResults,
+        domRoot: HTMLDivElement,
         root: FullyHierarchicalNode,
         codesizes: number[],
-        maxCodeSize: number,
-        selectedNodeChange: (v: FullyHierarchicalNode | undefined) => void
+        maxCodeSize: number
     ) {
         this.root = root
         this.maxCodeSize = maxCodeSize
@@ -63,13 +64,73 @@ export class ImageView {
         this.reachableWithSelectedPurged = allReachable
         this.reachableWithHoveredPurged = allReachable
         this.codesizes = codesizes
-        this.selectedNodeChange = selectedNodeChange
 
-        const cutToolStore = useCutToolStore()
-        this.sortby = computed(() => cutToolStore.imageview.sortby)
-        this.watchStopHandle = watch(this.sortby, (newOrder) => {
-            this.changeSortby(toRaw(newOrder))
-        })
+        this.cutToolStore = useCutToolStore()
+        this.sortby = computed(() => this.cutToolStore.imageview.sortby)
+        this.selectedNode = computed(() => this.cutToolStore.detailview.selected)
+        this.searchTerm = computed(() => this.cutToolStore.imageview.search)
+        this.watchStopHandles = [
+            watch(this.sortby, (newOrder) => {
+                this.changeSortby(toRaw(newOrder))
+            }),
+            watch(this.selectedNode, (newSelection, oldSelection) => {
+                const u = toRaw(newSelection)
+                const uPrev = toRaw(oldSelection)
+
+                if(uPrev) {
+                    const uPrevData = this.imageviewData.get(uPrev)
+                    if (uPrevData) {
+                        uPrevData.html
+                            .querySelector<HTMLSpanElement>('.imageview-node')!
+                            .classList.remove('selected-for-detail')
+                    }
+                }
+
+                if (u) {
+                    const uData = this.imageviewData.get(u)
+                    if(uData)
+                        uData.html.querySelector('.imageview-node')!.classList.add('selected-for-detail')
+                }
+            }),
+            watch(this.searchTerm, (newTerm) => {
+                const searchString = toRaw(newTerm)
+
+                const fitting: FullyHierarchicalNode[] = []
+                forEachInSubtree(this.root, (v) => {
+                    if(!v.fullname)
+                        return
+                    if(v.fullname.endsWith(searchString)) {
+                        if(v.fullname.length > searchString.length) {
+                            const prevChar = v.fullname[v.fullname.length - 1 - searchString.length]
+                            if (prevChar !== '.' && prevChar !== '/')
+                                return
+                        }
+                        fitting.push(v)
+                    }
+                })
+                if(fitting.length == 1) {
+                    this.expandTo(fitting[0])
+                }
+
+                for(const [v, vData] of this.imageviewData) {
+                    const highlighted = searchString.length === 0 || (v.fullname && v.fullname.includes(searchString))
+                    vData.html.querySelector('.image-row')!.classList.toggle('highlight-excluded', !highlighted)
+                }
+            })
+        ]
+
+        this.imageviewData.set(this.root, new ImageViewData(domRoot))
+        const list = this.generateHtmlImageview(this.root)
+        this.updatePurgeValues(this.root)
+        domRoot.appendChild(list)
+        list.classList.remove('nested')
+        list.classList.add('unpadded')
+        list.classList.add('active')
+
+        if(this.selectedNode.value) {
+            this.expandTo(toRaw(this.selectedNode.value))
+            this.imageviewData.get(toRaw(this.selectedNode.value))!.html.querySelector('.imageview-node')!.classList.add('selected-for-detail')
+        }
     }
 
     private static comparisonFromSortingOption(
@@ -89,16 +150,6 @@ export class ImageView {
         }
     }
 
-    public populate(domRoot: HTMLDivElement) {
-        this.imageviewData.set(this.root, new ImageViewData(domRoot))
-        const list = this.generateHtmlImageview(this.root)
-        this.updatePurgeValues(this.root)
-        domRoot.appendChild(list)
-        list.classList.remove('nested')
-        list.classList.add('unpadded')
-        list.classList.add('active')
-    }
-
     public updateReachableSets(
         reachableWithSelectedPurged: PurgeResults | undefined | null,
         reachableWithHoveredPurged: PurgeResults | undefined | null
@@ -111,17 +162,36 @@ export class ImageView {
         this.updatePurgeValues(this.root)
     }
 
-    public clearDetailSelection() {
-        if (!this.detailSelectedElement) return
-        this.detailSelectedElement
-            .querySelector<HTMLSpanElement>('.imageview-node')!
-            .classList.remove('selected-for-detail')
-        this.detailSelectedElement = undefined
-        if (this.selectedNodeChange) this.selectedNodeChange(undefined)
+    public dispose() {
+        for(const stopper of this.watchStopHandles)
+            stopper()
     }
 
-    public dispose() {
-        this.watchStopHandle()
+    public expandTo(v: FullyHierarchicalNode) {
+        const path: FullyHierarchicalNode[] = []
+        for (let cur: FullyHierarchicalNode = v; cur.parent; cur = cur.parent) {
+            path.unshift(cur)
+        }
+
+        const last = path.pop()
+
+        for (const u of path) {
+            const uData = this.imageviewData.get(u)
+
+            if(!uData || uData.html.querySelector('ul'))
+                continue
+
+            const list = this.generateHtmlImageview(u)
+            uData.html.appendChild(list)
+            list.classList.add('active')
+            list.parentElement!.querySelector('.caret')!.classList.add('caret-down')
+        }
+
+        if(last) {
+            const lastData = this.imageviewData.get(last)
+            if(lastData)
+                lastData.html.querySelector('.image-row')!.scrollIntoView({ block: 'center' })
+        }
     }
 
     private updatePurgeValues(root: FullyHierarchicalNode) {
@@ -151,12 +221,20 @@ export class ImageView {
         const li = document.createElement('li')
         const viewData = new ImageViewData(li, new NodeSet(collectSubtree(v)))
         this.imageviewData.set(v, viewData)
-        li.className = 'image-row'
+
+        const row = document.createElement('div')
+        row.className = 'image-row'
+        const searchTerm = toRaw(this.searchTerm.value)
+        const highlighted = searchTerm.length === 0
+            || (v.fullname && v.fullname.includes(searchTerm))
+        row.classList.toggle('highlight-excluded', !highlighted)
+        li.appendChild(row)
+
         const span = document.createElement('span')
-        li.appendChild(span)
+        row.appendChild(span)
 
         const typeSymbolSpan = document.createElement('span')
-        li.appendChild(typeSymbolSpan)
+        row.appendChild(typeSymbolSpan)
         typeSymbolSpan.classList.add('type-symbol')
         typeSymbolSpan.classList.add(nodeTypeToCssString(v.type))
 
@@ -164,14 +242,14 @@ export class ImageView {
             const totalSizeColumn = document.createElement('span')
             totalSizeColumn.className = 'total-size-column'
             totalSizeColumn.textContent = formatByteSizeWithUnitPrefix(v.accumulatedSize)
-            li.appendChild(totalSizeColumn)
+            row.appendChild(totalSizeColumn)
         }
 
         {
             const sizeBarOuter = document.createElement('div')
             sizeBarOuter.className = 'size-bar-outer'
             sizeBarOuter.style.width = (v.accumulatedSize / this.maxCodeSize) * 100 + '%'
-            li.appendChild(sizeBarOuter)
+            row.appendChild(sizeBarOuter)
 
             for (let i = 0; i < 3; i++) {
                 const sizeBarInner = document.createElement('div')
@@ -183,7 +261,7 @@ export class ImageView {
         {
             const purgePercentageBarOuter = document.createElement('div')
             purgePercentageBarOuter.className = 'purge-percentage-bar-outer'
-            li.appendChild(purgePercentageBarOuter)
+            row.appendChild(purgePercentageBarOuter)
 
             const purgePercentageBarInner = document.createElement('div')
             purgePercentageBarInner.className = 'purge-percentage-bar-inner'
@@ -210,7 +288,7 @@ export class ImageView {
         } else {
             span.style.visibility = 'hidden'
         }
-        li.appendChild(span)
+        row.appendChild(span)
 
         const nameSpan = document.createElement('span')
         nameSpan.appendChild(document.createTextNode(v.name ?? ''))
@@ -219,26 +297,14 @@ export class ImageView {
         const selectableSpan = document.createElement('span')
         selectableSpan.appendChild(nameSpan)
         selectableSpan.classList.add('imageview-node')
-        li.appendChild(selectableSpan)
+        row.appendChild(selectableSpan)
 
         if (!node.cgNode) selectableSpan.classList.add('no-cg')
 
         selectableSpan.classList.add('selectable')
         selectableSpan.addEventListener('click', () => {
-            const added = selectableSpan.classList.toggle('selected-for-detail')
-
-            if (added) {
-                if (this.detailSelectedElement)
-                    this.detailSelectedElement
-                        .querySelector<HTMLSpanElement>('.imageview-node')!
-                        .classList.remove('selected-for-detail')
-                selectableSpan.classList.add('selected-for-detail')
-                if (this.selectedNodeChange) this.selectedNodeChange(node)
-                this.detailSelectedElement = this.imageviewData.get(node)!.html
-            } else {
-                this.detailSelectedElement = undefined
-                if (this.selectedNodeChange) this.selectedNodeChange(undefined)
-            }
+            const added = !selectableSpan.classList.contains('selected-for-detail')
+            this.cutToolStore.setDetailSelectedNode(added ? node : undefined)
         })
 
         return li
@@ -299,11 +365,7 @@ export class ImageView {
         html.querySelector<HTMLDivElement>('.size-bar-inner-1')!.style.width = barWidth1
         html.querySelector<HTMLDivElement>('.size-bar-inner-2')!.style.width = barWidth2
         const cl = html.querySelector<HTMLDivElement>('.imageview-node')!.classList
-        if (purgedWithSelection >= u.accumulatedSize && purgedWithSelection > 0) {
-            cl.add('purged')
-        } else {
-            cl.remove('purged')
-        }
+        cl.toggle('purged', purgedWithSelection >= u.accumulatedSize && purgedWithSelection > 0)
 
         return results
     }
