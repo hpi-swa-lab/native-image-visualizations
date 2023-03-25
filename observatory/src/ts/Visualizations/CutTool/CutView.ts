@@ -274,8 +274,8 @@ export class CutView {
 
                     for (const c of node.children)
                         forEachInSubtree(c, (w) => {
-                            this.data.delete(w)
-                            this.cutToolStore.deleteCutviewSelection(w)
+                            if(this.data.delete(w))
+                                this.cutToolStore.deleteCutviewSelection(w)
                         })
                 }
             })
