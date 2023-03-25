@@ -292,6 +292,7 @@ export class ImageView {
 
         const nameSpan = document.createElement('span')
         nameSpan.appendChild(document.createTextNode(v.name ?? ''))
+        nameSpan.className = 'imageview-name'
         if (v.fullname) nameSpan.title = v.fullname
 
         const selectableSpan = document.createElement('span')
@@ -325,24 +326,33 @@ export class ImageView {
         ]
 
         if (uData.collapsedChildren) {
-            results = reachableArrs.map((reachable) =>
-                reachable.accumulatedSizeOfPurgedNodes(uData.collapsedChildren!)
-            ) as SizeInfo
+            results = reachableArrs.map((reachable) => {
+                return {
+                    size: reachable.accumulatedSizeOfPurgedNodes(uData.collapsedChildren!),
+                    all: reachable.allPurged(uData.collapsedChildren!)
+                }
+            }) as SizeInfo
         } else {
-            results = reachableArrs.map((reachable) =>
-                reachable.isPurged(u) ? u.size : 0
-            ) as SizeInfo
+            results = reachableArrs.map((reachable) => {
+                return {
+                    size: reachable.isPurged(u) ? u.size : 0,
+                    all: !u.cgNode || reachable.isPurged(u)
+                }
+            }) as SizeInfo
             for (const cr of childResults)
-                if (cr) for (let i = 0; i < results.length; i++) results[i] += cr[i]
+                if (cr) for (let i = 0; i < results.length; i++) {
+                    results[i].size += cr[i].size
+                    results[i].all &&= cr[i].all
+                }
         }
         const html = uData.html
 
-        const [purgedBaseline, purgedWithSelection, purgedWithHover] = results
+        const [baseline, withSelection, withHover] = results
 
-        const purgedPercentage0 = (100 * purgedBaseline) / u.accumulatedSize
-        const purgedPercentage1 = (100 * (purgedWithSelection - purgedBaseline)) / u.accumulatedSize
+        const purgedPercentage0 = (100 * baseline.size) / u.accumulatedSize
+        const purgedPercentage1 = (100 * (withSelection.size - baseline.size)) / u.accumulatedSize
         const purgedPercentage2 =
-            (100 * (purgedWithHover - purgedWithSelection)) / u.accumulatedSize
+            (100 * (withHover.size - withSelection.size)) / u.accumulatedSize
         const purgedPercentageTotal = purgedPercentage1 + purgedPercentage2
         let barWidth0 = '0'
         let barWidth1 = '0'
@@ -364,8 +374,15 @@ export class ImageView {
         html.querySelector<HTMLDivElement>('.size-bar-inner-0')!.style.width = barWidth0
         html.querySelector<HTMLDivElement>('.size-bar-inner-1')!.style.width = barWidth1
         html.querySelector<HTMLDivElement>('.size-bar-inner-2')!.style.width = barWidth2
-        const cl = html.querySelector<HTMLDivElement>('.imageview-node')!.classList
-        cl.toggle('purged', purgedWithSelection >= u.accumulatedSize && purgedWithSelection > 0)
+
+        const cl = html.querySelector('.imageview-node')!.classList
+        const classNames = ['purged-baseline', 'purged-with-selection', 'purged-with-hover']
+        let inhibited = false
+        for(let i = 0; i < 3; i++) {
+            cl.toggle(classNames[i], !inhibited && results[i].all)
+            inhibited ||= results[i].all
+        }
+        cl.toggle('affected-by-hover', results[2].size > results[1].size)
 
         return results
     }
@@ -385,4 +402,5 @@ export class ImageView {
     }
 }
 
-type SizeInfo = [purgedBaseline: number, purgedWithSelection: number, purgedWithHover: number]
+type PurgeInfo = { size: number, all: boolean }
+type SizeInfo = [baseline: PurgeInfo, withSelection: PurgeInfo, withHover: PurgeInfo]

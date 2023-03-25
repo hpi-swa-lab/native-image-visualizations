@@ -323,9 +323,12 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
                 }
             }
 
+            if(prefix.length > 0)
+                prefix += '.'
+
             for (const [typeName, type] of Object.entries(pkg.types)) {
                 const l3: FullyHierarchicalNode & { fullname: string } = {
-                    fullname: `${prefix}.${typeName}`,
+                    fullname: `${prefix}${typeName}`,
                     name: typeName,
                     children: [],
                     size: 0,

@@ -53,7 +53,7 @@ export class PurgeResults {
         const sizes = vs.sizes
         assert(cgNodes.length === sizes.length)
         for (let i = 0; i < cgNodes.length; i++) {
-            if (this.reachableArr[cgNodes[i]] === Unreachable) return false
+            if (this.reachableArr[cgNodes[i]] !== Unreachable) return false
         }
         return true
     }
@@ -83,7 +83,7 @@ export class NodeSet {
     public readonly sizes: number[]
 
     constructor(vs: FullyHierarchicalNode[]) {
-        const set = vs.filter((v) => v.cgNode !== undefined && v.size) as (FullyHierarchicalNode & {
+        const set = vs.filter((v) => v.cgNode !== undefined) as (FullyHierarchicalNode & {
             cgNode: number
         })[]
         this.cgNodes = new Array(set.length)

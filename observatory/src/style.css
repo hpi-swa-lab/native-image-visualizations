@@ -247,8 +247,24 @@ ul {
 .synthetic {
     @apply text-[#808080];
 }
-.purged {
+.purged-baseline::after {
+    content: ' ?';
+    color: grey;
+}
+.purged-with-selection {
     @apply line-through;
+    color: #603030;
+}
+.purged-with-hover {
+    @apply line-through;
+    color: #705520;
+}
+.imageview-name {
+    color: black;
+}
+.affected-by-hover::after {
+    content: '*';
+    color: #705520;
 }
 
 /* For detail view: */
