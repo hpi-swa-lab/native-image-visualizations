@@ -27,7 +27,10 @@ const store = useGlobalStore()
                 @change.self="store.toggleFilter(filter, $event)"
             />
 
-            <p class="col-span-5 whitespace-nowrap flex-1 flex-nowrap" :for="filter.description">
+            <p
+                class="col-span-5 overflow-x-auto whitespace-nowrap flex-1 flex-nowrap"
+                :for="filter.description"
+            >
                 {{ filter.description }}
             </p>
             <button
