@@ -18,6 +18,8 @@ export class Node {
     protected _isJni: boolean | undefined
     protected _isSynthetic: boolean | undefined
 
+    protected _hierarchy_name_separator: string = HIERARCHY_NAME_SEPARATOR
+
     constructor(
         name: string,
         children: Node[] = [],
@@ -67,7 +69,7 @@ export class Node {
 
         this._identifier = this.name
         if (this.parent) {
-            this._identifier = this.parent.identifier + HIERARCHY_NAME_SEPARATOR + this.name
+            this._identifier = this.parent.identifier + this._hierarchy_name_separator + this.name
         }
         return this._identifier
     }
@@ -118,6 +120,10 @@ export class Node {
 
     set codeSize(newCodeSize: Bytes) {
         this._codeSize = newCodeSize
+    }
+
+    public overrideHierarchyNameSeparator(newSeparator: string) {
+        this._hierarchy_name_separator = newSeparator
     }
 
     public push(...children: Node[]): number {

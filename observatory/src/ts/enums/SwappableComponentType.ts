@@ -2,7 +2,7 @@ export enum SwappableComponentType {
     VennSets = 'venn-sets',
     SankeyTree = 'sankey-tree',
     TreeLine = 'tree-line',
-    CausalityGraph = 'causality-graph',
+    CutTool = 'cut-tool',
     Home = 'home',
     None = 'none'
 }
@@ -15,10 +15,10 @@ export function componentName(component: SwappableComponentType | undefined): st
             return 'Sankey Tree'
         case SwappableComponentType.TreeLine:
             return 'Tree Line'
-        case SwappableComponentType.CausalityGraph:
-            return 'Causality Graph'
         case SwappableComponentType.Home:
             return 'Home'
+        case SwappableComponentType.CutTool:
+            return 'Cut Tool'
         default:
             return '<Error>'
     }
