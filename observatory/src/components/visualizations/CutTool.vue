@@ -26,19 +26,11 @@ onMounted(() => {
     // `ref` exists below and this code is executed after mounting.
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     visualization = new CutToolVis(container.value!)
-    const universes = multiverse.value.sources
-    if (universes.length === 1) {
-        const u = universes[0] as Universe
-        visualization.setUniverse(toRaw(u))
-    }
+    visualization.setMultiverse(toRaw(multiverse.value))
 })
 
 watch(multiverse, (newMultiverse) => {
-    const universes = newMultiverse.sources
-    if (universes.length === 1) {
-        const u = universes[0] as Universe
-        visualization?.setUniverse(toRaw(u))
-    }
+    visualization?.setMultiverse(toRaw(newMultiverse))
 })
 
 function detailViewClose(): void {
@@ -91,11 +83,10 @@ function searchMainFunction(): void {
 
                     <input
                             ref="searchText"
+                            v-model="cutToolStore.cutview.search"
                             type="search"
                             class="pl-10"
                             placeholder="Search nodes"
-                            :value="cutToolStore.cutview.search"
-                            @input="event => cutToolStore.changeCutviewSearch(event.target.value)"
                     />
                 </div>
                 <form class="flex border rounded p-2">
@@ -146,11 +137,10 @@ function searchMainFunction(): void {
 
                     <input
                             ref="searchText"
+                            v-model="cutToolStore.imageview.search"
                             type="search"
                             class="pl-10"
                             placeholder="Search nodes"
-                            :value="cutToolStore.imageview.search"
-                            @input="event => cutToolStore.changeImageviewSearch(event.target.value)"
                     />
                 </div>
                 <form class="border rounded p-2 flex">
@@ -173,7 +163,10 @@ function searchMainFunction(): void {
         </template>
         <div id="cut-tool-root" ref="container" class="h-[98%]" style="all: initial">
             <div id="loading-panel" class="fullscreen cursor-wait" hidden>
-                <div class="center">Causality Graph is being parsed...</div>
+                <div class="center">Please wait...</div>
+            </div>
+            <div id="status-panel" class="fullscreen" hidden>
+                <div class="center"></div>
             </div>
 
             <div id="main-panel" class="fullscreen" hidden>

@@ -18,6 +18,8 @@ import { Filter } from '../SharedTypes/Filters'
 import {useCutToolStore} from '../stores/cutToolStore';
 import {computed, toRaw, watch} from 'vue';
 import {root} from 'postcss';
+import {Multiverse} from '../UniverseTypes/Multiverse';
+import {MultiverseVisualization} from './MultiverseVisualization';
 
 class CutTool {
     readonly domRoot: HTMLDivElement
@@ -139,16 +141,43 @@ class CutTool {
         this.ps.paused = false
     }
 
-    public static async create(domRoot: HTMLDivElement, universe: CausalityGraphUniverse) {
-        domRoot.querySelector<HTMLDivElement>('#main-panel')!.hidden = true
-        domRoot.querySelector<HTMLDivElement>('#loading-panel')!.hidden = false
+    public static async create(domRoot: HTMLDivElement, multiverse: Multiverse) {
+        const mainPanel = domRoot.querySelector<HTMLDivElement>('#main-panel')!
+        const statusPanel = domRoot.querySelector<HTMLDivElement>('#status-panel')!
+        const statusText = statusPanel.querySelector<HTMLDivElement>('div')!
+        const loadingPanel = domRoot.querySelector<HTMLDivElement>('#loading-panel')!
+        mainPanel.hidden = true
+        statusPanel.hidden = true
+        loadingPanel.hidden = true
+
+        let universe
+
+        if (multiverse.sources.length === 0) {
+            statusPanel.hidden = false
+            statusText.textContent = 'Select a universe to inspect'
+            return
+        } else if(multiverse.sources.length > 1) {
+            statusPanel.hidden = false
+            statusText.textContent = 'Please select only one universe.'
+            return
+        } else {
+            universe = multiverse.sources[0]
+            if(!(universe instanceof CausalityGraphUniverse)) {
+                statusPanel.hidden = false
+                statusText.textContent = 'The selected universe does not contain Causality Data :/'
+                return
+            }
+        }
+
+        loadingPanel.hidden = false
+
         const cg = await universe.getCausalityGraph()
         const allReachable = new ReachabilityVector(
             new PurgeResults(await cg.simulatePurge()),
             universe.codesizeByNodeLabels
         )
-        domRoot.querySelector<HTMLDivElement>('#loading-panel')!.hidden = true
-        domRoot.querySelector<HTMLDivElement>('#main-panel')!.hidden = false
+        loadingPanel.hidden = true
+        mainPanel.hidden = false
         return new CutTool(domRoot, universe, cg, allReachable)
     }
 
@@ -271,7 +300,7 @@ class CutTool {
 }
 
 // Wrapper around the mostly immutable CutTool
-export class CutToolVis implements UniverseVisualization {
+export class CutToolVis implements MultiverseVisualization {
     colorScheme: ColorScheme = []
     highlights = new Set<string>()
     selection = new Set<string>()
@@ -285,8 +314,8 @@ export class CutToolVis implements UniverseVisualization {
         this.domRoot = domRoot
     }
 
-    setUniverse(universe: Universe): void {
-        this.onUniverseChanged(universe instanceof CausalityGraphUniverse ? universe : undefined)
+    setMultiverse(multiverse: Multiverse): void {
+        this.universeSpecificCutTool = this.destroyAndCreate(multiverse)
     }
 
     setHighlights(_: Set<string>): void {
@@ -301,14 +330,10 @@ export class CutToolVis implements UniverseVisualization {
         // TODO: https://github.com/hpi-swa-lab/MPWS2022RH1/issues/156
     }
 
-    private async destroyAndCreate(universe: CausalityGraphUniverse | undefined) {
+    private async destroyAndCreate(multiverse: Multiverse) {
         // Ensures sequential execution by waiting on the previous destroyAndCreate(...)
         const oldVis = await this.universeSpecificCutTool
         oldVis?.dispose()
-        return universe ? await CutTool.create(this.domRoot, universe) : undefined
-    }
-
-    private onUniverseChanged(universe: CausalityGraphUniverse | undefined) {
-        this.universeSpecificCutTool = this.destroyAndCreate(universe)
+        return multiverse ? await CutTool.create(this.domRoot, multiverse) : undefined
     }
 }
