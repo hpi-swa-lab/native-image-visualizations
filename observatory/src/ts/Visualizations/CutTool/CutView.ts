@@ -77,22 +77,23 @@ export class CutView {
             }),
             watch(this.searchTerm, (newTerm) => {
                 const searchString = toRaw(newTerm)
-
-                const fitting: FullyHierarchicalNode[] = []
-                forEachInSubtree(root, (v) => {
-                    if(!v.fullname)
-                        return
-                    if(v.fullname.endsWith(searchString)) {
-                        if(v.fullname.length > searchString.length) {
-                            const prevChar = v.fullname[v.fullname.length - 1 - searchString.length]
-                            if (prevChar !== '.' && prevChar !== '/')
-                                return
+                if (searchString.length > 0) {
+                    const fitting: FullyHierarchicalNode[] = []
+                    forEachInSubtree(root, (v) => {
+                        if (!v.fullname)
+                            return
+                        if (v.fullname.endsWith(searchString)) {
+                            if (v.fullname.length > searchString.length) {
+                                const prevChar = v.fullname[v.fullname.length - 1 - searchString.length]
+                                if (prevChar !== '.' && prevChar !== '/')
+                                    return
+                            }
+                            fitting.push(v)
                         }
-                        fitting.push(v)
+                    })
+                    if (fitting.length == 1) {
+                        this.expandTo(fitting[0])
                     }
-                })
-                if(fitting.length == 1) {
-                    this.expandTo(fitting[0])
                 }
                 for(const [v, vData] of this.data) {
                     const highlighted = searchString.length === 0 || (v.fullname && v.fullname.includes(searchString))
