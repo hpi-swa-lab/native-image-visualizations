@@ -151,8 +151,8 @@ export function asHTML(vizNode: SankeyHierarchyPointNode, metadata: UniverseMeta
     const node: Node = vizNode.data
     return `<b>Exists in</b>: ${Array.from(node.sources.keys())
         .map((uniIndex) => metadata[uniIndex].name)
-        .join(', ')}
-                <b>Name</b>: ${node.identifier}
+        .join(' ∩ ')}
+                <b>Path</b>: ${getWithoutRoot(node.identifier)}
                 <b>Code Size</b>: ${formatBytes(node.codeSize)}`
 }
 
