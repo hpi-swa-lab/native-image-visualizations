@@ -11,7 +11,6 @@ import { useGlobalStore } from '../../ts/stores/globalStore'
 import { SwappableComponentType, componentName } from '../../ts/enums/SwappableComponentType'
 import HelpDialog from '../help/HelpDialog.vue'
 import WindowContainer from './WindowContainer.vue'
-import draggable from 'vuedraggable'
 
 withDefaults(
     defineProps<{

@@ -37,10 +37,10 @@ function closeDragElement() {
 
 <template>
     <div
+        ref="container"
+        class="fixed z-50 w-full p-4 overflow-x-hidden overflow-y-auto h-full drop-shadow-md"
         @mousedown="dragMouseDown"
         @mouseup="closeDragElement"
-        ref="container"
-        class="fixed top-0 left-0 right-0 z-50 w-full p-4 overflow-x-hidden overflow-y-auto h-full"
     >
         <div class="relative w-full h-full max-w-2xl">
             <div class="relative bg-white rounded-lg shadow">
