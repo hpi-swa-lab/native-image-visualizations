@@ -240,7 +240,7 @@ export class SankeyTree implements MultiverseVisualization {
     private buildTree(
         multiverse: Multiverse,
         layer: Layers,
-        filters: Filter[],
+        filters: Filter[]
     ): SankeyTreeCompound {
         const nodeTree: Node = new Node(ROOT_NODE_NAME, [])
 
