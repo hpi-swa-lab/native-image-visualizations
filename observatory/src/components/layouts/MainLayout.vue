@@ -9,8 +9,9 @@ import SelectionList from '../controls/SelectionList.vue'
 import { onMounted, ref } from 'vue'
 import { useGlobalStore } from '../../ts/stores/globalStore'
 import { SwappableComponentType, componentName } from '../../ts/enums/SwappableComponentType'
-import ModalButton from '../simpleUiElements/modalButton.vue'
 import HelpDialog from '../help/HelpDialog.vue'
+import WindowContainer from './WindowContainer.vue'
+import draggable from 'vuedraggable'
 
 withDefaults(
     defineProps<{
@@ -44,6 +45,16 @@ onMounted(() => {
         }
     }
 })
+
+const showHelp = ref(false)
+
+function openHelp() {
+    showHelp.value = true
+}
+
+function closeHelp() {
+    showHelp.value = false
+}
 </script>
 
 <template>
@@ -53,14 +64,9 @@ onMounted(() => {
             :class="collapsed ? 'w-0' : 'w-[320px]'"
         >
             <div class="flex p-4 space-x-4 justify-even">
-                <ModalButton ref="helpButton" icon="circle-question" button-styling="btn btn-light">
-                    <template #modal-header
-                        >Help for {{ componentName(store.currentComponent) }}</template
-                    >
-                    <template #modal-content>
-                        <HelpDialog />
-                    </template>
-                </ModalButton>
+                <button class="btn btn-light" @click="openHelp()">
+                    <font-awesome-icon icon="circle-question" />
+                </button>
                 <h2 class="col-start-3 text-center">{{ title }}</h2>
             </div>
             <TabLayout
@@ -104,6 +110,12 @@ onMounted(() => {
                 :class="collapsed ? 'rotate-180' : ''"
             />
         </button>
-        <div class="h-full w-full overflow-y-auto"><slot /></div>
+        <div class="h-full w-full overflow-y-auto">
+            <WindowContainer v-if="showHelp" @close-window="closeHelp()">
+                <template #header>Help for {{ componentName(store.currentComponent) }}</template>
+                <HelpDialog />
+            </WindowContainer>
+            <slot />
+        </div>
     </div>
 </template>
