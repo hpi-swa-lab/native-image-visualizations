@@ -46,7 +46,7 @@ const isRealMultiverse = computed(() => globalStore.multiverse.sources.length ==
         >
             <ColorLabel
                 :for-element="key"
-                :label="universesMetadata[parseInt(key)].name"
+                :label="'excl. in ' + universesMetadata[parseInt(key)].name"
                 :color="universesMetadata[parseInt(key)].color"
             ></ColorLabel>
         </ToggleSwitch>
@@ -61,13 +61,13 @@ const isRealMultiverse = computed(() => globalStore.multiverse.sources.length ==
             >
                 <ColorLabel
                     :for-element="UNMODIFIED"
-                    label="unmodified packages"
+                    label="shared, no excl. items on branch"
                     :color="sankeyStore.colorUnmodified"
                 ></ColorLabel>
             </ToggleSwitch>
 
             <ColorLabel
-                label="modified packages"
+                label="shared w/ excl. items on branch"
                 :color="sankeyStore.colorModified"
                 class="ml-[29px]"
             ></ColorLabel>
