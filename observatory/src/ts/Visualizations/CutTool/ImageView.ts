@@ -1,4 +1,9 @@
-import {collectSubtree, forEachInSubtree, FullyHierarchicalNode} from '../../UniverseTypes/CausalityGraphUniverse'
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+import {
+    collectSubtree,
+    forEachInSubtree,
+    FullyHierarchicalNode
+} from '../../UniverseTypes/CausalityGraphUniverse'
 import { formatByteSizeWithUnitPrefix } from '../../util/ByteSizeFormatter'
 import { NodeSet, PurgeResults } from './BatchPurgeScheduler'
 import { nodeTypeToCssString } from './CutView'
@@ -77,7 +82,7 @@ export class ImageView {
                 const u = toRaw(newSelection)
                 const uPrev = toRaw(oldSelection)
 
-                if(uPrev) {
+                if (uPrev) {
                     const uPrevData = this.imageviewData.get(uPrev)
                     if (uPrevData) {
                         uPrevData.html
@@ -88,23 +93,24 @@ export class ImageView {
 
                 if (u) {
                     const uData = this.imageviewData.get(u)
-                    if(uData)
-                        uData.html.querySelector('.imageview-node')!.classList.add('selected-for-detail')
+                    if (uData)
+                        uData.html
+                            .querySelector('.imageview-node')!
+                            .classList.add('selected-for-detail')
                 }
             }),
             watch(this.searchTerm, (newTerm) => {
                 const searchString = toRaw(newTerm)
 
-                if(searchString.length) {
+                if (searchString.length) {
                     const fitting: FullyHierarchicalNode[] = []
                     forEachInSubtree(this.root, (v) => {
-                        if (!v.fullname)
-                            return
+                        if (!v.fullname) return
                         if (v.fullname.endsWith(searchString)) {
                             if (v.fullname.length > searchString.length) {
-                                const prevChar = v.fullname[v.fullname.length - 1 - searchString.length]
-                                if (prevChar !== '.' && prevChar !== '/')
-                                    return
+                                const prevChar =
+                                    v.fullname[v.fullname.length - 1 - searchString.length]
+                                if (prevChar !== '.' && prevChar !== '/') return
                             }
                             fitting.push(v)
                         }
@@ -114,9 +120,13 @@ export class ImageView {
                     }
                 }
 
-                for(const [v, vData] of this.imageviewData) {
-                    const highlighted = searchString.length === 0 || (v.fullname && v.fullname.includes(searchString))
-                    vData.html.querySelector('.image-row')!.classList.toggle('highlight-excluded', !highlighted)
+                for (const [v, vData] of this.imageviewData) {
+                    const highlighted =
+                        searchString.length === 0 ||
+                        (v.fullname && v.fullname.includes(searchString))
+                    vData.html
+                        .querySelector('.image-row')!
+                        .classList.toggle('highlight-excluded', !highlighted)
                 }
             })
         ]
@@ -129,9 +139,12 @@ export class ImageView {
         list.classList.add('unpadded')
         list.classList.add('active')
 
-        if(this.selectedNode.value) {
+        if (this.selectedNode.value) {
             this.expandTo(toRaw(this.selectedNode.value))
-            this.imageviewData.get(toRaw(this.selectedNode.value))!.html.querySelector('.imageview-node')!.classList.add('selected-for-detail')
+            this.imageviewData
+                .get(toRaw(this.selectedNode.value))!
+                .html.querySelector('.imageview-node')!
+                .classList.add('selected-for-detail')
         }
     }
 
@@ -165,8 +178,7 @@ export class ImageView {
     }
 
     public dispose() {
-        for(const stopper of this.watchStopHandles)
-            stopper()
+        for (const stopper of this.watchStopHandles) stopper()
     }
 
     public expandTo(v: FullyHierarchicalNode) {
@@ -180,8 +192,7 @@ export class ImageView {
         for (const u of path) {
             const uData = this.imageviewData.get(u)
 
-            if(!uData || uData.html.querySelector('ul'))
-                continue
+            if (!uData || uData.html.querySelector('ul')) continue
 
             const list = this.generateHtmlImageview(u)
             uData.html.appendChild(list)
@@ -189,9 +200,9 @@ export class ImageView {
             list.parentElement!.querySelector('.caret')!.classList.add('caret-down')
         }
 
-        if(last) {
+        if (last) {
             const lastData = this.imageviewData.get(last)
-            if(lastData)
+            if (lastData)
                 lastData.html.querySelector('.image-row')!.scrollIntoView({ block: 'center' })
         }
     }
@@ -227,8 +238,8 @@ export class ImageView {
         const row = document.createElement('div')
         row.className = 'image-row'
         const searchTerm = toRaw(this.searchTerm.value)
-        const highlighted = searchTerm.length === 0
-            || (v.fullname && v.fullname.includes(searchTerm))
+        const highlighted =
+            searchTerm.length === 0 || (v.fullname && v.fullname.includes(searchTerm))
         row.classList.toggle('highlight-excluded', !highlighted)
         li.appendChild(row)
 
@@ -342,10 +353,11 @@ export class ImageView {
                 }
             }) as SizeInfo
             for (const cr of childResults)
-                if (cr) for (let i = 0; i < results.length; i++) {
-                    results[i].size += cr[i].size
-                    results[i].all &&= cr[i].all
-                }
+                if (cr)
+                    for (let i = 0; i < results.length; i++) {
+                        results[i].size += cr[i].size
+                        results[i].all &&= cr[i].all
+                    }
         }
         const html = uData.html
 
@@ -353,8 +365,7 @@ export class ImageView {
 
         const purgedPercentage0 = (100 * baseline.size) / u.accumulatedSize
         const purgedPercentage1 = (100 * (withSelection.size - baseline.size)) / u.accumulatedSize
-        const purgedPercentage2 =
-            (100 * (withHover.size - withSelection.size)) / u.accumulatedSize
+        const purgedPercentage2 = (100 * (withHover.size - withSelection.size)) / u.accumulatedSize
         const purgedPercentageTotal = purgedPercentage1 + purgedPercentage2
         let barWidth0 = '0'
         let barWidth1 = '0'
@@ -380,7 +391,7 @@ export class ImageView {
         const cl = html.querySelector('.imageview-node')!.classList
         const classNames = ['purged-baseline', 'purged-with-selection', 'purged-with-hover']
         let inhibited = false
-        for(let i = 0; i < 3; i++) {
+        for (let i = 0; i < 3; i++) {
             cl.toggle(classNames[i], !inhibited && results[i].all)
             inhibited ||= results[i].all
         }
@@ -404,5 +415,5 @@ export class ImageView {
     }
 }
 
-type PurgeInfo = { size: number, all: boolean }
+type PurgeInfo = { size: number; all: boolean }
 type SizeInfo = [baseline: PurgeInfo, withSelection: PurgeInfo, withHover: PurgeInfo]

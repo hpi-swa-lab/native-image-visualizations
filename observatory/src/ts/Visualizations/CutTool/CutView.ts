@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import {
     forEachInSubtree,
     FullyHierarchicalNode,
@@ -8,7 +9,6 @@ import { assert } from '../../util/assert'
 import { SortingOption } from '../../enums/Sorting'
 import { useCutToolStore } from '../../stores/cutToolStore'
 import { computed, toRaw, watch } from 'vue'
-import {dom} from '@fortawesome/fontawesome-svg-core';
 
 export function nodeTypeToCssString(type: NodeType): string {
     switch (type) {
@@ -80,13 +80,12 @@ export class CutView {
                 if (searchString.length > 0) {
                     const fitting: FullyHierarchicalNode[] = []
                     forEachInSubtree(root, (v) => {
-                        if (!v.fullname)
-                            return
+                        if (!v.fullname) return
                         if (v.fullname.endsWith(searchString)) {
                             if (v.fullname.length > searchString.length) {
-                                const prevChar = v.fullname[v.fullname.length - 1 - searchString.length]
-                                if (prevChar !== '.' && prevChar !== '/')
-                                    return
+                                const prevChar =
+                                    v.fullname[v.fullname.length - 1 - searchString.length]
+                                if (prevChar !== '.' && prevChar !== '/') return
                             }
                             fitting.push(v)
                         }
@@ -95,9 +94,13 @@ export class CutView {
                         this.expandTo(fitting[0])
                     }
                 }
-                for(const [v, vData] of this.data) {
-                    const highlighted = searchString.length === 0 || (v.fullname && v.fullname.includes(searchString))
-                    vData.html.querySelector('.cut-row')!.classList.toggle('highlight-excluded', !highlighted)
+                for (const [v, vData] of this.data) {
+                    const highlighted =
+                        searchString.length === 0 ||
+                        (v.fullname && v.fullname.includes(searchString))
+                    vData.html
+                        .querySelector('.cut-row')!
+                        .classList.toggle('highlight-excluded', !highlighted)
                 }
             })
         ]
@@ -136,8 +139,7 @@ export class CutView {
     }
 
     public dispose() {
-        for(const stopper of this.watchStopHandles)
-            stopper()
+        for (const stopper of this.watchStopHandles) stopper()
     }
 
     public populate() {
@@ -210,8 +212,7 @@ export class CutView {
         for (const u of path) {
             const uData = this.data.get(u)
 
-            if(!uData || uData.html.querySelector('ul'))
-                continue
+            if (!uData || uData.html.querySelector('ul')) continue
 
             const list = this.generateHtmlList(u)
             uData.html.appendChild(list)
@@ -220,9 +221,9 @@ export class CutView {
             this.onExpanded(u)
         }
 
-        if(last) {
+        if (last) {
             const lastData = this.data.get(last)
-            if(lastData)
+            if (lastData)
                 lastData.html.querySelector('.cut-row')!.scrollIntoView({ block: 'center' })
         }
     }
@@ -246,8 +247,8 @@ export class CutView {
         const row = document.createElement('div')
         row.className = 'cut-row'
         const searchTerm = toRaw(this.searchTerm.value)
-        const highlighted = searchTerm.length === 0
-            || (v.fullname && v.fullname.includes(searchTerm))
+        const highlighted =
+            searchTerm.length === 0 || (v.fullname && v.fullname.includes(searchTerm))
         row.classList.toggle('highlight-excluded', !highlighted)
         li.appendChild(row)
 
@@ -275,8 +276,7 @@ export class CutView {
 
                     for (const c of node.children)
                         forEachInSubtree(c, (w) => {
-                            if(this.data.delete(w))
-                                this.cutToolStore.deleteCutviewSelection(w)
+                            if (this.data.delete(w)) this.cutToolStore.deleteCutviewSelection(w)
                         })
                 }
             })

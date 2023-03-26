@@ -14,7 +14,7 @@ import FileSaver from 'file-saver'
 import { InvalidInputError } from '../../ts/errors'
 import { ExportConfig } from '../../ts/stores/ExportConfig'
 import { EventType } from '../../ts/enums/EventType'
-import { useCutToolStore } from '../../ts/stores/cutToolStore';
+import { useCutToolStore } from '../../ts/stores/cutToolStore'
 
 const emit = defineEmits([EventType.CONFIG_LOADED])
 

@@ -116,7 +116,7 @@ export interface FullyHierarchicalNode {
 
 export function parents<TNode extends { parent?: TNode }>(node: TNode | undefined): TNode[] {
     const result = []
-    while(node) {
+    while (node) {
         result.push(node)
         node = node.parent
     }
@@ -295,8 +295,7 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
 
             if (packageName.length !== 0) {
                 for (const subPackageName of packageName.split('.')) {
-                    if (prefix.length)
-                        prefix += '.'
+                    if (prefix.length) prefix += '.'
                     prefix += subPackageName
                     let next = l2.children.find((n) => n.name === subPackageName)
                     if (!next) {
@@ -323,8 +322,7 @@ function generateHierarchyFromReachabilityJsonAndMethodList(
                 }
             }
 
-            if(prefix.length > 0)
-                prefix += '.'
+            if (prefix.length > 0) prefix += '.'
 
             for (const [typeName, type] of Object.entries(pkg.types)) {
                 const l3: FullyHierarchicalNode & { fullname: string } = {

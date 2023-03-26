@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import {
     CausalityGraphUniverse,
     collectCgNodesInSubtree,
     forEachInSubtree,
-    FullyHierarchicalNode, parents
+    FullyHierarchicalNode,
+    parents
 } from '../UniverseTypes/CausalityGraphUniverse'
 import { CutView } from './CutTool/CutView'
 import { ImageView } from './CutTool/ImageView'
@@ -11,15 +13,12 @@ import { PurgeResults, ReachabilityVector } from './CutTool/BatchPurgeScheduler'
 import { PurgeScheduler } from './CutTool/PurgeScheduler'
 import { AsyncCausalityGraph } from '../Causality/AsyncCausalityGraph'
 import { assert } from '../util/assert'
-import { UniverseVisualization } from './UniverseVisualization'
-import { Universe } from '../UniverseTypes/Universe'
 import { ColorScheme } from '../SharedTypes/Colors'
 import { Filter } from '../SharedTypes/Filters'
-import {useCutToolStore} from '../stores/cutToolStore';
-import {computed, toRaw, watch} from 'vue';
-import {root} from 'postcss';
-import {Multiverse} from '../UniverseTypes/Multiverse';
-import {MultiverseVisualization} from './MultiverseVisualization';
+import { useCutToolStore } from '../stores/cutToolStore'
+import { computed, toRaw, watch } from 'vue'
+import { Multiverse } from '../UniverseTypes/Multiverse'
+import { MultiverseVisualization } from './MultiverseVisualization'
 
 class CutTool {
     readonly domRoot: HTMLDivElement
@@ -92,11 +91,9 @@ class CutTool {
             (v) => this.cutView_onHover(v)
         )
 
-
         const cutToolStore = useCutToolStore()
         const currentlyDetailSelected = cutToolStore.detailview.selected
-        if(currentlyDetailSelected)
-            this.ps.detailSelectedNode = currentlyDetailSelected
+        if (currentlyDetailSelected) this.ps.detailSelectedNode = currentlyDetailSelected
 
         this.selection = computed(() => cutToolStore.cutview.selection)
 
@@ -107,12 +104,9 @@ class CutTool {
             }
         )
 
-        watch(
-            this.selection,
-            (newSelection, oldSelection) => {
-                this.cutView_onSelectionChanged(toRaw(newSelection), toRaw(oldSelection))
-            }
-        )
+        watch(this.selection, (newSelection, oldSelection) => {
+            this.cutView_onSelectionChanged(toRaw(newSelection), toRaw(oldSelection))
+        })
 
         this.imageview = new ImageView(
             allReachable.results,
@@ -122,11 +116,9 @@ class CutTool {
             Math.max(...this.dataRoot.children.map((d) => d.accumulatedSize))
         )
 
-
         const frontEndNodeList = Array(universe.nodeLabels.length) as FullyHierarchicalNode[]
-        forEachInSubtree(this.dataRoot, v => {
-            if(v.cgNode)
-                frontEndNodeList[v.cgNode] = v
+        forEachInSubtree(this.dataRoot, (v) => {
+            if (v.cgNode) frontEndNodeList[v.cgNode] = v
         })
 
         this.detailview = new DetailView(
@@ -156,13 +148,13 @@ class CutTool {
             statusPanel.hidden = false
             statusText.textContent = 'Select a universe to inspect'
             return
-        } else if(multiverse.sources.length > 1) {
+        } else if (multiverse.sources.length > 1) {
             statusPanel.hidden = false
             statusText.textContent = 'Please select only one universe.'
             return
         } else {
             universe = multiverse.sources[0]
-            if(!(universe instanceof CausalityGraphUniverse)) {
+            if (!(universe instanceof CausalityGraphUniverse)) {
                 statusPanel.hidden = false
                 statusText.textContent = 'The selected universe does not contain Causality Data :/'
                 return
@@ -210,8 +202,7 @@ class CutTool {
             }
 
             if (containedInSelection) {
-                for(const w of v.children)
-                    this.cutview.setAdditionalPurgeData(w, 0)
+                for (const w of v.children) this.cutview.setAdditionalPurgeData(w, 0)
             } else {
                 if (this.additionalSimulationResults === undefined) {
                     this.ps.requestAdditionalPurgeInfo(v.children)
@@ -234,7 +225,10 @@ class CutTool {
         }
     }
 
-    private async cutView_onSelectionChanged(vs: Set<FullyHierarchicalNode>, oldVs: Set<FullyHierarchicalNode>) {
+    private async cutView_onSelectionChanged(
+        vs: Set<FullyHierarchicalNode>,
+        oldVs: Set<FullyHierarchicalNode>
+    ) {
         this.ps.purgeSelectedNodes = [...vs]
 
         let stillReachable: PurgeResults | undefined
@@ -243,10 +237,9 @@ class CutTool {
 
         if (vs.size === oldVs.size + 1) {
             const vsCopy = new Set<FullyHierarchicalNode>(vs)
-            oldVs.forEach(w => vsCopy.delete(w))
+            oldVs.forEach((w) => vsCopy.delete(w))
 
-            if (vsCopy.size === 1)
-                v = [...vsCopy][0]
+            if (vsCopy.size === 1) v = [...vsCopy][0]
         }
 
         if (v !== undefined) {
@@ -262,20 +255,17 @@ class CutTool {
 
         if (!stillReachable) {
             // We have to simulate
-            const purgeSet = [
-                ...new Set([...vs].flatMap(collectCgNodesInSubtree))
-            ]
+            const purgeSet = [...new Set([...vs].flatMap(collectCgNodesInSubtree))]
             stillReachable = new PurgeResults(await this.cg.simulatePurge(purgeSet))
         }
 
         this.additionalSimulationResults = undefined
         for (const v of this.cutview.visibleNodes) {
-            const isPurged = parents(v).some(w => vs.has(w))
+            const isPurged = parents(v).some((w) => vs.has(w))
             this.cutview.setAdditionalPurgeData(v, isPurged ? 0 : undefined)
         }
 
-        if (vs.size > 0)
-            this.ps.requestAdditionalPurgeInfo(this.cutview.visibleNodes)
+        if (vs.size > 0) this.ps.requestAdditionalPurgeInfo(this.cutview.visibleNodes)
 
         this.imageview.updateReachableSets(stillReachable, stillReachable)
     }
@@ -318,14 +308,17 @@ export class CutToolVis implements MultiverseVisualization {
         this.universeSpecificCutTool = this.destroyAndCreate(multiverse)
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     setHighlights(_: Set<string>): void {
         // TODO: https://github.com/hpi-swa-lab/MPWS2022RH1/issues/156
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     setSelection(_: Set<string>): void {
         // TODO: https://github.com/hpi-swa-lab/MPWS2022RH1/issues/156
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     setFilters(filters: Filter[]): void {
         // TODO: https://github.com/hpi-swa-lab/MPWS2022RH1/issues/156
     }

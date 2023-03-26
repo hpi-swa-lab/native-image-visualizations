@@ -5,13 +5,14 @@ import { CutToolVis } from '../../ts/Visualizations/CutTool'
 import { useGlobalStore } from '../../ts/stores/globalStore'
 import { Universe } from '../../ts/UniverseTypes/Universe'
 import { SortingOption } from '../../ts/enums/Sorting'
-import {useCutToolStore} from '../../ts/stores/cutToolStore';
-import {faHouse} from '@fortawesome/free-solid-svg-icons';
+import { useCutToolStore } from '../../ts/stores/cutToolStore'
+import { faHouse } from '@fortawesome/free-solid-svg-icons'
 import {
     CausalityGraphUniverse,
     forEachInSubtree,
     FullyHierarchicalNode
-} from '../../ts/UniverseTypes/CausalityGraphUniverse';
+} from '../../ts/UniverseTypes/CausalityGraphUniverse'
+import { Multiverse } from '../../ts/UniverseTypes/Multiverse'
 
 const store = useGlobalStore()
 const cutToolStore = useCutToolStore()
@@ -26,11 +27,11 @@ onMounted(() => {
     // `ref` exists below and this code is executed after mounting.
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     visualization = new CutToolVis(container.value!)
-    visualization.setMultiverse(toRaw(multiverse.value))
+    visualization.setMultiverse(toRaw(multiverse.value as Multiverse))
 })
 
 watch(multiverse, (newMultiverse) => {
-    visualization?.setMultiverse(toRaw(newMultiverse))
+    visualization?.setMultiverse(toRaw(newMultiverse as Multiverse))
 })
 
 function detailViewClose(): void {
@@ -42,12 +43,11 @@ function searchMainFunction(): void {
     if (universes.length === 1) {
         const u = toRaw(universes[0]) as Universe
 
-        if(u instanceof CausalityGraphUniverse) {
+        if (u instanceof CausalityGraphUniverse) {
             let mainNode: FullyHierarchicalNode | undefined
 
-            forEachInSubtree(u.causalityRoot, v => {
-                if (v.main)
-                    mainNode = v
+            forEachInSubtree(u.causalityRoot, (v) => {
+                if (v.main) mainNode = v
             })
             if (mainNode && mainNode.fullname) {
                 cutToolStore.changeCutviewSearch(mainNode.fullname)
@@ -65,28 +65,28 @@ function searchMainFunction(): void {
                 <div class="w-full flex content-start mb-2">
                     <div class="absolute mt-2.5 pl-3 pointer-events-none">
                         <svg
-                                aria-hidden="true"
-                                class="w-5 h-5 text-gray-500"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                                xmlns="http://www.w3.org/2000/svg"
+                            aria-hidden="true"
+                            class="w-5 h-5 text-gray-500"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg"
                         >
                             <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                             ></path>
                         </svg>
                     </div>
 
                     <input
-                            ref="searchText"
-                            v-model="cutToolStore.cutview.search"
-                            type="search"
-                            class="pl-10"
-                            placeholder="Search nodes"
+                        ref="searchText"
+                        v-model="cutToolStore.cutview.search"
+                        type="search"
+                        class="pl-10"
+                        placeholder="Search nodes"
                     />
                 </div>
                 <form class="flex border rounded p-2">
@@ -94,21 +94,21 @@ function searchMainFunction(): void {
                     <template v-for="(option, index) in Object.values(SortingOption)" :key="index">
                         <div class="relative block ml-2">
                             <input
-                                    :id="option"
-                                    name="sorting-options"
-                                    :value="option"
-                                    type="radio"
-                                    :checked="cutToolStore.isCutviewSortingOptionSelected(option)"
-                                    @change="cutToolStore.setCutviewSortingOption(option)"
+                                :id="option"
+                                name="sorting-options"
+                                :value="option"
+                                type="radio"
+                                :checked="cutToolStore.isCutviewSortingOptionSelected(option)"
+                                @change="cutToolStore.setCutviewSortingOption(option)"
                             />
                             <label :for="option" class="ml-1"> {{ option }} </label>
                         </div>
                     </template>
                 </form>
                 <button
-                        title="Focus on main()"
-                        class="z-10 btn bg-gray-50 mt-2 ml-2 hover:bg-gray-200 shadow-md"
-                        @click="searchMainFunction"
+                    title="Focus on main()"
+                    class="z-10 btn bg-gray-50 mt-2 ml-2 hover:bg-gray-200 shadow-md"
+                    @click="searchMainFunction"
                 >
                     <font-awesome-icon :icon="faHouse" />
                 </button>
@@ -119,28 +119,28 @@ function searchMainFunction(): void {
                 <div class="w-full flex content-start mb-2">
                     <div class="absolute mt-2.5 pl-3 pointer-events-none">
                         <svg
-                                aria-hidden="true"
-                                class="w-5 h-5 text-gray-500"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                                xmlns="http://www.w3.org/2000/svg"
+                            aria-hidden="true"
+                            class="w-5 h-5 text-gray-500"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg"
                         >
                             <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                             ></path>
                         </svg>
                     </div>
 
                     <input
-                            ref="searchText"
-                            v-model="cutToolStore.imageview.search"
-                            type="search"
-                            class="pl-10"
-                            placeholder="Search nodes"
+                        ref="searchText"
+                        v-model="cutToolStore.imageview.search"
+                        type="search"
+                        class="pl-10"
+                        placeholder="Search nodes"
                     />
                 </div>
                 <form class="border rounded p-2 flex">

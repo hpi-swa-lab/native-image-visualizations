@@ -4,9 +4,9 @@ import SortingFilterFieldset from './SortingFilterFieldset.vue'
 import DiffingUniversesFilterFieldset from './DiffingUniversesFilterFieldset.vue'
 import { UniverseMetadata } from '../../ts/SharedTypes/SankeyTree'
 import LayerSelection from './LayerSelection.vue'
-import SearchBar from './SearchBar.vue';
-import SelectionList from './SelectionList.vue';
-import FilteringOptions from './FilteringOptions.vue';
+import SearchBar from './SearchBar.vue'
+import SelectionList from './SelectionList.vue'
+import FilteringOptions from './FilteringOptions.vue'
 
 const SHORTCUTS = [
     '* shift+click on node expands branch',

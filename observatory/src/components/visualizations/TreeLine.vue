@@ -11,9 +11,9 @@ import { SizeInfo, TreeLine } from '../../ts/Visualizations/TreeLine'
 import Tooltip from '../controls/Tooltip.vue'
 import MainLayout from '../layouts/MainLayout.vue'
 import { Filter } from '../../ts/SharedTypes/Filters'
-import SearchBar from '../controls/SearchBar.vue';
-import SelectionList from '../controls/SelectionList.vue';
-import FilteringOptions from '../controls/FilteringOptions.vue';
+import SearchBar from '../controls/SearchBar.vue'
+import SelectionList from '../controls/SelectionList.vue'
+import FilteringOptions from '../controls/FilteringOptions.vue'
 
 const store = useGlobalStore()
 const multiverse = computed(() => store.multiverse)

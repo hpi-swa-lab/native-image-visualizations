@@ -1,16 +1,8 @@
 import { defineStore } from 'pinia'
 import { SortingOption } from '../enums/Sorting'
 import { FullyHierarchicalNode } from '../UniverseTypes/CausalityGraphUniverse'
-import {findNodesIncludingIdentifier} from '../Math/filters';
-import {toRaw} from 'vue';
-import {Node} from '../UniverseTypes/Node';
-import {Universe} from '../UniverseTypes/Universe';
-import {deserializeLayer, Layers, serializerLayer} from '../enums/Layers';
-import {deserializeComponent, serializeComponent, SwappableComponentType} from '../enums/SwappableComponentType';
-import {GlobalConfig} from './globalStore';
-import {loadStringArrayParameter, loadStringParameter} from './helpers';
-import {Filter} from '../SharedTypes/Filters';
-import CutTool from '../../components/visualizations/CutTool.vue';
+import { toRaw } from 'vue'
+import { loadStringParameter } from './helpers'
 
 export type CutToolConfig = Record<string, unknown>
 
@@ -30,7 +22,7 @@ export const useCutToolStore = defineStore('cutToolConfig', {
             },
             detailview: {
                 selected: undefined as FullyHierarchicalNode | undefined
-            },
+            }
         }
     },
     getters: {
@@ -83,22 +75,20 @@ export const useCutToolStore = defineStore('cutToolConfig', {
         },
         deleteCutviewSelection(v: FullyHierarchicalNode): boolean {
             const copy = new Set([...this.cutview.selection].map(toRaw))
-            if(!copy.delete(v))
-                return false
+            if (!copy.delete(v)) return false
             this.cutview.selection = copy
             return true
         },
         addCutviewSelection(v: FullyHierarchicalNode): void {
             const copy = new Set([...this.cutview.selection].map(toRaw))
-            if(copy.has(v))
-                return
+            if (copy.has(v)) return
             copy.add(v)
             this.cutview.selection = copy
         },
         toggleCutviewSelection(v: FullyHierarchicalNode): boolean {
             const copy = new Set([...this.cutview.selection].map(toRaw))
             const had = copy.has(v)
-            if(had) {
+            if (had) {
                 copy.delete(v)
             } else {
                 copy.add(v)

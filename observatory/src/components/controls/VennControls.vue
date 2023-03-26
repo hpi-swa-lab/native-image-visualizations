@@ -2,9 +2,9 @@
 import { useVennStore } from '../../ts/stores/vennStore'
 import { SortingOrder } from '../../ts/enums/Sorting'
 import LayerSelection from './LayerSelection.vue'
-import SearchBar from './SearchBar.vue';
-import SelectionList from './SelectionList.vue';
-import FilteringOptions from './FilteringOptions.vue';
+import SearchBar from './SearchBar.vue'
+import SelectionList from './SelectionList.vue'
+import FilteringOptions from './FilteringOptions.vue'
 
 const vennStore = useVennStore()
 </script>

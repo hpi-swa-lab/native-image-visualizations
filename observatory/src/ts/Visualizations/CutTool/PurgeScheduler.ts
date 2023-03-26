@@ -81,7 +81,7 @@ export class PurgeScheduler {
 
             if (this._detailSelectedNode) this.detailNeedsUpdate = true
         }
-        if(this.additionalBatchScheduler) {
+        if (this.additionalBatchScheduler) {
             this.additionalBatchScheduler.callback = undefined
             this.additionalBatchScheduler = undefined
         }

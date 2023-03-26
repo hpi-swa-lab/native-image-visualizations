@@ -1,9 +1,9 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import * as d3dag from 'd3-dag'
 import * as d3 from 'd3'
 import { ReachabilityHyperpathEdge } from '../../Causality/CausalityGraph'
-import {FullyHierarchicalNode} from '../../UniverseTypes/CausalityGraphUniverse';
-import {useCutToolStore} from '../../stores/cutToolStore';
-import {computed} from 'vue';
+import { FullyHierarchicalNode } from '../../UniverseTypes/CausalityGraphUniverse'
+import { useCutToolStore } from '../../stores/cutToolStore'
 
 export class DetailView {
     private readonly domRoot: HTMLDivElement
@@ -13,7 +13,12 @@ export class DetailView {
 
     private readonly cutToolStore
 
-    constructor(domRoot: HTMLDivElement, methodList: string[], typeList: string[], frontendNodeList: FullyHierarchicalNode[]) {
+    constructor(
+        domRoot: HTMLDivElement,
+        methodList: string[],
+        typeList: string[],
+        frontendNodeList: FullyHierarchicalNode[]
+    ) {
         this.domRoot = domRoot
         this.methodList = methodList
         this.typeList = typeList
@@ -132,8 +137,7 @@ export class DetailView {
             )
             .on('click', (event, d) => {
                 const v = this.frontendNodeList[d.data.mid]
-                if (v && v.fullname)
-                    this.cutToolStore.changeCutviewSearch(v.fullname)
+                if (v && v.fullname) this.cutToolStore.changeCutviewSearch(v.fullname)
             })
 
         nodesSelection.append('title').text((d) => d.data.name)

@@ -191,6 +191,7 @@ function createPurgeNodeTree(
         !queriedNodes.has(lca) &&
         lca.children.filter((c) => interestingNodes.has(c)).length == 1
     ) {
+        /* eslint-disable-next-line @typescript-eslint/no-non-null-assertion */
         lca = lca.children.find((c) => interestingNodes.has(c))!
     }
 
