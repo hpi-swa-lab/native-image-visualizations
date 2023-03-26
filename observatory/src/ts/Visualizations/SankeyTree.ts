@@ -380,7 +380,13 @@ export class SankeyTree implements MultiverseVisualization {
                 } else {
                     toggleChildren(vizNode, evt.shiftKey, this.filteredNodes)
                 }
-                this.redraw(evt, vizNode, tree, containerSelections, universeMetadata)
+                this.redraw(
+                    newApplyFilterEvent(this.sankeyStore.nodesFilter),
+                    vizNode,
+                    tree,
+                    containerSelections,
+                    universeMetadata
+                )
             }
         )
         const nodeEnterShape = this.appendShapeToNode(nodeEnter, universeMetadata)
