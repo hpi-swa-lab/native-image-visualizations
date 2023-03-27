@@ -79,20 +79,20 @@ export class ImageView {
                 this.changeSortby(toRaw(newOrder))
             }),
             watch(this.selectedNode, (newSelection, oldSelection) => {
-                const u = toRaw(newSelection)
-                const uPrev = toRaw(oldSelection)
+                const u = toRaw(oldSelection)
+                const v = toRaw(newSelection)
 
-                if (uPrev) {
-                    const uPrevData = this.imageviewData.get(uPrev)
-                    if (uPrevData) {
-                        uPrevData.html
+                if (u) {
+                    const uData = this.imageviewData.get(u)
+                    if (uData) {
+                        uData.html
                             .querySelector<HTMLSpanElement>('.imageview-node')!
                             .classList.remove('selected-for-detail')
                     }
                 }
 
-                if (u) {
-                    const uData = this.imageviewData.get(u)
+                if (v) {
+                    const uData = this.imageviewData.get(v)
                     if (uData)
                         uData.html
                             .querySelector('.imageview-node')!

@@ -52,10 +52,7 @@ export class PurgeResults {
         const cgNodes = vs.cgNodes
         const sizes = vs.sizes
         assert(cgNodes.length === sizes.length)
-        for (let i = 0; i < cgNodes.length; i++) {
-            if (this.reachableArr[cgNodes[i]] !== Unreachable) return false
-        }
-        return true
+        return cgNodes.every((node) => this.reachableArr[node] === Unreachable)
     }
 }
 

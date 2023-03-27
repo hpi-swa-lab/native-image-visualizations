@@ -12,8 +12,7 @@ import {
     FullyHierarchicalNode
 } from '../../ts/UniverseTypes/CausalityGraphUniverse'
 import { Multiverse } from '../../ts/UniverseTypes/Multiverse'
-import AlertBox from '../controls/AlertBox.vue';
-import {MAX_OBSERVED_UNIVERSES_FOR_SANKEY_TREE} from '../../ts/Visualizations/SankeyTree';
+import AlertBox from '../controls/AlertBox.vue'
 
 const store = useGlobalStore()
 const cutToolStore = useCutToolStore()
@@ -28,13 +27,13 @@ const infoText = computed(() => {
 
     let universe
     if (m.sources.length === 0) {
-        return [ 'Select a universe to inspect' ]
+        return ['Select a universe to inspect']
     } else if (m.sources.length > 1) {
-        return [ 'Please select only one universe.' ]
+        return ['Please select only one universe.']
     } else {
         universe = m.sources[0]
         if (!(universe instanceof CausalityGraphUniverse)) {
-            return [ 'The selected universe does not contain Causality Data.' ]
+            return ['The selected universe does not contain Causality Data.']
         }
     }
 
@@ -182,15 +181,25 @@ function searchMainFunction(): void {
             </div>
         </template>
         <div id="cut-tool-root" ref="container" class="h-[98%]" style="all: initial">
-            <div id="status-panel" class="flex w-full h-full text-sn" v-if="infoText" style="font-family: system-ui;">
+            <div
+                v-if="infoText"
+                id="status-panel"
+                class="flex w-full h-full text-sn"
+                style="font-family: system-ui"
+            >
                 <AlertBox
-                        title="Note"
-                        :alert-infos="infoText"
-                        class="w-[30%] h-fit m-auto align-middle"
+                    title="Note"
+                    :alert-infos="infoText"
+                    class="w-[30%] h-fit m-auto align-middle"
                 />
             </div>
 
-            <div id="loading-panel" class="fullscreen cursor-wait" style="font-family: system-ui;" hidden>
+            <div
+                id="loading-panel"
+                class="fullscreen cursor-wait"
+                style="font-family: system-ui"
+                hidden
+            >
                 <div class="center">Please wait...</div>
             </div>
             <div id="main-panel" class="fullscreen" hidden>

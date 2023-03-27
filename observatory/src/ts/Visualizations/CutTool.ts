@@ -139,12 +139,10 @@ class CutTool {
         mainPanel.hidden = true
         loadingPanel.hidden = true
 
-        if (multiverse.sources.length !== 1)
-            return
+        if (multiverse.sources.length !== 1) return
 
         const universe = multiverse.sources[0]
-        if (!(universe instanceof CausalityGraphUniverse))
-            return
+        if (!(universe instanceof CausalityGraphUniverse)) return
 
         loadingPanel.hidden = false
 
@@ -178,36 +176,37 @@ class CutTool {
             v.children.filter((w) => !this.singleSimulationResultCache.has(w))
         )
 
-        if (this.selection.value.size > 0) {
-            let containedInSelection = false
-            for (const u of [...toRaw(this.selection.value)]) {
-                forEachInSubtree(u, (w) => {
-                    if (w === v) containedInSelection = true
-                })
-            }
+        if (this.selection.value.size === 0) return
 
-            if (containedInSelection) {
-                for (const w of v.children) this.cutview.setAdditionalPurgeData(w, 0)
-            } else {
-                if (this.additionalSimulationResults === undefined) {
-                    this.ps.requestAdditionalPurgeInfo(v.children)
-                } else {
-                    for (const w of v.children) {
-                        const cachedResult = this.additionalSimulationResults.cache.get(w)
-                        if (cachedResult) {
-                            this.cutview.setAdditionalPurgeData(
-                                w,
-                                cachedResult.size -
-                                    this.additionalSimulationResults.onlySelected.size
-                            )
-                        }
-                    }
-                    this.ps.requestAdditionalPurgeInfo(
-                        v.children.filter((w) => !this.additionalSimulationResults!.cache.has(w))
-                    )
-                }
+        let containedInSelection = false
+        for (const u of [...toRaw(this.selection.value)]) {
+            forEachInSubtree(u, (w) => {
+                if (w === v) containedInSelection = true
+            })
+        }
+
+        if (containedInSelection) {
+            for (const w of v.children) this.cutview.setAdditionalPurgeData(w, 0)
+            return
+        }
+
+        if (this.additionalSimulationResults === undefined) {
+            this.ps.requestAdditionalPurgeInfo(v.children)
+            return
+        }
+
+        for (const w of v.children) {
+            const cachedResult = this.additionalSimulationResults.cache.get(w)
+            if (cachedResult) {
+                this.cutview.setAdditionalPurgeData(
+                    w,
+                    cachedResult.size - this.additionalSimulationResults.onlySelected.size
+                )
             }
         }
+        this.ps.requestAdditionalPurgeInfo(
+            v.children.filter((w) => !this.additionalSimulationResults!.cache.has(w))
+        )
     }
 
     private async cutView_onSelectionChanged(
