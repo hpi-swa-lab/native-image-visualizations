@@ -140,13 +140,13 @@ export class ImageView {
         list.classList.add('unpadded')
         list.classList.add('active')
 
-        if (this.selectedNode.value) {
-            this.expandTo(toRaw(this.selectedNode.value))
-            this.imageviewData
-                .get(toRaw(this.selectedNode.value))!
-                .html.querySelector('.imageview-node')!
-                .classList.add('selected-for-detail')
-        }
+        if (!this.selectedNode.value) return
+
+        this.expandTo(toRaw(this.selectedNode.value))
+        const selectedNodeData = this.imageviewData.get(toRaw(this.selectedNode.value))
+        if (!selectedNodeData) return
+
+        selectedNodeData.html.querySelector('.imageview-node')!.classList.add('selected-for-detail')
     }
 
     private static comparisonFromSortingOption(

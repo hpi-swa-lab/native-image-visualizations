@@ -35,6 +35,7 @@ class CutTool {
 
     readonly singleSimulationResultCache = new Map<FullyHierarchicalNode, ReachabilityVector>()
 
+    readonly cutToolStore
     readonly selection
     additionalSimulationResults:
         | undefined
@@ -91,14 +92,14 @@ class CutTool {
             (v) => this.cutView_onHover(v)
         )
 
-        const cutToolStore = useCutToolStore()
-        const currentlyDetailSelected = cutToolStore.detailview.selected
+        this.cutToolStore = useCutToolStore()
+        const currentlyDetailSelected = this.cutToolStore.detailview.selected
         if (currentlyDetailSelected) this.ps.detailSelectedNode = currentlyDetailSelected
 
-        this.selection = computed(() => cutToolStore.cutview.selection)
+        this.selection = computed(() => this.cutToolStore.cutview.selection)
 
         watch(
-            computed(() => cutToolStore.detailview.selected),
+            computed(() => this.cutToolStore.detailview.selected),
             (newSelection) => {
                 this.ps.detailSelectedNode = toRaw(newSelection)
             }
@@ -157,12 +158,14 @@ class CutTool {
     }
 
     public dispose() {
-        this.domRoot.querySelector('#imageview-root')!.textContent = ''
-        this.domRoot.querySelector('#cut-overview-root')!.textContent = ''
-        this.domRoot.querySelector<HTMLDivElement>('#main-panel')!.hidden = true
+        this.cutToolStore.detailview.selected = undefined
+        this.cutToolStore.cutview.selection = new Set<FullyHierarchicalNode>()
         this.cutview.dispose()
         this.imageview.dispose()
         this.detailview.dispose()
+        this.domRoot.querySelector('#imageview-root')!.textContent = ''
+        this.domRoot.querySelector('#cut-overview-root')!.textContent = ''
+        this.domRoot.querySelector<HTMLDivElement>('#main-panel')!.hidden = true
         this.ps.paused = true // Don't do any more work in the background!
     }
 
