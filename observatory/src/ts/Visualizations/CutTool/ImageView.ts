@@ -135,6 +135,7 @@ export class ImageView {
         const list = this.generateHtmlImageview(this.root)
         this.updatePurgeValues(this.root)
         domRoot.appendChild(list)
+        this.sortChildren(this.sortby.value, root, list)
         list.classList.remove('nested')
         list.classList.add('unpadded')
         list.classList.add('active')
