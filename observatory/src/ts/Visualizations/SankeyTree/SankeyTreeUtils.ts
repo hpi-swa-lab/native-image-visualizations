@@ -35,7 +35,7 @@ export function createHierarchyFromPackages(
                 for (const [universeId, sourceNode] of node.sources.entries()) {
                     codeSizeByUniverse.set(
                         universeId.toString(),
-                        codeSizeByUniverse.get(universeId.toString()) + sourceNode.codeSize
+                        (codeSizeByUniverse.get(universeId.toString()) ?? 0) + sourceNode.codeSize
                     )
                 }
                 exclusiveCodeSizes.set(child.identifier, codeSizeByUniverse)

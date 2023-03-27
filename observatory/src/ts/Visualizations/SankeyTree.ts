@@ -55,7 +55,7 @@ export class SankeyTree implements MultiverseVisualization {
     filters: Filter[]
     private searchTerm = ''
     private multiverse: Multiverse = new Multiverse([])
-    private exclusiveSizes: Map<string, ExclusiveSizes> = new Map().set('', new Map().set('', -1))
+    private exclusiveSizes: Map<string, ExclusiveSizes> = new Map()
 
     private metadata: UniverseMetadata = {}
     private layer = Layers.PACKAGES
@@ -459,7 +459,7 @@ export class SankeyTree implements MultiverseVisualization {
                 vizNode.data ? -getBarHeight(vizNode.data.codeSize) / 2 : 0
             )
             .style('fill', (vizNode: HierarchyPointNode<Node>) => {
-                if (vizNode.data.sources.size == 1) {
+                if (this.exclusiveSizes.get(vizNode.data.identifier)?.size == 1) {
                     return universeMetadata[Array.from(vizNode.data.sources.keys())[0]]?.color
                 } else if (this.modifiedNodes.includes(vizNode.data)) {
                     return this.sankeyStore.colorModified
@@ -540,7 +540,7 @@ export class SankeyTree implements MultiverseVisualization {
             )
             .attr('stroke', (vizLink: HierarchyPointLink<Node>) =>
                 this.modifiedNodes.includes(vizLink.target.data)
-                    ? vizLink.target.data.sources.size === 1
+                    ? this.exclusiveSizes.get(vizLink.target.data.identifier)?.size === 1
                         ? this.metadata[vizLink.target.data.sources.keys().next().value].color
                         : this.sankeyStore.colorModified
                     : this.sankeyStore.colorUnmodified
