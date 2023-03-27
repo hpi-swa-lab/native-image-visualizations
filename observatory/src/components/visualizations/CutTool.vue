@@ -203,11 +203,9 @@ function searchMainFunction(): void {
                 <div class="center">Please wait...</div>
             </div>
             <div id="main-panel" class="fullscreen" hidden>
-                <div
-                    class="float-left w-1/5 h-full overflow-y-scroll resize-x ml-2 mr-1 border-r-2"
-                >
+                <div class="float-left w-1/5 h-full overflow-y-scroll resize-x border-r-2 p-1 pl-2">
                     <span><b>Cut Overview:</b></span>
-                    <div id="cut-overview-root"></div>
+                    <div id="cut-overview-root" class="pt-1"></div>
                 </div>
                 <div
                     id="detail-div"
@@ -230,9 +228,9 @@ function searchMainFunction(): void {
                         </svg>
                     </div>
                 </div>
-                <div class="float-none overflow-x-hidden w-[1fr] h-full overflow-y-scroll">
+                <div class="float-none overflow-x-hidden w-[1fr] h-full overflow-y-scroll p-1 pl-2">
                     <span><b>In-Image Overview:</b></span>
-                    <div id="imageview-root"></div>
+                    <div id="imageview-root" class="pt-1"></div>
                 </div>
             </div>
         </div>

@@ -99,9 +99,7 @@ input[type='radio'] {
 
 /* Style the caret/arrow */
 .caret {
-    @apply cursor-pointer select-none row-start-1 col-start-1 before:content-['›'] before:text-[black] before:inline-block before:mr-1.5 before:relative before:top-[-1px] text-[larger];
-
-    /* Prevent text selection */
+    @apply cursor-pointer select-none row-start-1 col-start-1 before:content-['\203a'] before:text-[black] before:inline-block before:mr-1.5 before:relative;
 }
 .cutview-node {
     @apply select-none text-ellipsis whitespace-nowrap overflow-hidden;
@@ -114,7 +112,7 @@ input[type='radio'] {
 
 /* Rotate the caret/arrow icon when clicked on (using JavaScript) */
 .caret-down::before {
-    @apply content-['›'] text-[gray] rotate-90;
+    @apply content-['\203a'] text-[gray] rotate-90;
 }
 
 .type-symbol {
@@ -147,7 +145,7 @@ input[type='radio'] {
 
 /* Hide the nested list */
 .nested {
-    @apply hidden row-start-3 col-start-1 col-end-6 pl-5;
+    @apply hidden row-start-3 col-start-1 col-end-6 pl-4;
 }
 
 /* Show the nested list when the user clicks on the caret/arrow (with JavaScript) */
@@ -155,11 +153,11 @@ input[type='radio'] {
     @apply block;
 }
 .total-size-column {
-    @apply float-right row-start-1 col-start-4 text-right text-[#606060] w-[70px] mx-[5px];
+    @apply float-right row-start-1 col-start-4 text-right text-[#606060] w-[60px];
     font-size: smaller;
 }
 .cut-size-column {
-    @apply float-right text-[#cf8020] row-start-1 col-start-4 text-right w-[70px] mx-[5px];
+    @apply float-right text-[#cf8020] row-start-1 col-start-4 text-right w-[60px];
     font-size: smaller;
 }
 .size-bar-outer {
@@ -179,7 +177,7 @@ input[type='radio'] {
     /* Weird hack to prevent wrap */
 }
 .purge-percentage-bar-outer {
-    @apply border w-[60px] row-start-1 col-start-5 grid grid-cols-[100%] grid-rows-[100%] mx-2.5 my-px border-solid border-[#f0f0f0];
+    @apply border w-[60px] row-start-1 col-start-5 grid grid-cols-[100%] grid-rows-[100%] mx-1 my-px border-solid border-[#f0f0f0];
 }
 .purge-percentage-bar-inner {
     @apply h-full w-0 row-start-1 col-start-1 bg-[#ff000020];
