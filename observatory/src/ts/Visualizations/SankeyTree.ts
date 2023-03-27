@@ -95,7 +95,7 @@ export class SankeyTree implements MultiverseVisualization {
     setMultiverse(multiverse: Multiverse): void {
         if (multiverse.sources.length > MAX_OBSERVED_UNIVERSES_FOR_SANKEY_TREE) return
         this.multiverse = multiverse
-        this.rebuildAndDrawTree(multiverse, this.layer, this.filters)
+        this.rebuildAndDrawTree()
     }
 
     setHighlights(highlights: Set<string>): void {
@@ -118,7 +118,7 @@ export class SankeyTree implements MultiverseVisualization {
 
     public setFilters(filters: Filter[]): void {
         this.filters = filters
-        this.rebuildAndDrawTree(this.multiverse, this.layer, this.filters)
+        this.rebuildAndDrawTree()
     }
 
     setSelection(selection: Set<string>): void {
@@ -134,7 +134,7 @@ export class SankeyTree implements MultiverseVisualization {
 
     public setLayer(layer: Layers): void {
         this.layer = layer
-        this.rebuildAndDrawTree(this.multiverse, layer, this.filters)
+        this.rebuildAndDrawTree()
     }
 
     setMetadata(metadata: UniverseMetadata): void {
@@ -202,8 +202,8 @@ export class SankeyTree implements MultiverseVisualization {
     // #############################################################################################
     // ### BUILD TREE HELPER FUNCTIONS #############################################################
     // #############################################################################################
-    private rebuildAndDrawTree(multiverse: Multiverse, layer: Layers, filters: Filter[]) {
-        this.tree = this.buildTree(multiverse, layer, filters)
+    private rebuildAndDrawTree() {
+        this.tree = this.buildTree()
 
         // Reason: expects HierarchyPointNode<T> but it's actually SankeyHierarchyPointNode
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -240,19 +240,15 @@ export class SankeyTree implements MultiverseVisualization {
         this.expandFistBranchToLeaves(vizNode.children[0])
     }
 
-    private buildTree(
-        multiverse: Multiverse,
-        layer: Layers,
-        filters: Filter[]
-    ): SankeyTreeCompound {
+    private buildTree(): SankeyTreeCompound {
         const nodeTree: Node = new Node(ROOT_NODE_NAME, [])
 
         const leaves: Set<Node> = new Set()
         this.exclusiveSizes = new Map()
 
         // create hierarchy of Node based on selected Layer
-        const nodes: Node[] = getNodesOnLevel(layer.valueOf(), multiverse.root)
-            .filter((nodeOnLevel) => Filter.applyAll(filters, nodeOnLevel))
+        const nodes: Node[] = getNodesOnLevel(this.layer.valueOf(), this.multiverse.root)
+            .filter((nodeOnLevel) => Filter.applyAll(this.filters, nodeOnLevel))
             .filter((node) => node.codeSize > 0)
         nodes.forEach((node) => {
             createHierarchyFromPackages(node, nodeTree, leaves, this.exclusiveSizes)
