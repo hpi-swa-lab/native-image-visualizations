@@ -183,8 +183,8 @@ function printCodeSizePerUniverse(
     let html = ''
     const printName = Object.keys(metadata).length > 1
 
-    // Reason: I literally make an early return if undefined,
-    // so don't know what eslint is complaining about here.
+    // Reason: This is likely to be a false alarm by eslint
+    // because an early return is already made if undefined.
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     exclusiveCodeSizes
         .get(vizNode.data.identifier)!
