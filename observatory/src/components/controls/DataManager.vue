@@ -38,7 +38,6 @@ async function createUniverseFromCausalityExport(
         parseReachabilityExport(parsedCG.reachabilityData, universeName),
         parsedCG
     )
-    const rawData = parsedCG.reachabilityData
     return newUniverse
 }
 
@@ -104,7 +103,7 @@ function exportConfig() {
     const zip = new JSZip()
     zip.file(`${CONFIG_NAME}.json`, JSON.stringify(configData))
     Object.entries(rawData).forEach(([universeName, data]) => {
-        zip.file(`universe-data/${universeName}/${data.name}`, data)
+        zip.file(`${rawDataSubDirectoryName}/${universeName}/${data.name}`, data)
     })
 
     zip.generateAsync({ type: 'blob' }).then((content) => {
@@ -150,14 +149,17 @@ function changeUniverseName(oldName: string, newName: string, inputIndex: number
     }
 }
 
+const rawDataSubDirectoryName = 'universe-data'
+
 async function loadData(zip: JSZip): Promise<string[]> {
     globalStore.$reset()
 
     const errors: string[] = []
 
     const universeNames = Object.keys(zip.files)
-        .map((f) => f.match(/^universe-data\/([^/]+)\/$/))
+        .map((filename) => filename.match(`^${rawDataSubDirectoryName}\/([^/]+)\/$`))
         .filter((m) => m)
+        /* eslint-disable-next-line @typescript-eslint/no-non-null-assertion */
         .map((m) => m![1])
 
     await Promise.all(
@@ -165,20 +167,18 @@ async function loadData(zip: JSZip): Promise<string[]> {
             try {
                 const subdir = 'universe-data/' + universeName + '/'
                 const inputDataFile = Object.values(zip.files).find(
-                    (f) => f.name.length > subdir.length && f.name.startsWith(subdir)
+                    (file) => file.name.length > subdir.length && file.name.startsWith(subdir)
                 )
                 if (!inputDataFile) throw Error('Unexpected empty directory in config export')
 
                 // The input routine depends on the name to distinguish types of data.
                 const fileNameParts = inputDataFile.name.split('/')
                 const fileName = fileNameParts[fileNameParts.length - 1]
-                const file = new File([await inputDataFile.async('blob')], fileName)
 
-                await validateFileAndAddUniverseOnSuccess(
-                    // We need the name
-                    file,
-                    universeName
-                )
+                // We need the name for choosing the right parse subroutine,
+                // therefore creating a new file object
+                const file = new File([await inputDataFile.async('blob')], fileName)
+                await validateFileAndAddUniverseOnSuccess(file, universeName)
             } catch (error: unknown) {
                 if (error instanceof Error) {
                     errors.push(
