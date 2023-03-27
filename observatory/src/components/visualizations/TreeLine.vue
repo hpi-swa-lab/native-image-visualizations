@@ -12,7 +12,7 @@ import Tooltip from '../controls/Tooltip.vue'
 import MainLayout from '../layouts/MainLayout.vue'
 import { Filter } from '../../ts/SharedTypes/Filters'
 import SearchBar from '../controls/SearchBar.vue'
-import SelectionList from '../controls/SelectionList.vue'
+import FilterSelectionList from '../controls/FilterSelectionList.vue'
 import FilteringOptions from '../controls/FilteringOptions.vue'
 
 const store = useGlobalStore()
@@ -135,7 +135,7 @@ watch(
         <template #controls>
             <div class="input-container settings-container space-y-4">
                 <SearchBar />
-                <SelectionList />
+                <FilterSelectionList />
                 <FilteringOptions />
             </div>
         </template>

@@ -31,12 +31,6 @@ export function createHierarchyFromPackages(
         for (let j = 0; j < subPathSegments.length; j++) {
             let child = current.children.find((child) => child.name === subPathSegments[j])
             if (child) {
-                child.sources.set(
-                    node.sources.keys().next().value,
-                    // NOTE: value doesn't matter; set to latest value for simple implementation
-                    node.sources.values().next().value
-                )
-
                 const codeSizeByUniverse = exclusiveCodeSizes.get(child.identifier) ?? new Map()
                 for (const [universeId, sourceNode] of node.sources.entries()) {
                     codeSizeByUniverse.set(
@@ -175,8 +169,8 @@ export function asHTML(
     const node: Node = vizNode.data
     return `<b>Exists in</b>: ${Array.from(node.sources.keys())
         .map((uniIndex) => metadata[uniIndex].name)
-        .join(', ')}
-                <b>Name</b>: ${node.identifier}
+        .join(' ∩ ')}
+                <b>Path</b>: ${getWithoutRoot(node.identifier)}
                 ${printCodeSizePerUniverse(vizNode, exclusiveCodeSizes, metadata)}`
 }
 
@@ -189,8 +183,8 @@ function printCodeSizePerUniverse(
     let html = ''
     const printName = Object.keys(metadata).length > 1
 
-    // Reason: I literally make an early return if undefined,
-    // so don't know what eslint is complaining about here.
+    // Reason: This is likely to be a false alarm by eslint
+    // because an early return is already made if undefined.
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     exclusiveCodeSizes
         .get(vizNode.data.identifier)!
