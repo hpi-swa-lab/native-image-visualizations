@@ -86,7 +86,9 @@ export type ReachabilityJson = [TopLevelOrigin]
 
 function getNameForParsedTopLevelOrigin(object: any): string {
     let name = ''
-    if (object.path && object.path.constructor === String) name = object.path
+    if (object.path && object.path.constructor === String) {
+        name = object.path.split(/^.*[\\\/]/).pop()
+    }
     if (object.module && object.module.constructor === String) name = object.module
     return name
 }

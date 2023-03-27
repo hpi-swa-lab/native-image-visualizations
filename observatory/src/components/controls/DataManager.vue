@@ -14,6 +14,7 @@ import FileSaver from 'file-saver'
 import { InvalidInputError } from '../../ts/errors'
 import { ExportConfig } from '../../ts/stores/ExportConfig'
 import { EventType } from '../../ts/enums/EventType'
+import { useCutToolStore } from '../../ts/stores/cutToolStore'
 
 const emit = defineEmits([EventType.CONFIG_LOADED])
 
@@ -21,6 +22,7 @@ const globalStore = useGlobalStore()
 const vennStore = useVennStore()
 const treeLineStore = useTreeLineStore()
 const sankeyStore = useSankeyStore()
+const cutToolStore = useCutToolStore()
 
 const uploadError = ref<Error | undefined>(undefined)
 const configLoadError = ref<Error | undefined>(undefined)
@@ -30,7 +32,7 @@ const nameFields = ref<InstanceType<typeof InlineEditableField>[]>()
 async function createUniverseFromCausalityExport(
     file: File,
     universeName: string
-): Promise<[Universe, unknown]> {
+): Promise<Universe> {
     const parsedCG = await loadCgZip(file)
     const newUniverse = new CausalityGraphUniverse(
         universeName,
@@ -38,14 +40,13 @@ async function createUniverseFromCausalityExport(
         parseReachabilityExport(parsedCG.reachabilityData, universeName),
         parsedCG
     )
-    const rawData = parsedCG.reachabilityData
-    return [newUniverse, rawData]
+    return newUniverse
 }
 
 async function createUniverseFromReachabilityJson(
     file: File,
     universeName: string
-): Promise<[Universe, unknown]> {
+): Promise<Universe> {
     const parsedJSON = await loadJson(file)
 
     const newUniverse = new Universe(
@@ -54,7 +55,7 @@ async function createUniverseFromReachabilityJson(
         parseReachabilityExport(parsedJSON, universeName)
     )
 
-    return [newUniverse, parsedJSON]
+    return newUniverse
 }
 
 async function validateFileAndAddUniverseOnSuccess(
@@ -63,35 +64,21 @@ async function validateFileAndAddUniverseOnSuccess(
 ): Promise<void> {
     try {
         let newUniverse: Universe
-        let rawData
 
         if (file.name.endsWith('.cg.zip')) {
-            ;[newUniverse, rawData] = await createUniverseFromCausalityExport(file, universeName)
+            newUniverse = await createUniverseFromCausalityExport(file, universeName)
         } else if (file.name.endsWith('.json')) {
-            ;[newUniverse, rawData] = await createUniverseFromReachabilityJson(file, universeName)
+            newUniverse = await createUniverseFromReachabilityJson(file, universeName)
         } else {
             throw new Error('Unknown file ending')
         }
-        globalStore.addUniverse(newUniverse, rawData)
+        globalStore.addUniverse(newUniverse, file)
         uploadError.value = undefined
     } catch (error: unknown) {
         if (error instanceof Error) {
             uploadError.value = error
         }
     }
-}
-
-async function loadUniverseData(
-    universeData: Record<string, any>,
-    universeName: string
-): Promise<void> {
-    const newUniverse = new Universe(
-        universeName,
-        globalStore.nextUniverseColor,
-        parseReachabilityExport(universeData, universeName)
-    )
-
-    globalStore.addUniverse(newUniverse, universeData)
 }
 
 function addUniverses(event: Event) {
@@ -112,17 +99,18 @@ function exportConfig() {
         global: globalStore.toExportDict(),
         venn: vennStore.toExportDict(),
         sankey: sankeyStore.toExportDict(),
-        treeLine: treeLineStore.toExportDict()
+        treeLine: treeLineStore.toExportDict(),
+        cutTool: cutToolStore.toExportDict()
     }
 
     const zip = new JSZip()
     zip.file(`${CONFIG_NAME}.json`, JSON.stringify(configData))
     Object.entries(rawData).forEach(([universeName, data]) => {
-        zip.file(`${universeName}.json`, JSON.stringify(data))
+        zip.file(`${rawDataSubDirectoryName}/${universeName}/${data.name}`, data)
     })
 
     zip.generateAsync({ type: 'blob' }).then((content) => {
-        FileSaver.saveAs(content, Object.keys(rawData).join('-') + 'observatory-config.zip')
+        FileSaver.saveAs(content, Object.keys(rawData).join('-') + '.observatory-config.zip')
     })
 }
 
@@ -164,30 +152,44 @@ function changeUniverseName(oldName: string, newName: string, inputIndex: number
     }
 }
 
+const rawDataSubDirectoryName = 'universe-data'
+
 async function loadData(zip: JSZip): Promise<string[]> {
     globalStore.$reset()
 
     const errors: string[] = []
 
+    const universeNames = Object.keys(zip.files)
+        .map((filename) => filename.match(`^${rawDataSubDirectoryName}\/([^/]+)\/$`))
+        .filter((m) => m)
+        /* eslint-disable-next-line @typescript-eslint/no-non-null-assertion */
+        .map((m) => m![1])
+
     await Promise.all(
-        Object.keys(zip.files)
-            .filter((filename: string) => filename !== `${CONFIG_NAME}.json`)
-            .map(async (filename: string) => {
-                const universeName = filename.replace(/\.[^/.]+$/, '')
+        universeNames.map(async (universeName: string) => {
+            try {
+                const subdir = 'universe-data/' + universeName + '/'
+                const inputDataFile = Object.values(zip.files).find(
+                    (file) => file.name.length > subdir.length && file.name.startsWith(subdir)
+                )
+                if (!inputDataFile) throw Error('Unexpected empty directory in config export')
 
-                try {
-                    const rawData = await zip.files[filename].async('string')
-                    const parsedJSON = JSON.parse(rawData)
+                // The input routine depends on the name to distinguish types of data.
+                const fileNameParts = inputDataFile.name.split('/')
+                const fileName = fileNameParts[fileNameParts.length - 1]
 
-                    await loadUniverseData(parsedJSON, universeName)
-                } catch (error: unknown) {
-                    if (error instanceof Error) {
-                        errors.push(
-                            `Failed loading the universe '${universeName}' due to the following error: ${error.message}`
-                        )
-                    }
+                // We need the name for choosing the right parse subroutine,
+                // therefore creating a new file object
+                const file = new File([await inputDataFile.async('blob')], fileName)
+                await validateFileAndAddUniverseOnSuccess(file, universeName)
+            } catch (error: unknown) {
+                if (error instanceof Error) {
+                    errors.push(
+                        `Failed loading the universe '${universeName}' due to the following error: ${error.message}`
+                    )
                 }
-            })
+            }
+        })
     )
 
     return errors
@@ -219,6 +221,10 @@ async function loadConfig(zip: JSZip): Promise<string[]> {
         {
             name: 'global',
             store: globalStore
+        },
+        {
+            name: 'cutTool',
+            store: cutToolStore
         }
     ]
 
