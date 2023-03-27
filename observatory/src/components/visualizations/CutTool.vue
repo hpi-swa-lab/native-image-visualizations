@@ -6,13 +6,14 @@ import { useGlobalStore } from '../../ts/stores/globalStore'
 import { Universe } from '../../ts/UniverseTypes/Universe'
 import { SortingOption } from '../../ts/enums/Sorting'
 import { useCutToolStore } from '../../ts/stores/cutToolStore'
-import { faHouse } from '@fortawesome/free-solid-svg-icons'
 import {
     CausalityGraphUniverse,
     forEachInSubtree,
     FullyHierarchicalNode
 } from '../../ts/UniverseTypes/CausalityGraphUniverse'
 import { Multiverse } from '../../ts/UniverseTypes/Multiverse'
+import AlertBox from '../controls/AlertBox.vue';
+import {MAX_OBSERVED_UNIVERSES_FOR_SANKEY_TREE} from '../../ts/Visualizations/SankeyTree';
 
 const store = useGlobalStore()
 const cutToolStore = useCutToolStore()
@@ -22,12 +23,30 @@ let visualization: CutToolVis | undefined
 
 const container = ref<HTMLDivElement>()
 
+const infoText = computed(() => {
+    const m = multiverse.value as Multiverse
+
+    let universe
+    if (m.sources.length === 0) {
+        return [ 'Select a universe to inspect' ]
+    } else if (m.sources.length > 1) {
+        return [ 'Please select only one universe.' ]
+    } else {
+        universe = m.sources[0]
+        if (!(universe instanceof CausalityGraphUniverse)) {
+            return [ 'The selected universe does not contain Causality Data.' ]
+        }
+    }
+
+    return undefined
+})
+
 onMounted(() => {
     // We know this is never null because an element with the corresponding
     // `ref` exists below and this code is executed after mounting.
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     visualization = new CutToolVis(container.value!)
-    visualization.setMultiverse(toRaw(multiverse.value as Multiverse))
+    visualization?.setMultiverse(toRaw(multiverse.value as Multiverse))
 })
 
 watch(multiverse, (newMultiverse) => {
@@ -60,7 +79,7 @@ function searchMainFunction(): void {
 <template>
     <MainLayout title="Cut Tool">
         <template #controls>
-            <div class="border rounded p-2">
+            <div class="p-2 pt-0">
                 <label class="block">Cut Overview:</label>
                 <div class="w-full flex content-start mb-2">
                     <div class="absolute mt-2.5 pl-3 pointer-events-none">
@@ -89,7 +108,7 @@ function searchMainFunction(): void {
                         placeholder="Search nodes"
                     />
                 </div>
-                <form class="flex border rounded p-2">
+                <form class="flex pl-2">
                     <label class="block mt-[3px] mr-5">Sort by:</label>
                     <template v-for="(option, index) in Object.values(SortingOption)" :key="index">
                         <div class="relative block ml-2">
@@ -106,14 +125,15 @@ function searchMainFunction(): void {
                     </template>
                 </form>
                 <button
-                    title="Focus on main()"
-                    class="z-10 btn bg-gray-50 mt-2 ml-2 hover:bg-gray-200 shadow-md"
+                    class="z-10 btn bg-gray-50 mt-2 border hover:bg-gray-200 text-[small]"
                     @click="searchMainFunction"
                 >
-                    <font-awesome-icon :icon="faHouse" />
+                    Search for main method
                 </button>
             </div>
-            <div class="border rounded p-2">
+
+            <hr />
+            <div class="p-2">
                 <label class="block">Image Overview:</label>
 
                 <div class="w-full flex content-start mb-2">
@@ -143,7 +163,7 @@ function searchMainFunction(): void {
                         placeholder="Search nodes"
                     />
                 </div>
-                <form class="border rounded p-2 flex">
+                <form class="flex pl-2">
                     <label class="block mt-[3px] mr-5">Sort by:</label>
                     <template v-for="(option, index) in Object.values(SortingOption)" :key="index">
                         <div class="relative block ml-2">
@@ -162,13 +182,17 @@ function searchMainFunction(): void {
             </div>
         </template>
         <div id="cut-tool-root" ref="container" class="h-[98%]" style="all: initial">
-            <div id="loading-panel" class="fullscreen cursor-wait" hidden>
-                <div class="center">Please wait...</div>
-            </div>
-            <div id="status-panel" class="fullscreen" hidden>
-                <div class="center"></div>
+            <div id="status-panel" class="flex w-full h-full text-sn" v-if="infoText" style="font-family: system-ui;">
+                <AlertBox
+                        title="Note"
+                        :alert-infos="infoText"
+                        class="w-[30%] h-fit m-auto align-middle"
+                />
             </div>
 
+            <div id="loading-panel" class="fullscreen cursor-wait" style="font-family: system-ui;" hidden>
+                <div class="center">Please wait...</div>
+            </div>
             <div id="main-panel" class="fullscreen" hidden>
                 <div
                     class="float-left w-1/5 h-full overflow-y-scroll resize-x ml-2 mr-1 border-r-2"

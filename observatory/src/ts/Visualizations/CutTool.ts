@@ -135,31 +135,16 @@ class CutTool {
 
     public static async create(domRoot: HTMLDivElement, multiverse: Multiverse) {
         const mainPanel = domRoot.querySelector<HTMLDivElement>('#main-panel')!
-        const statusPanel = domRoot.querySelector<HTMLDivElement>('#status-panel')!
-        const statusText = statusPanel.querySelector<HTMLDivElement>('div')!
         const loadingPanel = domRoot.querySelector<HTMLDivElement>('#loading-panel')!
         mainPanel.hidden = true
-        statusPanel.hidden = true
         loadingPanel.hidden = true
 
-        let universe
+        if (multiverse.sources.length !== 1)
+            return
 
-        if (multiverse.sources.length === 0) {
-            statusPanel.hidden = false
-            statusText.textContent = 'Select a universe to inspect'
+        const universe = multiverse.sources[0]
+        if (!(universe instanceof CausalityGraphUniverse))
             return
-        } else if (multiverse.sources.length > 1) {
-            statusPanel.hidden = false
-            statusText.textContent = 'Please select only one universe.'
-            return
-        } else {
-            universe = multiverse.sources[0]
-            if (!(universe instanceof CausalityGraphUniverse)) {
-                statusPanel.hidden = false
-                statusText.textContent = 'The selected universe does not contain Causality Data :/'
-                return
-            }
-        }
 
         loadingPanel.hidden = false
 

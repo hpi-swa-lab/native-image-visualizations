@@ -88,7 +88,7 @@ input[type='radio'] {
 }
 
 /* Remove default bullets */
-ul {
+#cut-tool-root ul {
     @apply list-none;
 }
 
