@@ -251,14 +251,12 @@ export class SankeyTree implements MultiverseVisualization {
         this.exclusiveSizes = new Map()
 
         // create hierarchy of Node based on selected Layer
-        for (let i = Layers.MODULES.valueOf(); i <= layer.valueOf(); i++) {
-            const nodes: Node[] = getNodesOnLevel(i, multiverse.root)
-                .filter((nodeOnLevel) => Filter.applyAll(filters, nodeOnLevel))
-                .filter((node) => node.codeSize > 0)
-            nodes.forEach((node) => {
-                createHierarchyFromPackages(node, nodeTree, leaves, this.exclusiveSizes)
-            })
-        }
+        const nodes: Node[] = getNodesOnLevel(layer.valueOf(), multiverse.root)
+            .filter((nodeOnLevel) => Filter.applyAll(filters, nodeOnLevel))
+            .filter((node) => node.codeSize > 0)
+        nodes.forEach((node) => {
+            createHierarchyFromPackages(node, nodeTree, leaves, this.exclusiveSizes)
+        })
 
         // set codeSize of root node
         nodeTree.codeSize = nodeTree.children.reduce(
@@ -612,7 +610,6 @@ export class SankeyTree implements MultiverseVisualization {
         return Math.max(1, separation)
     }
 
-    // todo auslagern in utils
     private applyStyleForChosen(
         filterCallback: (nodeIdentifier: string) => boolean,
         style: string,
