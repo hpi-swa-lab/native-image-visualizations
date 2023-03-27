@@ -4,10 +4,10 @@ import { Carousel, Slide, Pagination, Navigation } from 'vue3-carousel'
 </script>
 
 <template>
-    <Carousel >
+    <Carousel :mouse-drag="false">
     <Slide v-for="index in 6" :key="index">
         <div class="carousel__item">
-        <img :src="`src/assets/images/home/${index}.png`" />
+        <img :src="`src/assets/images/home/${index}.png`"/>
         </div>
     </Slide>
     <template #addons>

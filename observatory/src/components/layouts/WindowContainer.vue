@@ -38,11 +38,11 @@ function closeDragElement() {
 <template>
     <div
         ref="container"
-        class="fixed z-50 w-full p-4 overflow-x-hidden overflow-y-auto h-full drop-shadow-md"
+        class="fixed z-50 p-4 overflow-x-hidden h-[700px] w-full drop-shadow-md"
         @mousedown="dragMouseDown"
         @mouseup="closeDragElement"
     >
-        <div class="relative w-full h-full max-w-2xl">
+        <div class="relative w-full h-full max-w-[1200px]">
             <div class="relative bg-white rounded-lg shadow">
                 <div class="flex items-start justify-between p-4 border-b rounded-t">
                     <slot name="header" />

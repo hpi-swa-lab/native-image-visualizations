@@ -9,7 +9,7 @@ const slides = [
 </script>
 
 <template>
-    <Carousel >
+    <Carousel :mouse-drag="false">
     <Slide v-for="slide, index in slides" :key="index">
         <div class="carousel__item">
         <p class="mb-10">{{ slide.content }}</p>
