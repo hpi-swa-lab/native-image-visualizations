@@ -31,12 +31,6 @@ export function createHierarchyFromPackages(
         for (let j = 0; j < subPathSegments.length; j++) {
             let child = current.children.find((child) => child.name === subPathSegments[j])
             if (child) {
-                child.sources.set(
-                    node.sources.keys().next().value,
-                    // NOTE: value doesn't matter; set to latest value for simple implementation
-                    node.sources.values().next().value
-                )
-
                 const codeSizeByUniverse = exclusiveCodeSizes.get(child.identifier) ?? new Map()
                 for (const [universeId, sourceNode] of node.sources.entries()) {
                     codeSizeByUniverse.set(
