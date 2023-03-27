@@ -99,8 +99,7 @@ ul {
 
 /* Style the caret/arrow */
 .caret {
-    @apply cursor-pointer select-none row-start-1 col-start-1 before:content-['›'] before:text-[black] before:inline-block before:mr-1.5 before:relative before:top-[-1px];
-    font-size: larger;
+    @apply cursor-pointer select-none row-start-1 col-start-1 before:content-['›'] before:text-[black] before:inline-block before:mr-1.5 before:relative before:top-[-1px] text-[larger];
 
     /* Prevent text selection */
 }
@@ -119,53 +118,31 @@ ul {
 }
 
 .type-symbol {
-    width: 18px;
+    @apply w-[18px];
 }
 
 .type-symbol.custom {
-    width: 0px;
+    @apply w-0;
 }
 
 .type-symbol.module::before {
-    content: '\25A0';
-    margin-right: 5px;
-    color: darkgreen;
-    font-size: small;
-    position: relative;
-    top: -1px;
+    @apply content-['\25A0'] text-[darkgreen] text-[small] relative mr-[5px] -top-px;
 }
 
 .type-symbol.package::before {
-    content: '\1F4C1';
-    margin-right: 5px;
-    color: darkblue;
-    font-size: smaller;
+    @apply content-['\1F4C1'] text-[darkblue] text-[smaller] mr-[5px];
 }
 
 .type-symbol.class::before {
-    content: '\1F152';
-    margin-right: 5px;
-    color: darkblue;
-    font-size: smaller;
-    position: relative;
-    top: -1px;
+    @apply content-['\1F152'] text-[darkblue] text-[smaller] relative mr-[5px] -top-px;
 }
 
 .type-symbol.method::before {
-    content: '\1F17C';
-    margin-right: 5px;
-    color: darkred;
-    font-size: smaller;
-    position: relative;
-    top: -1px;
+    @apply content-['\1F17C'] text-[darkred] text-[smaller] relative mr-[5px] -top-px;
 }
 
 .type-symbol.cg-only::before {
-    content: '\2022';
-    margin-right: 5px;
-    color: darkblue;
-    font-size: smaller;
-    margin-left: 5px;
+    @apply content-['\2022'] text-[darkblue] text-[smaller] mx-[5px];
 }
 
 /* Hide the nested list */
@@ -208,9 +185,7 @@ ul {
     @apply h-full w-0 row-start-1 col-start-1 bg-[#ff000020];
 }
 .purge-percentage-bar-text {
-    @apply w-full h-full row-start-1 col-start-1 text-[darkblue] text-center -mt-px;
-    font-size: small;
-    margin-bottom: -2px;
+    @apply w-full h-full row-start-1 col-start-1 text-[darkblue] text-center -mt-px text-[small] -mb-0.5;
 }
 .fullscreen {
     @apply w-full h-full;
@@ -230,11 +205,9 @@ ul {
 .cut-row {
     @apply grid grid-cols-[max-content_max-content_1fr_max-content] grid-rows-[18px];
 }
-
 .image-row {
     @apply grid grid-cols-[max-content_max-content_1fr_max-content] grid-rows-[18px];
 }
-
 .cut-size-bar {
     @apply bg-[#cf9000] h-0.5 w-0 row-start-2 col-start-3 col-end-4 -mt-0.5;
 }
@@ -248,23 +221,19 @@ ul {
     @apply text-[#808080];
 }
 .purged-baseline::after {
-    content: ' ?';
-    color: grey;
+    @apply content-['_?'] text-[grey];
 }
 .purged-with-selection {
-    @apply line-through;
-    color: #603030;
+    @apply line-through text-[#603030];
 }
 .purged-with-hover {
-    @apply line-through;
-    color: #705520;
+    @apply line-through text-[#705520];
 }
 .imageview-name {
-    color: black;
+    @apply text-[black];
 }
 .affected-by-hover::after {
-    content: '*';
-    color: #705520;
+    @apply content-['*'] text-[#705520];
 }
 
 /* For detail view: */
@@ -300,5 +269,5 @@ ul {
 }
 
 .highlight-excluded {
-    opacity: 0.2;
+    @apply opacity-20;
 }
