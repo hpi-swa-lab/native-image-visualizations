@@ -11,6 +11,7 @@ import { useGlobalStore } from '../../ts/stores/globalStore'
 import { SwappableComponentType, componentName } from '../../ts/enums/SwappableComponentType'
 import HelpDialog from '../help/HelpDialog.vue'
 import WindowContainer from './WindowContainer.vue'
+import { Carousel, Slide, Pagination, Navigation } from 'vue3-carousel'
 
 withDefaults(
     defineProps<{
@@ -63,7 +64,7 @@ function closeHelp() {
             :class="collapsed ? 'w-0' : 'w-[320px]'"
         >
             <div class="flex p-4 space-x-4 justify-even">
-                <button class="btn btn-light" @click="openHelp()">
+                <button class="bg-transparent btn-primary p-2 px-3 rounded" @click="openHelp()">
                     <font-awesome-icon icon="circle-question" />
                 </button>
                 <h2 class="col-start-3 text-center">{{ title }}</h2>

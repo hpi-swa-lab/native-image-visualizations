@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import { Carousel, Slide, Pagination, Navigation } from 'vue3-carousel'
+
 </script>
 
 <template>
-    <carousel :items-to-show="1">
-        <slide v-for="slide in 10" :key="slide">
-            {{ slide }}
-        </slide>
-
-        <template #addons>
-            <navigation />
-            <pagination />
-        </template>
-    </carousel>
+    <Carousel >
+    <Slide v-for="index in 6" :key="index">
+        <div class="carousel__item">
+        <img :src="`src/assets/images/home/${index}.png`" />
+        </div>
+    </Slide>
+    <template #addons>
+        <Navigation />
+        <Pagination />
+    </template>
+    </Carousel>
 </template>
