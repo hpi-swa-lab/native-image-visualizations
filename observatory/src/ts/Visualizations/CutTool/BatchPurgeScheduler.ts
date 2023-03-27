@@ -47,6 +47,13 @@ export class PurgeResults {
         }
         return sum
     }
+
+    allPurged(vs: NodeSet) {
+        const cgNodes = vs.cgNodes
+        const sizes = vs.sizes
+        assert(cgNodes.length === sizes.length)
+        return cgNodes.every((node) => this.reachableArr[node] === Unreachable)
+    }
 }
 
 export class ReachabilityVector {
@@ -73,7 +80,7 @@ export class NodeSet {
     public readonly sizes: number[]
 
     constructor(vs: FullyHierarchicalNode[]) {
-        const set = vs.filter((v) => v.cgNode !== undefined && v.size) as (FullyHierarchicalNode & {
+        const set = vs.filter((v) => v.cgNode !== undefined) as (FullyHierarchicalNode & {
             cgNode: number
         })[]
         this.cgNodes = new Array(set.length)
@@ -114,11 +121,6 @@ export class BatchPurgeScheduler {
                 this.runningBatch.delete()
                 this.runningBatch = undefined
                 return this.waitlist.length > 0
-            } else if (result.token === -1) {
-                /* empty purge */ assert(this.calcBaselineFirst)
-                const stillReachable = result.history
-                this.calcBaselineFirst = false
-                if (this.callback) this.callback(undefined, new PurgeResults(stillReachable))
             } else {
                 let node: FullyHierarchicalNode | undefined
                 if (result.token === -1) {
@@ -186,6 +188,7 @@ function createPurgeNodeTree(
         !queriedNodes.has(lca) &&
         lca.children.filter((c) => interestingNodes.has(c)).length == 1
     ) {
+        /* eslint-disable-next-line @typescript-eslint/no-non-null-assertion */
         lca = lca.children.find((c) => interestingNodes.has(c))!
     }
 

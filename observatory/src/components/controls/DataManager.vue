@@ -14,6 +14,7 @@ import FileSaver from 'file-saver'
 import { InvalidInputError } from '../../ts/errors'
 import { ExportConfig } from '../../ts/stores/ExportConfig'
 import { EventType } from '../../ts/enums/EventType'
+import { useCutToolStore } from '../../ts/stores/cutToolStore'
 
 const emit = defineEmits([EventType.CONFIG_LOADED])
 
@@ -21,6 +22,7 @@ const globalStore = useGlobalStore()
 const vennStore = useVennStore()
 const treeLineStore = useTreeLineStore()
 const sankeyStore = useSankeyStore()
+const cutToolStore = useCutToolStore()
 
 const uploadError = ref<Error | undefined>(undefined)
 const configLoadError = ref<Error | undefined>(undefined)
@@ -97,7 +99,8 @@ function exportConfig() {
         global: globalStore.toExportDict(),
         venn: vennStore.toExportDict(),
         sankey: sankeyStore.toExportDict(),
-        treeLine: treeLineStore.toExportDict()
+        treeLine: treeLineStore.toExportDict(),
+        cutTool: cutToolStore.toExportDict()
     }
 
     const zip = new JSZip()
@@ -218,6 +221,10 @@ async function loadConfig(zip: JSZip): Promise<string[]> {
         {
             name: 'global',
             store: globalStore
+        },
+        {
+            name: 'cutTool',
+            store: cutToolStore
         }
     ]
 
