@@ -85,6 +85,7 @@ export class SankeyTree implements MultiverseVisualization {
     ) {
         this.colorScheme = colorScheme
         this.tooltip = tooltip
+        this.layer = layer
         this.highlights = highlights
         this.selection = selection
         this.searchTerm = searchTerm
