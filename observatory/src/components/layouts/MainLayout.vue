@@ -1,17 +1,13 @@
 <script setup lang="ts">
 import VisualizationNavigation from '../controls/VisualizationNagivation.vue'
 import UniverseSelectionList from '../controls/UniverseSelectionList.vue'
-import SearchBar from '../simpleUiElements/SearchBar.vue'
 import TabLayout from './TabLayout.vue'
 import DataManager from '../controls/DataManager.vue'
-import FilteringOptions from '../controls/FilteringOptions.vue'
-import SelectionList from '../controls/SelectionList.vue'
 import { onMounted, ref } from 'vue'
 import { useGlobalStore } from '../../ts/stores/globalStore'
 import { SwappableComponentType, componentName } from '../../ts/enums/SwappableComponentType'
 import HelpDialog from '../help/HelpDialog.vue'
 import WindowContainer from './WindowContainer.vue'
-import { Carousel, Slide, Pagination, Navigation } from 'vue3-carousel'
 
 withDefaults(
     defineProps<{
@@ -81,10 +77,6 @@ function closeHelp() {
 
                         <UniverseSelectionList />
                         <hr />
-
-                        <SearchBar />
-                        <SelectionList />
-                        <FilteringOptions />
 
                         <ul class="space-y-2">
                             <slot name="controls"></slot>

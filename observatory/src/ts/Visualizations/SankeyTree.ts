@@ -33,11 +33,12 @@ import {
     sortPrivateChildren,
     toggleChildren,
     toggleSelection
-} from './utils/SankeyTreeUtils'
+} from './SankeyTree/SankeyTreeUtils'
 import { TooltipModel } from './TooltipModel'
 import { useSankeyStore } from '../stores/sankeyTreeStore'
 import { EventType } from '../enums/EventType'
 import { Filter } from '../SharedTypes/Filters'
+import { ExclusiveSizes } from '../Math/Universes'
 
 export const UNMODIFIED = 'UNMODIFIED'
 export const MAX_OBSERVED_UNIVERSES_FOR_SANKEY_TREE = 2
@@ -54,6 +55,8 @@ export class SankeyTree implements MultiverseVisualization {
     filters: Filter[]
     private searchTerm = ''
     private multiverse: Multiverse = new Multiverse([])
+    private exclusiveSizes: Map<string, ExclusiveSizes> = new Map()
+
     private metadata: UniverseMetadata = {}
     private layer = Layers.PACKAGES
     private tooltip: TooltipModel
@@ -77,11 +80,12 @@ export class SankeyTree implements MultiverseVisualization {
         tooltip: TooltipModel,
         highlights: Set<string>,
         selection: Set<string>,
-        searchTerm: string,
-        filters: Filter[] = []
+        filters: Filter[],
+        searchTerm: string
     ) {
         this.colorScheme = colorScheme
         this.tooltip = tooltip
+        this.layer = layer
         this.highlights = highlights
         this.selection = selection
         this.searchTerm = searchTerm
@@ -92,7 +96,7 @@ export class SankeyTree implements MultiverseVisualization {
     setMultiverse(multiverse: Multiverse): void {
         if (multiverse.sources.length > MAX_OBSERVED_UNIVERSES_FOR_SANKEY_TREE) return
         this.multiverse = multiverse
-        this.rebuildAndDrawTree(multiverse, this.layer)
+        this.rebuildAndDrawTree()
     }
 
     setHighlights(highlights: Set<string>): void {
@@ -115,8 +119,7 @@ export class SankeyTree implements MultiverseVisualization {
 
     public setFilters(filters: Filter[]): void {
         this.filters = filters
-        // TODO implement with #167
-        //  https://github.com/orgs/hpi-swa-lab/projects/1/views/1?pane=issue&itemId=23021330
+        this.rebuildAndDrawTree()
     }
 
     setSelection(selection: Set<string>): void {
@@ -132,7 +135,7 @@ export class SankeyTree implements MultiverseVisualization {
 
     public setLayer(layer: Layers): void {
         this.layer = layer
-        this.rebuildAndDrawTree(this.multiverse, layer)
+        this.rebuildAndDrawTree()
     }
 
     setMetadata(metadata: UniverseMetadata): void {
@@ -200,8 +203,8 @@ export class SankeyTree implements MultiverseVisualization {
     // #############################################################################################
     // ### BUILD TREE HELPER FUNCTIONS #############################################################
     // #############################################################################################
-    private rebuildAndDrawTree(multiverse: Multiverse, layer: Layers) {
-        this.tree = this.buildTree(multiverse, layer)
+    private rebuildAndDrawTree() {
+        this.tree = this.buildTree()
 
         // Reason: expects HierarchyPointNode<T> but it's actually SankeyHierarchyPointNode
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -238,18 +241,19 @@ export class SankeyTree implements MultiverseVisualization {
         this.expandFistBranchToLeaves(vizNode.children[0])
     }
 
-    private buildTree(multiverse: Multiverse, layer: Layers): SankeyTreeCompound {
+    private buildTree(): SankeyTreeCompound {
         const nodeTree: Node = new Node(ROOT_NODE_NAME, [])
 
         const leaves: Set<Node> = new Set()
+        this.exclusiveSizes = new Map()
 
         // create hierarchy of Node based on selected Layer
-        for (let i = Layers.MODULES.valueOf(); i <= layer.valueOf(); i++) {
-            const nodes: Node[] = getNodesOnLevel(i, multiverse.root)
-            nodes.forEach((node) => {
-                createHierarchyFromPackages(node, nodeTree, leaves)
-            })
-        }
+        const nodes: Node[] = getNodesOnLevel(this.layer.valueOf(), this.multiverse.root)
+            .filter((nodeOnLevel) => Filter.applyAll(this.filters, nodeOnLevel))
+            .filter((node) => node.codeSize > 0)
+        nodes.forEach((node) => {
+            createHierarchyFromPackages(node, nodeTree, leaves, this.exclusiveSizes)
+        })
 
         // set codeSize of root node
         nodeTree.codeSize = nodeTree.children.reduce(
@@ -375,13 +379,19 @@ export class SankeyTree implements MultiverseVisualization {
                 } else {
                     toggleChildren(vizNode, evt.shiftKey, this.filteredNodes)
                 }
-                this.redraw(evt, vizNode, tree, containerSelections, universeMetadata)
+                this.redraw(
+                    newApplyFilterEvent(this.sankeyStore.nodesFilter),
+                    vizNode,
+                    tree,
+                    containerSelections,
+                    universeMetadata
+                )
             }
         )
         const nodeEnterShape = this.appendShapeToNode(nodeEnter, universeMetadata)
         nodeEnterShape
             .on('mouseover', (event: MouseEvent, vizNode: SankeyHierarchyPointNode) => {
-                this.tooltip.updateContent(asHTML(vizNode, this.metadata))
+                this.tooltip.updateContent(asHTML(vizNode, this.exclusiveSizes, this.metadata))
                 this.tooltip.display()
             })
             .on('mousemove', (event: MouseEvent) =>
@@ -449,7 +459,7 @@ export class SankeyTree implements MultiverseVisualization {
                 vizNode.data ? -getBarHeight(vizNode.data.codeSize) / 2 : 0
             )
             .style('fill', (vizNode: HierarchyPointNode<Node>) => {
-                if (vizNode.data.sources.size == 1) {
+                if (this.exclusiveSizes.get(vizNode.data.identifier)?.size == 1) {
                     return universeMetadata[Array.from(vizNode.data.sources.keys())[0]]?.color
                 } else if (this.modifiedNodes.includes(vizNode.data)) {
                     return this.sankeyStore.colorModified
@@ -530,7 +540,7 @@ export class SankeyTree implements MultiverseVisualization {
             )
             .attr('stroke', (vizLink: HierarchyPointLink<Node>) =>
                 this.modifiedNodes.includes(vizLink.target.data)
-                    ? vizLink.target.data.sources.size === 1
+                    ? this.exclusiveSizes.get(vizLink.target.data.identifier)?.size === 1
                         ? this.metadata[vizLink.target.data.sources.keys().next().value].color
                         : this.sankeyStore.colorModified
                     : this.sankeyStore.colorUnmodified

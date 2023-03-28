@@ -2,12 +2,18 @@
 import { useVennStore } from '../../ts/stores/vennStore'
 import { SortingOrder } from '../../ts/enums/Sorting'
 import LayerSelection from './LayerSelection.vue'
+import SearchBar from './SearchBar.vue'
+import FilterSelectionList from './FilterSelectionList.vue'
+import FilteringOptions from './FilteringOptions.vue'
 
 const vennStore = useVennStore()
 </script>
 
 <template>
     <div id="venn-controls" class="input-container settings-container space-y-4">
+        <SearchBar />
+        <FilterSelectionList />
+        <FilteringOptions />
         <LayerSelection />
         <div class="space-y-4">
             <label class="ml-1">Sorting:</label>

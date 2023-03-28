@@ -6,16 +6,23 @@ import {
 import { NodesFilter, NodesSortingFilter } from '../../SharedTypes/NodesFilter'
 import { SortingOption, SortingOrder } from '../../enums/Sorting'
 import { Node } from '../../UniverseTypes/Node'
-import { formatBytes } from '../../SharedTypes/Size'
+import { Bytes, formatBytes } from '../../SharedTypes/Size'
 import { EventType } from '../../enums/EventType'
 import { HIERARCHY_NAME_SEPARATOR, SUB_HIERARCHY_NAME_SEPARATOR } from '../../globals'
 import { ROOT_NODE_NAME } from '../SankeyTree'
+import { ExclusiveSizes } from '../../Math/Universes'
+import { UniverseCombination } from '../../UniverseTypes/UniverseCombination'
 
 // #################################################################################################
 // ##### (PRE-)PROCESSING ##########################################################################
 // #################################################################################################
 
-export function createHierarchyFromPackages(node: Node, dataTree: Node, leaves: Set<Node>) {
+export function createHierarchyFromPackages(
+    node: Node,
+    dataTree: Node,
+    leaves: Set<Node>,
+    exclusiveCodeSizes: Map<string, ExclusiveSizes>
+) {
     let current = dataTree
     const pathSegments = node.identifier.substring(1).split(HIERARCHY_NAME_SEPARATOR)
     for (let i = 0; i < pathSegments.length; i++) {
@@ -24,19 +31,27 @@ export function createHierarchyFromPackages(node: Node, dataTree: Node, leaves: 
         for (let j = 0; j < subPathSegments.length; j++) {
             let child = current.children.find((child) => child.name === subPathSegments[j])
             if (child) {
-                child.sources.set(
-                    node.sources.keys().next().value,
-                    node.sources.values().next().value
-                )
-                child.codeSize = child.codeSize + node.codeSize
-
-                // FIXME set correct codeSize in child
-                //  (right now its the sum of A+B in the merged node)
-                //  #153 https://github.com/hpi-swa-lab/MPWS2022RH1/issues/153
+                const codeSizeByUniverse = exclusiveCodeSizes.get(child.identifier) ?? new Map()
+                for (const [universeId, sourceNode] of node.sources.entries()) {
+                    codeSizeByUniverse.set(
+                        universeId.toString(),
+                        (codeSizeByUniverse.get(universeId.toString()) ?? 0) + sourceNode.codeSize
+                    )
+                }
+                exclusiveCodeSizes.set(child.identifier, codeSizeByUniverse)
+                child.codeSize = getMaxCodeSizeByUniverse(codeSizeByUniverse)
             } else {
-                child = new Node(subPathSegments[j], [], current, node.codeSize)
+                child = new Node(subPathSegments[j], [], current)
                 child.sources = node.sources
                 child.overrideHierarchyNameSeparator(hierarchySeparator)
+
+                const codeSizeByUniverse = exclusiveCodeSizes.get(child.identifier) ?? new Map()
+                for (const [universeId, sourceNode] of node.sources.entries()) {
+                    codeSizeByUniverse.set(universeId.toString(), sourceNode.codeSize)
+                }
+                exclusiveCodeSizes.set(child.identifier, codeSizeByUniverse)
+                child.codeSize = getMaxCodeSizeByUniverse(codeSizeByUniverse)
+
                 current.children.push(child)
             }
 
@@ -48,6 +63,13 @@ export function createHierarchyFromPackages(node: Node, dataTree: Node, leaves: 
     }
 }
 
+function getMaxCodeSizeByUniverse(codeSizeByUniverse: Map<UniverseCombination, Bytes>) {
+    return Array.from(codeSizeByUniverse.values()).reduce(
+        (max, codeSize) => Math.max(max, codeSize),
+        Number.MIN_VALUE
+    )
+}
+
 export function newApplyFilterEvent(filter: NodesFilter) {
     return new CustomEvent<FilterEventDetails>(EventType.APPLY_FILTER, {
         detail: {
@@ -55,16 +77,6 @@ export function newApplyFilterEvent(filter: NodesFilter) {
             filter: filter
         }
     })
-}
-
-export function getCodeSizeFromLeaves(vizNode: SankeyHierarchyPointNode): number {
-    if (!vizNode._children) {
-        return vizNode.data.codeSize
-    }
-    return vizNode._children.reduce(
-        (sum: number, child: SankeyHierarchyPointNode) => sum + getCodeSizeFromLeaves(child),
-        0
-    )
 }
 
 // #################################################################################################
@@ -147,13 +159,43 @@ function getSortingValue(vizNode: SankeyHierarchyPointNode, filter: NodesSorting
 // ##### OTHER #####################################################################################
 // #################################################################################################
 
-export function asHTML(vizNode: SankeyHierarchyPointNode, metadata: UniverseMetadata) {
+export function asHTML(
+    vizNode: SankeyHierarchyPointNode,
+    exclusiveCodeSizes: Map<string, ExclusiveSizes>,
+    metadata: UniverseMetadata
+) {
+    if (Object.keys(metadata).length == 1) {
+    }
     const node: Node = vizNode.data
     return `<b>Exists in</b>: ${Array.from(node.sources.keys())
         .map((uniIndex) => metadata[uniIndex].name)
-        .join(', ')}
-                <b>Name</b>: ${node.identifier}
-                <b>Code Size</b>: ${formatBytes(node.codeSize)}`
+        .join(' ∩ ')}
+                <b>Path</b>: ${getWithoutRoot(node.identifier)}
+                ${printCodeSizePerUniverse(vizNode, exclusiveCodeSizes, metadata)}`
+}
+
+function printCodeSizePerUniverse(
+    vizNode: SankeyHierarchyPointNode,
+    exclusiveCodeSizes: Map<string, ExclusiveSizes>,
+    metadata: UniverseMetadata
+) {
+    if (!exclusiveCodeSizes || !exclusiveCodeSizes.get(vizNode.data.identifier)) return ''
+    let html = ''
+    const printName = Object.keys(metadata).length > 1
+
+    // Reason: This is likely to be a false alarm by eslint
+    // because an early return is already made if undefined.
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    exclusiveCodeSizes
+        .get(vizNode.data.identifier)!
+        .forEach(
+            (codeSize, uniID) =>
+                (html += `<b>Code Size${
+                    printName ? ` in ${metadata[parseInt(uniID)].name}` : ''
+                }</b>: ${formatBytes(codeSize)}\n`)
+        )
+    html = html.slice(0, -1)
+    return html
 }
 
 export function getWithoutRoot(identifier: string) {

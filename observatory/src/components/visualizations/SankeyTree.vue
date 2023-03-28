@@ -15,6 +15,7 @@ import Tooltip from '../controls/Tooltip.vue'
 import { useGlobalStore } from '../../ts/stores/globalStore'
 import { useSankeyStore } from '../../ts/stores/sankeyTreeStore'
 import AlertBox from '../controls/AlertBox.vue'
+import { Filter } from '../../ts/SharedTypes/Filters'
 
 const emit = defineEmits([EventType.CHANGE])
 const globalStore = useGlobalStore()
@@ -28,6 +29,7 @@ const multiverse = computed(() => globalStore.multiverse)
 const currentLayer = computed(() => globalStore.currentLayer)
 const highlights = computed(() => globalStore.highlights)
 const selections = computed(() => globalStore.selections)
+const activeFilters = computed(() => globalStore.activeFilters)
 const searchTerm = computed(() => globalStore.search)
 const nodesFilter = computed(() => sankeyStore.nodesFilter)
 
@@ -53,6 +55,7 @@ onMounted(() => {
         tooltipModel,
         toRaw(globalStore.highlights),
         globalStore.selections,
+        toRaw(globalStore.activeFilters),
         toRaw(globalStore.search)
     )
     visualization.setMetadata(metadata.value)
@@ -75,18 +78,22 @@ watch(
     { deep: true }
 )
 
-watch(
-    searchTerm,
-    (newSearchTerm) => {
-        visualization.setSearchTerm(toRaw(newSearchTerm) as string)
-    },
-    { deep: true }
-)
+watch(searchTerm, (newSearchTerm) => {
+    visualization.setSearchTerm(toRaw(newSearchTerm) as string)
+})
 
 watch(
     selections,
     (newSelection) => {
         visualization.setSelection(newSelection as Set<string>)
+    },
+    { deep: true }
+)
+
+watch(
+    activeFilters,
+    (newFilters) => {
+        visualization.setFilters(toRaw(newFilters) as Filter[])
     },
     { deep: true }
 )

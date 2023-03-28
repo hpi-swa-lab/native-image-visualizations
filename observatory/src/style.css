@@ -88,7 +88,7 @@ input[type='radio'] {
 }
 
 /* Remove default bullets */
-ul {
+#cut-tool-root ul {
     @apply list-none;
 }
 
@@ -99,10 +99,7 @@ ul {
 
 /* Style the caret/arrow */
 .caret {
-    @apply cursor-pointer select-none row-start-1 col-start-1 before:content-['›'] before:text-[black] before:inline-block before:mr-1.5 before:relative before:top-[-1px];
-    font-size: larger;
-
-    /* Prevent text selection */
+    @apply cursor-pointer select-none row-start-1 col-start-1 before:content-['\203a'] before:text-[black] before:inline-block before:mr-1.5 before:relative;
 }
 .cutview-node {
     @apply select-none text-ellipsis whitespace-nowrap overflow-hidden;
@@ -115,62 +112,40 @@ ul {
 
 /* Rotate the caret/arrow icon when clicked on (using JavaScript) */
 .caret-down::before {
-    @apply content-['›'] text-[gray] rotate-90;
+    @apply content-['\203a'] text-[gray] rotate-90;
 }
 
 .type-symbol {
-    width: 18px;
+    @apply w-[18px];
 }
 
 .type-symbol.custom {
-    width: 0px;
+    @apply w-0;
 }
 
 .type-symbol.module::before {
-    content: '\25A0';
-    margin-right: 5px;
-    color: darkgreen;
-    font-size: small;
-    position: relative;
-    top: -1px;
+    @apply content-['\25A0'] text-[darkgreen] text-[small] relative mr-[5px] -top-px;
 }
 
 .type-symbol.package::before {
-    content: '\1F4C1';
-    margin-right: 5px;
-    color: darkblue;
-    font-size: smaller;
+    @apply content-['\1F4C1'] text-[darkblue] text-[smaller] mr-[5px];
 }
 
 .type-symbol.class::before {
-    content: '\1F152';
-    margin-right: 5px;
-    color: darkblue;
-    font-size: smaller;
-    position: relative;
-    top: -1px;
+    @apply content-['\1F152'] text-[darkblue] text-[smaller] relative mr-[5px] -top-px;
 }
 
 .type-symbol.method::before {
-    content: '\1F17C';
-    margin-right: 5px;
-    color: darkred;
-    font-size: smaller;
-    position: relative;
-    top: -1px;
+    @apply content-['\1F17C'] text-[darkred] text-[smaller] relative mr-[5px] -top-px;
 }
 
 .type-symbol.cg-only::before {
-    content: '\2022';
-    margin-right: 5px;
-    color: darkblue;
-    font-size: smaller;
-    margin-left: 5px;
+    @apply content-['\2022'] text-[darkblue] text-[smaller] mx-[5px];
 }
 
 /* Hide the nested list */
 .nested {
-    @apply hidden row-start-3 col-start-1 col-end-6 pl-5;
+    @apply hidden row-start-3 col-start-1 col-end-6 pl-4;
 }
 
 /* Show the nested list when the user clicks on the caret/arrow (with JavaScript) */
@@ -178,11 +153,11 @@ ul {
     @apply block;
 }
 .total-size-column {
-    @apply float-right row-start-1 col-start-4 text-right text-[#606060] w-[70px] mx-[5px];
+    @apply float-right row-start-1 col-start-4 text-right text-[#606060] w-[60px];
     font-size: smaller;
 }
 .cut-size-column {
-    @apply float-right text-[#cf8020] row-start-1 col-start-4 text-right w-[70px] mx-[5px];
+    @apply float-right text-[#cf8020] row-start-1 col-start-4 text-right w-[60px];
     font-size: smaller;
 }
 .size-bar-outer {
@@ -202,15 +177,13 @@ ul {
     /* Weird hack to prevent wrap */
 }
 .purge-percentage-bar-outer {
-    @apply border w-[60px] row-start-1 col-start-5 grid grid-cols-[100%] grid-rows-[100%] mx-2.5 my-px border-solid border-[#f0f0f0];
+    @apply border w-[60px] row-start-1 col-start-5 grid grid-cols-[100%] grid-rows-[100%] mx-1 my-px border-solid border-[#f0f0f0];
 }
 .purge-percentage-bar-inner {
     @apply h-full w-0 row-start-1 col-start-1 bg-[#ff000020];
 }
 .purge-percentage-bar-text {
-    @apply w-full h-full row-start-1 col-start-1 text-[darkblue] text-center -mt-px;
-    font-size: small;
-    margin-bottom: -2px;
+    @apply w-full h-full row-start-1 col-start-1 text-[darkblue] text-center -mt-px text-[small] -mb-0.5;
 }
 .fullscreen {
     @apply w-full h-full;
@@ -245,8 +218,20 @@ ul {
 .synthetic {
     @apply text-[#808080];
 }
-.purged {
-    @apply line-through;
+.purged-baseline::after {
+    @apply content-['_?'] text-[grey];
+}
+.purged-with-selection {
+    @apply line-through text-[#603030];
+}
+.purged-with-hover {
+    @apply line-through text-[#705520];
+}
+.imageview-name {
+    @apply text-[black];
+}
+.affected-by-hover::after {
+    @apply content-['*'] text-[#705520];
 }
 
 /* For detail view: */
@@ -279,4 +264,8 @@ ul {
 .detail-text-right {
     @apply text-xl;
     text-anchor: end;
+}
+
+.highlight-excluded {
+    @apply opacity-20;
 }
