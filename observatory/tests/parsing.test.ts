@@ -8,7 +8,7 @@ import {
 } from '../src/ts/parsing'
 import { Leaf } from '../src/ts/UniverseTypes/Leaf'
 import { InitKind } from '../src/ts/enums/InitKind'
-import { Node } from '../src/ts/UniverseTypes/Node'
+import { INVALID_SIZE, Node } from '../src/ts/UniverseTypes/Node'
 
 describe('parsing', () => {
     describe('parseReachabilityExport', () => {
@@ -312,6 +312,52 @@ describe('parsing', () => {
                                         InitKind.BUILD_TIME
                                     ])
                                 ])
+                            ])
+                        ])
+                    ])
+                },
+                {
+                    jsonObject: [
+                        {
+                            module: 'java.base',
+                            packages: {
+                                'java.util.zip': {
+                                    types: {
+                                        CRC32: {
+                                            'init-kind': ['run-time', 'build-time'],
+                                            methods: {
+                                                '<clinit>()': { size: 92 },
+                                                '<init>()': { size: 0 }
+                                            },
+                                            fields: { pointyNames: {} },
+                                            flags: ['reflection']
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    ],
+                    expected: new Node('universe', [
+                        new Node('java.base', [
+                            new Node('java.util.zip', [
+                                new Node(
+                                    'CRC32',
+                                    [
+                                        new Leaf('<clinit>()', 92, [
+                                            InitKind.RUN_TIME,
+                                            InitKind.BUILD_TIME
+                                        ]),
+                                        new Leaf('<init>()', 0, [
+                                            InitKind.RUN_TIME,
+                                            InitKind.BUILD_TIME
+                                        ])
+                                    ],
+                                    undefined,
+                                    INVALID_SIZE,
+                                    true,
+                                    false,
+                                    false
+                                )
                             ])
                         ])
                     ])

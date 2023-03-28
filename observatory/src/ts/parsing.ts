@@ -10,7 +10,7 @@
 import { Bytes } from './SharedTypes/Size'
 import { Leaf } from './UniverseTypes/Leaf'
 import { InitKind } from './enums/InitKind'
-import { Node } from './UniverseTypes/Node'
+import { INVALID_SIZE, Node } from './UniverseTypes/Node'
 import JSZip from 'jszip'
 import { CausalityGraphData } from './UniverseTypes/CausalityGraphUniverse'
 import { causalityBinaryFileNames } from './Causality/CausalityGraphBinaryData'
@@ -59,6 +59,12 @@ function validateTypeData(object: any, name: string): void {
     if (object['init-kind'] && !Array.isArray(object['init-kind'])) {
         throw new InvalidReachabilityFormatError(
             '"init-kind" attribute is expected to be an array for type ' + name
+        )
+    }
+
+    if (object.flags && !Array.isArray(object.flags)) {
+        throw new InvalidReachabilityFormatError(
+            '"flags" attribute is expected to be an array for type ' + name
         )
     }
 }
@@ -191,7 +197,16 @@ function parseTypes(types: Types): Node[] {
         validateTypeData(typeData, typeName)
 
         const initKinds = typeData['init-kind'] ? typeData['init-kind'] : []
-        return new Node(typeName, parseMethods(typeData.methods, initKinds.map(parseInitKind)))
+        const flags = typeData.flags ? typeData.flags : []
+        return new Node(
+            typeName,
+            parseMethods(typeData.methods, initKinds.map(parseInitKind)),
+            undefined,
+            INVALID_SIZE,
+            flags.includes('reflection'),
+            flags.includes('jni'),
+            flags.includes('synthetic')
+        )
     })
 }
 
