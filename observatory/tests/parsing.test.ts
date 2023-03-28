@@ -378,11 +378,56 @@ describe('parsing', () => {
                             }
                         }
                     ],
-                    expected: new Node('universe', [
-                        new Node('org.graalvm.truffle', [
-                            new Node('com.oracle.truffle.api.dsl', [new Node('GeneratedBy', [])])
-                        ])
-                    ])
+                    expected: new Node(
+                        'universe',
+                        [
+                            new Node('org.graalvm.truffle', [
+                                new Node('com.oracle.truffle.api.dsl', [
+                                    new Node('GeneratedBy', [])
+                                ])
+                            ])
+                        ],
+                        undefined,
+                        INVALID_SIZE,
+                        undefined,
+                        undefined,
+                        undefined,
+                        false
+                    )
+                },
+                {
+                    jsonObject: [
+                        {
+                            module: 'org.graalvm.truffle',
+                            flags: ['system'],
+                            packages: {
+                                'com.oracle.truffle.api.dsl': {
+                                    types: {
+                                        GeneratedBy: {
+                                            methods: {},
+                                            fields: {}
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    ],
+                    expected: new Node(
+                        'universe',
+                        [
+                            new Node('org.graalvm.truffle', [
+                                new Node('com.oracle.truffle.api.dsl', [
+                                    new Node('GeneratedBy', [])
+                                ])
+                            ])
+                        ],
+                        undefined,
+                        INVALID_SIZE,
+                        undefined,
+                        undefined,
+                        undefined,
+                        true
+                    )
                 }
             ])('.Parse($jsonObject)', ({ jsonObject, expected }) => {
                 expect(

@@ -12,13 +12,10 @@ export class Leaf extends Node {
         isReflective = false,
         isJni = false,
         isSynthetic = false,
-        parent: Node | undefined = undefined
+        parent: Node | undefined = undefined,
+        isSystem = false
     ) {
-        super(name, [], parent)
-        this._codeSize = codeSize
-        this._isReflective = isReflective
-        this._isJni = isJni
-        this._isSynthetic = isSynthetic
+        super(name, [], parent, codeSize, isReflective, isJni, isSynthetic, isSystem)
         this._initKinds = initKinds
     }
 
@@ -44,7 +41,9 @@ export class Leaf extends Node {
             [...this.initKinds],
             this.isReflective,
             this.isJni,
-            this.isSynthetic
+            this.isSynthetic,
+            undefined,
+            this._isSystem
         )
     }
 }

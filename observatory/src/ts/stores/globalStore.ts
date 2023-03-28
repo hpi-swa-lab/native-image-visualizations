@@ -51,7 +51,8 @@ export const useGlobalStore = defineStore('globalConfig', {
             filters: [
                 new Filter('Java Native Interface', (node: Node) => node.isJni),
                 new Filter('Synthetic', (node: Node) => node.isSynthetic),
-                new Filter('Reflective', (node: Node) => node.isReflective)
+                new Filter('Reflective', (node: Node) => node.isReflective),
+                new Filter('Runtime', (node: Node) => node.isSystem)
             ],
             activeFilters: [] as Filter[],
             currentLayer: Layers.PACKAGES,
