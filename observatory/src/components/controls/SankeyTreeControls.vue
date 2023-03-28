@@ -5,7 +5,7 @@ import DiffingUniversesFilterFieldset from './DiffingUniversesFilterFieldset.vue
 import { UniverseMetadata } from '../../ts/SharedTypes/SankeyTree'
 import LayerSelection from './LayerSelection.vue'
 import SearchBar from './../simpleUiElements/SearchBar.vue'
-import FilterSelectionList from './FilterSelectionList.vue'
+import SelectionList from './SelectionList.vue'
 import FilteringOptions from './FilteringOptions.vue'
 
 const SHORTCUTS = [
@@ -26,7 +26,7 @@ withDefaults(
 <template>
     <div id="sankey-tree-controls" class="input-container settings-container space-y-4">
         <SearchBar />
-        <FilterSelectionList />
+        <SelectionList />
         <FilteringOptions />
         <LayerSelection />
 
