@@ -11,7 +11,7 @@ import { SizeInfo, TreeLine } from '../../ts/Visualizations/TreeLine'
 import Tooltip from '../controls/Tooltip.vue'
 import MainLayout from '../layouts/MainLayout.vue'
 import { Filter } from '../../ts/SharedTypes/Filters'
-import SearchBar from '../controls/SearchBar.vue'
+import SearchBar from '../simpleUiElements/SearchBar.vue'
 import FilterSelectionList from '../controls/FilterSelectionList.vue'
 import FilteringOptions from '../controls/FilteringOptions.vue'
 
