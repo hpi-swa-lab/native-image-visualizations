@@ -24,7 +24,10 @@ export class Node {
         name: string,
         children: Node[] = [],
         parent: Node | undefined = undefined,
-        codeSize = INVALID_SIZE
+        codeSize = INVALID_SIZE,
+        isReflective: boolean | undefined = undefined,
+        isJNI: boolean | undefined = undefined,
+        isSynthetic: boolean | undefined = undefined
     ) {
         this._name = name
         this._children = children
@@ -33,6 +36,9 @@ export class Node {
         }
         this._parent = parent
         this._codeSize = codeSize
+        this._isReflective = isReflective
+        this._isJni = isJNI
+        this._isSynthetic = isSynthetic
     }
 
     get name(): string {
