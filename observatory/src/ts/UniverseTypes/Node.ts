@@ -167,7 +167,15 @@ export class Node {
     }
 
     public clonePrimitive(): Node {
-        return new Node(this.name, [], undefined, this._codeSize)
+        return new Node(
+            this.name,
+            [],
+            undefined,
+            this._codeSize,
+            this._isReflective,
+            this._isJni,
+            this._isSynthetic
+        )
     }
 
     protected equalsIgnoringParents(another: Node): boolean {
