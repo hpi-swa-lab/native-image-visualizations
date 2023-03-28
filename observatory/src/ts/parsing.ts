@@ -105,6 +105,12 @@ function validateTopLevelOrigin(object: any): void {
     if (!object.packages || object.packages.constructor !== Object) {
         throw new InvalidReachabilityFormatError('Missing "packages" attribute for module ' + name)
     }
+
+    if (object.flags && !Array.isArray(object.flags)) {
+        throw new InvalidReachabilityFormatError(
+            '"flags" attribute is expected to be an array for ' + name
+        )
+    }
 }
 
 export class InvalidReachabilityFormatError extends Error {
@@ -176,9 +182,17 @@ export function parseReachabilityExport(parsedJSON: any, universeName: string): 
         ...parsedJSON.map((topLevelOrigin: TopLevelOrigin) => {
             validateTopLevelOrigin(topLevelOrigin)
 
+            const hasSystemFlag =
+                topLevelOrigin.flags && topLevelOrigin.flags.includes('system') ? true : false
             return new Node(
                 getNameForParsedTopLevelOrigin(topLevelOrigin),
-                parsePackages(topLevelOrigin.packages)
+                parsePackages(topLevelOrigin.packages),
+                undefined,
+                INVALID_SIZE,
+                undefined,
+                undefined,
+                undefined,
+                hasSystemFlag
             )
         })
     )

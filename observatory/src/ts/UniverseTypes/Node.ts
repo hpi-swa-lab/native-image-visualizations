@@ -17,6 +17,7 @@ export class Node {
     protected _isReflective: boolean | undefined
     protected _isJni: boolean | undefined
     protected _isSynthetic: boolean | undefined
+    protected _isSystem = false
 
     protected _hierarchy_name_separator: string = HIERARCHY_NAME_SEPARATOR
 
@@ -27,7 +28,8 @@ export class Node {
         codeSize = INVALID_SIZE,
         isReflective: boolean | undefined = undefined,
         isJNI: boolean | undefined = undefined,
-        isSynthetic: boolean | undefined = undefined
+        isSynthetic: boolean | undefined = undefined,
+        isSystem = false
     ) {
         this._name = name
         this._children = children
@@ -39,6 +41,7 @@ export class Node {
         this._isReflective = isReflective
         this._isJni = isJNI
         this._isSynthetic = isSynthetic
+        this._isSystem = isSystem
     }
 
     get name(): string {
@@ -54,6 +57,10 @@ export class Node {
 
         this._isReflective = this.children.some((child) => child.isReflective)
         return this._isReflective
+    }
+
+    get isSystem(): boolean {
+        return this._isSystem
     }
 
     get isJni(): boolean {
@@ -174,7 +181,8 @@ export class Node {
             this._codeSize,
             this._isReflective,
             this._isJni,
-            this._isSynthetic
+            this._isSynthetic,
+            this._isSystem
         )
     }
 
