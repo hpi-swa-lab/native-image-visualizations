@@ -277,6 +277,7 @@ export class TreeLine implements MultiverseVisualization {
 
             for (const combination of this.combinations) {
                 const size = exclusiveSizes.get(combination) ?? 0
+                if (size === 0) continue
                 const width = (LINE_WIDTH * size) / totalSize
 
                 // Note: Floating point calculations are never accurate, so
