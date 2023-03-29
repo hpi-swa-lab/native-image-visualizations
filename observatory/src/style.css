@@ -273,3 +273,11 @@ input[type='radio'] {
 .highlight-excluded {
     @apply opacity-20;
 }
+
+a {
+    @apply font-medium text-blue-600;
+}
+
+a:hover {
+    @apply underline;
+}
