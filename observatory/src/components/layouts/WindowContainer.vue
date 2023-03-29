@@ -36,21 +36,20 @@ function closeDragElement() {
 </script>
 
 <template>
-    <div
-        ref="container"
-        class="fixed z-50 p-4 overflow-x-hidden h-[700px] w-full drop-shadow-md"
-        @mousedown="dragMouseDown"
-        @mouseup="closeDragElement"
-    >
+    <div ref="container" class="fixed z-50 p-4 overflow-x-hidden h-[800px] w-full drop-shadow-md">
         <div class="relative w-full h-full max-w-[1200px]">
             <div class="relative bg-white rounded-lg shadow">
-                <div class="flex items-start justify-between p-4 border-b rounded-t">
+                <div
+                    class="flex items-start justify-between p-4 border-b rounded-t"
+                    @mousedown="dragMouseDown"
+                    @mouseup="closeDragElement"
+                >
                     <slot name="header" />
                     <button class="btn-sm btn-danger" @click="emit(EventType.CLOSE_WINDOW)">
                         <font-awesome-icon icon="xmark" />
                     </button>
                 </div>
-                <div class="p-6 space-y-6">
+                <div class="overflow-y-auto h-[700px] p-6 space-y-6">
                     <slot />
                 </div>
             </div>

@@ -102,7 +102,7 @@ function closeHelp() {
                 :class="collapsed ? 'rotate-180' : ''"
             />
         </button>
-        <div class="h-full w-full  overflow-y-auto">
+        <div class="h-full w-full overflow-y-auto">
             <WindowContainer v-if="showHelp" @close-window="closeHelp()">
                 <template #header>Help for {{ componentName(store.currentComponent) }}</template>
                 <HelpDialog />
