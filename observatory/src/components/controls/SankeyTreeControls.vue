@@ -1,50 +1,40 @@
 <script setup lang="ts">
 import AlertBox from './AlertBox.vue'
 import SortingFilterFieldset from './SortingFilterFieldset.vue'
-import { EventType } from '../../ts/enums/EventType.js'
 import DiffingUniversesFilterFieldset from './DiffingUniversesFilterFieldset.vue'
-import { UniverseProps } from '../../ts/interfaces/UniverseProps'
+import { UniverseMetadata } from '../../ts/SharedTypes/SankeyTree'
+import LayerSelection from './LayerSelection.vue'
+import SearchBar from './SearchBar.vue'
+import SelectionList from './SelectionList.vue'
+import FilteringOptions from './FilteringOptions.vue'
 
-const SHORTCUTS = ['shift+click on node expands branch']
+const SHORTCUTS = [
+    '* shift+click on node expands branch',
+    '* ctrl+click on node de-/selects it (command+click on Mac)'
+]
 
 withDefaults(
     defineProps<{
-        universesMetadata: Record<number, UniverseProps>
+        universesMetadata: UniverseMetadata
     }>(),
     {
         universesMetadata: () => ({})
     }
 )
-
-const emit = defineEmits([EventType.CHANGE, EventType.EXPAND_TREE])
-
-function onChange(event: MouseEvent): void {
-    event.preventDefault()
-    emit(EventType.CHANGE, event)
-}
 </script>
 
 <template>
     <div id="sankey-tree-controls" class="input-container settings-container space-y-4">
-        <form class="space-y-4 border rounded p-2">
-            <DiffingUniversesFilterFieldset
-                :universes-metadata="universesMetadata"
-            ></DiffingUniversesFilterFieldset>
+        <SearchBar />
+        <SelectionList />
+        <FilteringOptions />
+        <LayerSelection />
 
-            <SortingFilterFieldset />
+        <DiffingUniversesFilterFieldset
+            :universes-metadata="universesMetadata"
+        ></DiffingUniversesFilterFieldset>
 
-            <button type="submit" class="btn btn-sm btn-primary" @click="onChange">update</button>
-
-            <button
-                id="expand-tree-btn"
-                type="button"
-                class="btn btn-light m-2"
-                @click="emit(EventType.EXPAND_TREE, $event)"
-            >
-                expand full tree
-            </button>
-        </form>
-
+        <SortingFilterFieldset />
         <AlertBox title="Shortcuts" :alert-infos="SHORTCUTS"></AlertBox>
     </div>
 </template>

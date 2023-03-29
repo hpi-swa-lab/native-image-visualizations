@@ -10,10 +10,18 @@
 import { Bytes } from './SharedTypes/Size'
 import { Leaf } from './UniverseTypes/Leaf'
 import { InitKind } from './enums/InitKind'
-import { Node } from './UniverseTypes/Node'
+import { INVALID_SIZE, Node } from './UniverseTypes/Node'
+import JSZip from 'jszip'
+import { CausalityGraphData } from './UniverseTypes/CausalityGraphUniverse'
+import { causalityBinaryFileNames } from './Causality/CausalityGraphBinaryData'
 
-type Methods = {
-    [methodName: string]: { size: Bytes; flags?: string[] }
+interface Method {
+    flags?: string[]
+    size: Bytes
+}
+
+interface Methods {
+    [methodName: string]: Method
 }
 
 function validateMethodData(object: any, name: string): void {
@@ -31,8 +39,14 @@ function validateMethodData(object: any, name: string): void {
     }
 }
 
-type Types = {
-    [typeName: string]: { methods: Methods; 'init-kind'?: string[] }
+interface Type {
+    methods: Methods
+    flags?: string[]
+    'init-kind'?: string[]
+}
+
+interface Types {
+    [typeName: string]: Type
 }
 
 function validateTypeData(object: any, name: string): void {
@@ -47,9 +61,15 @@ function validateTypeData(object: any, name: string): void {
             '"init-kind" attribute is expected to be an array for type ' + name
         )
     }
+
+    if (object.flags && !Array.isArray(object.flags)) {
+        throw new InvalidReachabilityFormatError(
+            '"flags" attribute is expected to be an array for type ' + name
+        )
+    }
 }
 
-type Packages = {
+interface Packages {
     [packageName: string]: { types: Types }
 }
 
@@ -61,16 +81,20 @@ function validatePackageData(object: any, name: string): void {
     }
 }
 
-export type TopLevelOrigin = {
+interface TopLevelOrigin {
     path?: string
     module?: string
-
+    flags?: ['system']
     packages: Packages
 }
 
+export type ReachabilityJson = [TopLevelOrigin]
+
 function getNameForParsedTopLevelOrigin(object: any): string {
     let name = ''
-    if (object.path && object.path.constructor === String) name = object.path
+    if (object.path && object.path.constructor === String) {
+        name = object.path.split(/^.*[\\\/]/).pop()
+    }
     if (object.module && object.module.constructor === String) name = object.module
     return name
 }
@@ -80,6 +104,12 @@ function validateTopLevelOrigin(object: any): void {
 
     if (!object.packages || object.packages.constructor !== Object) {
         throw new InvalidReachabilityFormatError('Missing "packages" attribute for module ' + name)
+    }
+
+    if (object.flags && !Array.isArray(object.flags)) {
+        throw new InvalidReachabilityFormatError(
+            '"flags" attribute is expected to be an array for ' + name
+        )
     }
 }
 
@@ -91,7 +121,41 @@ export class InvalidReachabilityFormatError extends Error {
     }
 }
 
-export async function loadJson(file: File): Promise<object> {
+export async function loadCgZip(file: File): Promise<CausalityGraphData> {
+    const zip = await new JSZip().loadAsync(file)
+
+    function getZipEntry(path: string) {
+        const entry = zip.files[path]
+        if (!entry) throw new Error(`Missing zip entry: ${path}`)
+        return entry
+    }
+
+    const reachabilityData = (await loadJson(
+        await getZipEntry('reachability.json').async('blob')
+    )) as ReachabilityJson
+
+    const cgData = {
+        reachabilityData: reachabilityData,
+        nodeLabels: (await getZipEntry('methods.txt').async('string')).split('\n').slice(0, -1),
+        typeLabels: (await getZipEntry('types.txt').async('string')).split('\n').slice(0, -1),
+
+        // Only initializing this because the loop below cannot infer
+        // that every of these properties will be set
+        'typestates.bin': new Uint8Array(),
+        'interflows.bin': new Uint8Array(),
+        'direct_invokes.bin': new Uint8Array(),
+        'typeflow_methods.bin': new Uint8Array(),
+        'typeflow_filters.bin': new Uint8Array()
+    }
+
+    for (const path of causalityBinaryFileNames) {
+        cgData[path] = await getZipEntry(path).async('uint8array')
+    }
+
+    return cgData
+}
+
+export async function loadJson(file: Blob): Promise<object> {
     return new Promise<object>((resolve, reject) => {
         const reader = new FileReader()
         reader.readAsText(file)
@@ -118,32 +182,59 @@ export function parseReachabilityExport(parsedJSON: any, universeName: string): 
         ...parsedJSON.map((topLevelOrigin: TopLevelOrigin) => {
             validateTopLevelOrigin(topLevelOrigin)
 
+            const hasSystemFlag =
+                topLevelOrigin.flags && topLevelOrigin.flags.includes('system') ? true : false
             return new Node(
                 getNameForParsedTopLevelOrigin(topLevelOrigin),
-                parsePackages(topLevelOrigin.packages)
+                parsePackages(topLevelOrigin.packages, hasSystemFlag),
+                undefined,
+                INVALID_SIZE,
+                undefined,
+                undefined,
+                undefined,
+                hasSystemFlag
             )
         })
     )
     return root
 }
 
-function parsePackages(packages: Packages): Node[] {
+function parsePackages(packages: Packages, hasSystemFlag: boolean): Node[] {
     return Object.entries(packages).map(([packageName, packageData]) => {
         validatePackageData(packageData, packageName)
-        return new Node(packageName, parseTypes(packageData.types))
+        return new Node(
+            packageName,
+            parseTypes(packageData.types, hasSystemFlag),
+            undefined,
+            INVALID_SIZE,
+            undefined,
+            undefined,
+            undefined,
+            hasSystemFlag
+        )
     })
 }
 
-function parseTypes(types: Types): Node[] {
+function parseTypes(types: Types, hasSystemFlag: boolean): Node[] {
     return Object.entries(types).map(([typeName, typeData]) => {
         validateTypeData(typeData, typeName)
 
         const initKinds = typeData['init-kind'] ? typeData['init-kind'] : []
-        return new Node(typeName, parseMethods(typeData.methods, initKinds.map(parseInitKind)))
+        const flags = typeData.flags ? typeData.flags : []
+        return new Node(
+            typeName,
+            parseMethods(typeData.methods, initKinds.map(parseInitKind), hasSystemFlag),
+            undefined,
+            INVALID_SIZE,
+            flags.includes('reflection'),
+            flags.includes('jni'),
+            flags.includes('synthetic'),
+            hasSystemFlag
+        )
     })
 }
 
-function parseMethods(methods: Methods, initKinds: InitKind[]): Node[] {
+function parseMethods(methods: Methods, initKinds: InitKind[], hasSystemFlag: boolean): Node[] {
     return Object.entries(methods).map(([methodName, methodData]) => {
         validateMethodData(methodData, methodName)
 
@@ -154,7 +245,9 @@ function parseMethods(methods: Methods, initKinds: InitKind[]): Node[] {
             initKinds,
             flags.includes('reflection'),
             flags.includes('jni'),
-            flags.includes('synthetic')
+            flags.includes('synthetic'),
+            undefined,
+            hasSystemFlag
         )
     })
 }

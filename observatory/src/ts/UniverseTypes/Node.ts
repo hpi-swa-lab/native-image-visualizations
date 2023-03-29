@@ -17,12 +17,19 @@ export class Node {
     protected _isReflective: boolean | undefined
     protected _isJni: boolean | undefined
     protected _isSynthetic: boolean | undefined
+    protected _isSystem = false
+
+    protected _hierarchy_name_separator: string = HIERARCHY_NAME_SEPARATOR
 
     constructor(
         name: string,
         children: Node[] = [],
         parent: Node | undefined = undefined,
-        codeSize = INVALID_SIZE
+        codeSize = INVALID_SIZE,
+        isReflective: boolean | undefined = undefined,
+        isJNI: boolean | undefined = undefined,
+        isSynthetic: boolean | undefined = undefined,
+        isSystem = false
     ) {
         this._name = name
         this._children = children
@@ -31,6 +38,10 @@ export class Node {
         }
         this._parent = parent
         this._codeSize = codeSize
+        this._isReflective = isReflective
+        this._isJni = isJNI
+        this._isSynthetic = isSynthetic
+        this._isSystem = isSystem
     }
 
     get name(): string {
@@ -46,6 +57,10 @@ export class Node {
 
         this._isReflective = this.children.some((child) => child.isReflective)
         return this._isReflective
+    }
+
+    get isSystem(): boolean {
+        return this._isSystem
     }
 
     get isJni(): boolean {
@@ -67,7 +82,7 @@ export class Node {
 
         this._identifier = this.name
         if (this.parent) {
-            this._identifier = this.parent.identifier + HIERARCHY_NAME_SEPARATOR + this.name
+            this._identifier = this.parent.identifier + this._hierarchy_name_separator + this.name
         }
         return this._identifier
     }
@@ -116,6 +131,14 @@ export class Node {
         this._parent = newParent
     }
 
+    set codeSize(newCodeSize: Bytes) {
+        this._codeSize = newCodeSize
+    }
+
+    public overrideHierarchyNameSeparator(newSeparator: string) {
+        this._hierarchy_name_separator = newSeparator
+    }
+
     public push(...children: Node[]): number {
         for (const child of children) {
             this._children.push(child)
@@ -151,7 +174,16 @@ export class Node {
     }
 
     public clonePrimitive(): Node {
-        return new Node(this.name, [], undefined, this._codeSize)
+        return new Node(
+            this.name,
+            [],
+            undefined,
+            this._codeSize,
+            this._isReflective,
+            this._isJni,
+            this._isSynthetic,
+            this._isSystem
+        )
     }
 
     protected equalsIgnoringParents(another: Node): boolean {

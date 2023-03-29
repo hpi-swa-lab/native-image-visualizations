@@ -8,20 +8,23 @@ import { clamp } from '../Math/Numbers'
 import { powerSet } from '../Math/Sets'
 import { computeExclusiveSizes, ExclusiveSizes } from '../Math/Universes'
 import { ColorScheme } from '../SharedTypes/Colors'
+import { Filter } from '../SharedTypes/Filters'
 import { UniverseIndex } from '../SharedTypes/Indices'
+import { formatBytes } from '../SharedTypes/Size'
 import { Multiverse } from '../UniverseTypes/Multiverse'
 import { Node } from '../UniverseTypes/Node'
+import { Universe } from '../UniverseTypes/Universe'
 import {
     indicesAsUniverseCombination,
     UniverseCombination,
     universeCombinationAsIndices
 } from '../UniverseTypes/UniverseCombination'
 import { MultiverseVisualization } from './MultiverseVisualization'
-import { Filter } from '../SharedTypes/Filters'
 
 const LINE_WIDTH = 256
 const LINE_PADDING = 16
 const HIERARCHY_GAPS = 4
+const FONT_SIZE_FOR_TOTAL_SIZE = 18
 
 // Info areas correspond to interactive parts of the layout. They are used by
 // tooltips.
@@ -138,11 +141,10 @@ export class TreeLine implements MultiverseVisualization {
     }
 
     private buildColors() {
-        const indices: UniverseIndex[] = this.multiverse.sources.map((_, i) => i)
         this.colorsByIndex = new Map()
-        for (const index of indices) {
-            this.colorsByIndex.set(index, this.colorScheme[index % this.colorScheme.length])
-        }
+        this.multiverse.sources.forEach((universe: Universe, index: number) => {
+            this.colorsByIndex.set(index, universe.color)
+        })
     }
 
     private buildFillStyles() {
@@ -218,7 +220,7 @@ export class TreeLine implements MultiverseVisualization {
 
         const multiverse = this.multiverse
 
-        const initialBarHeight = this.canvas.height - LINE_PADDING * 2
+        const initialBarHeight = this.canvas.height - LINE_PADDING * 3 - FONT_SIZE_FOR_TOTAL_SIZE
         const initialPixelsPerByte = initialBarHeight / this.multiverse.root.codeSize
         const initialTop = LINE_PADDING
 
@@ -227,8 +229,36 @@ export class TreeLine implements MultiverseVisualization {
 
         const leftOfHierarchy = LINE_PADDING + LINE_WIDTH + LINE_PADDING
 
+        this.drawTotal(top + pixelsPerByte * this.multiverse.root.codeSize + LINE_PADDING)
+
         this.infoAreas = []
         this.drawDiagram(multiverse.root, top, pixelsPerByte, leftOfHierarchy)
+    }
+
+    private drawTotal(top: number) {
+        this.context.fillStyle = 'black'
+        this.context.font = '11px sans-serif'
+
+        this.context.fillText(
+            `${formatBytes(this.multiverse.root.codeSize)} in total`,
+            LINE_PADDING,
+            top
+        )
+
+        if (this.multiverse.sources.length > 1) {
+            // The exclusive sizes are calculated for all nodes.
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const exclusiveSizes = this.exclusiveSizes.get(this.multiverse.root)!
+
+            this.multiverse.sources.forEach((universe, index) => {
+                const size = exclusiveSizes.get(`${index}`) ?? 0
+                this.context.fillText(
+                    `${formatBytes(size)} exclusively in ${universe.name}`,
+                    LINE_PADDING,
+                    top + FONT_SIZE_FOR_TOTAL_SIZE * (index + 1)
+                )
+            })
+        }
     }
 
     private drawDiagram(node: Node, top: number, pixelsPerByte: number, leftOfHierarchy: number) {
@@ -277,6 +307,7 @@ export class TreeLine implements MultiverseVisualization {
 
             for (const combination of this.combinations) {
                 const size = exclusiveSizes.get(combination) ?? 0
+                if (size === 0) continue
                 const width = (LINE_WIDTH * size) / totalSize
 
                 // Note: Floating point calculations are never accurate, so

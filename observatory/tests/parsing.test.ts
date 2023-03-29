@@ -4,11 +4,11 @@ import { describe, expect, test } from '@jest/globals'
 import {
     parseReachabilityExport,
     InvalidReachabilityFormatError,
-    TopLevelOrigin
+    ReachabilityJson
 } from '../src/ts/parsing'
 import { Leaf } from '../src/ts/UniverseTypes/Leaf'
 import { InitKind } from '../src/ts/enums/InitKind'
-import { Node } from '../src/ts/UniverseTypes/Node'
+import { INVALID_SIZE, Node } from '../src/ts/UniverseTypes/Node'
 
 describe('parsing', () => {
     describe('parseReachabilityExport', () => {
@@ -21,7 +21,7 @@ describe('parsing', () => {
          * which may seem redundant.
          */
         describe('error thrown on invalid format', () => {
-            let expectedJSONObject: Array<TopLevelOrigin>
+            let expectedJSONObject: ReachabilityJson
             let brokenJSON: any
             beforeEach(() => {
                 expectedJSONObject = [
@@ -319,6 +319,52 @@ describe('parsing', () => {
                 {
                     jsonObject: [
                         {
+                            module: 'java.base',
+                            packages: {
+                                'java.util.zip': {
+                                    types: {
+                                        CRC32: {
+                                            'init-kind': ['run-time', 'build-time'],
+                                            methods: {
+                                                '<clinit>()': { size: 92 },
+                                                '<init>()': { size: 0 }
+                                            },
+                                            fields: { pointyNames: {} },
+                                            flags: ['reflection']
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    ],
+                    expected: new Node('universe', [
+                        new Node('java.base', [
+                            new Node('java.util.zip', [
+                                new Node(
+                                    'CRC32',
+                                    [
+                                        new Leaf('<clinit>()', 92, [
+                                            InitKind.RUN_TIME,
+                                            InitKind.BUILD_TIME
+                                        ]),
+                                        new Leaf('<init>()', 0, [
+                                            InitKind.RUN_TIME,
+                                            InitKind.BUILD_TIME
+                                        ])
+                                    ],
+                                    undefined,
+                                    INVALID_SIZE,
+                                    true,
+                                    false,
+                                    false
+                                )
+                            ])
+                        ])
+                    ])
+                },
+                {
+                    jsonObject: [
+                        {
                             module: 'org.graalvm.truffle',
                             packages: {
                                 'com.oracle.truffle.api.dsl': {
@@ -332,11 +378,56 @@ describe('parsing', () => {
                             }
                         }
                     ],
-                    expected: new Node('universe', [
-                        new Node('org.graalvm.truffle', [
-                            new Node('com.oracle.truffle.api.dsl', [new Node('GeneratedBy', [])])
-                        ])
-                    ])
+                    expected: new Node(
+                        'universe',
+                        [
+                            new Node('org.graalvm.truffle', [
+                                new Node('com.oracle.truffle.api.dsl', [
+                                    new Node('GeneratedBy', [])
+                                ])
+                            ])
+                        ],
+                        undefined,
+                        INVALID_SIZE,
+                        undefined,
+                        undefined,
+                        undefined,
+                        false
+                    )
+                },
+                {
+                    jsonObject: [
+                        {
+                            module: 'org.graalvm.truffle',
+                            flags: ['system'],
+                            packages: {
+                                'com.oracle.truffle.api.dsl': {
+                                    types: {
+                                        GeneratedBy: {
+                                            methods: {},
+                                            fields: {}
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    ],
+                    expected: new Node(
+                        'universe',
+                        [
+                            new Node('org.graalvm.truffle', [
+                                new Node('com.oracle.truffle.api.dsl', [
+                                    new Node('GeneratedBy', [])
+                                ])
+                            ])
+                        ],
+                        undefined,
+                        INVALID_SIZE,
+                        undefined,
+                        undefined,
+                        undefined,
+                        true
+                    )
                 }
             ])('.Parse($jsonObject)', ({ jsonObject, expected }) => {
                 expect(

@@ -10,7 +10,7 @@ import { forest } from './data/forest'
 describe('TreeLine', () => {
     test('a single tree has all exclusive sizes', () => {
         const multiverse = new Multiverse([
-            new Universe('simpleTree', new Node('Universe', [forest.simpleTree]))
+            new Universe('simpleTree', '#000000', new Node('Universe', [forest.simpleTree]))
         ])
 
         const actual = computeExclusiveSizes(multiverse)
@@ -30,8 +30,8 @@ describe('TreeLine', () => {
 
     test('two overlapping trees share code in exclusive sizes', () => {
         const multiverse = new Multiverse([
-            new Universe('overlappingTreeA', forest.overlappingTreeA),
-            new Universe('overlappingTreeB', forest.overlappingTreeB)
+            new Universe('overlappingTreeA', '#000000', forest.overlappingTreeA),
+            new Universe('overlappingTreeB', '#000000', forest.overlappingTreeB)
         ])
 
         const actual = computeExclusiveSizes(multiverse)
