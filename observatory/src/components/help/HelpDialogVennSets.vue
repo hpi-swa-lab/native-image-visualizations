@@ -15,7 +15,7 @@ const slides = [
 
 <template>
     <div v-for="(slide, index) in slides" :key="index" class="border space-y-4 p-4">
-        <img :src="`src/assets/images/sankey/${slide.src}`" />
+        <img :src="`src/assets/images/venn/${slide.src}`" />
         <hr v-if="slide.content" />
         <p>{{ slide.content }}</p>
     </div>
