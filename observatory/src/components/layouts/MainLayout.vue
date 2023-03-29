@@ -6,7 +6,7 @@ import DataManager from '../controls/DataManager.vue'
 import { ref } from 'vue'
 import { useGlobalStore } from '../../ts/stores/globalStore'
 import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
-import ModalButton from '../simpleUiElements/ModalButton.vue'
+import AboutScreen from '../help/AboutScreen.vue'
 
 withDefaults(
     defineProps<{
@@ -17,11 +17,21 @@ withDefaults(
     }
 )
 
+const showAbout = ref(false)
+
 const collapsed = ref(false)
 const selectedIndex = ref(useGlobalStore().currentComponent === SwappableComponentType.Home ? 1 : 0)
 
 function toggleSidebarCollapse(): void {
     collapsed.value = !collapsed.value
+}
+
+function openAbout() {
+    showAbout.value = true
+}
+
+function closeAbout() {
+    showAbout.value = false
 }
 </script>
 
@@ -31,12 +41,12 @@ function toggleSidebarCollapse(): void {
             class="shrink-0 transition-[width] drop-shadow-xl overflow-y-scroll rounded bg-gray-50 space-y-4 h-auto min-h-full"
             :class="collapsed ? 'w-0' : 'w-[320px]'"
         >
-            <h2 class="text-center">{{ title }}</h2>
-
-            <ModalButton button-styling="btn btn-light" icon="info-circle" button-text="About Us">
-                <template #modal-header>About Us</template>
-                <template #modal-content> </template>
-            </ModalButton>
+            <div class="flex p-4 space-x-4 justify-even">
+                <button class="btn btn-primary" @click="openAbout">
+                    <font-awesome-icon icon="info-circle" />
+                </button>
+                <h2 class="col-start-3 text-center">{{ title }}</h2>
+            </div>
 
             <TabLayout
                 :selected-index="selectedIndex"
@@ -75,6 +85,9 @@ function toggleSidebarCollapse(): void {
                 :class="collapsed ? 'rotate-180' : ''"
             />
         </button>
-        <div class="h-full w-full overflow-y-auto"><slot /></div>
+        <div class="h-full w-full overflow-y-auto">
+            <AboutScreen v-if="showAbout" class="h-[90%] m-4" @close-about="closeAbout" />
+            <slot v-if="!showAbout" />
+        </div>
     </div>
 </template>
