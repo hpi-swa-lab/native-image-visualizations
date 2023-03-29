@@ -14,7 +14,7 @@ const store = useGlobalStore()
 </script>
 
 <template>
-    <div class="relative bg-white h-full rounded-lg shadow">
+    <div class="relative bg-white h-full space-y-4 rounded-lg shadow">
         <div class="flex items-start justify-between p-4 border-b rounded-t drop-shadow-sm">
             <p>Help for {{ componentName(store.currentComponent) }}</p>
             <button class="btn-sm btn-danger" @click="emit(EventType.CLOSE_HELP)">
