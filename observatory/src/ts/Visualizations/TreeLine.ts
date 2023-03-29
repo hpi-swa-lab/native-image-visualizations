@@ -268,7 +268,7 @@ export class TreeLine implements MultiverseVisualization {
 
         // Show the hierarchy on the right.
         let leftOfSubHierarchy = leftOfHierarchy
-        if (node.parent) {
+        if (node.parent && height >= 1) {
             const widthOfBox = this.drawHierarchyBox(leftOfHierarchy, top, height, node)
             if (height > 2) {
                 this.infoAreas.push({
