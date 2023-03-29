@@ -86,9 +86,11 @@ async function addUniverses(event: Event) {
     if (!input.files) return
 
     document.body.classList.toggle('loadingIcon', true)
-    await Promise.all(Array.from(input.files).map((file: File) =>
-        validateFileAndAddUniverseOnSuccess(file, file.name.split('.json')[0])
-    ))
+    await Promise.all(
+        Array.from(input.files).map((file: File) =>
+            validateFileAndAddUniverseOnSuccess(file, file.name.split('.json')[0])
+        )
+    )
 
     input.value = ''
     document.body.classList.toggle('loadingIcon', false)
@@ -280,8 +282,6 @@ async function loadConfig(zip: JSZip): Promise<string[]> {
             <p v-if="uploadError" class="error-text space-y-4">
                 {{ uploadError.message }}
             </p>
-
-            
         </div>
 
         <div>

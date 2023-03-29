@@ -29,7 +29,6 @@ const sortingOrder = computed(() => vennStore.sortingOrder)
 
 let visualization: VennSets
 
-
 // The reason for using as <...> is that the store saves Proxy Types of the objects
 
 onMounted(async () => {
