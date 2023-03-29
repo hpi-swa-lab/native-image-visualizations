@@ -3,9 +3,10 @@ import VisualizationNavigation from '../controls/VisualizationNagivation.vue'
 import UniverseSelectionList from '../controls/UniverseSelectionList.vue'
 import TabLayout from './TabLayout.vue'
 import DataManager from '../controls/DataManager.vue'
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useGlobalStore } from '../../ts/stores/globalStore'
 import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
+import HelpDialog from '../help/HelpDialog.vue'
 
 withDefaults(
     defineProps<{
@@ -16,11 +17,38 @@ withDefaults(
     }
 )
 
+const store = useGlobalStore()
+
+const helpButton = ref<HTMLButtonElement>()
 const collapsed = ref(false)
-const selectedIndex = ref(useGlobalStore().currentComponent === SwappableComponentType.Home ? 1 : 0)
+const selectedIndex = ref(store.currentComponent === SwappableComponentType.Home ? 1 : 0)
 
 function toggleSidebarCollapse(): void {
     collapsed.value = !collapsed.value
+}
+
+onMounted(() => {
+    if (!localStorage.getItem('helpDialogDismissed')) {
+        const wantsHelp = confirm(
+            'It seems you did not visit this tool yet. Do you want to get a tour?'
+        )
+        localStorage.setItem('helpDialogDismissed', 'yes')
+        if (wantsHelp) {
+            helpButton.value?.click()
+        } else {
+            alert('Okay. You can always access the help via the question mark button on the left')
+        }
+    }
+})
+
+const showHelp = ref(false)
+
+function openHelp() {
+    showHelp.value = true
+}
+
+function closeHelp() {
+    showHelp.value = false
 }
 </script>
 
@@ -30,8 +58,12 @@ function toggleSidebarCollapse(): void {
             class="shrink-0 transition-[width] drop-shadow-xl overflow-y-scroll rounded bg-gray-50 space-y-4 h-auto min-h-full"
             :class="collapsed ? 'w-0' : 'w-[320px]'"
         >
-            <h2 class="text-center">{{ title }}</h2>
-
+            <div class="flex p-4 space-x-4 justify-even">
+                <button class="bg-transparent btn-primary p-2 px-3 rounded" @click="openHelp()">
+                    <font-awesome-icon icon="circle-question" />
+                </button>
+                <h2 class="col-start-3 text-center">{{ title }}</h2>
+            </div>
             <TabLayout
                 :selected-index="selectedIndex"
                 :tab-names="['controls', 'data-manager']"
@@ -59,7 +91,7 @@ function toggleSidebarCollapse(): void {
             </TabLayout>
         </div>
         <button
-            class="transition-[left] absolute bottom-[10px] z-10 btn bg-gray-50 mt-2 ml-2 hover:bg-gray-200 shadow-md"
+            class="transition-[left] absolute bottom-[10px] z-10 btn bg-gray-50 mt-2 ml-2 hover:bg-gray-200"
             :class="collapsed ? 'left-0' : 'left-[300px]'"
             @click="toggleSidebarCollapse"
         >
@@ -69,6 +101,9 @@ function toggleSidebarCollapse(): void {
                 :class="collapsed ? 'rotate-180' : ''"
             />
         </button>
-        <div class="h-full w-full overflow-y-auto"><slot /></div>
+        <div class="h-full w-full overflow-y-auto">
+            <HelpDialog v-if="showHelp" class="h-[90%] m-4" @close-help="closeHelp" />
+            <slot v-if="!showHelp" />
+        </div>
     </div>
 </template>
