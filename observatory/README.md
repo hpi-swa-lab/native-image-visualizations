@@ -8,6 +8,11 @@ The observatory is a collection of tools designed to inspect GraalVM Native Imag
 2. Go to the root directory of the project containing `package.json` and install dependencies: `npm ci`
 3. You're good to go
 
+## You just want to run the project?
+
+Navigate into the `observatory` folder and run `npm run build && npm run preview`.
+If you need some example build reports, you can find them [in our repository releases](https://github.com/hpi-swa-lab/MPWS2022RH1/releases/).
+
 ## IDE Setup
 
 For VSCode the extensions [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin) are recommended by vite.
