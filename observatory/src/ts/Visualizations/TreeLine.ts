@@ -3,26 +3,29 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
 import * as d3 from 'd3'
+import { ZoomBehavior } from 'd3'
 import { lightenColor } from '../Math/Colors'
 import { clamp } from '../Math/Numbers'
 import { powerSet } from '../Math/Sets'
 import { computeExclusiveSizes, ExclusiveSizes } from '../Math/Universes'
 import { ColorScheme } from '../SharedTypes/Colors'
+import { Filter } from '../SharedTypes/Filters'
 import { UniverseIndex } from '../SharedTypes/Indices'
+import { formatBytes } from '../SharedTypes/Size'
 import { Multiverse } from '../UniverseTypes/Multiverse'
 import { Node } from '../UniverseTypes/Node'
+import { Universe } from '../UniverseTypes/Universe'
 import {
     indicesAsUniverseCombination,
     UniverseCombination,
     universeCombinationAsIndices
 } from '../UniverseTypes/UniverseCombination'
 import { MultiverseVisualization } from './MultiverseVisualization'
-import { Filter } from '../SharedTypes/Filters'
-import { Universe } from '../UniverseTypes/Universe'
 
 const LINE_WIDTH = 256
 const LINE_PADDING = 16
 const HIERARCHY_GAPS = 4
+const FONT_SIZE_FOR_TOTAL_SIZE = 18
 
 // Info areas correspond to interactive parts of the layout. They are used by
 // tooltips.
@@ -59,6 +62,7 @@ export class TreeLine implements MultiverseVisualization {
 
     canvas: HTMLCanvasElement
     context: CanvasRenderingContext2D
+    zoom: ZoomBehavior<Element, unknown>
     transform = { y: 0, k: 1 }
     infoAreas = [] as InfoArea[]
 
@@ -83,7 +87,13 @@ export class TreeLine implements MultiverseVisualization {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         this.context = this.canvas.getContext('2d', { alpha: false })!
 
-        this.initZoom()
+        this.zoom = d3.zoom().on('zoom', (event) => {
+            this.transform = event?.transform ?? this.transform
+            return this.redraw()
+        })
+        d3.select(this.canvas as Element).call(this.zoom)
+        window.addEventListener('resize', () => this.redraw())
+
         this.redraw()
     }
 
@@ -123,19 +133,8 @@ export class TreeLine implements MultiverseVisualization {
 
     public setFilters(filters: Filter[]): void {
         this.filters = filters
+        this.zoom.translateTo(d3.select(this.canvas as Element), 0, 0)
         this.redraw()
-    }
-
-    private initZoom(): void {
-        // `d3.zoom().on(..., ...)` expects a function accepting `any`.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        d3.select(this.canvas as Element).call(
-            d3.zoom().on('zoom', (event) => {
-                this.transform = event?.transform ?? this.transform
-                return this.redraw()
-            })
-        )
-        window.addEventListener('resize', () => this.redraw())
     }
 
     private buildColors() {
@@ -218,7 +217,7 @@ export class TreeLine implements MultiverseVisualization {
 
         const multiverse = this.multiverse
 
-        const initialBarHeight = this.canvas.height - LINE_PADDING * 2
+        const initialBarHeight = this.canvas.height - LINE_PADDING * 3 - FONT_SIZE_FOR_TOTAL_SIZE
         const initialPixelsPerByte = initialBarHeight / this.multiverse.root.codeSize
         const initialTop = LINE_PADDING
 
@@ -227,8 +226,36 @@ export class TreeLine implements MultiverseVisualization {
 
         const leftOfHierarchy = LINE_PADDING + LINE_WIDTH + LINE_PADDING
 
+        this.drawTotal(top + pixelsPerByte * this.multiverse.root.codeSize + LINE_PADDING)
+
         this.infoAreas = []
         this.drawDiagram(multiverse.root, top, pixelsPerByte, leftOfHierarchy)
+    }
+
+    private drawTotal(top: number) {
+        this.context.fillStyle = 'black'
+        this.context.font = '11px sans-serif'
+
+        this.context.fillText(
+            `${formatBytes(this.multiverse.root.codeSize)} in total`,
+            LINE_PADDING,
+            top
+        )
+
+        if (this.multiverse.sources.length > 1) {
+            // The exclusive sizes are calculated for all nodes.
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const exclusiveSizes = this.exclusiveSizes.get(this.multiverse.root)!
+
+            this.multiverse.sources.forEach((universe, index) => {
+                const size = exclusiveSizes.get(`${index}`) ?? 0
+                this.context.fillText(
+                    `${formatBytes(size)} exclusively in ${universe.name}`,
+                    LINE_PADDING,
+                    top + FONT_SIZE_FOR_TOTAL_SIZE * (index + 1)
+                )
+            })
+        }
     }
 
     private drawDiagram(node: Node, top: number, pixelsPerByte: number, leftOfHierarchy: number) {
@@ -241,7 +268,7 @@ export class TreeLine implements MultiverseVisualization {
 
         // Show the hierarchy on the right.
         let leftOfSubHierarchy = leftOfHierarchy
-        if (node.parent) {
+        if (node.parent && height >= 1) {
             const widthOfBox = this.drawHierarchyBox(leftOfHierarchy, top, height, node)
             if (height > 2) {
                 this.infoAreas.push({
@@ -277,6 +304,7 @@ export class TreeLine implements MultiverseVisualization {
 
             for (const combination of this.combinations) {
                 const size = exclusiveSizes.get(combination) ?? 0
+                if (size === 0) continue
                 const width = (LINE_WIDTH * size) / totalSize
 
                 // Note: Floating point calculations are never accurate, so

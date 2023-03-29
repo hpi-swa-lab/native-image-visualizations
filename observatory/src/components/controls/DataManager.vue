@@ -81,15 +81,19 @@ async function validateFileAndAddUniverseOnSuccess(
     }
 }
 
-function addUniverses(event: Event) {
+async function addUniverses(event: Event) {
     const input = event.target as HTMLInputElement
     if (!input.files) return
 
-    Array.from(input.files).forEach((file: File) =>
-        validateFileAndAddUniverseOnSuccess(file, file.name.split('.json')[0])
+    document.body.classList.toggle('loadingIcon', true)
+    await Promise.all(
+        Array.from(input.files).map((file: File) =>
+            validateFileAndAddUniverseOnSuccess(file, file.name.split('.json')[0])
+        )
     )
 
     input.value = ''
+    document.body.classList.toggle('loadingIcon', false)
 }
 
 function exportConfig() {
@@ -123,6 +127,7 @@ async function loadConfigAndData(event: Event) {
         return
     }
 
+    document.body.classList.toggle('loadingIcon', true)
     let errors: string[] = []
     const zip = await JSZip.loadAsync(input.files[0])
 
@@ -135,6 +140,7 @@ async function loadConfigAndData(event: Event) {
         configLoadError.value = undefined
         emit(EventType.CONFIG_LOADED)
     }
+    document.body.classList.toggle('loadingIcon', false)
 }
 
 function changeUniverseName(oldName: string, newName: string, inputIndex: number) {
