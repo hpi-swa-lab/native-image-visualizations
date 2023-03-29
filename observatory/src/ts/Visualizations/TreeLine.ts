@@ -228,7 +228,7 @@ export class TreeLine implements MultiverseVisualization {
 
         const leftOfHierarchy = LINE_PADDING + LINE_WIDTH + LINE_PADDING
 
-        this.drawTotal(top + initialBarHeight + LINE_PADDING)
+        this.drawTotal(top + pixelsPerByte * this.multiverse.root.codeSize + LINE_PADDING)
 
         this.infoAreas = []
         this.drawDiagram(multiverse.root, top, pixelsPerByte, leftOfHierarchy)
