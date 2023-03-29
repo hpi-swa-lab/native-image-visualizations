@@ -7,7 +7,7 @@ import { onMounted, ref } from 'vue'
 import { useGlobalStore } from '../../ts/stores/globalStore'
 import { SwappableComponentType, componentName } from '../../ts/enums/SwappableComponentType'
 import HelpDialog from '../help/HelpDialog.vue'
-import WindowContainer from './WindowContainer.vue'
+import WindowContainer from './DraggableWindow.vue'
 
 withDefaults(
     defineProps<{
@@ -92,7 +92,7 @@ function closeHelp() {
             </TabLayout>
         </div>
         <button
-            class="transition-[left] absolute bottom-[10px] z-10 btn bg-gray-50 mt-2 ml-2 hover:bg-gray-200 shadow-md"
+            class="transition-[left] absolute bottom-[10px] z-10 btn bg-gray-50 mt-2 ml-2 hover:bg-gray-200"
             :class="collapsed ? 'left-0' : 'left-[300px]'"
             @click="toggleSidebarCollapse"
         >

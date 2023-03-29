@@ -40,7 +40,7 @@ function closeDragElement() {
         <div class="relative w-full h-full max-w-[1200px]">
             <div class="relative bg-white rounded-lg shadow">
                 <div
-                    class="flex items-start justify-between p-4 border-b rounded-t"
+                    class="flex items-start justify-between p-4 border-b rounded-t drop-shadow-sm"
                     @mousedown="dragMouseDown"
                     @mouseup="closeDragElement"
                 >
