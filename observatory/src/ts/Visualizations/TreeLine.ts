@@ -8,17 +8,18 @@ import { clamp } from '../Math/Numbers'
 import { powerSet } from '../Math/Sets'
 import { computeExclusiveSizes, ExclusiveSizes } from '../Math/Universes'
 import { ColorScheme } from '../SharedTypes/Colors'
+import { Filter } from '../SharedTypes/Filters'
 import { UniverseIndex } from '../SharedTypes/Indices'
+import { formatBytes } from '../SharedTypes/Size'
 import { Multiverse } from '../UniverseTypes/Multiverse'
 import { Node } from '../UniverseTypes/Node'
+import { Universe } from '../UniverseTypes/Universe'
 import {
     indicesAsUniverseCombination,
     UniverseCombination,
     universeCombinationAsIndices
 } from '../UniverseTypes/UniverseCombination'
 import { MultiverseVisualization } from './MultiverseVisualization'
-import { Filter } from '../SharedTypes/Filters'
-import { Universe } from '../UniverseTypes/Universe'
 
 const LINE_WIDTH = 256
 const LINE_PADDING = 16
@@ -218,7 +219,7 @@ export class TreeLine implements MultiverseVisualization {
 
         const multiverse = this.multiverse
 
-        const initialBarHeight = this.canvas.height - LINE_PADDING * 2
+        const initialBarHeight = this.canvas.height - LINE_PADDING * 3 - 18
         const initialPixelsPerByte = initialBarHeight / this.multiverse.root.codeSize
         const initialTop = LINE_PADDING
 
@@ -227,8 +228,35 @@ export class TreeLine implements MultiverseVisualization {
 
         const leftOfHierarchy = LINE_PADDING + LINE_WIDTH + LINE_PADDING
 
+        this.drawTotal(top + initialBarHeight + LINE_PADDING)
+
         this.infoAreas = []
         this.drawDiagram(multiverse.root, top, pixelsPerByte, leftOfHierarchy)
+    }
+
+    private drawTotal(top: number) {
+        this.context.fillStyle = 'black'
+        this.context.font = '11px sans-serif'
+
+        this.context.fillText(
+            `${formatBytes(this.multiverse.root.codeSize)} in total`,
+            LINE_PADDING,
+            top
+        )
+
+        if (this.multiverse.sources.length > 1) {
+            const exclusiveSizes = this.exclusiveSizes.get(this.multiverse.root)!
+            console.log(exclusiveSizes)
+
+            this.multiverse.sources.forEach((universe, index) => {
+                const size = exclusiveSizes.get(`${index}`) ?? 0
+                this.context.fillText(
+                    `${formatBytes(size)} exclusively in ${universe.name}`,
+                    LINE_PADDING,
+                    top + 18 * (index + 1)
+                )
+            })
+        }
     }
 
     private drawDiagram(node: Node, top: number, pixelsPerByte: number, leftOfHierarchy: number) {
