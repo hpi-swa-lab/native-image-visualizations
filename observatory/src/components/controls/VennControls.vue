@@ -3,7 +3,7 @@ import { useVennStore } from '../../ts/stores/vennStore'
 import { SortingOrder } from '../../ts/enums/Sorting'
 import LayerSelection from './LayerSelection.vue'
 import SearchBar from './SearchBar.vue'
-import FilterSelectionList from './FilterSelectionList.vue'
+import SelectionList from './SelectionList.vue'
 import FilteringOptions from './FilteringOptions.vue'
 
 const vennStore = useVennStore()
@@ -12,7 +12,7 @@ const vennStore = useVennStore()
 <template>
     <div id="venn-controls" class="input-container settings-container space-y-4">
         <SearchBar />
-        <FilterSelectionList />
+        <SelectionList />
         <FilteringOptions />
         <LayerSelection />
         <div class="space-y-4">

@@ -10,7 +10,7 @@
 import { Bytes } from './SharedTypes/Size'
 import { Leaf } from './UniverseTypes/Leaf'
 import { InitKind } from './enums/InitKind'
-import { Node } from './UniverseTypes/Node'
+import { INVALID_SIZE, Node } from './UniverseTypes/Node'
 import JSZip from 'jszip'
 import { CausalityGraphData } from './UniverseTypes/CausalityGraphUniverse'
 import { causalityBinaryFileNames } from './Causality/CausalityGraphBinaryData'
@@ -61,6 +61,12 @@ function validateTypeData(object: any, name: string): void {
             '"init-kind" attribute is expected to be an array for type ' + name
         )
     }
+
+    if (object.flags && !Array.isArray(object.flags)) {
+        throw new InvalidReachabilityFormatError(
+            '"flags" attribute is expected to be an array for type ' + name
+        )
+    }
 }
 
 interface Packages {
@@ -98,6 +104,12 @@ function validateTopLevelOrigin(object: any): void {
 
     if (!object.packages || object.packages.constructor !== Object) {
         throw new InvalidReachabilityFormatError('Missing "packages" attribute for module ' + name)
+    }
+
+    if (object.flags && !Array.isArray(object.flags)) {
+        throw new InvalidReachabilityFormatError(
+            '"flags" attribute is expected to be an array for ' + name
+        )
     }
 }
 
@@ -170,32 +182,59 @@ export function parseReachabilityExport(parsedJSON: any, universeName: string): 
         ...parsedJSON.map((topLevelOrigin: TopLevelOrigin) => {
             validateTopLevelOrigin(topLevelOrigin)
 
+            const hasSystemFlag =
+                topLevelOrigin.flags && topLevelOrigin.flags.includes('system') ? true : false
             return new Node(
                 getNameForParsedTopLevelOrigin(topLevelOrigin),
-                parsePackages(topLevelOrigin.packages)
+                parsePackages(topLevelOrigin.packages, hasSystemFlag),
+                undefined,
+                INVALID_SIZE,
+                undefined,
+                undefined,
+                undefined,
+                hasSystemFlag
             )
         })
     )
     return root
 }
 
-function parsePackages(packages: Packages): Node[] {
+function parsePackages(packages: Packages, hasSystemFlag: boolean): Node[] {
     return Object.entries(packages).map(([packageName, packageData]) => {
         validatePackageData(packageData, packageName)
-        return new Node(packageName, parseTypes(packageData.types))
+        return new Node(
+            packageName,
+            parseTypes(packageData.types, hasSystemFlag),
+            undefined,
+            INVALID_SIZE,
+            undefined,
+            undefined,
+            undefined,
+            hasSystemFlag
+        )
     })
 }
 
-function parseTypes(types: Types): Node[] {
+function parseTypes(types: Types, hasSystemFlag: boolean): Node[] {
     return Object.entries(types).map(([typeName, typeData]) => {
         validateTypeData(typeData, typeName)
 
         const initKinds = typeData['init-kind'] ? typeData['init-kind'] : []
-        return new Node(typeName, parseMethods(typeData.methods, initKinds.map(parseInitKind)))
+        const flags = typeData.flags ? typeData.flags : []
+        return new Node(
+            typeName,
+            parseMethods(typeData.methods, initKinds.map(parseInitKind), hasSystemFlag),
+            undefined,
+            INVALID_SIZE,
+            flags.includes('reflection'),
+            flags.includes('jni'),
+            flags.includes('synthetic'),
+            hasSystemFlag
+        )
     })
 }
 
-function parseMethods(methods: Methods, initKinds: InitKind[]): Node[] {
+function parseMethods(methods: Methods, initKinds: InitKind[], hasSystemFlag: boolean): Node[] {
     return Object.entries(methods).map(([methodName, methodData]) => {
         validateMethodData(methodData, methodName)
 
@@ -206,7 +245,9 @@ function parseMethods(methods: Methods, initKinds: InitKind[]): Node[] {
             initKinds,
             flags.includes('reflection'),
             flags.includes('jni'),
-            flags.includes('synthetic')
+            flags.includes('synthetic'),
+            undefined,
+            hasSystemFlag
         )
     })
 }
