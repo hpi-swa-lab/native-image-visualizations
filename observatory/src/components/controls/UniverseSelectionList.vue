@@ -16,6 +16,16 @@ function isDisabled(universeName: string) {
         !store.observedUniverses.some((universe) => universe.name == universeName)
     )
 }
+
+async function toggleUniverse(universeName: string) {
+    document.body.classList.toggle('loadingIcon', true)
+    try {
+        await new Promise((r) => setTimeout(r, 1))
+        store.toggleObservationByName(universeName)
+    } finally {
+        document.body.classList.toggle('loadingIcon', false)
+    }
+}
 </script>
 
 <template>
@@ -32,7 +42,7 @@ function isDisabled(universeName: string) {
                 :checked="isChecked(universe.name)"
                 :disabled="isDisabled(universe.name)"
                 class="flex flex-row justify-between"
-                @change.self="store.toggleObservationByName"
+                @change.self="toggleUniverse"
             >
                 <label
                     :for="universe.name + index"

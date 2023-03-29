@@ -236,7 +236,7 @@ export const useGlobalStore = defineStore('globalConfig', {
                 // is already done in toggleFilter
                 (filters: Filter[]) =>
                     filters.forEach((filter: Filter) => {
-                        this.toggleFilter(filter)
+                        this.toggleFilter(filter, filter.applyComplement)
                     })
             )
         },

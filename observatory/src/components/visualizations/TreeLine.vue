@@ -11,7 +11,7 @@ import { SizeInfo, TreeLine } from '../../ts/Visualizations/TreeLine'
 import Tooltip from '../simpleUiElements/Tooltip.vue'
 import MainLayout from '../layouts/MainLayout.vue'
 import { Filter } from '../../ts/SharedTypes/Filters'
-import SearchBar from '../controls/SearchBar.vue'
+import SearchBar from '../simpleUiElements/SearchBar.vue'
 import SelectionList from '../controls/SelectionList.vue'
 import FilteringOptions from '../controls/FilteringOptions.vue'
 
@@ -27,7 +27,7 @@ const tooltip = reactive(new TooltipModel())
 const container = ref<HTMLDivElement>()
 let visualization: TreeLine
 
-onMounted(() => {
+onMounted(async () => {
     // We know this is never null because an element with the corresponding
     // `ref` exists below and this code is executed after mounting.
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -40,7 +40,11 @@ onMounted(() => {
         selections.value,
         toRaw(activeFilters.value)
     )
+
+    document.body.classList.toggle('loadingIcon', true)
+    await new Promise((r) => setTimeout(r, 1))
     visualization.setMultiverse(toRaw(multiverse.value) as Multiverse)
+    document.body.classList.toggle('loadingIcon', false)
 
     theContainer.addEventListener('mousemove', (event) => {
         const containerRect = theContainer.getBoundingClientRect()
@@ -100,8 +104,11 @@ function tooltipContentForNode(node: Node): string {
     return content
 }
 
-watch(multiverse, (newMultiverse) => {
+watch(multiverse, async (newMultiverse) => {
+    document.body.classList.toggle('loadingIcon', true)
+    await new Promise((r) => setTimeout(r, 1))
     visualization.setMultiverse(toRaw(newMultiverse) as Multiverse)
+    document.body.classList.toggle('loadingIcon', false)
 })
 watch(colorScheme, (newColorScheme) => {
     visualization.setColorScheme(toRaw(newColorScheme) as ColorScheme)
@@ -109,8 +116,11 @@ watch(colorScheme, (newColorScheme) => {
 
 watch(
     activeFilters,
-    (newFilters) => {
+    async (newFilters) => {
+        document.body.classList.toggle('loadingIcon', true)
+        await new Promise((r) => setTimeout(r, 1))
         visualization.setFilters(toRaw(newFilters) as Filter[])
+        document.body.classList.toggle('loadingIcon', false)
     },
     { deep: true }
 )

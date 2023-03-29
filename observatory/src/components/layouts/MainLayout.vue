@@ -3,10 +3,11 @@ import VisualizationNavigation from '../controls/VisualizationNagivation.vue'
 import UniverseSelectionList from '../controls/UniverseSelectionList.vue'
 import TabLayout from './TabLayout.vue'
 import DataManager from '../controls/DataManager.vue'
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useGlobalStore } from '../../ts/stores/globalStore'
 import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
 import AboutScreen from '../help/AboutScreen.vue'
+import HelpDialog from '../help/HelpDialog.vue'
 
 withDefaults(
     defineProps<{
@@ -17,16 +18,45 @@ withDefaults(
     }
 )
 
-const showAbout = ref(false)
+const store = useGlobalStore()
 
+const helpButton = ref<HTMLButtonElement>()
 const collapsed = ref(false)
-const selectedIndex = ref(useGlobalStore().currentComponent === SwappableComponentType.Home ? 1 : 0)
+const selectedIndex = ref(store.currentComponent === SwappableComponentType.Home ? 1 : 0)
 
 function toggleSidebarCollapse(): void {
     collapsed.value = !collapsed.value
 }
 
+onMounted(() => {
+    if (!localStorage.getItem('helpDialogDismissed')) {
+        const wantsHelp = confirm(
+            'It seems you did not visit this tool yet. Do you want to get a tour?'
+        )
+        localStorage.setItem('helpDialogDismissed', 'yes')
+        if (wantsHelp) {
+            helpButton.value?.click()
+        } else {
+            alert('Okay. You can always access the help via the question mark button on the left')
+        }
+    }
+})
+
+const showHelp = ref(false)
+
+function openHelp() {
+    closeAbout()
+    showHelp.value = true
+}
+
+function closeHelp() {
+    showHelp.value = false
+}
+
+const showAbout = ref(false)
+
 function openAbout() {
+    closeHelp()
     showAbout.value = true
 }
 
@@ -45,9 +75,13 @@ function closeAbout() {
                 <button class="btn btn-primary" @click="openAbout">
                     <font-awesome-icon icon="info-circle" />
                 </button>
+
+                <button class="bg-transparent btn-primary p-2 px-3 rounded" @click="openHelp()">
+                    <font-awesome-icon icon="circle-question" />
+                </button>
+
                 <h2 class="col-start-3 text-center">{{ title }}</h2>
             </div>
-
             <TabLayout
                 :selected-index="selectedIndex"
                 :tab-names="['controls', 'data-manager']"
@@ -75,7 +109,7 @@ function closeAbout() {
             </TabLayout>
         </div>
         <button
-            class="transition-[left] absolute bottom-[10px] z-10 btn bg-gray-50 mt-2 ml-2 hover:bg-gray-200 shadow-md"
+            class="transition-[left] absolute bottom-[10px] z-10 btn bg-gray-50 mt-2 ml-2 hover:bg-gray-200"
             :class="collapsed ? 'left-0' : 'left-[300px]'"
             @click="toggleSidebarCollapse"
         >
@@ -87,7 +121,8 @@ function closeAbout() {
         </button>
         <div class="h-full w-full overflow-y-auto">
             <AboutScreen v-if="showAbout" class="h-[90%] m-4" @close-about="closeAbout" />
-            <slot v-if="!showAbout" />
+            <HelpDialog v-if="showHelp" class="h-[90%] m-4" @close-help="closeHelp" />
+            <slot v-if="!showHelp && !showAbout" />
         </div>
     </div>
 </template>

@@ -47,7 +47,7 @@ const metadata = ref<UniverseMetadata>(
 )
 let visualization: SankeyTree
 
-onMounted(() => {
+onMounted(async () => {
     visualization = new SankeyTree(
         '#viz-container',
         toRaw(globalStore.currentLayer),
@@ -58,17 +58,27 @@ onMounted(() => {
         toRaw(globalStore.activeFilters),
         toRaw(globalStore.search)
     )
+
+    document.body.classList.toggle('loadingIcon', true)
+    await new Promise((r) => setTimeout(r, 1))
     visualization.setMetadata(metadata.value)
     visualization.setMultiverse(toRaw(globalStore.multiverse) as Multiverse)
+    document.body.classList.toggle('loadingIcon', false)
 })
 
-watch(multiverse, (newMultiverse) => {
+watch(multiverse, async (newMultiverse) => {
+    document.body.classList.toggle('loadingIcon', true)
+    await new Promise((r) => setTimeout(r, 1))
     metadata.value = createUniverseMetadata(toRaw(newMultiverse) as Multiverse)
     visualization.setMetadata(metadata.value)
     visualization.setMultiverse(toRaw(newMultiverse) as Multiverse)
+    document.body.classList.toggle('loadingIcon', false)
 })
-watch(currentLayer, (newLayer) => {
+watch(currentLayer, async (newLayer) => {
+    document.body.classList.toggle('loadingIcon', true)
+    await new Promise((r) => setTimeout(r, 1))
     visualization.setLayer(toRaw(newLayer))
+    document.body.classList.toggle('loadingIcon', false)
 })
 watch(
     highlights,
@@ -92,16 +102,22 @@ watch(
 
 watch(
     activeFilters,
-    (newFilters) => {
+    async (newFilters) => {
+        document.body.classList.toggle('loadingIcon', true)
+        await new Promise((r) => setTimeout(r, 1))
         visualization.setFilters(toRaw(newFilters) as Filter[])
+        document.body.classList.toggle('loadingIcon', false)
     },
     { deep: true }
 )
 
 watch(
     nodesFilter,
-    () => {
+    async () => {
+        document.body.classList.toggle('loadingIcon', true)
+        await new Promise((r) => setTimeout(r, 1))
         visualization.handleNodesFilterChanged()
+        document.body.classList.toggle('loadingIcon', false)
     },
     { deep: true }
 )
