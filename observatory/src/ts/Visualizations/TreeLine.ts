@@ -246,7 +246,6 @@ export class TreeLine implements MultiverseVisualization {
 
         if (this.multiverse.sources.length > 1) {
             const exclusiveSizes = this.exclusiveSizes.get(this.multiverse.root)!
-            console.log(exclusiveSizes)
 
             this.multiverse.sources.forEach((universe, index) => {
                 const size = exclusiveSizes.get(`${index}`) ?? 0
