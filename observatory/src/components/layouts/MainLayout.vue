@@ -5,9 +5,8 @@ import TabLayout from './TabLayout.vue'
 import DataManager from '../controls/DataManager.vue'
 import { onMounted, ref } from 'vue'
 import { useGlobalStore } from '../../ts/stores/globalStore'
-import { SwappableComponentType, componentName } from '../../ts/enums/SwappableComponentType'
+import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
 import HelpDialog from '../help/HelpDialog.vue'
-import WindowContainer from './DraggableWindow.vue'
 
 withDefaults(
     defineProps<{
@@ -103,11 +102,8 @@ function closeHelp() {
             />
         </button>
         <div class="h-full w-full overflow-y-auto">
-            <WindowContainer v-if="showHelp" @close-window="closeHelp()">
-                <template #header>Help for {{ componentName(store.currentComponent) }}</template>
-                <HelpDialog />
-            </WindowContainer>
-            <slot />
+            <HelpDialog v-if="showHelp" class="h-[90%] m-4" @close-help="closeHelp" />
+            <slot v-if="!showHelp" />
         </div>
     </div>
 </template>
