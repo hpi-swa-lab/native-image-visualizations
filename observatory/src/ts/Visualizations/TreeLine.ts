@@ -246,6 +246,8 @@ export class TreeLine implements MultiverseVisualization {
         )
 
         if (this.multiverse.sources.length > 1) {
+            // The exclusive sizes are calculated for all nodes.
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const exclusiveSizes = this.exclusiveSizes.get(this.multiverse.root)!
 
             this.multiverse.sources.forEach((universe, index) => {
