@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
 import * as d3 from 'd3'
+import { ZoomBehavior } from 'd3'
 import { lightenColor } from '../Math/Colors'
 import { clamp } from '../Math/Numbers'
 import { powerSet } from '../Math/Sets'
@@ -60,6 +61,7 @@ export class TreeLine implements MultiverseVisualization {
 
     canvas: HTMLCanvasElement
     context: CanvasRenderingContext2D
+    zoom: ZoomBehavior<Element, unknown>
     transform = { y: 0, k: 1 }
     infoAreas = [] as InfoArea[]
 
@@ -84,7 +86,13 @@ export class TreeLine implements MultiverseVisualization {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         this.context = this.canvas.getContext('2d', { alpha: false })!
 
-        this.initZoom()
+        this.zoom = d3.zoom().on('zoom', (event) => {
+            this.transform = event?.transform ?? this.transform
+            return this.redraw()
+        })
+        d3.select(this.canvas as Element).call(this.zoom)
+        window.addEventListener('resize', () => this.redraw())
+
         this.redraw()
     }
 
@@ -124,19 +132,8 @@ export class TreeLine implements MultiverseVisualization {
 
     public setFilters(filters: Filter[]): void {
         this.filters = filters
+        this.zoom.translateTo(d3.select(this.canvas as Element), 0, 0)
         this.redraw()
-    }
-
-    private initZoom(): void {
-        // `d3.zoom().on(..., ...)` expects a function accepting `any`.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        d3.select(this.canvas as Element).call(
-            d3.zoom().on('zoom', (event) => {
-                this.transform = event?.transform ?? this.transform
-                return this.redraw()
-            })
-        )
-        window.addEventListener('resize', () => this.redraw())
     }
 
     private buildColors() {
