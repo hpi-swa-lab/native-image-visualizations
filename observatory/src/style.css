@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+.loadingIcon * {
+    @apply cursor-wait
+}
+
+
 .btn {
     @apply py-2 px-4 rounded;
 }

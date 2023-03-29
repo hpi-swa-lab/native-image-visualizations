@@ -29,9 +29,10 @@ const sortingOrder = computed(() => vennStore.sortingOrder)
 
 let visualization: VennSets
 
+
 // The reason for using as <...> is that the store saves Proxy Types of the objects
 
-onMounted(() => {
+onMounted(async () => {
     visualization = new VennSets(
         '#viz-container',
         toRaw(globalStore.currentLayer),
@@ -42,14 +43,24 @@ onMounted(() => {
         globalStore.selections,
         toRaw(globalStore.activeFilters)
     )
+
+    document.body.classList.toggle('loadingIcon', true)
+    await new Promise((r) => setTimeout(r, 1))
     visualization.setMultiverse(toRaw(globalStore.multiverse) as Multiverse)
+    document.body.classList.toggle('loadingIcon', false)
 })
 
-watch(multiverse, (newMultiverse) => {
+watch(multiverse, async (newMultiverse) => {
+    document.body.classList.toggle('loadingIcon', true)
+    await new Promise((r) => setTimeout(r, 1))
     visualization.setMultiverse(toRaw(newMultiverse) as Multiverse)
+    document.body.classList.toggle('loadingIcon', false)
 })
-watch(currentLayer, (newLayer) => {
+watch(currentLayer, async (newLayer) => {
+    document.body.classList.toggle('loadingIcon', true)
+    await new Promise((r) => setTimeout(r, 1))
     visualization.setLayer(toRaw(newLayer))
+    document.body.classList.toggle('loadingIcon', false)
 })
 watch(
     highlights,
@@ -67,8 +78,11 @@ watch(
 )
 watch(
     activeFilters,
-    (newFilters) => {
+    async (newFilters) => {
+        document.body.classList.toggle('loadingIcon', true)
+        await new Promise((r) => setTimeout(r, 1))
         visualization.setFilters(toRaw(newFilters) as Filter[])
+        document.body.classList.toggle('loadingIcon', false)
     },
     { deep: true }
 )
