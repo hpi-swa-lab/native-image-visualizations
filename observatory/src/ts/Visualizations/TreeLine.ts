@@ -25,6 +25,7 @@ import { MultiverseVisualization } from './MultiverseVisualization'
 const LINE_WIDTH = 256
 const LINE_PADDING = 16
 const HIERARCHY_GAPS = 4
+const FONT_SIZE_FOR_TOTAL_SIZE = 18
 
 // Info areas correspond to interactive parts of the layout. They are used by
 // tooltips.
@@ -216,7 +217,7 @@ export class TreeLine implements MultiverseVisualization {
 
         const multiverse = this.multiverse
 
-        const initialBarHeight = this.canvas.height - LINE_PADDING * 3 - 18
+        const initialBarHeight = this.canvas.height - LINE_PADDING * 3 - FONT_SIZE_FOR_TOTAL_SIZE
         const initialPixelsPerByte = initialBarHeight / this.multiverse.root.codeSize
         const initialTop = LINE_PADDING
 
@@ -242,6 +243,8 @@ export class TreeLine implements MultiverseVisualization {
         )
 
         if (this.multiverse.sources.length > 1) {
+            // The exclusive sizes are calculated for all nodes.
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const exclusiveSizes = this.exclusiveSizes.get(this.multiverse.root)!
 
             this.multiverse.sources.forEach((universe, index) => {
@@ -249,7 +252,7 @@ export class TreeLine implements MultiverseVisualization {
                 this.context.fillText(
                     `${formatBytes(size)} exclusively in ${universe.name}`,
                     LINE_PADDING,
-                    top + 18 * (index + 1)
+                    top + FONT_SIZE_FOR_TOTAL_SIZE * (index + 1)
                 )
             })
         }
