@@ -72,11 +72,11 @@ function closeAbout() {
             :class="collapsed ? 'w-0' : 'w-[320px]'"
         >
             <div class="flex p-4 space-x-4 justify-even">
-                <button class="btn btn-primary" @click="openAbout">
+                <button class="bg-transparent btn-primary p-2 px-3 rounded" @click="openAbout">
                     <font-awesome-icon icon="info-circle" />
                 </button>
 
-                <button class="bg-transparent btn-primary p-2 px-3 rounded" @click="openHelp()">
+                <button class="bg-transparent btn-primary p-2 px-3 rounded" @click="openHelp">
                     <font-awesome-icon icon="circle-question" />
                 </button>
 
