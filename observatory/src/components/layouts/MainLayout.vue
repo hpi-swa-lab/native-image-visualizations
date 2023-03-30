@@ -6,6 +6,7 @@ import DataManager from '../controls/DataManager.vue'
 import { onMounted, ref } from 'vue'
 import { useGlobalStore } from '../../ts/stores/globalStore'
 import { SwappableComponentType } from '../../ts/enums/SwappableComponentType'
+import AboutScreen from '../help/AboutScreen.vue'
 import HelpDialog from '../help/HelpDialog.vue'
 
 withDefaults(
@@ -44,11 +45,23 @@ onMounted(() => {
 const showHelp = ref(false)
 
 function openHelp() {
+    closeAbout()
     showHelp.value = true
 }
 
 function closeHelp() {
     showHelp.value = false
+}
+
+const showAbout = ref(false)
+
+function openAbout() {
+    closeHelp()
+    showAbout.value = true
+}
+
+function closeAbout() {
+    showAbout.value = false
 }
 </script>
 
@@ -59,9 +72,14 @@ function closeHelp() {
             :class="collapsed ? 'w-0' : 'w-[320px]'"
         >
             <div class="flex p-4 space-x-4 justify-even">
-                <button class="bg-transparent btn-primary p-2 px-3 rounded" @click="openHelp()">
+                <button class="bg-transparent btn-primary p-2 px-3 rounded" @click="openAbout">
+                    <font-awesome-icon icon="info-circle" />
+                </button>
+
+                <button class="bg-transparent btn-primary p-2 px-3 rounded" @click="openHelp">
                     <font-awesome-icon icon="circle-question" />
                 </button>
+
                 <h2 class="col-start-3 text-center">{{ title }}</h2>
             </div>
             <TabLayout
@@ -102,8 +120,9 @@ function closeHelp() {
             />
         </button>
         <div class="h-full w-full overflow-y-auto">
+            <AboutScreen v-if="showAbout" class="h-[90%] m-4" @close-about="closeAbout" />
             <HelpDialog v-if="showHelp" class="h-[90%] m-4" @close-help="closeHelp" />
-            <slot v-if="!showHelp" />
+            <slot v-if="!showHelp && !showAbout" />
         </div>
     </div>
 </template>
