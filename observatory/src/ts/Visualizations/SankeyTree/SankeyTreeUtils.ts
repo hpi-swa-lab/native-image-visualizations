@@ -182,11 +182,15 @@ export function asHTML(
     if (Object.keys(metadata).length == 1) {
     }
     const node: Node = vizNode.data
-    return `<b>Exists in</b>: ${Array.from(node.sources.keys())
-        .map((uniIndex) => metadata[uniIndex].name)
-        .join(' ∩ ')}
-                <b>Path</b>: ${getWithoutRoot(node.identifier)}
-                ${printCodeSizePerUniverse(vizNode, exclusiveCodeSizes, metadata)}`
+    return `<b>Exists in</b>: ${node.name === ROOT_NODE_NAME
+                ? 'None'
+                : Array.from(node.sources.keys())
+                    .map((uniIndex) => metadata[uniIndex].name)
+                    .join(' ∩ ')}
+            <b>Path</b>: ${node.name === ROOT_NODE_NAME ? ROOT_NODE_NAME : getWithoutRoot(node.identifier)}
+            ${node.name === ROOT_NODE_NAME
+                ? `<b>Code Size</b>: ${formatBytes(node.codeSize)}`
+                : printCodeSizePerUniverse(vizNode, exclusiveCodeSizes, metadata)}`
 }
 
 function printCodeSizePerUniverse(
