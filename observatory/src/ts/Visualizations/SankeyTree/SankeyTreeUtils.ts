@@ -12,7 +12,7 @@ import { HIERARCHY_NAME_SEPARATOR, SUB_HIERARCHY_NAME_SEPARATOR } from '../../gl
 import { ROOT_NODE_NAME } from '../SankeyTree'
 import { ExclusiveSizes } from '../../Math/Universes'
 import { UniverseCombination } from '../../UniverseTypes/UniverseCombination'
-import {Layers} from '../../enums/Layers';
+import { Layers } from '../../enums/Layers'
 
 // #################################################################################################
 // ##### (PRE-)PROCESSING ##########################################################################
@@ -29,7 +29,7 @@ export function createHierarchyFromPackages(
     for (let i = 0; i < pathSegments.length; i++) {
         let hierarchySeparator = HIERARCHY_NAME_SEPARATOR
         let subPathSegments: string[] = []
-        switch(i+1) {
+        switch (i + 1) {
             case Layers.METHODS:
                 subPathSegments = [pathSegments[i]]
                 break
@@ -182,15 +182,21 @@ export function asHTML(
     if (Object.keys(metadata).length == 1) {
     }
     const node: Node = vizNode.data
-    return `<b>Exists in</b>: ${node.name === ROOT_NODE_NAME
-                ? 'None'
-                : Array.from(node.sources.keys())
-                    .map((uniIndex) => metadata[uniIndex].name)
-                    .join(' ∩ ')}
-            <b>Path</b>: ${node.name === ROOT_NODE_NAME ? ROOT_NODE_NAME : getWithoutRoot(node.identifier)}
-            ${node.name === ROOT_NODE_NAME
-                ? `<b>Code Size</b>: ${formatBytes(node.codeSize)}`
-                : printCodeSizePerUniverse(vizNode, exclusiveCodeSizes, metadata)}`
+    return `<b>Exists in</b>: ${
+        node.name === ROOT_NODE_NAME
+            ? 'None'
+            : Array.from(node.sources.keys())
+                  .map((uniIndex) => metadata[uniIndex].name)
+                  .join(' ∩ ')
+    }
+            <b>Path</b>: ${
+                node.name === ROOT_NODE_NAME ? ROOT_NODE_NAME : getWithoutRoot(node.identifier)
+            }
+            ${
+                node.name === ROOT_NODE_NAME
+                    ? `<b>Code Size</b>: ${formatBytes(node.codeSize)}`
+                    : printCodeSizePerUniverse(vizNode, exclusiveCodeSizes, metadata)
+            }`
 }
 
 function printCodeSizePerUniverse(
