@@ -137,9 +137,10 @@ export function collapseChildren(vizNode: SankeyHierarchyPointNode) {
 
 export function filterDiffingUniverses(vizNode: SankeyHierarchyPointNode, filteredNodes: Node[]) {
     if (!vizNode._children) return
-    return vizNode._children.filter((child: SankeyHierarchyPointNode) =>
+    const filteredChildren = vizNode._children.filter((child: SankeyHierarchyPointNode) =>
         filteredNodes.includes(child.data)
     )
+    return filteredChildren.length === 0 ? undefined : filteredChildren
 }
 
 export function sortPrivateChildren(vizNode: SankeyHierarchyPointNode, filter: NodesSortingFilter) {
