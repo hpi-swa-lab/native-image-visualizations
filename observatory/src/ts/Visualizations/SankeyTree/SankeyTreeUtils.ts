@@ -12,6 +12,7 @@ import { HIERARCHY_NAME_SEPARATOR, SUB_HIERARCHY_NAME_SEPARATOR } from '../../gl
 import { ROOT_NODE_NAME } from '../SankeyTree'
 import { ExclusiveSizes } from '../../Math/Universes'
 import { UniverseCombination } from '../../UniverseTypes/UniverseCombination'
+import {Layers} from '../../enums/Layers';
 
 // #################################################################################################
 // ##### (PRE-)PROCESSING ##########################################################################
@@ -27,7 +28,9 @@ export function createHierarchyFromPackages(
     const pathSegments = node.identifier.substring(1).split(HIERARCHY_NAME_SEPARATOR)
     for (let i = 0; i < pathSegments.length; i++) {
         let hierarchySeparator = HIERARCHY_NAME_SEPARATOR
-        const subPathSegments = pathSegments[i].split(SUB_HIERARCHY_NAME_SEPARATOR)
+        const subPathSegments = i + 1 === Layers.METHODS
+            ? [pathSegments[i]]
+            : pathSegments[i].split(SUB_HIERARCHY_NAME_SEPARATOR)
         for (let j = 0; j < subPathSegments.length; j++) {
             let child = current.children.find((child) => child.name === subPathSegments[j])
             if (child) {
