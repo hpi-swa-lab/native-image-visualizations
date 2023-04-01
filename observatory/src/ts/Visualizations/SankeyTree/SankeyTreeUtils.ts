@@ -12,6 +12,7 @@ import { HIERARCHY_NAME_SEPARATOR, SUB_HIERARCHY_NAME_SEPARATOR } from '../../gl
 import { ROOT_NODE_NAME } from '../SankeyTree'
 import { ExclusiveSizes } from '../../Math/Universes'
 import { UniverseCombination } from '../../UniverseTypes/UniverseCombination'
+import { Layers } from '../../enums/Layers'
 
 // #################################################################################################
 // ##### (PRE-)PROCESSING ##########################################################################
@@ -27,7 +28,20 @@ export function createHierarchyFromPackages(
     const pathSegments = node.identifier.substring(1).split(HIERARCHY_NAME_SEPARATOR)
     for (let i = 0; i < pathSegments.length; i++) {
         let hierarchySeparator = HIERARCHY_NAME_SEPARATOR
-        const subPathSegments = pathSegments[i].split(SUB_HIERARCHY_NAME_SEPARATOR)
+        let subPathSegments: string[] = []
+        switch (i + 1) {
+            case Layers.METHODS:
+                subPathSegments = [pathSegments[i]]
+                break
+            case Layers.MODULES:
+                if (/.+[0-9]+.+\.jar$/.test(pathSegments[i])) {
+                    subPathSegments = [pathSegments[i]]
+                    break
+                }
+            default:
+                subPathSegments = pathSegments[i].split(SUB_HIERARCHY_NAME_SEPARATOR)
+        }
+
         for (let j = 0; j < subPathSegments.length; j++) {
             let child = current.children.find((child) => child.name === subPathSegments[j])
             if (child) {
@@ -123,9 +137,10 @@ export function collapseChildren(vizNode: SankeyHierarchyPointNode) {
 
 export function filterDiffingUniverses(vizNode: SankeyHierarchyPointNode, filteredNodes: Node[]) {
     if (!vizNode._children) return
-    return vizNode._children.filter((child: SankeyHierarchyPointNode) =>
+    const filteredChildren = vizNode._children.filter((child: SankeyHierarchyPointNode) =>
         filteredNodes.includes(child.data)
     )
+    return filteredChildren.length === 0 ? undefined : filteredChildren
 }
 
 export function sortPrivateChildren(vizNode: SankeyHierarchyPointNode, filter: NodesSortingFilter) {
@@ -167,11 +182,21 @@ export function asHTML(
     if (Object.keys(metadata).length == 1) {
     }
     const node: Node = vizNode.data
-    return `<b>Exists in</b>: ${Array.from(node.sources.keys())
-        .map((uniIndex) => metadata[uniIndex].name)
-        .join(' ∩ ')}
-                <b>Path</b>: ${getWithoutRoot(node.identifier)}
-                ${printCodeSizePerUniverse(vizNode, exclusiveCodeSizes, metadata)}`
+    return `<b>Exists in</b>: ${
+        node.name === ROOT_NODE_NAME
+            ? 'None'
+            : Array.from(node.sources.keys())
+                  .map((uniIndex) => metadata[uniIndex].name)
+                  .join(' ∩ ')
+    }
+            <b>Path</b>: ${
+                node.name === ROOT_NODE_NAME ? ROOT_NODE_NAME : getWithoutRoot(node.identifier)
+            }
+            ${
+                node.name === ROOT_NODE_NAME
+                    ? `<b>Code Size</b>: ${formatBytes(node.codeSize)}`
+                    : printCodeSizePerUniverse(vizNode, exclusiveCodeSizes, metadata)
+            }`
 }
 
 function printCodeSizePerUniverse(

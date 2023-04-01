@@ -217,7 +217,7 @@ export class SankeyTree implements MultiverseVisualization {
         })
 
         if (this.tree.root.children) {
-            this.expandFistBranchToLeaves(this.tree.root.children[0])
+            this.expandFirstBranchToLeaves(this.tree.root.children[0])
         }
 
         // clear the selections, to redraw the change in a node's color and nodeSize
@@ -233,12 +233,12 @@ export class SankeyTree implements MultiverseVisualization {
         )
     }
 
-    private expandFistBranchToLeaves(vizNode: SankeyHierarchyPointNode) {
+    private expandFirstBranchToLeaves(vizNode: SankeyHierarchyPointNode) {
         if (!vizNode) return
 
         toggleChildren(vizNode, false, this.filteredNodes)
         if (!vizNode.children) return
-        this.expandFistBranchToLeaves(vizNode.children[0])
+        this.expandFirstBranchToLeaves(vizNode.children[0])
     }
 
     private buildTree(): SankeyTreeCompound {
