@@ -1,4 +1,21 @@
-# MPWS2022RH1
+# Visualizing GraalVM Native Images
+
+![image](https://user-images.githubusercontent.com/33000454/229572068-581c18fc-d350-4d48-96a5-9330b09de339.png)
+
+
+This project is a result of the [Software Architecture Group](https://www.hpi.uni-potsdam.de/hirschfeld/)'s Master Project WS 22/23 of the Hasso Plattner Institute Potsdam. Together in cooperation with Oracle, we explored several ways to explain casual GraalVM users how their Native Image sizes came to be. Moreover, what they can do to make it smaller. 
+We offer different use cases: 
+- Offering a visual way to explore Native Images' contents
+- Removing usages of methods, classes, etc., to see how it affects the total size in real time
+- Comparing multiple, different Native Images to see the impact of users' code and what included items they can even have an effect on
+- Saving & Loading your current settings to share interesting parts with others
+
+If you are interested in the project's motivation and technical information, check out our [final presentation](https://github.com/hpi-swa-lab/MPWS2022RH1/blob/main/Visualization%20Explanations.pdf).
+
+You can try it out by following the instructions on our [latest release](https://github.com/hpi-swa-lab/MPWS2022RH1/releases/tag/final).
+
+## Visualizations
+For a run-through of the visualizations see [Visualization Explanations](https://github.com/hpi-swa-lab/MPWS2022RH1/blob/main/Visualization%20Explanations.pdf). You can see the videos when downloading the files locally.
 
 ## Additional data export
 
