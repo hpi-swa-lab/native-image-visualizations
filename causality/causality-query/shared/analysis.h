@@ -133,6 +133,7 @@ public:
     struct ResultDiff
     {
         vector<method_id> visited_method_log;
+        vector<hyperedge_id> visited_hyperedge_log;
         vector<pair<typeflow_id, TypeflowHistory>> typeflow_visited_log;
         vector<type_t> allInstantiated_log;
         vector<typeflow_id> included_in_saturation_uses_log;
@@ -140,12 +141,14 @@ public:
         vector<typeflow_id> saturation_uses_by_filter_removed_log;
 
         ResultDiff(vector<method_id>&& visited_method_log,
+                   vector<hyperedge_id>&& visited_hyperedge_log,
                    vector<pair<typeflow_id, TypeflowHistory>>&& typeflow_visited_log,
                    vector<type_t>&& allInstantiated_log,
                    vector<typeflow_id>&& included_in_saturation_uses_log,
                    vector<typeflow_id>&& saturation_uses_by_filter_added_log,
                    vector<typeflow_id>&& saturation_uses_by_filter_removed_log)
                 : visited_method_log(std::move(visited_method_log)),
+                  visited_hyperedge_log(std::move(visited_hyperedge_log)),
                   typeflow_visited_log(std::move(typeflow_visited_log)),
                   allInstantiated_log(std::move(allInstantiated_log)),
                   included_in_saturation_uses_log(std::move(included_in_saturation_uses_log)),
@@ -173,17 +176,19 @@ public:
     vector<bool> allInstantiated;
     vector<vector<typeflow_id>> saturation_uses_by_filter;
     vector<bool> included_in_saturation_uses;
+    vector<bool> hyperedge_visited_atleast_once;
 
-    BFS(size_t n_methods, size_t n_typeflows, size_t n_types, size_t n_filters) :
+    BFS(size_t n_methods, size_t n_typeflows, size_t n_types, size_t n_filters, size_t n_hyperedges) :
         typeflow_visited(n_typeflows),
         method_inhibited(n_methods),
         method_history(n_methods),
         allInstantiated(n_types),
         saturation_uses_by_filter(n_filters),
-        included_in_saturation_uses(n_typeflows)
+        included_in_saturation_uses(n_typeflows),
+        hyperedge_visited_atleast_once(n_hyperedges)
     {}
 
-    explicit BFS(const Adjacency& adj) : BFS(adj.n_methods(), adj.n_typeflows(), adj.n_types(), adj.filter_filters.size())
+    explicit BFS(const Adjacency& adj) : BFS(adj.n_methods(), adj.n_typeflows(), adj.n_types(), adj.filter_filters.size(), adj.n_hyperedges())
     {}
 
     /* If dist_matters is asigned false, the BFS gets sped up about x2.
@@ -215,6 +220,7 @@ public:
         // via BFS::Result.
         // TODO: Investigate if this is still necessary performance-wise
         vector<bool> method_inhibited(std::move(this->method_inhibited));
+        vector<bool> hyperedge_visited_atleast_once(std::move(this->hyperedge_visited_atleast_once));
         vector<DefaultMethodHistory> method_history(std::move(this->method_history));
         vector<TypeflowHistory> typeflow_visited(std::move(this->typeflow_visited));
         vector<bool> allInstantiated(std::move(this->allInstantiated));
@@ -222,6 +228,7 @@ public:
         vector<bool> included_in_saturation_uses(std::move(this->included_in_saturation_uses));
 
         vector<method_id> visited_method_log;
+        vector<hyperedge_id> visited_hyperedges_log;
         vector<pair<typeflow_id, TypeflowHistory>> typeflow_visited_log;
         vector<type_t> allInstantiated_log;
         vector<typeflow_id> included_in_saturation_uses_log;
@@ -291,6 +298,28 @@ public:
                         {
                             method_inhibited[v.id] = true;
                             next_method_worklist.push_back(v);
+                        }
+                    }
+
+                    for(auto he : m.forward_hyperedges)
+                    {
+                        bool other_src_visited = hyperedge_visited_atleast_once[he.id];
+
+                        if(other_src_visited)
+                        {
+                            auto v = adj[he].dst;
+                            if(!method_inhibited[v.id])
+                            {
+                                method_inhibited[v.id] = true;
+                                next_method_worklist.push_back(v);
+                            }
+                        }
+                        else
+                        {
+                            hyperedge_visited_atleast_once[he.id] = true;
+
+                            if(track_changes)
+                                visited_hyperedges_log.push_back(he);
                         }
                     }
                 }
@@ -520,13 +549,14 @@ public:
         assert(instantiated_since_last_iteration.empty());
 
         this->method_inhibited = std::move(method_inhibited);
+        this->hyperedge_visited_atleast_once = std::move(hyperedge_visited_atleast_once);
         this->method_history = std::move(method_history);
         this->typeflow_visited = std::move(typeflow_visited);
         this->allInstantiated = std::move(allInstantiated);
         this->included_in_saturation_uses = std::move(included_in_saturation_uses);
         this->saturation_uses_by_filter = std::move(saturation_uses_by_filter);
 
-        return ResultDiff(std::move(visited_method_log), std::move(typeflow_visited_log), std::move(allInstantiated_log), std::move(included_in_saturation_uses_log), std::move(saturation_uses_by_filter_added_log), std::move(saturation_uses_by_filter_removed_log));
+        return ResultDiff(std::move(visited_method_log), std::move(visited_hyperedges_log), std::move(typeflow_visited_log), std::move(allInstantiated_log), std::move(included_in_saturation_uses_log), std::move(saturation_uses_by_filter_added_log), std::move(saturation_uses_by_filter_removed_log));
     }
 
     void revert(const Adjacency& adj, const ResultDiff& changes)
@@ -535,6 +565,12 @@ public:
         {
             method_inhibited[m.id] = false;
             method_history[m.id] = {};
+        }
+
+        for(hyperedge_id he : changes.visited_hyperedge_log)
+        {
+            assert(hyperedge_visited_atleast_once[he.id]);
+            hyperedge_visited_atleast_once[he.id] = false;
         }
 
         for(size_t i = changes.typeflow_visited_log.size(); i > 0; i--)
@@ -693,6 +729,12 @@ class IncrementalBfs
                         std::any_of(m.backward_edges.begin(), m.backward_edges.end(), [&](const auto& item)
                         {
                             return (bool)r.method_history[item.id];
+                        })
+                        ||
+                        std::any_of(m.backward_hyperedges.begin(), m.backward_hyperedges.end(), [&](const auto& item)
+                        {
+                            const auto& he = adj[item];
+                            return (bool)r.method_history[he.src1.id] && (bool)r.method_history[he.src2.id];
                         })
                         ||
                         std::any_of(m.virtual_invocation_sources.begin(), m.virtual_invocation_sources.end(), [&](const auto& item)

@@ -38,10 +38,28 @@ struct typeflow_id
     explicit operator bool() const { return id != 0; }
 };
 
+struct hyperedge_id
+{
+    uint32_t id;
+
+    hyperedge_id(uint32_t id) : id(id) {}
+    hyperedge_id() = default;
+    explicit operator uint32_t() const { return id; }
+    bool operator==(hyperedge_id other) const { return id == other.id; }
+};
+
 template<typename T>
 struct Edge
 {
     T src;
+    T dst;
+};
+
+template<typename T>
+struct HyperEdge
+{
+    T src1;
+    T src2;
     T dst;
 };
 
@@ -51,6 +69,11 @@ static_assert(offsetof(Edge<method_id>, src) == 0);
 static_assert(offsetof(Edge<typeflow_id>, src) == 0);
 static_assert(offsetof(Edge<method_id>, dst) == 4);
 static_assert(offsetof(Edge<typeflow_id>, dst) == 4);
+
+static_assert(sizeof(HyperEdge<method_id>) == 12);
+static_assert(offsetof(HyperEdge<method_id>, src1) == 0);
+static_assert(offsetof(HyperEdge<method_id>, src2) == 4);
+static_assert(offsetof(HyperEdge<method_id>, dst) == 8);
 
 class ContainingMethod
 {
@@ -203,6 +226,8 @@ struct Adjacency
     {
         vector<method_id> forward_edges;
         vector<method_id> backward_edges;
+        vector<hyperedge_id> forward_hyperedges;
+        vector<hyperedge_id> backward_hyperedges;
         vector<typeflow_id> dependent_typeflows;
         vector<typeflow_id> virtual_invocation_sources;
 
@@ -213,13 +238,14 @@ struct Adjacency
     size_t _n_types;
     vector<TypeflowInfo> flows;
     vector<MethodInfo> methods;
+    vector<HyperEdge<method_id>> hyper_edges;
 
     // Data used for batched saturation
-    const Bitset* filters_begin;
+    const Bitset* filters_begin = nullptr;
     vector<TypeSet> filter_filters;
 
-    Adjacency(size_t n_types, size_t n_methods, size_t n_typeflows, const vector<Edge<typeflow_id>>& interflows, const vector<Edge<method_id>>& direct_invokes, const vector<Bitset>& typestates, const vector<uint32_t>& typeflow_filters, const vector<ContainingMethod>& typeflow_methods, const vector<string>& typeflow_names)
-            : _n_types(n_types), flows(n_typeflows), methods(n_methods)
+    Adjacency(size_t n_types, size_t n_methods, size_t n_typeflows, const vector<Edge<typeflow_id>>& interflows, const vector<Edge<method_id>>& direct_invokes, const vector<Bitset>& typestates, const vector<uint32_t>& typeflow_filters, const vector<ContainingMethod>& typeflow_methods, const vector<string>& typeflow_names, vector<HyperEdge<method_id>>&& hyper_edges)
+            : _n_types(n_types), flows(n_typeflows), methods(n_methods), hyper_edges(std::move(hyper_edges))
     {
         vector<TypeSet> typestates_compressed;
         typestates_compressed.reserve(typestates.size());
@@ -247,14 +273,22 @@ struct Adjacency
                 methods[typeflow_methods[flow].reaching().id].virtual_invocation_sources.push_back(flow);
         }
 
-        for(size_t i = 0; i < typeflow_filters.size(); i++)
+        for(size_t i = 0; i < this->hyper_edges.size(); i++)
+        {
+            const auto& he = this->hyper_edges[i];
+            methods[he.src1.id].forward_hyperedges.push_back(i);
+            methods[he.src2.id].forward_hyperedges.push_back(i);
+            methods[he.dst.id].backward_hyperedges.push_back(i);
+        }
+
+        for(size_t i = 1; i < typeflow_filters.size(); i++)
         {
             flows[i].original_filter = &typestates.at(typeflow_filters[i]);
             flows[i].filter = typestates_compressed.at(typeflow_filters[i]);
         }
 
 #if INCLUDE_LABELS
-        for(size_t i = 0; i < typeflow_names.size(); i++)
+        for(size_t i = 1; i < typeflow_names.size(); i++)
         {
             flows[i].name = typeflow_names[i];
         }
@@ -270,15 +304,18 @@ struct Adjacency
         {
             m.forward_edges.shrink_to_fit();
             m.backward_edges.shrink_to_fit();
+            m.forward_hyperedges.shrink_to_fit();
+            m.backward_hyperedges.shrink_to_fit();
             m.virtual_invocation_sources.shrink_to_fit();
             m.dependent_typeflows.shrink_to_fit();
         }
 
         {
-            const Bitset* filters_end;
+            const Bitset* filters_end = filters_begin;
 
+            if(flows.size() > 1)
             {
-                auto [f1, f2] = std::minmax_element(flows.begin(), flows.end(), [](const auto& a, const auto& b)
+                auto [f1, f2] = std::minmax_element(flows.begin() + 1, flows.end(), [](const auto& a, const auto& b)
                 { return a.original_filter < b.original_filter; });
 
                 filters_begin = f1->original_filter;
@@ -298,11 +335,16 @@ struct Adjacency
 
     [[nodiscard]] size_t n_types() const { return _n_types; }
 
+    [[nodiscard]] size_t n_hyperedges() const { return hyper_edges.size(); }
+
     [[nodiscard]] MethodInfo& operator[](method_id id) { return methods[(uint32_t)id]; }
     [[nodiscard]] const MethodInfo& operator[](method_id id) const { return methods[(uint32_t)id]; }
 
     [[nodiscard]] TypeflowInfo& operator[](typeflow_id id) { return flows[(uint32_t)id]; }
     [[nodiscard]] const TypeflowInfo& operator[](typeflow_id id) const { return flows[(uint32_t)id]; }
+
+    [[nodiscard]] HyperEdge<method_id>& operator[](hyperedge_id id) { return hyper_edges[(uint32_t)id]; }
+    [[nodiscard]] const HyperEdge<method_id>& operator[](hyperedge_id id) const { return hyper_edges[(uint32_t)id]; }
 
     [[nodiscard]] size_t used_memory_size() const
     {
@@ -325,7 +367,11 @@ struct Adjacency
             complete_size += m.backward_edges.capacity() * sizeof(method_id);
             complete_size += m.dependent_typeflows.capacity() * sizeof(typeflow_id);
             complete_size += m.virtual_invocation_sources.capacity() * sizeof(typeflow_id);
+            complete_size += m.forward_hyperedges.capacity() * sizeof(hyperedge_id);
+            complete_size += m.backward_hyperedges.capacity() * sizeof(hyperedge_id);
         }
+
+        complete_size += hyper_edges.capacity() * sizeof(HyperEdge<method_id>);
 
         return complete_size;
     }
@@ -445,6 +491,8 @@ static void remove_redundant(Adjacency& adj)
 {
     vector<bool> redundant_typeflows = calc_typeflows_without_sideeffects(adj);
 
+    redundant_typeflows[0] = false; // Fix for if we have no typeflow information, still keep the ultimate source (0)
+
     // Batch remove
     {
         auto is_redundant = [&redundant_typeflows](typeflow_id w){ return redundant_typeflows[w.id]; };
@@ -555,6 +603,7 @@ struct model_data
     vector<Edge<method_id>> direct_invokes;
     vector<ContainingMethod> containing_methods;
     vector<uint32_t> typeflow_filters;
+    vector<HyperEdge<method_id>> hyper_edges;
 
     model_data() : method_names(1), typeflow_names(1), typeflow_filters(1), containing_methods(1) {}
 };
@@ -578,7 +627,7 @@ public:
         type_names(std::move(data.type_names)),
         typeflow_names(std::move(data.typeflow_names)),
         typestates(std::move(data.typestates)),
-        adj(type_names.size(), method_names.size(), typeflow_names.size(), data.interflows, data.direct_invokes, this->typestates, data.typeflow_filters, data.containing_methods, typeflow_names)
+        adj(type_names.size(), method_names.size(), typeflow_names.size(), data.interflows, data.direct_invokes, this->typestates, data.typeflow_filters, data.containing_methods, typeflow_names, std::move(data.hyper_edges))
     {
         {
             size_t i = 0;

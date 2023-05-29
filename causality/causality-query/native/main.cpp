@@ -1,6 +1,7 @@
 #define INCLUDE_LABELS 0
 #define LOG 0
-#define REACHABILITY_ASSERTIONS 1
+#define REACHABILITY_ASSERTIONS 0
+#define PRINT_CUTOFFS 0
 
 #include <iostream>
 #include <vector>
@@ -105,7 +106,7 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
             {
                 {
                     BFS ref = BFS::run(adj, node.mids);
-                    assert_reachability_equals(ref, r);
+                    assert_reachability_equals(r, ref);
                 }
 
                 {
@@ -121,6 +122,12 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
                                 std::any_of(m.backward_edges.begin(), m.backward_edges.end(), [&](const auto& item)
                                 {
                                     return (bool) r_copy.method_history[item.id];
+                                })
+                                ||
+                                std::any_of(m.backward_hyperedges.begin(), m.backward_hyperedges.end(), [&](const auto& item)
+                                {
+                                    const auto& he = adj[item];
+                                    return (bool)r.method_history[he.src1.id] && (bool)r.method_history[he.src2.id];
                                 })
                                 ||
                                 std::any_of(m.virtual_invocation_sources.begin(), m.virtual_invocation_sources.end(), [&](const auto& item)
@@ -140,7 +147,6 @@ static void simulate_purge(Adjacency& adj, const vector<string>& method_names, c
 #endif
 
 
-#define PRINT_CUTOFFS 1
 #if PRINT_CUTOFFS
             cout << '[' << iteration << "] ";
 
@@ -430,6 +436,9 @@ int main(int argc, const char** argv)
     read_buffer(data.direct_invokes, "direct_invokes.bin");
     read_buffer(data.containing_methods, "typeflow_methods.bin");
     read_buffer(data.typeflow_filters, "typeflow_filters.bin");
+    read_buffer(data.hyper_edges, "hyper_edges.bin");
+
+    data.typeflow_names.resize(data.typeflow_filters.size());
 
     model m(std::move(data));
     m.optimize();

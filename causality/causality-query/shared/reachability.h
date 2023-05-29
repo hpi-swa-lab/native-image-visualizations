@@ -78,230 +78,6 @@ static ostream& operator<<(ostream& out, const TreeIndenter& indentation)
     return out;
 }
 
-static void print_reachability_of_method(ostream& out, const Adjacency& adj, const vector<string>& method_names, const vector<string>& type_names, const BFS& all, method_id m, vector<bool>& visited, TreeIndenter& indentation)
-{
-    size_t dist = all.method_history[m.id].dist;
-
-    if(dist == 0)
-    {
-        return;
-    }
-
-    out << indentation << method_names[m.id];
-    if(dist == 1)
-        out << " (Root)";
-    out << endl;
-
-    if(visited[m.id])
-    {
-        TreeIndenter::indent i(indentation);
-        out << indentation << "..." << endl;
-        return;
-    }
-
-    visited[m.id] = true;
-
-    auto it = std::find_if(adj.methods[m.id].backward_edges.begin(), adj.methods[m.id].backward_edges.end(), [&](method_id prev) { return all.method_history[prev.id].dist < dist; });
-
-    TreeIndenter::indent i(indentation);
-
-    if(it != adj.methods[m.id].backward_edges.end())
-    {
-        print_reachability_of_method(out, adj, method_names, type_names, all, *it, visited, indentation);
-    }
-    else
-    {
-        // --- Do backwards-search in typeflow-nodes ---
-
-        vector<typeflow_id> parent(adj.n_typeflows());
-        queue<typeflow_id> worklist;
-
-        typeflow_id start_flow;
-        uint16_t flow_type;
-        uint8_t flow_type_dist = numeric_limits<uint8_t>::max();
-
-        for(typeflow_id flow : adj[m].virtual_invocation_sources)
-        {
-            if(!all.method_history[adj[flow].method.dependent().id])
-                continue;
-
-            const TypeflowHistory& history = all.typeflow_visited[flow.id];
-
-            for(auto pair : history)
-            {
-                if(pair.second < flow_type_dist)
-                {
-                    flow_type = pair.first;
-                    flow_type_dist = pair.second;
-                    start_flow = flow;
-                }
-            }
-
-            if(history.is_saturated())
-            {
-                if(history.saturated_dist < flow_type_dist)
-                {
-                    flow_type = adj[flow].filter.first();
-                    flow_type_dist = history.saturated_dist;
-                    start_flow = flow;
-                }
-            }
-        }
-
-        if(flow_type_dist > dist)
-        {
-            TreeIndenter::indent i(indentation);
-            out << indentation << "Lost due to saturation!" << endl;
-            cerr << "Lost reachability trace due to saturation! (1)" << endl;
-            return;
-        }
-
-        worklist.push(start_flow);
-
-        for(;;)
-        {
-            if(worklist.empty())
-            {
-                TreeIndenter::indent i(indentation);
-                out << indentation << "Lost due to saturation!" << endl;
-                cerr << "Lost reachability trace due to saturation! (2)" << endl;
-                return;
-            }
-
-            typeflow_id flow = worklist.front();
-            worklist.pop();
-
-            if(all.typeflow_visited[flow.id].is_saturated() && all.typeflow_visited[flow.id].saturated_dist <= dist)
-            {
-                for(size_t v = 1; v < adj.n_typeflows(); v++)
-                {
-                    if(v == flow || parent[v] || !all.method_history[adj.flows[v].method.dependent().id])
-                        continue;
-
-                    if(all.typeflow_visited[v].is_saturated() && all.typeflow_visited[v].saturated_dist <= dist && adj.flows[v].filter[flow_type])
-                    {
-                        for(auto type_pair: all.typeflow_visited[v])
-                        {
-                            if(type_pair.first == flow_type)
-                            {
-                                parent[v] = flow;
-                                worklist.push(v);
-                            }
-                        }
-
-                        for(typeflow_id u : adj.flows[v].backward_edges)
-                        {
-                            if(u == flow || parent[u.id] || !all.method_history[adj[u].method.dependent().id])
-                                continue;
-
-                            for(auto type_pair : all.typeflow_visited[u.id])
-                            {
-                                if(type_pair.first == flow_type)
-                                {
-                                    parent[u.id] = flow;
-                                    worklist.push(u);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            for(typeflow_id prev : adj[flow].backward_edges)
-            {
-                if(prev == 0)
-                {
-                    vector<method_id> methods;
-
-                    for(typeflow_id cur = flow; parent[cur.id] != numeric_limits<typeflow_id>::max(); cur = parent[cur.id])
-                    {
-                        if(all.typeflow_visited[cur.id].is_saturated() && !(!methods.empty() && methods.back() == numeric_limits<method_id>::max()))
-                            methods.push_back(numeric_limits<method_id>::max());
-                        else
-                        {
-                            method_id cur_container = adj[cur].method.dependent();
-                            if(cur_container && !(!methods.empty() && methods.back() == cur_container))
-                                methods.push_back(cur_container);
-                        }
-                    }
-
-                    indentation.begin_bars();
-
-                    out << indentation << "(Virtually called through " << type_names[flow_type] << ')' << endl;
-
-                    size_t i = methods.size();
-                    std::reverse(methods.begin(), methods.end());
-
-                    for(method_id containing_method : methods)
-                    {
-                        if(--i == 0) // last method
-                            indentation.end_bars();
-
-                        if(containing_method == numeric_limits<method_id>::max())
-                        {
-                            out << indentation << "(Saturated)" << endl;
-                        }
-                        else
-                        {
-                            print_reachability_of_method(out, adj, method_names, type_names, all, containing_method, visited, indentation);
-                        }
-                    }
-
-                    return;
-                }
-
-                if(parent[prev.id])
-                    continue;
-
-                if(adj[prev].method.dependent().id && all.method_history[adj[prev].method.dependent().id].dist >= dist)
-                    continue;
-
-                if(all.typeflow_visited[prev.id].is_saturated() && all.typeflow_visited[prev.id].saturated_dist <= dist)
-                {
-                    parent[prev.id] = flow;
-                    worklist.emplace(prev);
-                }
-                else
-                {
-                    for(auto t2 : all.typeflow_visited[prev.id])
-                    {
-                        if(flow_type == t2.first && t2.second <= dist)
-                        {
-                            parent[prev.id] = flow;
-                            worklist.emplace(prev);
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-static void print_reachability(ostream& out, const Adjacency& adj, const BFS& all, const vector<string>& method_names, const vector<string>& type_names, method_id m)
-{
-    string name;
-
-    if(!all.method_history[m.id])
-    {
-        out << "Not reachable" << endl;
-    }
-    else
-    {
-        vector<bool> visited(adj.n_methods());
-        TreeIndenter indentation;
-        print_reachability_of_method(out, adj, method_names, type_names, all, m, visited, indentation);
-    }
-}
-
-
-
-
-
-
-
-
-
 
 
 struct ReachabilityEdge
@@ -338,163 +114,185 @@ static void get_reachability_of_method(unordered_map<pair<method_id, method_id>,
 
     visited[m.id] = true;
 
-    auto it = std::find_if(adj.methods[m.id].backward_edges.begin(), adj.methods[m.id].backward_edges.end(), [&](method_id prev) { return all.method_history[prev.id].dist < dist; });
-
-    if(it != adj.methods[m.id].backward_edges.end())
     {
-        edges.insert({{*it, m}, numeric_limits<uint32_t>::max()});
-        get_reachability_of_method(edges, adj, all, *it, visited);
-    }
-    else
-    {
-        // --- Do backwards-search in typeflow-nodes ---
+        auto it = std::find_if(adj.methods[m.id].backward_edges.begin(), adj.methods[m.id].backward_edges.end(), [&](method_id prev)
+        { return all.method_history[prev.id].dist < dist; });
 
-        vector<typeflow_id> parent(adj.n_typeflows());
-        queue<typeflow_id> worklist;
-
-        typeflow_id start_flow;
-        uint16_t flow_type;
-        uint8_t flow_type_dist = numeric_limits<uint8_t>::max();
-
-        for(typeflow_id flow : adj[m].virtual_invocation_sources)
+        if(it != adj.methods[m.id].backward_edges.end())
         {
-            if(!all.method_history[adj[flow].method.dependent().id])
-                continue;
+            edges.insert({{*it, m}, numeric_limits<uint32_t>::max()});
+            get_reachability_of_method(edges, adj, all, *it, visited);
+            return;
+        }
+    }
 
-            const TypeflowHistory& history = all.typeflow_visited[flow.id];
+    {
+        auto it = std::find_if(adj.methods[m.id].backward_hyperedges.begin(), adj.methods[m.id].backward_hyperedges.end(), [&](hyperedge_id he)
+        {
+            return all.method_history[adj[he].src1.id].dist < dist
+                && all.method_history[adj[he].src2.id].dist < dist;
+        });
 
-            for(auto pair : history)
+        if(it != adj.methods[m.id].backward_hyperedges.end())
+        {
+            auto m1 = adj[*it].src1;
+            auto m2 = adj[*it].src2;
+            edges.insert({{m1, m}, numeric_limits<uint32_t>::max()});
+            get_reachability_of_method(edges, adj, all, m1, visited);
+            edges.insert({{m2, m}, numeric_limits<uint32_t>::max()});
+            get_reachability_of_method(edges, adj, all, m2, visited);
+            return;
+        }
+    }
+
+
+    // --- Do backwards-search in typeflow-nodes ---
+
+    vector<typeflow_id> parent(adj.n_typeflows());
+    queue<typeflow_id> worklist;
+
+    typeflow_id start_flow;
+    uint16_t flow_type;
+    uint8_t flow_type_dist = numeric_limits<uint8_t>::max();
+
+    for(typeflow_id flow : adj[m].virtual_invocation_sources)
+    {
+        if(!all.method_history[adj[flow].method.dependent().id])
+            continue;
+
+        const TypeflowHistory& history = all.typeflow_visited[flow.id];
+
+        for(auto pair : history)
+        {
+            if(pair.second < flow_type_dist)
             {
-                if(pair.second < flow_type_dist)
-                {
-                    flow_type = pair.first;
-                    flow_type_dist = pair.second;
-                    start_flow = flow;
-                }
-            }
-
-            if(history.is_saturated())
-            {
-                if(history.saturated_dist < flow_type_dist)
-                {
-                    flow_type = adj[flow].filter.first();
-                    flow_type_dist = history.saturated_dist;
-                    start_flow = flow;
-                }
+                flow_type = pair.first;
+                flow_type_dist = pair.second;
+                start_flow = flow;
             }
         }
 
-        if(flow_type_dist > dist)
+        if(history.is_saturated())
         {
-            cerr << "Lost reachability trace due to saturation! (1)" << endl;
+            if(history.saturated_dist < flow_type_dist)
+            {
+                flow_type = adj[flow].filter.first();
+                flow_type_dist = history.saturated_dist;
+                start_flow = flow;
+            }
+        }
+    }
+
+    if(flow_type_dist > dist)
+    {
+        cerr << "Lost reachability trace due to saturation! (1)" << endl;
+        return;
+    }
+
+    worklist.push(start_flow);
+
+    for(;;)
+    {
+        if(worklist.empty())
+        {
+            cerr << "Lost reachability trace due to saturation! (2)" << endl;
             return;
         }
 
-        worklist.push(start_flow);
+        typeflow_id flow = worklist.front();
+        worklist.pop();
 
-        for(;;)
+        if(all.typeflow_visited[flow.id].is_saturated() && all.typeflow_visited[flow.id].saturated_dist <= dist)
         {
-            if(worklist.empty())
+            for(size_t v = 1; v < adj.n_typeflows(); v++)
             {
-                cerr << "Lost reachability trace due to saturation! (2)" << endl;
-                return;
-            }
+                if(v == flow || parent[v] || !all.method_history[adj.flows[v].method.dependent().id])
+                    continue;
 
-            typeflow_id flow = worklist.front();
-            worklist.pop();
-
-            if(all.typeflow_visited[flow.id].is_saturated() && all.typeflow_visited[flow.id].saturated_dist <= dist)
-            {
-                for(size_t v = 1; v < adj.n_typeflows(); v++)
+                if(all.typeflow_visited[v].is_saturated() && all.typeflow_visited[v].saturated_dist <= dist && adj.flows[v].filter[flow_type])
                 {
-                    if(v == flow || parent[v] || !all.method_history[adj.flows[v].method.dependent().id])
-                        continue;
-
-                    if(all.typeflow_visited[v].is_saturated() && all.typeflow_visited[v].saturated_dist <= dist && adj.flows[v].filter[flow_type])
+                    for(auto type_pair: all.typeflow_visited[v])
                     {
-                        for(auto type_pair: all.typeflow_visited[v])
+                        if(type_pair.first == flow_type)
+                        {
+                            parent[v] = flow;
+                            worklist.push(v);
+                        }
+                    }
+
+                    for(typeflow_id u : adj.flows[v].backward_edges)
+                    {
+                        if(u == flow || parent[u.id] || !all.method_history[adj[u].method.dependent().id])
+                            continue;
+
+                        for(auto type_pair : all.typeflow_visited[u.id])
                         {
                             if(type_pair.first == flow_type)
                             {
-                                parent[v] = flow;
-                                worklist.push(v);
-                            }
-                        }
-
-                        for(typeflow_id u : adj.flows[v].backward_edges)
-                        {
-                            if(u == flow || parent[u.id] || !all.method_history[adj[u].method.dependent().id])
-                                continue;
-
-                            for(auto type_pair : all.typeflow_visited[u.id])
-                            {
-                                if(type_pair.first == flow_type)
-                                {
-                                    parent[u.id] = flow;
-                                    worklist.push(u);
-                                }
+                                parent[u.id] = flow;
+                                worklist.push(u);
                             }
                         }
                     }
                 }
             }
+        }
 
-            for(typeflow_id prev : adj[flow].backward_edges)
+        for(typeflow_id prev : adj[flow].backward_edges)
+        {
+            if(prev == 0)
             {
-                if(prev == 0)
+                vector<typeflow_id> history;
+
+                for(typeflow_id cur = flow; parent[cur.id] != numeric_limits<typeflow_id>::max(); cur = parent[cur.id])
+                    history.push_back(cur);
+                std::reverse(history.begin(), history.end());
+
+                bool searching_for_invoker = true;
+
+                for(typeflow_id f : history)
                 {
-                    vector<typeflow_id> history;
+                    if(all.typeflow_visited[f.id].is_saturated())
+                        searching_for_invoker = false;
 
-                    for(typeflow_id cur = flow; parent[cur.id] != numeric_limits<typeflow_id>::max(); cur = parent[cur.id])
-                        history.push_back(cur);
-                    std::reverse(history.begin(), history.end());
-
-                    bool searching_for_invoker = true;
-
-                    for(typeflow_id f : history)
+                    auto containing_method = adj[f].method.dependent();
+                    if(containing_method)
                     {
-                        if(all.typeflow_visited[f.id].is_saturated())
+                        auto inserted = edges.insert({{containing_method, m}, flow_type});;
+
+                        if(searching_for_invoker)
+                        {
+                            inserted.first->second = numeric_limits<uint32_t>::max();
                             searching_for_invoker = false;
-
-                        auto containing_method = adj[f].method.dependent();
-                        if(containing_method)
-                        {
-                            auto inserted = edges.insert({{containing_method, m}, flow_type});;
-
-                            if(searching_for_invoker)
-                            {
-                                inserted.first->second = numeric_limits<uint32_t>::max();
-                                searching_for_invoker = false;
-                            }
-
-                            get_reachability_of_method(edges, adj, all, containing_method, visited);
                         }
+
+                        get_reachability_of_method(edges, adj, all, containing_method, visited);
                     }
-
-                    return;
                 }
 
-                if(parent[prev.id])
-                    continue;
+                return;
+            }
 
-                if(adj[prev].method.dependent().id && all.method_history[adj[prev].method.dependent().id].dist >= dist)
-                    continue;
+            if(parent[prev.id])
+                continue;
 
-                if(all.typeflow_visited[prev.id].is_saturated() && all.typeflow_visited[prev.id].saturated_dist <= dist)
+            if(adj[prev].method.dependent().id && all.method_history[adj[prev].method.dependent().id].dist >= dist)
+                continue;
+
+            if(all.typeflow_visited[prev.id].is_saturated() && all.typeflow_visited[prev.id].saturated_dist <= dist)
+            {
+                parent[prev.id] = flow;
+                worklist.emplace(prev);
+            }
+            else
+            {
+                for(auto t2 : all.typeflow_visited[prev.id])
                 {
-                    parent[prev.id] = flow;
-                    worklist.emplace(prev);
-                }
-                else
-                {
-                    for(auto t2 : all.typeflow_visited[prev.id])
+                    if(flow_type == t2.first && t2.second <= dist)
                     {
-                        if(flow_type == t2.first && t2.second <= dist)
-                        {
-                            parent[prev.id] = flow;
-                            worklist.emplace(prev);
-                            break;
-                        }
+                        parent[prev.id] = flow;
+                        worklist.emplace(prev);
+                        break;
                     }
                 }
             }
@@ -520,6 +318,73 @@ static vector<ReachabilityEdge> get_reachability(const Adjacency& adj, const BFS
     for(auto kv : edges)
         result.push_back({kv.first.first, kv.first.second, kv.second});
     return result;
+}
+
+
+
+namespace std {
+    template <>
+    struct hash<method_id> {
+        auto operator()(method_id m) const {
+            return hash<uint32_t>{}(m.id);
+        }
+    };
+}
+
+static void print_reachability_of_method_internal(ostream& out, const vector<string>& method_names, const vector<string>& type_names, method_id m, vector<bool>& visited, TreeIndenter& indentation, const unordered_map<method_id, vector<pair<method_id, uint32_t>>>& path_adj_backward)
+{
+    out << indentation << method_names[m.id];
+
+    auto backedges_it = path_adj_backward.find(m);
+
+    if(backedges_it == path_adj_backward.end())
+    {
+        out << " (Root)\n";
+        return;
+    }
+
+    out << '\n';
+
+    if(visited[m.id])
+    {
+        TreeIndenter::indent i(indentation);
+        out << indentation << "..." << endl;
+        return;
+    }
+
+    visited[m.id] = true;
+
+    TreeIndenter::indent i(indentation);
+
+    indentation.begin_bars();
+
+    const auto& backedges = backedges_it->second;
+
+    for(size_t j = 0; j < backedges.size() - 1; j++)
+    {
+        const auto& be = backedges[j];
+        print_reachability_of_method_internal(out, method_names, type_names, be.first, visited, indentation, path_adj_backward);
+    }
+
+    indentation.end_bars();
+
+    print_reachability_of_method_internal(out, method_names, type_names, backedges.back().first, visited, indentation, path_adj_backward);
+}
+
+static void print_reachability_of_method(ostream& out, const Adjacency& adj, const vector<string>& method_names, const vector<string>& type_names, const BFS& all, method_id m, vector<bool>& visited, TreeIndenter& indentation)
+{
+    vector<bool> visited_dup = visited;
+    unordered_map<pair<method_id, method_id>, uint32_t> edges;
+    get_reachability_of_method(edges, adj, all, m, visited_dup);
+
+    unordered_map<method_id, vector<pair<method_id, uint32_t>>> path_adj_backward;
+
+    for(auto& e : edges)
+    {
+        path_adj_backward[e.first.second].emplace_back(e.first.first, e.second);
+    }
+
+    print_reachability_of_method_internal(out, method_names, type_names, m, visited, indentation, path_adj_backward);
 }
 
 #endif //CAUSALITY_GRAPH_REACHABILITY_H

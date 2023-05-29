@@ -3,7 +3,8 @@ export const causalityBinaryFileNames = [
     'interflows.bin',
     'direct_invokes.bin',
     'typeflow_methods.bin',
-    'typeflow_filters.bin'
+    'typeflow_filters.bin',
+    'hyper_edges.bin'
 ] as const
 
 type CausalityBinaryFileName = (typeof causalityBinaryFileNames)[number]

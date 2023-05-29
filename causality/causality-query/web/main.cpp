@@ -178,7 +178,8 @@ CausalityGraph* EMSCRIPTEN_KEEPALIVE CausalityGraph_init(
         uintptr_t interflows_data, size_t interflows_len,
         uintptr_t direct_invokes_data, size_t direct_invokes_len,
         uintptr_t typeflow_methods_data, size_t typeflow_methods_len,
-        uintptr_t typeflow_filters_data, size_t typeflow_filters_len)
+        uintptr_t typeflow_filters_data, size_t typeflow_filters_len,
+        uintptr_t hyperedges_data, size_t hyperedges_len)
 {
     size_t n_typeflows = typeflow_methods_len / sizeof(ContainingMethod);
 
@@ -199,6 +200,7 @@ CausalityGraph* EMSCRIPTEN_KEEPALIVE CausalityGraph_init(
         read_buffer(data.direct_invokes, (const uint8_t*) direct_invokes_data, direct_invokes_len);
         read_buffer(data.containing_methods, (const uint8_t*) typeflow_methods_data, typeflow_methods_len);
         read_buffer(data.typeflow_filters, (const uint8_t*) typeflow_filters_data, typeflow_filters_len);
+        read_buffer(data.hyper_edges, (const uint8_t*) hyperedges_data, hyperedges_len);
 
         purge_model.emplace(std::move(data));
     }
