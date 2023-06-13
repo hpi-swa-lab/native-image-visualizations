@@ -234,7 +234,7 @@ function getColorAccordingToCausalityGraphNodeType(fullyQualifiedName: string): 
     if (fullyQualifiedName.endsWith('[Reachability Callback]')) return '#E0E000'
     if (fullyQualifiedName.includes('('))
         // Method reachable
-        return '#20C020'
+        return '#DDDDDD'
 
     // Class reachable
     return '#40A0DF'
