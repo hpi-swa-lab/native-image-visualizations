@@ -145,7 +145,8 @@ export async function loadCgZip(file: File): Promise<CausalityGraphData> {
         'interflows.bin': new Uint8Array(),
         'direct_invokes.bin': new Uint8Array(),
         'typeflow_methods.bin': new Uint8Array(),
-        'typeflow_filters.bin': new Uint8Array()
+        'typeflow_filters.bin': new Uint8Array(),
+        'hyper_edges.bin': new Uint8Array()
     }
 
     for (const path of causalityBinaryFileNames) {
