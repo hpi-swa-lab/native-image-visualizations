@@ -232,6 +232,10 @@ function getColorAccordingToCausalityGraphNodeType(fullyQualifiedName: string): 
     if (fullyQualifiedName.endsWith('[Unknown Heap Object]')) return '#1010E0'
     if (fullyQualifiedName.endsWith('[Build-Time]')) return '#4040FF'
     if (fullyQualifiedName.endsWith('[Reachability Callback]')) return '#E0E000'
+    if (fullyQualifiedName.endsWith('[Feature]')) return '#7090D0'
+    if (fullyQualifiedName.endsWith('[Root Registration]')) return '#20C020'
+    if (fullyQualifiedName.endsWith('[Configuration Condition]')) return '#707070'
+    if (fullyQualifiedName.endsWith(']')) return '#FFFFFF'
     if (fullyQualifiedName.includes('('))
         // Method reachable
         return '#DDDDDD'
